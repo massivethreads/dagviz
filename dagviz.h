@@ -286,8 +286,8 @@ static int dv_check_(int condition, const char * condition_s,
 
 #define NUM_COLORS 34
 const char * COLORS[NUM_COLORS] =
-	{"aquamarine", "gold", "cyan", "orange", "green",
-	 "magenta", "brown1", "burlywood1", "peachpuff", "azure",
+	{"orange", "gold", "cyan", "azure", "green",
+	 "magenta", "brown1", "burlywood1", "peachpuff", "aquamarine",
 	 "chartreuse", "skyblue", "burlywood", "cadetblue", "chocolate",
 	 "coral", "cornflowerblue", "cornsilk4", "darkolivegreen1", "darkorange1",
 	 "khaki3", "lavenderblush2", "lemonchiffon1", "lightblue1", "lightcyan",
