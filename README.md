@@ -5,4 +5,4 @@ Visualizer for computational DAG of task parallel executions
 
 Example:
   make
-  ./dagviz data/fib5.dag
+  ./dagviz data/fib4.dag
