@@ -220,6 +220,7 @@ typedef struct dv_grid_line {
 typedef struct dv_graph_node {
 	long idx;
 	dr_dag_node_info * info;
+	int ne;
 	union {
 		/* create */
 		struct {

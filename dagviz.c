@@ -256,7 +256,7 @@ static void convert_pidag_to_dvgraph(dr_pi_dag *P, dv_graph_t *G) {
 	// Initialize G->T
 	G->n = dv_count_nodes(P);
 	G->T = (dv_graph_node_t *) malloc( G->n*sizeof(dv_graph_node_t) );
-	// Fill G->T's idx, info and ej
+	// Fill G->T's idx, info and ej (NULL), ne (0)
 	long n = 0;
 	long i, j, k, u, v;
 	int existing;
@@ -275,6 +275,7 @@ static void convert_pidag_to_dvgraph(dr_pi_dag *P, dv_graph_t *G) {
 			if (!existing) {
 				G->T[n].idx = u;
 				G->T[n].info = &P->T[u].info;
+				G->T[n].ne = -1;
 				G->T[n].ej = NULL;
 				dv_check(n < G->n);
 				n++;		
@@ -293,30 +294,30 @@ static void convert_pidag_to_dvgraph(dr_pi_dag *P, dv_graph_t *G) {
 				break;
 		dv_check(j < n);
 		nu = &G->T[j];
-		// Get dv
+		// Get nv
 		for (j=0; j<n; j++)
 			if (G->T[j].idx == v)
 				break;
 		dv_check(j < n);
 		nv = &G->T[j];
 		// Set edge link
+		nu->ne = P->E[i].kind;
 		switch (P->E[i].kind) {
 		case dr_dag_edge_kind_end:
 			nu->ej = nv;
-			dv_check(nu->info->kind == dr_dag_node_kind_end_task);
+			//dv_check(nu->info->kind == dr_dag_node_kind_end_task);
 			break;
 		case dr_dag_edge_kind_create:
 			nu->el = nv;
-			dv_check(nu->info->kind == dr_dag_node_kind_create_task);
+			//dv_check(nu->info->kind == dr_dag_node_kind_create_task);
 			break;
 		case dr_dag_edge_kind_create_cont:
 			nu->er = nv;
-			dv_check(nu->info->kind == dr_dag_node_kind_create_task);
+			//dv_check(nu->info->kind == dr_dag_node_kind_create_task);
 			break;
 		case dr_dag_edge_kind_wait_cont:
 			nu->ej = nv;
-			printf("%s\n", NODE_KIND_NAMES[nu->info->kind]);
-			dv_check(nu->info->kind == dr_dag_node_kind_wait_tasks);
+			//dv_check(nu->info->kind == dr_dag_node_kind_wait_tasks);
 			break;
 		default:
 			dv_check(0);
@@ -334,12 +335,14 @@ static void print_dvgraph_node(dv_graph_node_t *node, int i) {
 				 "DV graph node %d:\n"
 				 "  address: %p\n"
 				 "  idx: %ld\n"
-				 "  info.kind: %d (%s)\n",
+				 "  info.kind: %d (%s)\n"
+				 "  ne: %d\n",
 				 i,
 				 node,
 				 node->idx,
 				 kind,
-				 NODE_KIND_NAMES[kind]);
+				 NODE_KIND_NAMES[kind],
+				 node->ne);
 	if (kind == dr_dag_node_kind_create_task) {
 		printf("  el: %p\n"
 					 "  er: %p\n",
@@ -351,9 +354,7 @@ static void print_dvgraph_node(dv_graph_node_t *node, int i) {
 		printf("  ej: %p\n",
 					 node->ej
 					 );
-	} else {
-		dv_check(0);
-	}	
+	}
 }
 
 static void print_dvgraph_node_layout(dv_graph_node_t *node, int i) {
@@ -471,8 +472,9 @@ static dv_grid_line_t * grid_get_right_next_level(dv_grid_line_t *l) {
 static dv_grid_line_t * grid_find_left_pre_level(dv_grid_line_t *l) {
 	int lv = l->lv;
 	dv_grid_line_t * ll = l;
-	while (ll && ll->lv >= lv )
+	while (ll && ll->lv >= lv ) {
 		ll = ll->l;
+	}
 	if (ll && ll->lv == lv - 1)
 		return ll;
 	return NULL;
@@ -488,10 +490,13 @@ static dv_grid_line_t * grid_find_right_pre_level(dv_grid_line_t *l) {
 }
 	
 static void layout_dvgraph_set_node(dv_graph_node_t * node) {
-	int kind = node->info->kind;
-	dv_check(kind < dr_dag_node_kind_section);
+	//int kind = node->info->kind;
+	int kind = node->ne;
+	//dv_check(kind < dr_dag_node_kind_section);
 	
-	if (kind == dr_dag_node_kind_create_task) {
+	//if (kind == dr_dag_node_kind_create_task) {
+	if (kind == dr_dag_edge_kind_create
+			|| kind == dr_dag_edge_kind_create_cont) {
 		
 		dv_grid_line_t * vl_l = grid_find_left_next_level(node->vl);
 		dv_grid_line_t * vl_r = grid_find_right_next_level(node->vl);
@@ -507,7 +512,8 @@ static void layout_dvgraph_set_node(dv_graph_node_t * node) {
 		node->er->vl = vl_r;
 		node->er->hl = hl_r;
 												 
-	} else if (kind == dr_dag_node_kind_end_task) {
+		//} else if (kind == dr_dag_node_kind_end_task) {
+	} else if (kind == dr_dag_edge_kind_end) {
 
 		if (node->ej) {
 			dv_grid_line_t * vl = grid_find_right_pre_level(node->vl);
@@ -518,9 +524,13 @@ static void layout_dvgraph_set_node(dv_graph_node_t * node) {
 				node->ej->hl = hl;
 		}
 		
-	} else if (kind == dr_dag_node_kind_wait_tasks) {
+		//} else if (kind == dr_dag_node_kind_wait_tasks) {
+	} else if (kind == dr_dag_edge_kind_wait_cont) {
 
 		dv_grid_line_t * vl = grid_find_left_pre_level(node->vl);
+		if (!vl) {
+			printf("%s %s %d, \n", NODE_KIND_NAMES[node->info->kind], NODE_KIND_NAMES[node->info->last_node_kind], node->vl->lv);
+		}
 		dv_check(vl);
 		dv_grid_line_t * hl = grid_get_right_next_level(node->hl);
 		node->ej->vl = vl;
@@ -531,19 +541,21 @@ static void layout_dvgraph_set_node(dv_graph_node_t * node) {
 		
 	// Recursive calls
 	switch (kind) {
-	case dr_dag_node_kind_create_task:
+	case dr_dag_edge_kind_create://dr_dag_node_kind_create_task:
+	case dr_dag_edge_kind_create_cont:
 		layout_dvgraph_set_node(node->el);
 		layout_dvgraph_set_node(node->er);
 		break;
-	case dr_dag_node_kind_wait_tasks:
+	case dr_dag_edge_kind_wait_cont://dr_dag_node_kind_wait_tasks:
 		layout_dvgraph_set_node(node->ej);
 		break;
-	case dr_dag_node_kind_end_task:
+	case dr_dag_edge_kind_end://dr_dag_node_kind_end_task:
 		if (node->ej)
 			layout_dvgraph_set_node(node->ej);
 		break;
 	default:
-		dv_check(0);
+		printf("kind = %d\n", kind);
+		//dv_check(0);
 	}
 }
 
@@ -1103,10 +1115,10 @@ int main(int argc, char *argv[])
 		dr_pi_dag P[1];
 		read_dag_file_to_pidag(argv[1], P);
 		convert_pidag_to_dvgraph(P, G);
-		print_dvgraph_to_stdout(G);
+		//print_dvgraph_to_stdout(G);
 		layout_dvgraph(G);
-		print_layout_to_stdout(G);
-		check_layout(G);
+		//print_layout_to_stdout(G);
+		//check_layout(G);
 		S->drag_on = 0;
 		S->pressx = 0.0;
 		S->pressy = 0.0;
