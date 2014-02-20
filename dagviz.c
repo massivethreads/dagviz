@@ -255,6 +255,8 @@ static void convert_pidag_to_dvgraph(dr_pi_dag *P, dv_graph_t *G) {
 	G->S = P->S;
 	// Initialize G->T
 	G->n = dv_count_nodes(P);
+	if (G->n == 0)
+		G->n = 1;
 	G->T = (dv_graph_node_t *) malloc( G->n*sizeof(dv_graph_node_t) );
 	// Fill G->T's idx, info and ej (NULL), ne (0)
 	long n = 0;
@@ -275,19 +277,33 @@ static void convert_pidag_to_dvgraph(dr_pi_dag *P, dv_graph_t *G) {
 			if (!existing) {
 				G->T[n].idx = u;
 				G->T[n].info = &P->T[u].info;
-				G->T[n].ne = -1;
+				G->T[n].ek = -1;
 				G->T[n].ej = NULL;
 				dv_check(n < G->n);
 				n++;		
 			}
 		}
 	}
-	dv_check(n == G->n);
+	dv_check(G->n == 1 || n == G->n);
 	// Fill G->T's edge links
 	dv_graph_node_t *nu, *nv;
+	printf("num edges m = %ld\n", P->m);
+	if (n == 0) {
+		for (i=0; i<P->n; i++)
+			if (P->T[i].info.kind == dr_dag_node_kind_end_task) {
+				G->T[n].idx = i;
+				G->T[n].info = &P->T[i].info;
+				G->T[n].ek = -1;
+				G->T[n].ej = NULL;
+				n++;
+				break;
+			}				
+	}
 	for (i=0; i<P->m; i++) {
 		u = P->E[i].u;
 		v = P->E[i].v;
+		if (u == 802 || v == 802)
+			printf("edge %ld -> %ld %s\n", u, v, EDGE_KIND_NAMES[P->E[i].kind]);
 		// Get nu
 		for (j=0; j<n; j++)
 			if (G->T[j].idx == u)
@@ -301,7 +317,7 @@ static void convert_pidag_to_dvgraph(dr_pi_dag *P, dv_graph_t *G) {
 		dv_check(j < n);
 		nv = &G->T[j];
 		// Set edge link
-		nu->ne = P->E[i].kind;
+		nu->ek = P->E[i].kind;
 		switch (P->E[i].kind) {
 		case dr_dag_edge_kind_end:
 			nu->ej = nv;
@@ -336,13 +352,13 @@ static void print_dvgraph_node(dv_graph_node_t *node, int i) {
 				 "  address: %p\n"
 				 "  idx: %ld\n"
 				 "  info.kind: %d (%s)\n"
-				 "  ne: %d\n",
+				 "  ek: %s\n",
 				 i,
 				 node,
 				 node->idx,
 				 kind,
 				 NODE_KIND_NAMES[kind],
-				 node->ne);
+				 EDGE_KIND_NAMES[node->ek]);
 	if (kind == dr_dag_node_kind_create_task) {
 		printf("  el: %p\n"
 					 "  er: %p\n",
@@ -378,7 +394,9 @@ static void print_dvgraph_node_layout(dv_graph_node_t *node, int i) {
 					 node->er
 					 );
 	} else if (kind == dr_dag_node_kind_wait_tasks
-						 || kind == dr_dag_node_kind_end_task) {
+						 || kind == dr_dag_node_kind_end_task
+						 || kind == dr_dag_node_kind_section
+						 || kind == dr_dag_node_kind_task) {
 		printf("  ej: %p\n",
 					 node->ej
 					 );
@@ -396,7 +414,9 @@ static void print_dvgraph_to_stdout(dv_graph_t *G) {
 				 G->num_workers);
 	int i;
 	for (i=0; i<G->n; i++)
-		print_dvgraph_node(&G->T[i], i);
+		if (G->T[i].idx > 35 && G->T[i].idx < 45) {
+			//print_dvgraph_node(&G->T[i], i);
+		}
 }
 
 static void print_layout_to_stdout(dv_graph_t *G) {
@@ -464,7 +484,6 @@ static dv_grid_line_t * grid_insert_right_next_level(dv_grid_line_t *l) {
 static dv_grid_line_t * grid_get_right_next_level(dv_grid_line_t *l) {
 	dv_grid_line_t *ll = l->r;
 	if (!ll) {
-		printf("insert hline\n");
 		ll = grid_insert_right_next_level(l);
 	}
 	return ll;
@@ -490,8 +509,10 @@ static dv_grid_line_t * grid_find_right_pre_level(dv_grid_line_t *l) {
 }
 	
 static void layout_dvgraph_set_node(dv_graph_node_t * node) {
+	if (node->idx == 802 || node->idx == 852 || node->idx == 853)
+		printf("node: %ld %s %d %d\n", node->idx, EDGE_KIND_NAMES[node->ek], node->vl->lv, node->hl->lv);
 	//int kind = node->info->kind;
-	int kind = node->ne;
+	int kind = node->ek;
 	//dv_check(kind < dr_dag_node_kind_section);
 	
 	//if (kind == dr_dag_node_kind_create_task) {
@@ -520,22 +541,28 @@ static void layout_dvgraph_set_node(dv_graph_node_t * node) {
 			dv_check(vl);
 			dv_grid_line_t * hl = grid_get_right_next_level(node->hl);
 			node->ej->vl = vl;
-			if (!node->ej->hl || node->ej->hl->c < hl->c)
+			if (!node->ej->hl || node->ej->hl->lv < hl->lv)
 				node->ej->hl = hl;
 		}
 		
 		//} else if (kind == dr_dag_node_kind_wait_tasks) {
 	} else if (kind == dr_dag_edge_kind_wait_cont) {
 
-		dv_grid_line_t * vl = grid_find_left_pre_level(node->vl);
-		if (!vl) {
-			printf("%s %s %d, \n", NODE_KIND_NAMES[node->info->kind], NODE_KIND_NAMES[node->info->last_node_kind], node->vl->lv);
+		if (node->info->kind != dr_dag_node_kind_section) {
+			
+			dv_grid_line_t * vl = grid_find_left_pre_level(node->vl);
+			dv_check(vl);
+			dv_grid_line_t * hl = grid_get_right_next_level(node->hl);
+			node->ej->vl = vl;
+			if (!node->ej->hl || node->ej->hl->lv < hl->lv)
+				node->ej->hl = hl;
+			
+		} else {
+			
+			node->ej->vl = node->vl;
+			node->ej->hl = grid_get_right_next_level(node->hl);
+			
 		}
-		dv_check(vl);
-		dv_grid_line_t * hl = grid_get_right_next_level(node->hl);
-		node->ej->vl = vl;
-		if (!node->ej->hl || node->ej->hl->c < hl->c)
-			node->ej->hl = hl;
 		
 	}
 		
@@ -554,8 +581,9 @@ static void layout_dvgraph_set_node(dv_graph_node_t * node) {
 			layout_dvgraph_set_node(node->ej);
 		break;
 	default:
-		printf("kind = %d\n", kind);
+		//printf("kind = %d\n", kind);
 		//dv_check(0);
+		break;
 	}
 }
 
@@ -563,34 +591,12 @@ static void layout_dvgraph(dv_graph_t *G) {
 	// Set nodes to grid lines
 	G->root_vl = create_grid_line(0);
 	G->root_hl = create_grid_line(0);
+	printf("in layout dvgraph\n");
 	G->root_node->vl = G->root_vl;
 	G->root_node->hl = G->root_hl;
 	layout_dvgraph_set_node(G->root_node);
 	
 	// Set real coordinates for grid lines
-	/*int count = 0;
-	dv_grid_line_t * l = G->root_vl;
-	while (l->l) {
-		l = l->l;
-		count++;
-	}
-	G->root_vl->c = DV_PADDING + count * DV_HDIS;
-	G->root_hl->c = DV_PADDING;
-	l = G->root_vl;
-	while (l->l) {
-		l = l->l;
-		l->c = l->r->c - DV_HDIS;
-	}
-	l = G->root_vl;
-	while (l->r) {
-		l = l->r;
-		l->c = l->l->c + DV_HDIS;
-	}
-	l = G->root_hl;
-	while (l->r) {
-		l = l->r;
-		l->c = l->l->c + DV_VDIS;
-		}*/
 	dv_grid_line_t * l;
 	l = G->root_vl;
 	l->c = 0.0;
@@ -624,15 +630,8 @@ static void layout_dvgraph(dv_graph_t *G) {
 /*-----------------end of DAG layout functions-----------*/
 
 
-/*-----------------Miscellaneous drawing functions------------*/
-static void draw_hello(cairo_t *cr)
-{
-  cairo_select_font_face(cr, "serif", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-  cairo_set_font_size(cr, 32.0);
-  cairo_set_source_rgb(cr, 0.0, 0.0, 1.0);
-  cairo_move_to(cr, 10.0, 50.0);
-  cairo_show_text(cr, "Hello, world");
-}
+
+/*-----------------DAG drawing functions-----------*/
 
 static void draw_rounded_rectangle(cairo_t *cr, double x, double y, double width, double height)
 {
@@ -655,16 +654,18 @@ static void draw_rounded_rectangle(cairo_t *cr, double x, double y, double width
   cairo_set_line_width(cr, 1.0);
   cairo_stroke(cr);
 }
-/*-----------------end of Miscellaneous drawing functions-----*/
 
-
-
-/*-----------------DAG drawing functions-----------*/
-
-static void lookup_color(int v, double *r, double *g, double *b) {
-	*r = 0.63;
-	*g = 0.97;
-	*b = 0.71;
+static void lookup_color(int v, double *r, double *g, double *b, double *a) {
+	GdkRGBA color;
+	gdk_rgba_parse(&color, COLORS[v]);
+	*r = color.red;
+	*g = color.green;
+	*b = color.blue;
+	*a = color.alpha;
+	/*	*r = 0.44;
+	*g = 0.55;
+	*b = 0.66;
+	*a = 1.0;
 	double *t;
 	int i = 0;
 	while (i <= v) {
@@ -676,17 +677,17 @@ static void lookup_color(int v, double *r, double *g, double *b) {
 		case 2:
 			t = b; break;
 		}
-		*t += 0.27;
+		*t += 0.37;
 		if (*t > 1.0)
 			*t -= 1.0;
 		i++;
-	}
+		}*/
 }
 
 static void draw_dvgraph_node(cairo_t *cr, dv_graph_node_t *node) {
 	double x = node->vl->c;
 	double y = node->hl->c;
-	double c[3];
+	double c[4];
 	int v = 0;
 	switch (S->nc) {
 	case 0:
@@ -700,8 +701,8 @@ static void draw_dvgraph_node(cairo_t *cr, dv_graph_node_t *node) {
 	default:
 		v = node->info->worker;
 	}
-	lookup_color(v, c, c+1, c+2);
-	cairo_set_source_rgb(cr, c[1], c[2], c[3]);
+	lookup_color(v, c, c+1, c+2, c+3);
+	cairo_set_source_rgba(cr, c[0], c[1], c[2], c[3]);
 	cairo_arc(cr, x, y, DV_RADIUS, 0.0, 2*M_PI);
 	cairo_fill_preserve(cr);
 	cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
@@ -1086,7 +1087,7 @@ static void check_layout(dv_graph_t *G) {
 				printf("null\n");
 		}
 	}
-	dv_grid_line_t *l;
+	/*dv_grid_line_t *l;
 	printf("Left of root vl ");
 	l = G->root_vl;
 	while (l) {
@@ -1106,7 +1107,7 @@ static void check_layout(dv_graph_t *G) {
 	while (l) {
 		printf("(%d,%0.0f) ", l->lv, l->c);
 		l = l->r;
-	}	
+		}	*/
 }
 
 int main(int argc, char *argv[])
@@ -1115,7 +1116,7 @@ int main(int argc, char *argv[])
 		dr_pi_dag P[1];
 		read_dag_file_to_pidag(argv[1], P);
 		convert_pidag_to_dvgraph(P, G);
-		//print_dvgraph_to_stdout(G);
+		print_dvgraph_to_stdout(G);
 		layout_dvgraph(G);
 		//print_layout_to_stdout(G);
 		//check_layout(G);

@@ -220,7 +220,7 @@ typedef struct dv_grid_line {
 typedef struct dv_graph_node {
 	long idx;
 	dr_dag_node_info * info;
-	int ne;
+	int ek; /* edge kind */
 	union {
 		/* create */
 		struct {
@@ -284,3 +284,12 @@ static int dv_check_(int condition, const char * condition_s,
 
 /*-----------------DV DAG Visualizer Headers-----------------*/
 
+#define NUM_COLORS 34
+const char * COLORS[NUM_COLORS] =
+	{"aquamarine", "gold", "cyan", "orange", "green",
+	 "magenta", "brown1", "burlywood1", "peachpuff", "azure",
+	 "chartreuse", "skyblue", "burlywood", "cadetblue", "chocolate",
+	 "coral", "cornflowerblue", "cornsilk4", "darkolivegreen1", "darkorange1",
+	 "khaki3", "lavenderblush2", "lemonchiffon1", "lightblue1", "lightcyan",
+	 "lightgoldenrod", "lightgoldenrodyellow", "lightpink2", "lightsalmon2", "lightskyblue1",
+	 "lightsteelblue3", "lightyellow3", "maroon1", "yellowgreen"};
