@@ -3,6 +3,7 @@
 static dv_graph_t G[1];
 static GtkWidget *window;
 static GtkWidget *darea;
+static dv_status_t S[1];
 
 /*-----------------Read .dag format-----------------*/
 
@@ -314,6 +315,7 @@ static void convert_pidag_to_dvgraph(dr_pi_dag *P, dv_graph_t *G) {
 			break;
 		case dr_dag_edge_kind_wait_cont:
 			nu->ej = nv;
+			printf("%s\n", NODE_KIND_NAMES[nu->info->kind]);
 			dv_check(nu->info->kind == dr_dag_node_kind_wait_tasks);
 			break;
 		default:
@@ -322,6 +324,8 @@ static void convert_pidag_to_dvgraph(dr_pi_dag *P, dv_graph_t *G) {
 	}
 	G->root_node = G->T;
 	G->zoom_ratio = 1.0;
+	G->itl.item = NULL;
+	G->itl.next = NULL;
 }
 
 static void print_dvgraph_node(dv_graph_node_t *node, int i) {
@@ -551,8 +555,8 @@ static void layout_dvgraph(dv_graph_t *G) {
 	G->root_node->hl = G->root_hl;
 	layout_dvgraph_set_node(G->root_node);
 	
-	// Set real coordinates
-	int count = 0;
+	// Set real coordinates for grid lines
+	/*int count = 0;
 	dv_grid_line_t * l = G->root_vl;
 	while (l->l) {
 		l = l->l;
@@ -574,54 +578,38 @@ static void layout_dvgraph(dv_graph_t *G) {
 	while (l->r) {
 		l = l->r;
 		l->c = l->l->c + DV_VDIS;
+		}*/
+	dv_grid_line_t * l;
+	l = G->root_vl;
+	l->c = 0.0;
+	while (l->l) {
+		l->l->c = l->c - DV_HDIS;
+		l = l->l;
 	}
+	l = G->root_vl;
+	while (l->r) {
+		l->r->c = l->c + DV_HDIS;
+		l = l->r;
+	}
+	int count = 0;
+	l = G->root_hl;
+	while (l->r) {
+		count++;
+		l = l->r;
+	}
+	l = G->root_hl;
+	l->c = - DV_VDIS * count / 2;
+	while (l->r) {
+		l->r->c = l->c + DV_VDIS;
+		l = l->r;
+	}
+
+	// Set central point's coordinates
+	G->x = 0.0;
+	G->y = 0.0;	
 }
 
-static void calculate_graph_size(dv_graph_t *G) {
-	
-}
 /*-----------------end of DAG layout functions-----------*/
-
-
-/*-----------------DAG drawing functions-----------*/
-
-static void draw_dvgraph_node(cairo_t *cr, dv_graph_node_t *node) {
-	double x = node->vl->c;
-	double y = node->hl->c;
-	cairo_set_source_rgb(cr, 0.0, 0.0, 1.0);
-	cairo_arc(cr, x, y, DV_RADIUS, 0.0, 2*M_PI);
-	cairo_fill_preserve(cr);
-	cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
-	cairo_stroke(cr);
-}
-
-static void draw_dvgraph_edge(cairo_t *cr, dv_graph_node_t *u, dv_graph_node_t *v) {
-	cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
-	cairo_move_to(cr, u->vl->c, u->hl->c + DV_RADIUS);
-	cairo_line_to(cr, v->vl->c, v->hl->c - DV_RADIUS);
-	cairo_stroke(cr);
-}
-
-static void draw_dvgraph(cairo_t *cr, dv_graph_t *G) {
-	cairo_set_line_width(cr, 2.0);
-	int i;
-	for (i=0; i<G->n; i++) {
-		draw_dvgraph_node(cr, &G->T[i]);
-	}
-	for (i=0; i<G->n; i++) {
-		dv_graph_node_t *node = G->T + i;
-		int kind = node->info->kind;
-		if (kind == dr_dag_node_kind_create_task) {
-			draw_dvgraph_edge(cr, node, node->el);
-			draw_dvgraph_edge(cr, node, node->er);
-		} else {
-			if (node->ej)
-				draw_dvgraph_edge(cr, node, node->ej);
-		}
-	}
-}
-
-/*-----------------end of DAG drawing functions-----------*/
 
 
 /*-----------------Miscellaneous drawing functions------------*/
@@ -634,12 +622,8 @@ static void draw_hello(cairo_t *cr)
   cairo_show_text(cr, "Hello, world");
 }
 
-static void draw_rounded_rectangle(cairo_t *cr)
+static void draw_rounded_rectangle(cairo_t *cr, double x, double y, double width, double height)
 {
-  double x = 25.6;
-  double y = 25.6;
-  double width = 204.8;
-  double height = 204.8;
   double aspect = 1.0;
   double corner_radius = height / 10.0;
 
@@ -653,19 +637,216 @@ static void draw_rounded_rectangle(cairo_t *cr)
   cairo_arc(cr, x+radius, y+radius, radius, 180*degrees, 270*degrees);
   cairo_close_path(cr);
 
-  cairo_set_source_rgb(cr, 0.5, 0.5, 1);
+  cairo_set_source_rgba(cr, 0.1, 0.1, 0.1, 0.6);
   cairo_fill_preserve(cr);
-  cairo_set_source_rgba(cr, 0.5, 0, 0, 0.5);
-  cairo_set_line_width(cr, 10.0);
+  cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
+  cairo_set_line_width(cr, 1.0);
   cairo_stroke(cr);
 }
 /*-----------------end of Miscellaneous drawing functions-----*/
 
 
 
+/*-----------------DAG drawing functions-----------*/
+
+static void lookup_color(int v, double *r, double *g, double *b) {
+	*r = 0.63;
+	*g = 0.97;
+	*b = 0.71;
+	double *t;
+	int i = 0;
+	while (i <= v) {
+		switch (i % 3) {
+		case 0:			
+			t = r; break;
+		case 1:
+			t = g; break;
+		case 2:
+			t = b; break;
+		}
+		*t += 0.27;
+		if (*t > 1.0)
+			*t -= 1.0;
+		i++;
+	}
+}
+
+static void draw_dvgraph_node(cairo_t *cr, dv_graph_node_t *node) {
+	double x = node->vl->c;
+	double y = node->hl->c;
+	double c[3];
+	int v = 0;
+	switch (S->nc) {
+	case 0:
+		v = node->info->worker; break;
+	case 1:
+		v = node->info->cpu; break;
+	case 2:
+		v = node->info->kind; break;
+	case 3:
+		v = node->info->last_node_kind; break;
+	default:
+		v = node->info->worker;
+	}
+	lookup_color(v, c, c+1, c+2);
+	cairo_set_source_rgb(cr, c[1], c[2], c[3]);
+	cairo_arc(cr, x, y, DV_RADIUS, 0.0, 2*M_PI);
+	cairo_fill_preserve(cr);
+	cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
+	cairo_stroke(cr);
+}
+
+static void draw_dvgraph_edge(cairo_t *cr, dv_graph_node_t *u, dv_graph_node_t *v) {
+	cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
+	cairo_move_to(cr, u->vl->c, u->hl->c + DV_RADIUS);
+	cairo_line_to(cr, v->vl->c, v->hl->c - DV_RADIUS);
+	cairo_stroke(cr);
+}
+
+static void draw_dvgraph_infotag(cairo_t *cr, dv_graph_node_t *node) {
+	double line_height = 12;
+	double padding = 4;
+	int n = 6; /* number of lines */
+	double xx = node->vl->c + DV_RADIUS + padding;
+	double yy = node->hl->c - DV_RADIUS - 2*padding - line_height * (n - 1);
+
+	// Cover rectangle
+	double width = 450.0;
+	double height = n * line_height + 3*padding;
+	draw_rounded_rectangle(cr,
+												 node->vl->c + DV_RADIUS,
+												 node->hl->c - DV_RADIUS - height,
+												 width,
+												 height);
+
+	// Lines
+	cairo_set_source_rgb(cr, 1.0, 1.0, 0.1);
+	cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+  cairo_set_font_size(cr, 12);
+
+	// Line 1
+	char *s = (char *) malloc( 50 * sizeof(char) );
+	sprintf(s, "[%ld] %s",
+					node->idx,
+					NODE_KIND_NAMES[node->info->kind]);
+	cairo_move_to(cr, xx, yy);
+  cairo_show_text(cr, s);
+	yy += line_height;
+	  
+	// Line 2
+	sprintf(s, "%llu-%llu (%llu) est=%llu",
+					node->info->start.t,
+					node->info->end.t,
+					node->info->start.t - node->info->end.t,
+					node->info->est);
+	cairo_move_to(cr, xx, yy);
+  cairo_show_text(cr, s);
+	yy += line_height;
+
+	// Line 3
+	sprintf(s, "T=%llu/%llu,nodes=%ld/%ld/%ld,edges=%ld/%ld/%ld/%ld",
+					node->info->t_1, 
+					node->info->t_inf,
+					node->info->node_counts[dr_dag_node_kind_create_task],
+					node->info->node_counts[dr_dag_node_kind_wait_tasks],
+					node->info->node_counts[dr_dag_node_kind_end_task],
+					node->info->edge_counts[dr_dag_edge_kind_end],
+					node->info->edge_counts[dr_dag_edge_kind_create],
+					node->info->edge_counts[dr_dag_edge_kind_create_cont],
+					node->info->edge_counts[dr_dag_edge_kind_wait_cont]);
+	cairo_move_to(cr, xx, yy);
+  cairo_show_text(cr, s);
+	yy += line_height;
+
+	// Line 4
+	sprintf(s, "by worker %d on cpu %d",
+					node->info->worker, 
+					node->info->cpu);
+	cairo_move_to(cr, xx, yy);
+  cairo_show_text(cr, s);
+	yy += line_height;
+
+	// Line 5
+	free(s);
+	const char *ss = G->S->C + G->S->I[node->info->start.pos.file_idx];
+	s = (char *) malloc( strlen(ss) + 10 );
+	sprintf(s, "%s:%ld",
+					ss,
+					node->info->start.pos.line);
+	cairo_move_to(cr, xx, yy);
+  cairo_show_text(cr, s);
+	yy += line_height;
+
+	// Line 6
+	free(s);
+	ss = G->S->C + G->S->I[node->info->end.pos.file_idx];
+	s = (char *) malloc( strlen(ss) + 10 );	
+	sprintf(s, "%s:%ld",
+					ss,
+					node->info->end.pos.line);
+	cairo_move_to(cr, xx, yy);
+  cairo_show_text(cr, s);
+	yy += line_height;
+	
+	free(s);
+}
+
+static void draw_dvgraph(cairo_t *cr, dv_graph_t *G) {
+	cairo_set_line_width(cr, 2.0);
+	int i;
+	// Draw nodes
+	for (i=0; i<G->n; i++) {
+		draw_dvgraph_node(cr, &G->T[i]);
+	}
+	// Draw edges
+	for (i=0; i<G->n; i++) {
+		dv_graph_node_t *node = G->T + i;
+		int kind = node->info->kind;
+		if (kind == dr_dag_node_kind_create_task) {
+			draw_dvgraph_edge(cr, node, node->el);
+			draw_dvgraph_edge(cr, node, node->er);
+		} else {
+			if (node->ej)
+				draw_dvgraph_edge(cr, node, node->ej);
+		}
+	}
+	// Draw info tags
+	dv_linked_list_t *l = &G->itl;
+	while (l) {
+		if (l->item) {
+			draw_dvgraph_infotag(cr, (dv_graph_node_t *) l->item);
+		}
+		l = l->next;
+	}
+}
+
+/*-----------------end of DAG drawing functions-----------*/
+
+
 /*-----------------DV Visualizer GUI-------------------*/
+static void draw_text(cairo_t *cr) {
+	cairo_select_font_face(cr, "Serif", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
+  cairo_set_font_size(cr, 13);
+
+  const int n_glyphs = 20 * 35;
+  cairo_glyph_t glyphs[n_glyphs];
+
+  gint i = 0;  
+  gint x, y;
+  
+  for (y=0; y<20; y++) {
+      for (x=0; x<35; x++) {
+          glyphs[i] = (cairo_glyph_t) {i, x*15 + 20, y*18 + 20};
+          i++;
+      }
+  }
+  
+  cairo_show_glyphs(cr, glyphs, n_glyphs);
+}
+
 static void do_drawing(cairo_t *cr)
 {
+	cairo_translate(cr, 0.5*G->width + G->x, 0.5*G->height + G->y);
 	cairo_scale(cr, G->zoom_ratio, G->zoom_ratio);
 	draw_dvgraph(cr, G);
   //draw_hello(cr);
@@ -680,6 +861,8 @@ static void do_zooming(double zoom_ratio)
 
 static gboolean on_draw_event(GtkWidget *widget, cairo_t *cr, gpointer user_data)
 {
+	G->width = gtk_widget_get_allocated_width(widget);
+	G->height = gtk_widget_get_allocated_height(widget);
   do_drawing(cr);
   return FALSE;
 }
@@ -696,18 +879,113 @@ static gboolean on_btn_zoomout_clicked(GtkWidget *widget, cairo_t *cr, gpointer 
 	return TRUE;
 }
 
-static gboolean on_mouse_press(GtkWidget *widget, cairo_t *cr, gpointer user_data)
-{
+static gboolean on_scroll_event(GtkWidget *widget, GdkEventScroll *event, gpointer user_data) {
+	if (event->direction == GDK_SCROLL_UP) {
+		do_zooming(G->zoom_ratio * DV_ZOOM_INCREMENT);
+	} else if (event->direction == GDK_SCROLL_DOWN) {
+		do_zooming(G->zoom_ratio / DV_ZOOM_INCREMENT);
+	}
 	return TRUE;
 }
 
-static gboolean on_mouse_release(GtkWidget *widget, cairo_t *cr, gpointer user_data)
+static dv_graph_node_t *get_clicked_node(double x, double y) {
+	dv_graph_node_t *ret = NULL;
+	dv_grid_line_t *vl, *hl;
+	int i;
+	for (i=0; i<G->n; i++) {
+		vl = G->T[i].vl;
+		hl = G->T[i].hl;
+		if (vl->c - DV_RADIUS < x && x < vl->c + DV_RADIUS
+				&& hl->c - DV_RADIUS < y && y < hl->c + DV_RADIUS) {
+			ret = &G->T[i];
+			break;
+		}
+	}
+	return ret;
+}
+
+static void *linked_list_remove(dv_linked_list_t *list, void *item) {
+	void * ret = NULL;
+	dv_linked_list_t *l = list;
+	dv_linked_list_t *pre = NULL;
+	while (l) {
+		if (l->item == item) {
+			break;
+		}
+		pre = l;
+		l = l->next;
+	}
+	if (l && l->item == item) {
+		ret = l->item;
+		if (pre) {
+			pre->next = l->next;
+			free(l);
+		} else {
+			l->item = NULL;
+		}		
+	}
+	return ret;
+}
+
+static void linked_list_add(dv_linked_list_t *list, void *item) {
+	if (list->item == NULL) {
+		list->item = item;
+	} else {
+		dv_linked_list_t *newl = (dv_linked_list_t *) malloc(sizeof(dv_linked_list_t));
+		newl->item = item;
+		newl->next = NULL;
+		dv_linked_list_t *l = list;
+		while (l->next)
+			l = l->next;
+		l->next = newl;
+	}
+}
+
+static gboolean on_button_event(GtkWidget *widget, GdkEventButton *event, gpointer user_data)
 {
+	if (event->type == GDK_BUTTON_PRESS) {
+		// Drag
+		S->drag_on = 1;
+		S->pressx = event->x;
+		S->pressy = event->y;
+	}	else if (event->type == GDK_BUTTON_RELEASE) {
+		// Drag
+		S->drag_on = 0;
+		S->pressx = 0;
+		S->pressy = 0;
+	} else if (event->type == GDK_2BUTTON_PRESS) {
+		// Info tag
+		double ox = (event->x - 0.5*G->width - G->x) / G->zoom_ratio;
+		double oy = (event->y - 0.5*G->height - G->y) / G->zoom_ratio;
+		dv_graph_node_t *node_pressed = get_clicked_node(ox, oy);
+		if (node_pressed) {
+			if (!linked_list_remove(&G->itl, node_pressed)) {
+				linked_list_add(&G->itl, node_pressed);
+			}
+			gtk_widget_queue_draw(darea);
+		}
+	}
 	return TRUE;
 }
 
-static gboolean on_mouse_move(GtkWidget *widget, cairo_t *cr, gpointer user_data)
+static gboolean on_motion_event(GtkWidget *widget, GdkEventMotion *event, gpointer user_data)
 {
+	if (S->drag_on) {
+		// Drag
+		double deltax = event->x - S->pressx;
+		double deltay = event->y - S->pressy;
+		G->x += deltax;
+		G->y += deltay;
+		S->pressx = event->x;
+		S->pressy = event->y;
+		gtk_widget_queue_draw(darea);
+	}
+	return TRUE;
+}
+
+static gboolean on_combobox_changed(GtkComboBox *widget, gpointer user_data) {
+	S->nc = gtk_combo_box_get_active(widget);
+	gtk_widget_queue_draw(darea);
 	return TRUE;
 }
 
@@ -717,8 +995,10 @@ static int open_gui(int argc, char *argv[])
 
 	// Main window
   window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-  gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
-  gtk_window_set_default_size(GTK_WINDOW(window), 600, 600);
+  //gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
+  gtk_window_set_default_size(GTK_WINDOW(window), 1000, 700);
+	//gtk_window_fullscreen(GTK_WINDOW(window));
+	gtk_window_maximize(GTK_WINDOW(window));
   gtk_window_set_title(GTK_WINDOW(window), "DAG Visualizer");
   g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
 	GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
@@ -733,13 +1013,27 @@ static int open_gui(int argc, char *argv[])
 	g_signal_connect(G_OBJECT(btn_zoomin), "clicked", G_CALLBACK(on_btn_zoomin_clicked), NULL);
 	g_signal_connect(G_OBJECT(btn_zoomout), "clicked", G_CALLBACK(on_btn_zoomout_clicked), NULL);
 	gtk_box_pack_start(GTK_BOX(vbox), toolbar, FALSE, FALSE, 0);
+
+	// Combo box
+	GtkToolItem *btn_combo = gtk_tool_item_new();
+	GtkWidget *combobox = gtk_combo_box_text_new();
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "worker", "Worker");
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "cpu", "CPU");
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "kind", "Node kind");
+	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "last_node_kind", "Last node kind");
+	gtk_combo_box_set_active(GTK_COMBO_BOX(combobox), 0);
+	g_signal_connect(G_OBJECT(combobox), "changed", G_CALLBACK(on_combobox_changed), NULL);
+	gtk_container_add(GTK_CONTAINER(btn_combo), combobox);
+	gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo, -1);
 	
 	// Drawing Area
   darea = gtk_drawing_area_new();
   g_signal_connect(G_OBJECT(darea), "draw", G_CALLBACK(on_draw_event), NULL);
-	g_signal_connect(G_OBJECT(darea), "button-press-event", G_CALLBACK(on_mouse_press), NULL);
-	g_signal_connect(G_OBJECT(darea), "button-release-event", G_CALLBACK(on_mouse_release), NULL);
-	g_signal_connect(G_OBJECT(darea), "motion-notify-event", G_CALLBACK(on_mouse_move), NULL);
+	gtk_widget_add_events(GTK_WIDGET(darea), GDK_SCROLL_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK | GDK_POINTER_MOTION_MASK);
+	g_signal_connect(G_OBJECT(darea), "scroll-event", G_CALLBACK(on_scroll_event), NULL);
+	g_signal_connect(G_OBJECT(darea), "button-press-event", G_CALLBACK(on_button_event), NULL);
+	g_signal_connect(G_OBJECT(darea), "button-release-event", G_CALLBACK(on_button_event), NULL);
+	g_signal_connect(G_OBJECT(darea), "motion-notify-event", G_CALLBACK(on_motion_event), NULL);
 	gtk_box_pack_start(GTK_BOX(vbox), darea, TRUE, TRUE, 0);
 
 	// Run main loop
@@ -781,22 +1075,25 @@ static void check_layout(dv_graph_t *G) {
 		}
 	}
 	dv_grid_line_t *l;
+	printf("Left of root vl ");
 	l = G->root_vl;
 	while (l) {
 		printf("(%d,%0.0f) ", l->lv, l->c);
 		l = l->l;
 	}
 	printf("\n");
+	printf("Right of root vl ");
 	l = G->root_vl;
 	while (l) {
 		printf("(%d,%0.0f) ", l->lv, l->c);
 		l = l->r;
 	}
 	printf("\n");
+	printf("Right of root hl ");
 	l = G->root_hl;
 	while (l) {
 		printf("(%d,%0.0f) ", l->lv, l->c);
-		l = l->l;
+		l = l->r;
 	}	
 }
 
@@ -810,7 +1107,9 @@ int main(int argc, char *argv[])
 		layout_dvgraph(G);
 		print_layout_to_stdout(G);
 		check_layout(G);
-		calculate_graph_size(G);
+		S->drag_on = 0;
+		S->pressx = 0.0;
+		S->pressy = 0.0;
 	}
 	//return 1;
 	/*if (argc > 1)

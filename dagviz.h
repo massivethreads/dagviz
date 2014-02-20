@@ -234,6 +234,11 @@ typedef struct dv_graph_node {
 	dv_grid_line_t * hl;  /* horizontal line */
 } dv_graph_node_t;
 
+typedef struct dv_linked_list {
+	void * item;
+	struct dv_linked_list * next;
+} dv_linked_list_t;
+
 typedef struct dv_graph {
 	long n;               /* num of nodes on the visual graph */
   long num_workers;		  /* num of workers */
@@ -244,10 +249,16 @@ typedef struct dv_graph {
 	dv_grid_line_t * root_vl;  /* vertical line */
 	dv_grid_line_t * root_hl;  /* horizontal line */
 	double zoom_ratio;  /* zoom ratio of the graph to draw */
-	int width, height;  /* graph size */
+	double width, height;  /* viewport's size */
 	double x, y;        /* current coordinates of the central point */
+	dv_linked_list_t itl; /* list of nodes that have info tag */
 } dv_graph_t;
 
+typedef struct dv_status {
+	char drag_on;
+	double pressx, pressy;
+	int nc; /* node color: 0->worker, 1->cpu, 2->kind, 3->last */
+} dv_status_t;
 
 /*-----------------DV DAG Visualizer Inlines-----------------*/
 
@@ -255,7 +266,6 @@ typedef struct dv_graph {
 #define DV_HDIS 70
 #define DV_VDIS 100
 #define DV_RADIUS 30
-#define DV_PADDING 50
 
 static int dv_check_(int condition, const char * condition_s, 
 										 const char * __file__, int __line__, 
