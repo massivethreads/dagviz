@@ -18,8 +18,6 @@
 typedef unsigned long long dr_clock_t;
 typedef struct dr_dag_node dr_dag_node;
 
-#define NO_CHUNK 1
-
 typedef enum {
 	dr_dag_node_kind_create_task,
 	dr_dag_node_kind_wait_tasks,
@@ -54,20 +52,10 @@ const char * const EDGE_KIND_NAMES[] = {
 
 typedef struct dr_dag_node_list dr_dag_node_list;
 
-#if NO_CHUNK
-#else
-typedef struct dr_dag_node_chunk dr_dag_node_chunk;
-#endif
-
-  /* list of dag nodes */
+/* list of dag nodes */
 struct dr_dag_node_list {
-#if NO_CHUNK
 	dr_dag_node * head;
 	dr_dag_node * tail;
-#else
-	dr_dag_node_chunk * head;
-	dr_dag_node_chunk * tail;
-#endif
 };
 
 typedef struct {
@@ -92,6 +80,7 @@ typedef struct dr_dag_node_info {
 	dr_clock_t t_inf;	 /* critical path */
 	/* number of nodes in this subgraph */
 	long node_counts[dr_dag_node_kind_section];
+	long phys_node_count;
 	/* number of edges connecting nodes in this subgraph */
 	long edge_counts[dr_dag_edge_kind_max];
 	/* direct children of create_task type */
@@ -104,12 +93,19 @@ typedef struct dr_dag_node_info {
 
 typedef struct dr_pi_dag_node dr_pi_dag_node;
 
+/* a node of the in-memory, growing/shrinking dag */
+/* size = 216 bytes? */
 struct dr_dag_node {
 	dr_dag_node_info info;
-#if NO_CHUNK
 	dr_dag_node * next;
-#endif
+	/* a pointer used to recursively
+		 convert the graph into the 
+		 position independent format */
 	dr_pi_dag_node * forward;
+	/* todo: done and collapsed are actually redundant.
+		 done is used only for sanity checks
+		 collapsed <-> subgraphs are empty
+	*/
 	union {
 		dr_dag_node * child;		/* kind == create_task */
 		struct {				/* kind == section/task */
@@ -122,7 +118,6 @@ struct dr_dag_node {
 	};
 };
 
-#if NO_CHUNK
 typedef struct dr_dag_node_page {
 	struct dr_dag_node_page * next;
 	long sz;
@@ -134,20 +129,6 @@ typedef struct {
 	dr_dag_node * tail;
 	dr_dag_node_page * pages;
 } dr_dag_node_freelist;
-#endif
-
-#if NO_CHUNK
-#else
-/* list of dr_dag_node, used to dynamically
-	 grow the subgraphs of section/task */
-enum { dr_dag_node_chunk_sz = 3 };
-/* 16 + 128 * 7 */
-typedef struct dr_dag_node_chunk {
-	struct dr_dag_node_chunk * next;
-	int n;
-	dr_dag_node a[dr_dag_node_chunk_sz];
-} dr_dag_node_chunk;
-#endif
 
 
 
@@ -179,17 +160,6 @@ typedef struct dr_pi_dag_edge {
   long u;
   long v;
 } dr_pi_dag_edge;
-
-typedef struct dr_string_table_cell {
-  struct dr_string_table_cell * next;
-  const char * s;
-} dr_string_table_cell;
-
-typedef struct {
-  dr_string_table_cell * head;
-  dr_string_table_cell * tail;
-  long n;
-} dr_string_table;
 
 typedef struct {
   long n;			/* number of strings */
