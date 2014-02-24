@@ -342,13 +342,6 @@ static void convert_pidag_to_dvgraph(dr_pi_dag *P, dv_graph_t *G) {
 	G->zoom_ratio = 1.0;
 	G->itl.item = NULL;
 	G->itl.next = NULL;
-	// Print all nodes with ek==-1
-	printf("node 2 %s\n", NODE_KIND_NAMES[P->T[2].info.kind]);
-	printf("node 8 %s\n", NODE_KIND_NAMES[P->T[8].info.kind]);
-	for (j=0; j<P->m; j++)
-		if (P->E[j].u == 2 || P->E[j].v == 2
-				|| P->E[j].u == 8 || P->E[j].v == 8)
-			printf("edge %ld -> %ld\n", P->E[j].u, P->E[j].v);
 }
 
 static void print_dvgraph_node(dv_graph_node_t *node, int i) {
@@ -547,9 +540,12 @@ static void layout_dvgraph_set_node(dv_graph_node_t * node) {
 				node->ej->hl = hl;
 				layout_dvgraph_set_node(node->ej);
 			} else {
-				dv_check(node->ej->vl == vl && node->ej->hl != NULL);
+				dv_check(node->ej->vl != NULL && node->ej->hl != NULL);
 				if (node->ej->hl->lv < hl->lv) {
 					node->ej->hl = hl;
+					layout_dvgraph_set_node(node->ej);
+				} else if (node->ej->hl->lv > hl->lv && node->ej->vl != vl) {
+					node->ej->vl = vl;
 					layout_dvgraph_set_node(node->ej);
 				}
 			}
@@ -566,6 +562,8 @@ static void layout_dvgraph_set_node(dv_graph_node_t * node) {
 		} else {
 
 			dv_grid_line_t * vl = grid_find_left_pre_level(node->vl);
+			if (!vl)
+				vl = node->vl;
 			dv_check(vl);
 			dv_grid_line_t * hl = grid_get_right_next_level(node->hl);
 			if (node->ej->vl == NULL || node->ej->hl == NULL) {
@@ -574,9 +572,12 @@ static void layout_dvgraph_set_node(dv_graph_node_t * node) {
 				node->ej->hl = hl;
 				layout_dvgraph_set_node(node->ej);
 			} else {
-				dv_check(node->ej->vl == vl && node->ej->hl != NULL);
+				dv_check(node->ej->vl != NULL && node->ej->hl != NULL);
 				if (node->ej->hl->lv < hl->lv) {
 					node->ej->hl = hl;
+					layout_dvgraph_set_node(node->ej);
+				} else if (node->ej->hl->lv > hl->lv && node->ej->vl != vl) {
+					node->ej->vl = vl;
 					layout_dvgraph_set_node(node->ej);
 				}
 			}
@@ -585,7 +586,7 @@ static void layout_dvgraph_set_node(dv_graph_node_t * node) {
 		
 	} else {
 		/* TODO: should not get here so many times */
-		printf("layout_dvgraph_set_node(): ek = %d, %d, %p\n", ek, node->info->kind, node);
+		printf("This node %ld (%s) has ek = %d\n", node->idx, NODE_KIND_NAMES[node->info->kind], ek);
 	}
 
 }
@@ -661,7 +662,7 @@ static void draw_rounded_rectangle(cairo_t *cr, double x, double y, double width
 
 static void lookup_color(int v, double *r, double *g, double *b, double *a) {
 	GdkRGBA color;
-	gdk_rgba_parse(&color, COLORS[v]);
+	gdk_rgba_parse(&color, COLORS[v % NUM_COLORS]);
 	*r = color.red;
 	*g = color.green;
 	*b = color.blue;
@@ -742,7 +743,8 @@ static void draw_dvgraph_infotag(cairo_t *cr, dv_graph_node_t *node) {
   cairo_set_font_size(cr, 12);
 
 	// Line 1
-	char *s = (char *) malloc( 50 * sizeof(char) );
+	/* TODO: adaptable string length */
+	char *s = (char *) malloc( 100 * sizeof(char) );
 	sprintf(s, "[%ld] %s",
 					node->idx,
 					NODE_KIND_NAMES[node->info->kind]);
@@ -1091,27 +1093,6 @@ static void check_layout(dv_graph_t *G) {
 				printf("null\n");
 		}
 	}
-	/*dv_grid_line_t *l;
-	printf("Left of root vl ");
-	l = G->root_vl;
-	while (l) {
-		printf("(%d,%0.0f) ", l->lv, l->c);
-		l = l->l;
-	}
-	printf("\n");
-	printf("Right of root vl ");
-	l = G->root_vl;
-	while (l) {
-		printf("(%d,%0.0f) ", l->lv, l->c);
-		l = l->r;
-	}
-	printf("\n");
-	printf("Right of root hl ");
-	l = G->root_hl;
-	while (l) {
-		printf("(%d,%0.0f) ", l->lv, l->c);
-		l = l->r;
-		}	*/
 }
 
 int main(int argc, char *argv[])
@@ -1122,6 +1103,7 @@ int main(int argc, char *argv[])
 		convert_pidag_to_dvgraph(P, G);
 		//print_dvgraph_to_stdout(G);
 		layout_dvgraph(G);
+		printf("finished layout.\n");
 		//print_layout_to_stdout(G);
 		//check_layout(G);
 		S->drag_on = 0;
