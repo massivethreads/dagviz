@@ -12,19 +12,8 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 
+#include <dag_recorder_impl.h>
 
-/*-----------------DR DAG structures-----------------*/
-
-typedef unsigned long long dr_clock_t;
-typedef struct dr_dag_node dr_dag_node;
-
-typedef enum {
-	dr_dag_node_kind_create_task,
-	dr_dag_node_kind_wait_tasks,
-	dr_dag_node_kind_end_task,
-	dr_dag_node_kind_section,
-	dr_dag_node_kind_task,
-} dr_dag_node_kind_t;
 
 const char * const NODE_KIND_NAMES[] = {
 	"create",
@@ -34,14 +23,6 @@ const char * const NODE_KIND_NAMES[] = {
 	"task"
 };
 
-typedef enum {
-	dr_dag_edge_kind_end,    /* end -> parent */
-	dr_dag_edge_kind_create, /* create -> child */
-	dr_dag_edge_kind_create_cont, /* create -> next */
-	dr_dag_edge_kind_wait_cont,	/* wait -> next */
-	dr_dag_edge_kind_max,
-} dr_dag_edge_kind_t;
-
 const char * const EDGE_KIND_NAMES[] = {
 	"end",
 	"create",
@@ -49,133 +30,6 @@ const char * const EDGE_KIND_NAMES[] = {
 	"wait_cont",
 	"max",
 };
-
-typedef struct dr_dag_node_list dr_dag_node_list;
-
-/* list of dag nodes */
-struct dr_dag_node_list {
-	dr_dag_node * head;
-	dr_dag_node * tail;
-};
-
-typedef struct {
-	/* pointer to filename. valid in dr_dag_node */
-	const char * file;
-	/* index in dr_flat_string_table. valid in dr_pi_dag_node */    
-	long file_idx;
-	/* line number */
-	long line;
-} code_pos;
-
-typedef struct {
-	dr_clock_t t;		/* clock */
-	code_pos pos;		/* code position */
-} dr_clock_pos;
-
-typedef struct dr_dag_node_info {
-	dr_clock_pos start; /* start clock,position */
-	dr_clock_pos end;	 /* end clock,position */
-	dr_clock_t est;	 /* earliest start time */
-	dr_clock_t t_1;	 /* work */
-	dr_clock_t t_inf;	 /* critical path */
-	/* number of nodes in this subgraph */
-	long node_counts[dr_dag_node_kind_section];
-	long phys_node_count;
-	/* number of edges connecting nodes in this subgraph */
-	long edge_counts[dr_dag_edge_kind_max];
-	/* direct children of create_task type */
-	long n_child_create_tasks;
-	int worker;
-	int cpu;
-	dr_dag_node_kind_t kind;
-	dr_dag_node_kind_t last_node_kind;
-} dr_dag_node_info;
-
-typedef struct dr_pi_dag_node dr_pi_dag_node;
-
-/* a node of the in-memory, growing/shrinking dag */
-/* size = 216 bytes? */
-struct dr_dag_node {
-	dr_dag_node_info info;
-	dr_dag_node * next;
-	/* a pointer used to recursively
-		 convert the graph into the 
-		 position independent format */
-	dr_pi_dag_node * forward;
-	/* todo: done and collapsed are actually redundant.
-		 done is used only for sanity checks
-		 collapsed <-> subgraphs are empty
-	*/
-	union {
-		dr_dag_node * child;		/* kind == create_task */
-		struct {				/* kind == section/task */
-			dr_dag_node_list subgraphs[1];
-			union {
-				dr_dag_node * parent_section; /* kind == section */
-				dr_dag_node * active_section; /* kind == task */
-			};
-		};
-	};
-};
-
-typedef struct dr_dag_node_page {
-	struct dr_dag_node_page * next;
-	long sz;
-	dr_dag_node nodes[2];	/* this is the minimum size */
-} dr_dag_node_page;
-
-typedef struct {
-	dr_dag_node * head;
-	dr_dag_node * tail;
-	dr_dag_node_page * pages;
-} dr_dag_node_freelist;
-
-
-
-/*-----------------DR PI DAG structures-----------------*/
-
-/* a node of the dag, position independent */
-struct dr_pi_dag_node {
-  /* misc. information about this node */
-  dr_dag_node_info info;
-  /* two indexes in the edges array, pointing to 
-     the begining and the end of edges from this node */
-  long edges_begin;	 
-  long edges_end;
-  union {
-    /* valid when this node is a create node.
-       index of its child */
-    long child_offset;
-    /* valid when this node is a section or task node
-       begin/end indexes of its subgraphs */
-    struct {
-      long subgraphs_begin_offset;
-      long subgraphs_end_offset;
-    };
-  };
-};
-
-typedef struct dr_pi_dag_edge {
-  dr_dag_edge_kind_t kind;
-  long u;
-  long v;
-} dr_pi_dag_edge;
-
-typedef struct {
-  long n;			/* number of strings */
-  long sz;			/* total bytes including headers */
-  long * I;			/* index I[0] .. I[n-1] */
-  const char * C;		/* char array */
-} dr_pi_string_table;
-
-typedef struct dr_pi_dag {
-  long n;			/* length of T */
-  long m;			/* length of E */
-  long num_workers;		/* number of workers */
-  dr_pi_dag_node * T;		/* all nodes in a contiguous array */
-  dr_pi_dag_edge * E;		/* all edges in a contiguous array */
-  dr_pi_string_table * S;
-} dr_pi_dag;
 
 
 /*-----------------DV DAG Visualizer Structures-----------------*/

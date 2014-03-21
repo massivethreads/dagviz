@@ -70,9 +70,8 @@ static void print_pi_dag_node(dr_pi_dag_node * dn, int i) {
 		"  info.end: %llu, %p, %ld, %ld\n"
 		//"  info.est: %llu\n"
 		"  info.kind: %d (%s)\n"
-		"  info.last_node_kind: %d (%s)\n"
-		"  info.node_counts: %ld/%ld/%ld\n"
-		"  info.edge_counts: %ld/%ld/%ld/%ld\n"
+		"  info.logical_node_counts: %ld/%ld/%ld\n"
+		"  info.logical_edge_counts: %ld/%ld/%ld/%ld\n"
 		"  info.n_child_create_tasks: %ld\n"
 		"  info.worker/cpu: %d, %d\n"
 		"  edges_begin/end: %ld, %ld\n",
@@ -88,15 +87,13 @@ static void print_pi_dag_node(dr_pi_dag_node * dn, int i) {
 		//(unsigned long long) dn->info.est,
 		dn->info.kind,
 		NODE_KIND_NAMES[dn->info.kind],
-		dn->info.last_node_kind,
-		NODE_KIND_NAMES[dn->info.last_node_kind],
-		dn->info.node_counts[0],
-		dn->info.node_counts[1],
-		dn->info.node_counts[2],
-		dn->info.edge_counts[0],
-		dn->info.edge_counts[1],
-		dn->info.edge_counts[2],
-		dn->info.edge_counts[3],
+		dn->info.logical_node_counts[0],
+		dn->info.logical_node_counts[1],
+		dn->info.logical_node_counts[2],
+		dn->info.logical_edge_counts[0],
+		dn->info.logical_edge_counts[1],
+		dn->info.logical_edge_counts[2],
+		dn->info.logical_edge_counts[3],
 		dn->info.n_child_create_tasks,
 		dn->info.worker,
 		dn->info.cpu,
@@ -701,8 +698,6 @@ static void draw_dvgraph_node(cairo_t *cr, dv_graph_node_t *node) {
 		v = node->info->cpu; break;
 	case 2:
 		v = node->info->kind; break;
-	case 3:
-		v = node->info->last_node_kind; break;
 	default:
 		v = node->info->worker;
 	}
@@ -766,13 +761,13 @@ static void draw_dvgraph_infotag(cairo_t *cr, dv_graph_node_t *node) {
 	sprintf(s, "T=%llu/%llu,nodes=%ld/%ld/%ld,edges=%ld/%ld/%ld/%ld",
 					node->info->t_1, 
 					node->info->t_inf,
-					node->info->node_counts[dr_dag_node_kind_create_task],
-					node->info->node_counts[dr_dag_node_kind_wait_tasks],
-					node->info->node_counts[dr_dag_node_kind_end_task],
-					node->info->edge_counts[dr_dag_edge_kind_end],
-					node->info->edge_counts[dr_dag_edge_kind_create],
-					node->info->edge_counts[dr_dag_edge_kind_create_cont],
-					node->info->edge_counts[dr_dag_edge_kind_wait_cont]);
+					node->info->logical_node_counts[dr_dag_node_kind_create_task],
+					node->info->logical_node_counts[dr_dag_node_kind_wait_tasks],
+					node->info->logical_node_counts[dr_dag_node_kind_end_task],
+					node->info->logical_edge_counts[dr_dag_edge_kind_end],
+					node->info->logical_edge_counts[dr_dag_edge_kind_create],
+					node->info->logical_edge_counts[dr_dag_edge_kind_create_cont],
+					node->info->logical_edge_counts[dr_dag_edge_kind_wait_cont]);
 	cairo_move_to(cr, xx, yy);
   cairo_show_text(cr, s);
 	yy += line_height;
@@ -1039,7 +1034,6 @@ static int open_gui(int argc, char *argv[])
 	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "worker", "Worker");
 	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "cpu", "CPU");
 	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "kind", "Node kind");
-	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "last_node_kind", "Last node kind");
 	gtk_combo_box_set_active(GTK_COMBO_BOX(combobox), 0);
 	g_signal_connect(G_OBJECT(combobox), "changed", G_CALLBACK(on_combobox_changed), NULL);
 	gtk_container_add(GTK_CONTAINER(btn_combo), combobox);
