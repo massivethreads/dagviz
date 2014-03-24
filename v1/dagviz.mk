@@ -12,7 +12,7 @@ compile_done : $(exe)
 	touch $@
 
 $(exe) : dagviz.c
-	gcc -Wall -g -I/home/zanton/parallel2/sys/inst/g/include -L/home/zanton/parallel2/sys/inst/g/lib dagviz.c check.c print.c layout.c draw.c -Wl,-R/home/zanton/parallel2/sys/inst/g/lib `pkg-config --cflags --libs gtk+-3.0` -o $(exe) -ldr
+	gcc -Wall -g -I/home/zanton/parallel2/sys/inst/g/include -L/home/zanton/parallel2/sys/inst/g/lib dagviz.c -Wl,-R/home/zanton/parallel2/sys/inst/g/lib `pkg-config --cflags --libs gtk+-3.0` -o $(exe) -ldr
 
 install_done: compile_done
 	mkdir -p $(prefix)/bin

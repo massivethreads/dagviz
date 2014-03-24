@@ -1,6 +1,3 @@
-#ifndef DAGVIZ_HEADER_
-#define DAGVIZ_HEADER_
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,14 +15,24 @@
 #include <dag_recorder_impl.h>
 
 
-#define DV_ZOOM_INCREMENT 1.25
-#define DV_HDIS 70
-#define DV_VDIS 100
-#define DV_RADIUS 30
-#define NUM_COLORS 34
+const char * const NODE_KIND_NAMES[] = {
+	"create",
+	"wait",
+	"end",
+	"section",
+	"task"
+};
+
+const char * const EDGE_KIND_NAMES[] = {
+	"end",
+	"create",
+	"create_cont",
+	"wait_cont",
+	"max",
+};
 
 
-/*-----------------Data Structures-----------------*/
+/*-----------------DV DAG Visualizer Structures-----------------*/
 
 typedef struct dv_grid_line {
 	double c;  /* coordinate */
@@ -78,8 +85,12 @@ typedef struct dv_status {
 	int nc; /* node color: 0->worker, 1->cpu, 2->kind, 3->last */
 } dv_status_t;
 
+/*-----------------DV DAG Visualizer Inlines-----------------*/
 
-/*-----------------Inlines-----------------*/
+#define DV_ZOOM_INCREMENT 1.25
+#define DV_HDIS 70
+#define DV_VDIS 100
+#define DV_RADIUS 30
 
 static int dv_check_(int condition, const char * condition_s, 
 										 const char * __file__, int __line__, 
@@ -95,38 +106,14 @@ static int dv_check_(int condition, const char * condition_s,
 #define dv_check(x) (dv_check_(((x)?1:0), #x, __FILE__, __LINE__, __func__))
 
 
-/*------Global variables-----*/
+/*-----------------DV DAG Visualizer Headers-----------------*/
 
-extern const char * const NODE_KIND_NAMES[];
-extern const char * const EDGE_KIND_NAMES[];
-extern const char * const DV_COLORS[];
-
-extern dv_graph_t G[];
-extern GtkWidget *window;
-extern GtkWidget *darea;
-extern dv_status_t S[];
-
-
-/*-----------------Headers-----------------*/
-
-/* print.c */
-void print_pi_dag_node(dr_pi_dag_node *, int);
-void print_pi_dag_edge(dr_pi_dag_edge *, int);
-void print_pi_string_table(dr_pi_string_table *, int);
-void print_dvgraph_to_stdout(dv_graph_t *);
-void print_layout_to_stdout(dv_graph_t *);
-
-/* check.c */
-void read_dag_file_to_stdout(char *);
-void check_layout(dv_graph_t *);
-
-/* layout.c */
-void read_dag_file_to_pidag(char *, dr_pi_dag *);
-void convert_pidag_to_dvgraph(dr_pi_dag *, dv_graph_t *);
-void layout_dvgraph(dv_graph_t *);
-
-/* draw.c */
-void draw_dvgraph(cairo_t *, dv_graph_t *);
-
-
-#endif /* DAGVIZ_HEADER_ */
+#define NUM_COLORS 34
+const char * COLORS[NUM_COLORS] =
+	{"orange", "gold", "cyan", "azure", "green",
+	 "magenta", "brown1", "burlywood1", "peachpuff", "aquamarine",
+	 "chartreuse", "skyblue", "burlywood", "cadetblue", "chocolate",
+	 "coral", "cornflowerblue", "cornsilk4", "darkolivegreen1", "darkorange1",
+	 "khaki3", "lavenderblush2", "lemonchiffon1", "lightblue1", "lightcyan",
+	 "lightgoldenrod", "lightgoldenrodyellow", "lightpink2", "lightsalmon2", "lightskyblue1",
+	 "lightsteelblue3", "lightyellow3", "maroon1", "yellowgreen"};
