@@ -9,7 +9,7 @@ static void do_drawing(cairo_t *cr)
 {
 	cairo_translate(cr, 0.5*G->width + G->x, 0.5*G->height + G->y);
 	cairo_scale(cr, G->zoom_ratio, G->zoom_ratio);
-	draw_dvgraph(cr, G);
+	draw_dvdag(cr, G);
   //draw_hello(cr);
   //draw_rounded_rectangle(cr);
 }
@@ -49,8 +49,8 @@ static gboolean on_scroll_event(GtkWidget *widget, GdkEventScroll *event, gpoint
 	return TRUE;
 }
 
-static dv_graph_node_t *get_clicked_node(double x, double y) {
-	dv_graph_node_t *ret = NULL;
+static dv_dag_node_t *get_clicked_node(double x, double y) {
+	dv_dag_node_t *ret = NULL;
 	dv_grid_line_t *vl, *hl;
 	int i;
 	for (i=0; i<G->n; i++) {
@@ -63,43 +63,6 @@ static dv_graph_node_t *get_clicked_node(double x, double y) {
 		}
 	}
 	return ret;
-}
-
-static void *linked_list_remove(dv_linked_list_t *list, void *item) {
-	void * ret = NULL;
-	dv_linked_list_t *l = list;
-	dv_linked_list_t *pre = NULL;
-	while (l) {
-		if (l->item == item) {
-			break;
-		}
-		pre = l;
-		l = l->next;
-	}
-	if (l && l->item == item) {
-		ret = l->item;
-		if (pre) {
-			pre->next = l->next;
-			free(l);
-		} else {
-			l->item = NULL;
-		}		
-	}
-	return ret;
-}
-
-static void linked_list_add(dv_linked_list_t *list, void *item) {
-	if (list->item == NULL) {
-		list->item = item;
-	} else {
-		dv_linked_list_t *newl = (dv_linked_list_t *) malloc(sizeof(dv_linked_list_t));
-		newl->item = item;
-		newl->next = NULL;
-		dv_linked_list_t *l = list;
-		while (l->next)
-			l = l->next;
-		l->next = newl;
-	}
 }
 
 static gboolean on_button_event(GtkWidget *widget, GdkEventButton *event, gpointer user_data)
@@ -118,10 +81,10 @@ static gboolean on_button_event(GtkWidget *widget, GdkEventButton *event, gpoint
 		// Info tag
 		double ox = (event->x - 0.5*G->width - G->x) / G->zoom_ratio;
 		double oy = (event->y - 0.5*G->height - G->y) / G->zoom_ratio;
-		dv_graph_node_t *node_pressed = get_clicked_node(ox, oy);
+		dv_dag_node_t *node_pressed = get_clicked_node(ox, oy);
 		if (node_pressed) {
-			if (!linked_list_remove(&G->itl, node_pressed)) {
-				linked_list_add(&G->itl, node_pressed);
+			if (!dv_linked_list_remove(&G->itl, node_pressed)) {
+				dv_linked_list_add(&G->itl, node_pressed);
 			}
 			gtk_widget_queue_draw(darea);
 		}
@@ -210,24 +173,23 @@ int open_gui(int argc, char *argv[])
 int main(int argc, char *argv[])
 {
 	if (argc > 1) {
-		dr_pi_dag P[1];
-		read_dag_file_to_pidag(argv[1], P);
-		convert_pidag_to_dvgraph(P, G);
-		//print_dvgraph_to_stdout(G);
-		layout_dvgraph(G);
-		printf("finished layout.\n");
-		//print_layout_to_stdout(G);
+		dv_read_dag_file_to_pidag(argv[1], P);
+		dv_convert_pidag_to_dvdag(P, G);
+		print_dvdag(G);
+		//dv_layout_dvdag(G);
+		//printf("finished layout.\n");
+		//print_layout(G);
 		//check_layout(G);
 		S->drag_on = 0;
 		S->pressx = 0.0;
 		S->pressy = 0.0;
 	}
-	//return 1;
 	/*if (argc > 1)
-		read_dag_file_to_stdout(argv[1]);
+		print_dag_file(argv[1]);
 	return 1;
 	*/
-	return open_gui(argc, argv);
+	//return open_gui(argc, argv);
+	return 1;
 }
 
 /*-----------------Main ends-------------------*/

@@ -74,7 +74,8 @@ static void lookup_color(int v, double *r, double *g, double *b, double *a) {
 		}*/
 }
 
-static void draw_dvgraph_node(cairo_t *cr, dv_graph_node_t *node) {
+static void draw_dvdag_node(cairo_t *cr, dv_dag_node_t *node) {
+#if 0	
 	double x = node->vl->c;
 	double y = node->hl->c;
 	double c[4];
@@ -95,16 +96,18 @@ static void draw_dvgraph_node(cairo_t *cr, dv_graph_node_t *node) {
 	cairo_fill_preserve(cr);
 	cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
 	cairo_stroke(cr);
+#endif	
 }
 
-static void draw_dvgraph_edge(cairo_t *cr, dv_graph_node_t *u, dv_graph_node_t *v) {
+static void draw_dvdag_edge(cairo_t *cr, dv_dag_node_t *u, dv_dag_node_t *v) {
 	cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
 	cairo_move_to(cr, u->vl->c, u->hl->c + DV_RADIUS);
 	cairo_line_to(cr, v->vl->c, v->hl->c - DV_RADIUS);
 	cairo_stroke(cr);
 }
 
-static void draw_dvgraph_infotag(cairo_t *cr, dv_graph_node_t *node) {
+static void draw_dvdag_infotag(cairo_t *cr, dv_dag_node_t *node) {
+#if 0	
 	double line_height = 12;
 	double padding = 4;
 	int n = 6; /* number of lines */
@@ -191,35 +194,38 @@ static void draw_dvgraph_infotag(cairo_t *cr, dv_graph_node_t *node) {
 	yy += line_height;
 	
 	free(s);
+#endif
 }
 
-void draw_dvgraph(cairo_t *cr, dv_graph_t *G) {
+void draw_dvdag(cairo_t *cr, dv_dag_t *G) {
+#if 0
 	cairo_set_line_width(cr, 2.0);
 	int i;
 	// Draw nodes
 	for (i=0; i<G->n; i++) {
-		draw_dvgraph_node(cr, &G->T[i]);
+		draw_dvdag_node(cr, &G->T[i]);
 	}
 	// Draw edges
 	for (i=0; i<G->n; i++) {
-		dv_graph_node_t *node = G->T + i;
+		dv_dag_node_t *node = G->T + i;
 		int kind = node->info->kind;
 		if (kind == dr_dag_node_kind_create_task) {
-			draw_dvgraph_edge(cr, node, node->el);
-			draw_dvgraph_edge(cr, node, node->er);
+			draw_dvdag_edge(cr, node, node->el);
+			draw_dvdag_edge(cr, node, node->er);
 		} else {
 			if (node->ej)
-				draw_dvgraph_edge(cr, node, node->ej);
+				draw_dvdag_edge(cr, node, node->ej);
 		}
 	}
 	// Draw info tags
 	dv_linked_list_t *l = &G->itl;
 	while (l) {
 		if (l->item) {
-			draw_dvgraph_infotag(cr, (dv_graph_node_t *) l->item);
+			draw_dvdag_infotag(cr, (dv_dag_node_t *) l->item);
 		}
 		l = l->next;
 	}
+#endif	
 }
 
 /*-----------------end of DAG drawing functions-----------*/

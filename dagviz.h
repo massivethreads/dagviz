@@ -18,6 +18,25 @@
 #include <dag_recorder_impl.h>
 
 
+/*-----Utilities-----*/
+typedef struct dv_linked_list {
+	void * item;
+	struct dv_linked_list * next;
+} dv_linked_list_t;
+
+typedef struct dv_stack_cell {
+	void * item;
+	struct dv_stack_cell * next;
+} dv_stack_cell_t;
+
+typedef struct dv_stack {
+	dv_stack_cell_t * freelist;
+	dv_stack_cell_t * top;
+} dv_stack_t;
+
+
+/*-----------------Constants-----------------*/
+
 #define DV_ZOOM_INCREMENT 1.25
 #define DV_HDIS 70
 #define DV_VDIS 100
@@ -27,58 +46,106 @@
 
 /*-----------------Data Structures-----------------*/
 
+typedef struct dv_status {
+	char drag_on; /* currently dragged or not */
+	double pressx, pressy; /* currently pressed position */
+	int nc; /* node color: 0->worker, 1->cpu, 2->kind, 3->last */
+} dv_status_t;
+
 typedef struct dv_grid_line {
 	double c;  /* coordinate */
-	int lv;
 	struct dv_grid_line * l;  /* left next grid line */
 	struct dv_grid_line * r;  /* right next grid line */
 } dv_grid_line_t;
 
-typedef struct dv_graph_node {
-	long idx;
-	dr_dag_node_info * info;
-	int ek; /* edge kind */
-	union {
-		/* create */
-		struct {
-			struct dv_graph_node * el;  /* edge left */
-			struct dv_graph_node * er;  /* edge right */
-		};
-		/* wait_cont, end_task */
-		struct dv_graph_node * ej;  /* edge join */
-	};
-	
-	dv_grid_line_t * vl;  /* vertical line */
-	dv_grid_line_t * hl;  /* horizontal line */
-} dv_graph_node_t;
+typedef struct dv_grid {
+	dv_grid_line_t vl[1];
+	dv_grid_line_t hl[1];
+} dv_grid_t;
 
-typedef struct dv_linked_list {
-	void * item;
-	struct dv_linked_list * next;
-} dv_linked_list_t;
-
-typedef struct dv_graph {
-	long n;               /* num of nodes on the visual graph */
-  long num_workers;		  /* num of workers */
-	dv_graph_node_t * T;  /* all nodes in a contiguous array */
-	dv_graph_node_t * root_node;  /* root node of the graph */
-  dr_pi_string_table * S;	 /* string table */
+typedef struct dv_dag_node {
 	
-	dv_grid_line_t * root_vl;  /* vertical line */
-	dv_grid_line_t * root_hl;  /* horizontal line */
+	/* data */
+	dr_pi_dag_node * pi;
+	/* node status */
+	char s; /* 0x0: single, 0x01: union/collapsed, 0x11: union/expanded  */
+
+	/* outward topology */
+	dv_linked_list_t links[1]; /* linked nodes */
+	dv_grid_line_t * vl;  /* vertical line of outer grid */
+	dv_grid_line_t * hl;  /* horizontal line of outer grid */
+
+	/* inward topology */
+	dv_grid_t grid[1]; /* inner grid */
+	dv_linked_list_t heads[1]; /* list of inner head nodes */
+	dv_linked_list_t tails[1]; /* list of inner tail nodes */
+	
+} dv_dag_node_t;
+
+
+typedef struct dv_dag {
+	/* data */
+	long n;   /* number of nodes */
+  long nw;		  /* number of workers */
+  dr_pi_string_table * st;	 /* string table */
+
+	/* topology */
+	dv_dag_node_t * T;  /* array of all nodes */
+	dv_dag_node_t * rt;  /* root task */
+	dv_grid_t grid[1];  /* root grid */
+
+	/* drawing parameters */
 	double zoom_ratio;  /* zoom ratio of the graph to draw */
 	double width, height;  /* viewport's size */
 	double x, y;        /* current coordinates of the central point */
 	dv_linked_list_t itl; /* list of nodes that have info tag */
-} dv_graph_t;
-
-typedef struct dv_status {
-	char drag_on;
-	double pressx, pressy;
-	int nc; /* node color: 0->worker, 1->cpu, 2->kind, 3->last */
-} dv_status_t;
+} dv_dag_t;
 
 
+/*------Global variables-----*/
+
+extern const char * const NODE_KIND_NAMES[];
+extern const char * const EDGE_KIND_NAMES[];
+extern const char * const DV_COLORS[];
+
+extern dv_status_t S[];
+extern dr_pi_dag P[];
+extern dv_dag_t G[];
+extern GtkWidget *window;
+extern GtkWidget *darea;
+
+
+/*-----------------Headers-----------------*/
+
+/* print.c */
+void print_pi_dag_node(dr_pi_dag_node *, int);
+void print_pi_dag_edge(dr_pi_dag_edge *, int);
+void print_pi_string_table(dr_pi_string_table *, int);
+void print_dvdag(dv_dag_t *);
+void print_layout(dv_dag_t *);
+void print_dag_file(char *);
+void check_layout(dv_dag_t *);
+
+/* layout.c */
+void dv_read_dag_file_to_pidag(char *, dr_pi_dag *);
+void dv_convert_pidag_to_dvdag(dr_pi_dag *, dv_dag_t *);
+void dv_layout_dvdag(dv_dag_t *);
+
+/* draw.c */
+void draw_dvdag(cairo_t *, dv_dag_t *);
+
+/* utils.c */
+void dv_stack_init(dv_stack_t *);
+void dv_stack_fini(dv_stack_t *);
+void dv_stack_push(dv_stack_t *, void *);
+void * dv_stack_pop(dv_stack_t *);
+
+dv_linked_list_t * dv_linked_list_create();
+void dv_linked_list_destroy(dv_linked_list_t *);
+void dv_linked_list_init(dv_linked_list_t *);
+void * dv_linked_list_remove(dv_linked_list_t *, void *);
+void dv_linked_list_add(dv_linked_list_t *, void *);
+	
 /*-----------------Inlines-----------------*/
 
 static int dv_check_(int condition, const char * condition_s, 
@@ -94,39 +161,19 @@ static int dv_check_(int condition, const char * condition_s,
 
 #define dv_check(x) (dv_check_(((x)?1:0), #x, __FILE__, __LINE__, __func__))
 
+static void * dv_malloc(size_t sz) {
+	void * a = malloc(sz);
+	dv_check(a);
+	return a;
+}
 
-/*------Global variables-----*/
-
-extern const char * const NODE_KIND_NAMES[];
-extern const char * const EDGE_KIND_NAMES[];
-extern const char * const DV_COLORS[];
-
-extern dv_graph_t G[];
-extern GtkWidget *window;
-extern GtkWidget *darea;
-extern dv_status_t S[];
-
-
-/*-----------------Headers-----------------*/
-
-/* print.c */
-void print_pi_dag_node(dr_pi_dag_node *, int);
-void print_pi_dag_edge(dr_pi_dag_edge *, int);
-void print_pi_string_table(dr_pi_string_table *, int);
-void print_dvgraph_to_stdout(dv_graph_t *);
-void print_layout_to_stdout(dv_graph_t *);
-
-/* check.c */
-void read_dag_file_to_stdout(char *);
-void check_layout(dv_graph_t *);
-
-/* layout.c */
-void read_dag_file_to_pidag(char *, dr_pi_dag *);
-void convert_pidag_to_dvgraph(dr_pi_dag *, dv_graph_t *);
-void layout_dvgraph(dv_graph_t *);
-
-/* draw.c */
-void draw_dvgraph(cairo_t *, dv_graph_t *);
+static void dv_free(void * a, size_t sz) {
+	if (a) {
+		free(a);
+	} else {
+		dv_check(sz == 0);
+	}
+}
 
 
 #endif /* DAGVIZ_HEADER_ */
