@@ -83,8 +83,8 @@ static gboolean on_button_event(GtkWidget *widget, GdkEventButton *event, gpoint
 		double oy = (event->y - 0.5*G->height - G->y) / G->zoom_ratio;
 		dv_dag_node_t *node_pressed = get_clicked_node(ox, oy);
 		if (node_pressed) {
-			if (!dv_linked_list_remove(&G->itl, node_pressed)) {
-				dv_linked_list_add(&G->itl, node_pressed);
+			if (!dv_llist_remove(G->itl, node_pressed)) {
+				dv_llist_add(G->itl, node_pressed);
 			}
 			gtk_widget_queue_draw(darea);
 		}
@@ -176,9 +176,9 @@ int main(int argc, char *argv[])
 		dv_read_dag_file_to_pidag(argv[1], P);
 		dv_convert_pidag_to_dvdag(P, G);
 		print_dvdag(G);
-		//dv_layout_dvdag(G);
-		//printf("finished layout.\n");
-		//print_layout(G);
+		dv_layout_dvdag(G);
+		printf("finished layout.\n");
+		print_layout(G);
 		//check_layout(G);
 		S->drag_on = 0;
 		S->pressx = 0.0;
@@ -188,8 +188,8 @@ int main(int argc, char *argv[])
 		print_dag_file(argv[1]);
 	return 1;
 	*/
-	//return open_gui(argc, argv);
-	return 1;
+	return open_gui(argc, argv);
+	//return 1;
 }
 
 /*-----------------Main ends-------------------*/

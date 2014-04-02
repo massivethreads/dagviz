@@ -1,7 +1,12 @@
 #include "dagviz.h"
 
 #define DV_STACK_CELL_SZ 1
+#define DV_LLIST_CELL_SZ 1
 
+dv_llist_cell_t *FL = 0;
+
+
+/* DV LINKED_LIST  */
 
 dv_linked_list_t * dv_linked_list_create() {
 	dv_linked_list_t * l = (dv_linked_list_t *) dv_malloc( sizeof(dv_linked_list_t) );
@@ -56,6 +61,8 @@ void dv_linked_list_add(dv_linked_list_t *list, void *item) {
 }
 
 
+/* DV STACK  */
+
 void dv_stack_init(dv_stack_t * s) {
 	s->freelist = 0;
 	s->top = 0;
@@ -66,8 +73,11 @@ void dv_stack_fini(dv_stack_t * s) {
 	dv_stack_cell_t * cell;
 	dv_stack_cell_t * next;
 	for (cell=s->freelist; cell; cell=next) {
-		next = cell->next;
-		
+		int i;
+		next = cell;
+		for (i=0; i<DV_STACK_CELL_SZ; i++)
+			next = next->next;
+    dv_free(cell, sizeof(dv_stack_cell_t) * DV_STACK_CELL_SZ);		
 	}
 }
 
@@ -102,4 +112,128 @@ void * dv_stack_pop(dv_stack_t * s) {
 	top->next = s->freelist;
 	s->freelist = top;
 	return top->item;
+}
+
+/* DV LLIST  */
+
+void dv_llist_init(dv_llist_t *l) {
+	l->i = 0;
+	l->head = 0;
+}
+
+void dv_llist_fini(dv_llist_t *l) {
+	dv_llist_cell_t *p = l->head;
+	dv_llist_cell_t *pp;
+	while (p) {
+		pp = p->next;
+		p->next = FL;
+		FL = p;
+		p = pp;
+	}
+	l->i = 0;
+	l->head = 0;
+}
+
+dv_llist_t * dv_llist_create() {
+	dv_llist_t * l = (dv_llist_t *) dv_malloc( sizeof(dv_llist_t) );
+	dv_llist_init(l);
+	return l;
+}
+
+void dv_llist_destroy(dv_llist_t *l) {
+	dv_llist_fini(l);
+	dv_free(l, sizeof(dv_llist_t));			
+}
+
+dv_llist_cell_t * dv_llist_ensure_freelist() {
+  if (!FL) {
+    int n = DV_LLIST_CELL_SZ;
+    FL = (dv_llist_cell_t *) dv_malloc(sizeof(dv_llist_cell_t) * n);
+    int i;
+    for (i=0; i<n-1; i++) {
+			FL[i].item = 0;
+      FL[i].next = &FL[i+1];
+    }
+		FL[n-1].item = 0;
+    FL[n-1].next = 0;
+  }
+  dv_llist_cell_t * c = FL;
+	FL = FL->next;
+	c->next = 0;
+  return c;
+}
+
+void dv_llist_add(dv_llist_t *l, void *x) {
+	dv_llist_cell_t * c = dv_llist_ensure_freelist();
+	c->item = x;
+	if (!l->head) {
+		l->head = c;
+	} else {
+		dv_llist_cell_t * h = l->head;
+		while (h->next)
+			h = h->next;
+		h->next = c;
+	}
+}
+
+void * dv_llist_get(dv_llist_t *l) {
+	dv_llist_cell_t * c = l->head;
+	void * ret = 0;
+	if (c) {
+		l->head = c->next;
+		ret = c->item;
+		c->item = 0;
+		c->next = FL;
+		FL = c;
+	}
+	return ret;
+}
+
+void * dv_llist_remove(dv_llist_t *l, void *x) {
+	void * ret = 0;
+	dv_llist_cell_t * h = l->head;
+	dv_linked_list_t * pre = 0;
+	while (h) {
+		if (h->item == x) {
+			break;
+		}
+		pre = h;
+		h = h->next;
+	}
+	if (h && h->item == x) {
+		ret = h->item;
+		if (pre) {
+			pre->next = h->next;
+		} else {
+			l->head = h->next;
+		}
+		h->item = 0;
+		h->next = FL;
+		FL = h;
+	}
+	return ret;
+}
+
+void dv_llist_iterate_init(dv_llist_t *l) {
+	dv_check(l);
+	l->i = 0;
+}
+
+void * dv_llist_iterate_next(dv_llist_t *l) {
+	dv_check(l);
+	int i = l->i;
+	dv_llist_cell_t * c = l->head;
+	while (i > 0) {
+		dv_check(c);
+		c = c->next;
+		i--;
+	}
+	
+	void * ret = 0;
+	if (c) {
+		l->i++;
+		ret = c->item;
+	}
+	
+	return ret;
 }

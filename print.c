@@ -114,8 +114,9 @@ void print_pi_string_table(dr_pi_string_table * stp, int i) {
 
 static void print_dvdag_node(dv_dag_node_t *node, int i) {
 	int kind = node->pi->info.kind;
-	printf("dv_dag_node_t %d: %d(%s)\n",				 
+	printf("Node %d (%p): %d(%s)\n",				 
 				 i,
+				 node,
 				 kind,
 				 NODE_KIND_NAMES[kind]);
 }
@@ -134,46 +135,24 @@ void print_dvdag(dv_dag_t *G) {
 }
 
 static void print_layout_node(dv_dag_node_t *node, int i) {
-#if 0
-	int kind = node->info->kind;
+	int kind = node->pi->info.kind;
 	printf(
-				 "DV graph node %d:\n"
-				 "  address: %p\n"
-				 "  info.kind: %d (%s)\n"
-				 "  verline: %0.1f\n"
-				 "  horline: %0.1f\n",
+				 "  Node %d:\n"
+				 "    info.kind: (%s)\n"
+				 "    (vl->c,c): (%0.1f,%0.1f)\n"
+				 "    grid->vl->(lc,rc): (%0.1f,%0.1f)\n"
+				 "    dc: %0.1f\n",
 				 i,
-				 node,
-				 kind,
 				 NODE_KIND_NAMES[kind],
-				 node->vl->c,
-				 node->hl->c);
-	if (kind == dr_dag_node_kind_create_task) {
-		printf("  el: %p\n"
-					 "  er: %p\n",
-					 node->el,
-					 node->er
-					 );
-	} else if (kind == dr_dag_node_kind_wait_tasks
-						 || kind == dr_dag_node_kind_end_task
-						 || kind == dr_dag_node_kind_section
-						 || kind == dr_dag_node_kind_task) {
-		printf("  ej: %p\n",
-					 node->ej
-					 );
-	} else {
-		dv_check(0);
-	}
-#endif	
+				 node->vl->c, node->c,
+				 node->grid->vl->lc, node->grid->vl->rc,
+				 node->dc);
 }
 
 void print_layout(dv_dag_t *G) {
 	printf(
-				 "Layout of DV DAG: \n"
-				 "  n: %ld\n"
-				 "  nw: %ld\n",
-				 G->n,
-				 G->nw);
+				 "Layout of DV DAG: (n=%ld)\n",
+				 G->n);
 	int i;
 	for (i=0; i<G->n; i++)
 		print_layout_node(G->T + i, i);

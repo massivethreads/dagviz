@@ -34,6 +34,16 @@ typedef struct dv_stack {
 	dv_stack_cell_t * top;
 } dv_stack_t;
 
+typedef struct dv_llist_cell {
+	void * item;
+	struct dv_llist_cell * next;
+} dv_llist_cell_t;
+
+typedef struct dv_llist {
+	int i;
+	dv_llist_cell_t * head;
+} dv_llist_t;
+
 
 /*-----------------Constants-----------------*/
 
@@ -42,6 +52,14 @@ typedef struct dv_stack {
 #define DV_VDIS 100
 #define DV_RADIUS 30
 #define NUM_COLORS 34
+
+#define DV_NODE_STATE_NONE     0
+#define DV_NODE_TOPOLOGY_LEFT  1
+#define DV_NODE_TOPOLOGY_DOWN  (1 << 1)
+#define DV_NODE_TOPOLOGY_RIGHT (1 << 2)
+#define DV_NODE_STATE_UNION    (1 << 3)
+#define DV_NODE_STATE_EXPANDED (1 << 4)
+#define DV_NODE_STATE_MOVING   (1 << 5)
 
 
 /*-----------------Data Structures-----------------*/
@@ -53,9 +71,12 @@ typedef struct dv_status {
 } dv_status_t;
 
 typedef struct dv_grid_line {
-	double c;  /* coordinate */
 	struct dv_grid_line * l;  /* left next grid line */
 	struct dv_grid_line * r;  /* right next grid line */
+	dv_llist_t L[1]; /* list of assigned nodes */
+	double lc;    /* left count */
+	double rc;    /* right count */
+	double c;  /* coordinate */
 } dv_grid_line_t;
 
 typedef struct dv_grid {
@@ -71,14 +92,17 @@ typedef struct dv_dag_node {
 	char s; /* 0x0: single, 0x01: union/collapsed, 0x11: union/expanded  */
 
 	/* outward topology */
-	dv_linked_list_t links[1]; /* linked nodes */
+	dv_llist_t links[1]; /* linked nodes */
 	dv_grid_line_t * vl;  /* vertical line of outer grid */
 	dv_grid_line_t * hl;  /* horizontal line of outer grid */
 
 	/* inward topology */
 	dv_grid_t grid[1]; /* inner grid */
-	dv_linked_list_t heads[1]; /* list of inner head nodes */
-	dv_linked_list_t tails[1]; /* list of inner tail nodes */
+	dv_llist_t heads[1]; /* list of inner head nodes */
+	dv_llist_t tails[1]; /* list of inner tail nodes */
+
+	double dc;
+	double c;
 	
 } dv_dag_node_t;
 
@@ -98,7 +122,7 @@ typedef struct dv_dag {
 	double zoom_ratio;  /* zoom ratio of the graph to draw */
 	double width, height;  /* viewport's size */
 	double x, y;        /* current coordinates of the central point */
-	dv_linked_list_t itl; /* list of nodes that have info tag */
+	dv_llist_t itl[1]; /* list of nodes that have info tag */
 } dv_dag_t;
 
 
@@ -113,7 +137,7 @@ extern dr_pi_dag P[];
 extern dv_dag_t G[];
 extern GtkWidget *window;
 extern GtkWidget *darea;
-
+extern dv_llist_cell_t *FL;
 
 /*-----------------Headers-----------------*/
 
@@ -127,6 +151,10 @@ void print_dag_file(char *);
 void check_layout(dv_dag_t *);
 
 /* layout.c */
+void dv_grid_line_init(dv_grid_line_t *);
+dv_grid_line_t * dv_grid_line_create();
+void dv_grid_init(dv_grid_t *);
+dv_grid_t * dv_grid_create();
 void dv_read_dag_file_to_pidag(char *, dr_pi_dag *);
 void dv_convert_pidag_to_dvdag(dr_pi_dag *, dv_dag_t *);
 void dv_layout_dvdag(dv_dag_t *);
@@ -146,6 +174,15 @@ void dv_linked_list_init(dv_linked_list_t *);
 void * dv_linked_list_remove(dv_linked_list_t *, void *);
 void dv_linked_list_add(dv_linked_list_t *, void *);
 	
+void dv_llist_init(dv_llist_t *);
+void dv_llist_fini(dv_llist_t *);
+dv_llist_t * dv_llist_create();
+void dv_llist_destroy(dv_llist_t *);
+dv_llist_cell_t * dv_llist_ensure_freelist();
+void dv_llist_add(dv_llist_t *, void *);
+void * dv_llist_get(dv_llist_t *);
+void * dv_llist_remove(dv_llist_t *, void *);
+
 /*-----------------Inlines-----------------*/
 
 static int dv_check_(int condition, const char * condition_s, 
@@ -173,6 +210,12 @@ static void dv_free(void * a, size_t sz) {
 	} else {
 		dv_check(sz == 0);
 	}
+}
+
+static int dv_node_state_check(char s, char t) {
+	int ret = ((s & t) == t);
+	//printf("node_state_check: %d, %d = %d\n", s, t, ret);
+	return ret;
 }
 
 

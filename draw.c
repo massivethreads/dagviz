@@ -47,7 +47,7 @@ static void draw_rounded_rectangle(cairo_t *cr, double x, double y, double width
 
 static void lookup_color(int v, double *r, double *g, double *b, double *a) {
 	GdkRGBA color;
-	gdk_rgba_parse(&color, DV_COLORS[v % NUM_COLORS]);
+	gdk_rgba_parse(&color, DV_COLORS[(v + NUM_COLORS) % NUM_COLORS]);
 	*r = color.red;
 	*g = color.green;
 	*b = color.blue;
@@ -75,20 +75,19 @@ static void lookup_color(int v, double *r, double *g, double *b, double *a) {
 }
 
 static void draw_dvdag_node(cairo_t *cr, dv_dag_node_t *node) {
-#if 0	
 	double x = node->vl->c;
-	double y = node->hl->c;
+	double y = node->c;
 	double c[4];
 	int v = 0;
 	switch (S->nc) {
 	case 0:
-		v = node->info->worker; break;
+		v = node->pi->info.worker; break;
 	case 1:
-		v = node->info->cpu; break;
+		v = node->pi->info.cpu; break;
 	case 2:
-		v = node->info->kind; break;
+		v = node->pi->info.kind; break;
 	default:
-		v = node->info->worker;
+		v = node->pi->info.worker;
 	}
 	lookup_color(v, c, c+1, c+2, c+3);
 	cairo_set_source_rgba(cr, c[0], c[1], c[2], c[3]);
@@ -96,7 +95,6 @@ static void draw_dvdag_node(cairo_t *cr, dv_dag_node_t *node) {
 	cairo_fill_preserve(cr);
 	cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
 	cairo_stroke(cr);
-#endif	
 }
 
 static void draw_dvdag_edge(cairo_t *cr, dv_dag_node_t *u, dv_dag_node_t *v) {
@@ -198,13 +196,13 @@ static void draw_dvdag_infotag(cairo_t *cr, dv_dag_node_t *node) {
 }
 
 void draw_dvdag(cairo_t *cr, dv_dag_t *G) {
-#if 0
 	cairo_set_line_width(cr, 2.0);
 	int i;
 	// Draw nodes
 	for (i=0; i<G->n; i++) {
 		draw_dvdag_node(cr, &G->T[i]);
 	}
+#if 0
 	// Draw edges
 	for (i=0; i<G->n; i++) {
 		dv_dag_node_t *node = G->T + i;
@@ -218,7 +216,7 @@ void draw_dvdag(cairo_t *cr, dv_dag_t *G) {
 		}
 	}
 	// Draw info tags
-	dv_linked_list_t *l = &G->itl;
+	dv_llist_cell_t *l = G->itl->head;
 	while (l) {
 		if (l->item) {
 			draw_dvdag_infotag(cr, (dv_dag_node_t *) l->item);
