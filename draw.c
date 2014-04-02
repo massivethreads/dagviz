@@ -97,27 +97,98 @@ static void draw_dvdag_node(cairo_t *cr, dv_dag_node_t *node) {
 	cairo_stroke(cr);
 }
 
-static void draw_dvdag_edge(cairo_t *cr, dv_dag_node_t *u, dv_dag_node_t *v) {
+static void draw_dvdag_edge_1(cairo_t *cr, dv_dag_node_t *u, dv_dag_node_t *v) {
 	cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
-	cairo_move_to(cr, u->vl->c, u->hl->c + DV_RADIUS);
-	cairo_line_to(cr, v->vl->c, v->hl->c - DV_RADIUS);
+	cairo_move_to(cr, u->vl->c, u->c + DV_RADIUS);
+	cairo_line_to(cr, v->vl->c, v->c - DV_RADIUS);
 	cairo_stroke(cr);
 }
 
+static dv_dag_node_t * dv_dag_node_get_first(dv_dag_node_t *u) {
+	dv_check(u);
+	while (dv_node_state_check(u->s, DV_NODE_STATE_UNION)) {
+		dv_check(u->heads->head);
+		u = (dv_dag_node_t *) u->heads->head->item;
+		dv_check(u);
+	}
+	return u;
+}
+
+static dv_dag_node_t * dv_dag_node_get_last(dv_dag_node_t *u) {
+	dv_check(u);
+	while (dv_node_state_check(u->s, DV_NODE_STATE_UNION)) {
+		dv_check(u->heads->head);
+		u = (dv_dag_node_t *) u->tails->head->item;
+		dv_check(u);
+	}
+	return u;
+}
+
+static void draw_dvdag_edge_r(cairo_t *cr, dv_dag_node_t *u) {
+	if (!u) return;
+	// Iterate links
+	dv_llist_iterate_init(u->links);
+	dv_dag_node_t * v;
+	while (v = (dv_dag_node_t *) dv_llist_iterate_next(u->links)) {
+
+		dv_dag_node_t *u_tail, *v_head;
+		dv_llist_iterate_init(u->tails);
+		dv_llist_iterate_init(v->heads);
+		if (!u->tails->head) {
+			
+			if (!v->heads->head) {
+				draw_dvdag_edge_1(cr, u, v);
+			} else {
+				while (v_head = (dv_dag_node_t *) dv_llist_iterate_next(v->heads)) {
+					dv_dag_node_t * v_first = dv_dag_node_get_first(v_head);
+					draw_dvdag_edge_1(cr, u, v_first);
+				}				
+			}
+			
+		} else {
+			
+			while (u_tail = (dv_dag_node_t *) dv_llist_iterate_next(u->tails)) {
+				dv_dag_node_t * u_last = dv_dag_node_get_last(u_tail);
+				
+				if (!v->heads->head) {
+					draw_dvdag_edge_1(cr, u_last, v);
+				} else {
+					
+					while (v_head = (dv_dag_node_t *) dv_llist_iterate_next(v->heads)) {
+						dv_dag_node_t * v_first = dv_dag_node_get_first(v_head);
+						draw_dvdag_edge_1(cr, u_last, v_first);
+					}
+					
+				}
+				
+			}
+			
+		}
+		draw_dvdag_edge_r(cr, v);
+		
+	}
+
+	// Call head
+	dv_llist_iterate_init(u->heads);
+	while (v = (dv_dag_node_t *) dv_llist_iterate_next(u->heads)) {
+		draw_dvdag_edge_r(cr, v);
+	}
+	
+}
+
 static void draw_dvdag_infotag(cairo_t *cr, dv_dag_node_t *node) {
-#if 0	
 	double line_height = 12;
 	double padding = 4;
 	int n = 6; /* number of lines */
 	double xx = node->vl->c + DV_RADIUS + padding;
-	double yy = node->hl->c - DV_RADIUS - 2*padding - line_height * (n - 1);
+	double yy = node->c - DV_RADIUS - 2*padding - line_height * (n - 1);
 
 	// Cover rectangle
 	double width = 450.0;
 	double height = n * line_height + 3*padding;
 	draw_rounded_rectangle(cr,
 												 node->vl->c + DV_RADIUS,
-												 node->hl->c - DV_RADIUS - height,
+												 node->c - DV_RADIUS - height,
 												 width,
 												 height);
 
@@ -130,69 +201,68 @@ static void draw_dvdag_infotag(cairo_t *cr, dv_dag_node_t *node) {
 	/* TODO: adaptable string length */
 	char *s = (char *) malloc( 100 * sizeof(char) );
 	sprintf(s, "[%ld] %s",
-					node->idx,
-					NODE_KIND_NAMES[node->info->kind]);
+					node - G->T,
+					NODE_KIND_NAMES[node->pi->info.kind]);
 	cairo_move_to(cr, xx, yy);
   cairo_show_text(cr, s);
 	yy += line_height;
 	  
 	// Line 2
 	sprintf(s, "%llu-%llu (%llu) est=%llu",
-					node->info->start.t,
-					node->info->end.t,
-					node->info->start.t - node->info->end.t,
-					node->info->est);
+					node->pi->info.start.t,
+					node->pi->info.end.t,
+					node->pi->info.start.t - node->pi->info.end.t,
+					node->pi->info.est);
 	cairo_move_to(cr, xx, yy);
   cairo_show_text(cr, s);
 	yy += line_height;
 
 	// Line 3
 	sprintf(s, "T=%llu/%llu,nodes=%ld/%ld/%ld,edges=%ld/%ld/%ld/%ld",
-					node->info->t_1, 
-					node->info->t_inf,
-					node->info->logical_node_counts[dr_dag_node_kind_create_task],
-					node->info->logical_node_counts[dr_dag_node_kind_wait_tasks],
-					node->info->logical_node_counts[dr_dag_node_kind_end_task],
-					node->info->logical_edge_counts[dr_dag_edge_kind_end],
-					node->info->logical_edge_counts[dr_dag_edge_kind_create],
-					node->info->logical_edge_counts[dr_dag_edge_kind_create_cont],
-					node->info->logical_edge_counts[dr_dag_edge_kind_wait_cont]);
+					node->pi->info.t_1, 
+					node->pi->info.t_inf,
+					node->pi->info.logical_node_counts[dr_dag_node_kind_create_task],
+					node->pi->info.logical_node_counts[dr_dag_node_kind_wait_tasks],
+					node->pi->info.logical_node_counts[dr_dag_node_kind_end_task],
+					node->pi->info.logical_edge_counts[dr_dag_edge_kind_end],
+					node->pi->info.logical_edge_counts[dr_dag_edge_kind_create],
+					node->pi->info.logical_edge_counts[dr_dag_edge_kind_create_cont],
+					node->pi->info.logical_edge_counts[dr_dag_edge_kind_wait_cont]);
 	cairo_move_to(cr, xx, yy);
   cairo_show_text(cr, s);
 	yy += line_height;
 
 	// Line 4
 	sprintf(s, "by worker %d on cpu %d",
-					node->info->worker, 
-					node->info->cpu);
+					node->pi->info.worker, 
+					node->pi->info.cpu);
 	cairo_move_to(cr, xx, yy);
   cairo_show_text(cr, s);
 	yy += line_height;
 
 	// Line 5
 	free(s);
-	const char *ss = G->S->C + G->S->I[node->info->start.pos.file_idx];
+	const char *ss = P->S->C + P->S->I[node->pi->info.start.pos.file_idx];
 	s = (char *) malloc( strlen(ss) + 10 );
 	sprintf(s, "%s:%ld",
 					ss,
-					node->info->start.pos.line);
+					node->pi->info.start.pos.line);
 	cairo_move_to(cr, xx, yy);
   cairo_show_text(cr, s);
 	yy += line_height;
 
 	// Line 6
 	free(s);
-	ss = G->S->C + G->S->I[node->info->end.pos.file_idx];
+	ss = P->S->C + P->S->I[node->pi->info.end.pos.file_idx];
 	s = (char *) malloc( strlen(ss) + 10 );	
 	sprintf(s, "%s:%ld",
 					ss,
-					node->info->end.pos.line);
+					node->pi->info.end.pos.line);
 	cairo_move_to(cr, xx, yy);
   cairo_show_text(cr, s);
 	yy += line_height;
 	
 	free(s);
-#endif
 }
 
 void draw_dvdag(cairo_t *cr, dv_dag_t *G) {
@@ -202,28 +272,14 @@ void draw_dvdag(cairo_t *cr, dv_dag_t *G) {
 	for (i=0; i<G->n; i++) {
 		draw_dvdag_node(cr, &G->T[i]);
 	}
-#if 0
 	// Draw edges
-	for (i=0; i<G->n; i++) {
-		dv_dag_node_t *node = G->T + i;
-		int kind = node->info->kind;
-		if (kind == dr_dag_node_kind_create_task) {
-			draw_dvdag_edge(cr, node, node->el);
-			draw_dvdag_edge(cr, node, node->er);
-		} else {
-			if (node->ej)
-				draw_dvdag_edge(cr, node, node->ej);
-		}
-	}
+	draw_dvdag_edge_r(cr, G->rt);
 	// Draw info tags
-	dv_llist_cell_t *l = G->itl->head;
-	while (l) {
-		if (l->item) {
-			draw_dvdag_infotag(cr, (dv_dag_node_t *) l->item);
-		}
-		l = l->next;
+	dv_llist_iterate_init(G->itl);
+	dv_dag_node_t * u;
+	while (u = (dv_dag_node_t *) dv_llist_iterate_next(G->itl)) {
+		draw_dvdag_infotag(cr, u);
 	}
-#endif	
 }
 
 /*-----------------end of DAG drawing functions-----------*/

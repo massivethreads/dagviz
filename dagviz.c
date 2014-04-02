@@ -51,13 +51,13 @@ static gboolean on_scroll_event(GtkWidget *widget, GdkEventScroll *event, gpoint
 
 static dv_dag_node_t *get_clicked_node(double x, double y) {
 	dv_dag_node_t *ret = NULL;
-	dv_grid_line_t *vl, *hl;
+	double vc, hc;
 	int i;
 	for (i=0; i<G->n; i++) {
-		vl = G->T[i].vl;
-		hl = G->T[i].hl;
-		if (vl->c - DV_RADIUS < x && x < vl->c + DV_RADIUS
-				&& hl->c - DV_RADIUS < y && y < hl->c + DV_RADIUS) {
+		vc = G->T[i].vl->c;
+		hc = G->T[i].c;
+		if (vc - DV_RADIUS < x && x < vc + DV_RADIUS
+				&& hc - DV_RADIUS < y && y < hc + DV_RADIUS) {
 			ret = &G->T[i];
 			break;
 		}
