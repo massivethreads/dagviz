@@ -14,8 +14,18 @@ static void do_drawing(cairo_t *cr)
   //draw_rounded_rectangle(cr);
 }
 
-static void do_zooming(double zoom_ratio)
+static void do_zooming(double zoom_ratio, double posx, double posy)
 {
+	printf("posx = %0.1f, posy = %0.1f, G->x=%0.1f, G->y=%0.1f\n", posx, posy, G->x, G->y);
+	if (posx != 0.0 || posy != 0.0) {
+		posx -= 0.5 * G->width + G->x;
+		posy -= 0.5 * G->height + G->y;
+		double deltax = posx / G->zoom_ratio * zoom_ratio - posx;
+		double deltay = posy / G->zoom_ratio * zoom_ratio - posy;
+		printf("deltax=%0.1f, deltay=%0.1f\n", deltax, deltay);
+		G->x -= deltax;
+		G->y -= deltay;
+	}
 	G->zoom_ratio = zoom_ratio;
 	gtk_widget_queue_draw(darea);
 }
@@ -30,21 +40,21 @@ static gboolean on_draw_event(GtkWidget *widget, cairo_t *cr, gpointer user_data
 
 static gboolean on_btn_zoomin_clicked(GtkWidget *widget, cairo_t *cr, gpointer user_data)
 {
-	do_zooming(G->zoom_ratio * DV_ZOOM_INCREMENT);
+	do_zooming(G->zoom_ratio * DV_ZOOM_INCREMENT, 0.0, 0.0);
 	return TRUE;
 }
 
 static gboolean on_btn_zoomout_clicked(GtkWidget *widget, cairo_t *cr, gpointer user_data)
 {
-	do_zooming(G->zoom_ratio / DV_ZOOM_INCREMENT);
+	do_zooming(G->zoom_ratio / DV_ZOOM_INCREMENT, 0.0, 0.0);
 	return TRUE;
 }
 
 static gboolean on_scroll_event(GtkWidget *widget, GdkEventScroll *event, gpointer user_data) {
 	if (event->direction == GDK_SCROLL_UP) {
-		do_zooming(G->zoom_ratio * DV_ZOOM_INCREMENT);
+		do_zooming(G->zoom_ratio * DV_ZOOM_INCREMENT, event->x, event->y);
 	} else if (event->direction == GDK_SCROLL_DOWN) {
-		do_zooming(G->zoom_ratio / DV_ZOOM_INCREMENT);
+		do_zooming(G->zoom_ratio / DV_ZOOM_INCREMENT, event->x, event->y);
 	}
 	return TRUE;
 }
