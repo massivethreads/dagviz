@@ -14,7 +14,8 @@ static void do_drawing(cairo_t *cr)
 		double hh = height - 2 * (DV_ZOOM_TO_FIT_MARGIN + DV_RADIUS);
 		if (h > hh) {
 			G->zoom_ratio = hh / h;		
-		}		
+		}
+		G->init = 0;
 	}
 	// Usual
 	cairo_translate(cr, G->basex + G->x, G->basey + G->y);
