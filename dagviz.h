@@ -54,12 +54,11 @@ typedef struct dv_llist {
 #define NUM_COLORS 34
 
 #define DV_NODE_STATE_NONE     0
-#define DV_NODE_TOPOLOGY_LEFT  1
-#define DV_NODE_TOPOLOGY_DOWN  (1 << 1)
-#define DV_NODE_TOPOLOGY_RIGHT (1 << 2)
-#define DV_NODE_STATE_UNION    (1 << 3)
-#define DV_NODE_STATE_EXPANDED (1 << 4)
-#define DV_NODE_STATE_MOVING   (1 << 5)
+#define DV_NODE_STATE_UNION    1
+#define DV_NODE_STATE_EXPANDED (1 << 1)
+#define DV_NODE_STATE_MOVING   (1 << 2)
+
+#define DV_ZOOM_TO_FIT_MARGIN 20
 
 
 /*-----------------Data Structures-----------------*/
@@ -119,9 +118,11 @@ typedef struct dv_dag {
 	dv_grid_t grid[1];  /* root grid */
 
 	/* drawing parameters */
+	char init;     /* to recognize initial drawing */
 	double zoom_ratio;  /* zoom ratio of the graph to draw */
-	double width, height;  /* viewport's size */
 	double x, y;        /* current coordinates of the central point */
+	double width, height;  /* viewport's size */
+	double basex, basey;
 	dv_llist_t itl[1]; /* list of nodes that have info tag */
 } dv_dag_t;
 

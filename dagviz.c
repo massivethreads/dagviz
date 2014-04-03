@@ -7,7 +7,17 @@ GtkWidget *darea;
 /*-----------------GUI functions-------------------*/
 static void do_drawing(cairo_t *cr)
 {
-	cairo_translate(cr, 0.5*G->width + G->x, 0.5*G->height + G->y);
+	// Initial
+	if (G->init) {
+		double height = gtk_widget_get_allocated_height(darea);
+		double h = G->rt->dc * DV_VDIS;
+		double hh = height - 2 * (DV_ZOOM_TO_FIT_MARGIN + DV_RADIUS);
+		if (h > hh) {
+			G->zoom_ratio = hh / h;		
+		}		
+	}
+	// Usual
+	cairo_translate(cr, G->basex + G->x, G->basey + G->y);
 	cairo_scale(cr, G->zoom_ratio, G->zoom_ratio);
 	draw_dvdag(cr, G);
   //draw_hello(cr);
@@ -16,13 +26,11 @@ static void do_drawing(cairo_t *cr)
 
 static void do_zooming(double zoom_ratio, double posx, double posy)
 {
-	printf("posx = %0.1f, posy = %0.1f, G->x=%0.1f, G->y=%0.1f\n", posx, posy, G->x, G->y);
 	if (posx != 0.0 || posy != 0.0) {
-		posx -= 0.5 * G->width + G->x;
-		posy -= 0.5 * G->height + G->y;
+		posx -= G->basex + G->x;
+		posy -= G->basey + G->y;
 		double deltax = posx / G->zoom_ratio * zoom_ratio - posx;
 		double deltay = posy / G->zoom_ratio * zoom_ratio - posy;
-		printf("deltax=%0.1f, deltay=%0.1f\n", deltax, deltay);
 		G->x -= deltax;
 		G->y -= deltay;
 	}
@@ -32,21 +40,30 @@ static void do_zooming(double zoom_ratio, double posx, double posy)
 
 static gboolean on_draw_event(GtkWidget *widget, cairo_t *cr, gpointer user_data)
 {
+	// Set parameters
 	G->width = gtk_widget_get_allocated_width(widget);
 	G->height = gtk_widget_get_allocated_height(widget);
+	G->basex = 0.5 * G->width;
+	G->basey = DV_ZOOM_TO_FIT_MARGIN + DV_RADIUS;
+	// Draw
   do_drawing(cr);
   return FALSE;
 }
 
-static gboolean on_btn_zoomin_clicked(GtkWidget *widget, cairo_t *cr, gpointer user_data)
+static gboolean on_btn_zoomfit_clicked(GtkWidget *widget, cairo_t *cr, gpointer user_data)
 {
-	do_zooming(G->zoom_ratio * DV_ZOOM_INCREMENT, 0.0, 0.0);
-	return TRUE;
-}
-
-static gboolean on_btn_zoomout_clicked(GtkWidget *widget, cairo_t *cr, gpointer user_data)
-{
-	do_zooming(G->zoom_ratio / DV_ZOOM_INCREMENT, 0.0, 0.0);
+	// Default
+	double zoom_ratio = 1.0;
+	G->x = 0.0;
+	G->y = 0.0;
+	// Need scaled
+	double h = G->rt->dc * DV_VDIS;
+	double hh = G->height - 2 * (DV_ZOOM_TO_FIT_MARGIN + DV_RADIUS);
+	if (h > hh) {
+		zoom_ratio = hh / h;		
+	}
+		
+	do_zooming(zoom_ratio, 0.0, 0.0);
 	return TRUE;
 }
 
@@ -89,8 +106,8 @@ static gboolean on_button_event(GtkWidget *widget, GdkEventButton *event, gpoint
 		S->pressy = 0;
 	} else if (event->type == GDK_2BUTTON_PRESS) {
 		// Info tag
-		double ox = (event->x - 0.5*G->width - G->x) / G->zoom_ratio;
-		double oy = (event->y - 0.5*G->height - G->y) / G->zoom_ratio;
+		double ox = (event->x - G->basex - G->x) / G->zoom_ratio;
+		double oy = (event->y - G->basey - G->y) / G->zoom_ratio;
 		dv_dag_node_t *node_pressed = get_clicked_node(ox, oy);
 		if (node_pressed) {
 			if (!dv_llist_remove(G->itl, node_pressed)) {
@@ -140,12 +157,9 @@ int open_gui(int argc, char *argv[])
 
 	// Toolbar
 	GtkWidget *toolbar = gtk_toolbar_new();
-	GtkToolItem *btn_zoomin = gtk_tool_button_new_from_stock(GTK_STOCK_ZOOM_IN);
-	GtkToolItem *btn_zoomout = gtk_tool_button_new_from_stock(GTK_STOCK_ZOOM_OUT);
-	gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_zoomin, -1);
-	gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_zoomout, -1);
-	g_signal_connect(G_OBJECT(btn_zoomin), "clicked", G_CALLBACK(on_btn_zoomin_clicked), NULL);
-	g_signal_connect(G_OBJECT(btn_zoomout), "clicked", G_CALLBACK(on_btn_zoomout_clicked), NULL);
+	GtkToolItem *btn_zoomfit = gtk_tool_button_new_from_stock(GTK_STOCK_ZOOM_FIT);
+	gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_zoomfit, -1);
+	g_signal_connect(G_OBJECT(btn_zoomfit), "clicked", G_CALLBACK(on_btn_zoomfit_clicked), NULL);
 	gtk_box_pack_start(GTK_BOX(vbox), toolbar, FALSE, FALSE, 0);
 
 	// Combo box
@@ -188,7 +202,7 @@ int main(int argc, char *argv[])
 		print_dvdag(G);
 		dv_layout_dvdag(G);
 		printf("finished layout.\n");
-		print_layout(G);
+		//print_layout(G);
 		//check_layout(G);
 		S->drag_on = 0;
 		S->pressx = 0.0;

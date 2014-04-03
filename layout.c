@@ -168,7 +168,12 @@ void dv_convert_pidag_to_dvdag(dr_pi_dag *P, dv_dag_t *G) {
 		p = dv_traverse_node(x->pi, x, p, plim, s, G);
 	}
 	// Drawing parameters
+	G->init = 1;
 	G->zoom_ratio = 1.0;
+	G->x = 0.0;
+	G->y = 0.0;
+	G->width = G->height = 0.0;
+	G->basex = G->basey = 0.0;
 	dv_llist_init(G->itl);
 }
 
@@ -440,9 +445,6 @@ void dv_layout_dvdag(dv_dag_t *G) {
 	G->rt->c = 0.0;
 	dv_layout_align_line_down(G->rt);
 
-	// Set central point's coordinates
-	G->x = 0.0;
-	G->y = 0.0;
 }
 
 /*-----------------end of Layout functions-----------*/
