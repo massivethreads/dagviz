@@ -296,8 +296,9 @@ static double dv_layout_count_line_right(dv_grid_line_t *l) {
 		}
 		ll->rc = dv_layout_count_line_right(ll);
 		num += ll->rc;
-		if (num > max)
+		if (num > max) {
 			max = num;
+		}
 	}
 	return max;
 }

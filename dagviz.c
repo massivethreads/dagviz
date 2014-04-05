@@ -200,7 +200,7 @@ int main(int argc, char *argv[])
 	if (argc > 1) {
 		dv_read_dag_file_to_pidag(argv[1], P);
 		dv_convert_pidag_to_dvdag(P, G);
-		print_dvdag(G);
+		//print_dvdag(G);
 		dv_layout_dvdag(G);
 		printf("finished layout.\n");
 		//print_layout(G);

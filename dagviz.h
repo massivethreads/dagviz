@@ -183,6 +183,9 @@ dv_llist_cell_t * dv_llist_ensure_freelist();
 void dv_llist_add(dv_llist_t *, void *);
 void * dv_llist_get(dv_llist_t *);
 void * dv_llist_remove(dv_llist_t *, void *);
+void dv_llist_iterate_init(dv_llist_t *);
+void * dv_llist_iterate_next(dv_llist_t *);
+
 
 /*-----------------Inlines-----------------*/
 

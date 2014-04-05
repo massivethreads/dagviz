@@ -127,18 +127,17 @@ static dv_dag_node_t * dv_dag_node_get_last(dv_dag_node_t *u) {
 static void draw_dvdag_edge_r(cairo_t *cr, dv_dag_node_t *u) {
 	if (!u) return;
 	// Iterate links
-	dv_llist_iterate_init(u->links);
 	dv_dag_node_t * v;
+	dv_llist_iterate_init(u->links);
 	while (v = (dv_dag_node_t *) dv_llist_iterate_next(u->links)) {
 
 		dv_dag_node_t *u_tail, *v_head;
-		dv_llist_iterate_init(u->tails);
-		dv_llist_iterate_init(v->heads);
 		if (!u->tails->head) {
 			
 			if (!v->heads->head) {
 				draw_dvdag_edge_1(cr, u, v);
 			} else {
+				dv_llist_iterate_init(v->heads);
 				while (v_head = (dv_dag_node_t *) dv_llist_iterate_next(v->heads)) {
 					dv_dag_node_t * v_first = dv_dag_node_get_first(v_head);
 					draw_dvdag_edge_1(cr, u, v_first);
@@ -147,6 +146,7 @@ static void draw_dvdag_edge_r(cairo_t *cr, dv_dag_node_t *u) {
 			
 		} else {
 			
+			dv_llist_iterate_init(u->tails);
 			while (u_tail = (dv_dag_node_t *) dv_llist_iterate_next(u->tails)) {
 				dv_dag_node_t * u_last = dv_dag_node_get_last(u_tail);
 				
@@ -154,6 +154,7 @@ static void draw_dvdag_edge_r(cairo_t *cr, dv_dag_node_t *u) {
 					draw_dvdag_edge_1(cr, u_last, v);
 				} else {
 					
+					dv_llist_iterate_init(v->heads);
 					while (v_head = (dv_dag_node_t *) dv_llist_iterate_next(v->heads)) {
 						dv_dag_node_t * v_first = dv_dag_node_get_first(v_head);
 						draw_dvdag_edge_1(cr, u_last, v_first);
