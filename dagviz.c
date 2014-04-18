@@ -7,7 +7,7 @@ GtkWidget *darea;
 /*-----------------GUI functions-------------------*/
 static void do_drawing(cairo_t *cr)
 {
-	// Initial
+	// First time only
 	if (G->init) {
 		double height = gtk_widget_get_allocated_height(darea);
 		double h = G->rt->dc * DV_VDIS;
@@ -17,10 +17,16 @@ static void do_drawing(cairo_t *cr)
 		}
 		G->init = 0;
 	}
-	// Usual
+	// Draw graph
+	cairo_save(cr);
 	cairo_translate(cr, G->basex + G->x, G->basey + G->y);
 	cairo_scale(cr, G->zoom_ratio, G->zoom_ratio);
-	draw_dvdag(cr, G);
+	dv_draw_dvdag(cr, G);
+	cairo_restore(cr);
+
+	// Draw status line
+	dv_draw_status(cr);
+	
   //draw_hello(cr);
   //draw_rounded_rectangle(cr);
 }
@@ -42,9 +48,9 @@ static void do_zooming(double zoom_ratio, double posx, double posy)
 static gboolean on_draw_event(GtkWidget *widget, cairo_t *cr, gpointer user_data)
 {
 	// Set parameters
-	G->width = gtk_widget_get_allocated_width(widget);
-	G->height = gtk_widget_get_allocated_height(widget);
-	G->basex = 0.5 * G->width;
+	S->vpw = gtk_widget_get_allocated_width(widget);
+	S->vph = gtk_widget_get_allocated_height(widget);
+	G->basex = 0.5 * S->vpw;
 	G->basey = DV_ZOOM_TO_FIT_MARGIN + DV_RADIUS;
 	// Draw
   do_drawing(cr);
@@ -59,12 +65,34 @@ static gboolean on_btn_zoomfit_clicked(GtkWidget *widget, cairo_t *cr, gpointer 
 	G->y = 0.0;
 	// Need scaled
 	double h = G->rt->dc * DV_VDIS;
-	double hh = G->height - 2 * (DV_ZOOM_TO_FIT_MARGIN + DV_RADIUS);
+	double hh = S->vph - 2 * (DV_ZOOM_TO_FIT_MARGIN + DV_RADIUS);
 	if (h > hh) {
 		zoom_ratio = hh / h;		
 	}
 		
 	do_zooming(zoom_ratio, 0.0, 0.0);
+	return TRUE;
+}
+
+static gboolean on_btn_shrink_clicked(GtkWidget *widget, cairo_t *cr, gpointer user_data)
+{
+	if (S->sel > 0) {
+		if (!S->a->on) {
+			S->a->new_sel = S->sel - 1;
+			dv_animation_start(S->a);
+		}
+	}
+	return TRUE;
+}
+
+static gboolean on_btn_expand_clicked(GtkWidget *widget, cairo_t *cr, gpointer user_data)
+{
+	if (S->sel < G->lvmax) {
+		if (!S->a->on) {
+			S->a->new_sel = S->sel + 1;
+			dv_animation_start(S->a);
+		}
+	}
 	return TRUE;
 }
 
@@ -77,17 +105,22 @@ static gboolean on_scroll_event(GtkWidget *widget, GdkEventScroll *event, gpoint
 	return TRUE;
 }
 
-static dv_dag_node_t *get_clicked_node(double x, double y) {
-	dv_dag_node_t *ret = NULL;
+static dv_dag_node_t *find_clicked_node(double x, double y) {
+	dv_dag_node_t * ret = NULL;
 	double vc, hc;
 	int i;
+	dv_dag_node_t *node;
 	for (i=0; i<G->n; i++) {
-		vc = G->T[i].vl->c;
-		hc = G->T[i].c;
-		if (vc - DV_RADIUS < x && x < vc + DV_RADIUS
-				&& hc - DV_RADIUS < y && y < hc + DV_RADIUS) {
-			ret = &G->T[i];
-			break;
+		node = G->T + i;
+		if (!dv_node_flag_check(node->f, DV_NODE_FLAG_UNION)
+				|| dv_node_flag_check(node->f, DV_NODE_FLAG_SHRINKED)) {
+			vc = node->vl->c;
+			hc = node->c;
+			if (vc - DV_RADIUS < x && x < vc + DV_RADIUS
+					&& hc - DV_RADIUS < y && y < hc + DV_RADIUS) {
+				ret = node;
+				break;
+			}
 		}
 	}
 	return ret;
@@ -100,22 +133,26 @@ static gboolean on_button_event(GtkWidget *widget, GdkEventButton *event, gpoint
 		S->drag_on = 1;
 		S->pressx = event->x;
 		S->pressy = event->y;
+		S->accdisx = 0.0;
+		S->accdisy = 0.0;
 	}	else if (event->type == GDK_BUTTON_RELEASE) {
 		// Drag
 		S->drag_on = 0;
-		S->pressx = 0;
-		S->pressy = 0;
-	} else if (event->type == GDK_2BUTTON_PRESS) {
 		// Info tag
-		double ox = (event->x - G->basex - G->x) / G->zoom_ratio;
-		double oy = (event->y - G->basey - G->y) / G->zoom_ratio;
-		dv_dag_node_t *node_pressed = get_clicked_node(ox, oy);
-		if (node_pressed) {
-			if (!dv_llist_remove(G->itl, node_pressed)) {
-				dv_llist_add(G->itl, node_pressed);
+		if (S->accdisx < DV_SAFE_CLICK_RANGE
+				&& S->accdisy < DV_SAFE_CLICK_RANGE) {
+			double ox = (event->x - G->basex - G->x) / G->zoom_ratio;
+			double oy = (event->y - G->basey - G->y) / G->zoom_ratio;
+			dv_dag_node_t *node_pressed = find_clicked_node(ox, oy);
+			if (node_pressed) {
+				if (!dv_llist_remove(G->itl, node_pressed)) {
+					dv_llist_add(G->itl, node_pressed);
+				}
+				gtk_widget_queue_draw(darea);
 			}
-			gtk_widget_queue_draw(darea);
 		}
+	} else if (event->type == GDK_2BUTTON_PRESS) {
+		// Shrink/Expand
 	}
 	return TRUE;
 }
@@ -128,6 +165,8 @@ static gboolean on_motion_event(GtkWidget *widget, GdkEventMotion *event, gpoint
 		double deltay = event->y - S->pressy;
 		G->x += deltax;
 		G->y += deltay;
+		S->accdisx += deltax;
+		S->accdisy += deltay;
 		S->pressx = event->x;
 		S->pressy = event->y;
 		gtk_widget_queue_draw(darea);
@@ -169,11 +208,19 @@ int open_gui(int argc, char *argv[])
 	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "worker", "Worker");
 	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "cpu", "CPU");
 	gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "kind", "Node kind");
-	gtk_combo_box_set_active(GTK_COMBO_BOX(combobox), 0);
+	gtk_combo_box_set_active(GTK_COMBO_BOX(combobox), 2);
 	g_signal_connect(G_OBJECT(combobox), "changed", G_CALLBACK(on_combobox_changed), NULL);
 	gtk_container_add(GTK_CONTAINER(btn_combo), combobox);
 	gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo, -1);
-	
+
+	// Shrink/Expand buttons
+	GtkToolItem *btn_shrink = gtk_tool_button_new_from_stock(GTK_STOCK_ZOOM_OUT);
+	GtkToolItem *btn_expand = gtk_tool_button_new_from_stock(GTK_STOCK_ZOOM_IN);
+	gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_shrink, -1);
+	gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_expand, -1);
+	g_signal_connect(G_OBJECT(btn_shrink), "clicked", G_CALLBACK(on_btn_shrink_clicked), NULL);
+	g_signal_connect(G_OBJECT(btn_expand), "clicked", G_CALLBACK(on_btn_expand_clicked), NULL);
+
 	// Drawing Area
   darea = gtk_drawing_area_new();
   g_signal_connect(G_OBJECT(darea), "draw", G_CALLBACK(on_draw_event), NULL);
@@ -195,6 +242,18 @@ int open_gui(int argc, char *argv[])
 
 /*-----------------Main begins-----------------*/
 
+static void dv_status_init() {
+	S->drag_on = 0;
+	S->pressx = 0.0;
+	S->pressy = 0.0;
+	S->accdisx = 0.0;
+	S->accdisy = 0.0;
+	S->nc = 0;
+	S->sel = G->lvmax;
+	dv_llist_init(S->mnl);
+	dv_animation_init(S->a);
+}
+
 int main(int argc, char *argv[])
 {
 	if (argc > 1) {
@@ -205,9 +264,7 @@ int main(int argc, char *argv[])
 		printf("finished layout.\n");
 		//print_layout(G);
 		//check_layout(G);
-		S->drag_on = 0;
-		S->pressx = 0.0;
-		S->pressy = 0.0;
+		dv_status_init();
 	}
 	/*if (argc > 1)
 		print_dag_file(argv[1]);

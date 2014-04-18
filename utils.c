@@ -118,11 +118,11 @@ void * dv_stack_pop(dv_stack_t * s) {
 
 void dv_llist_init(dv_llist_t *l) {
 	l->i = 0;
-	l->head = 0;
+	l->top = 0;
 }
 
 void dv_llist_fini(dv_llist_t *l) {
-	dv_llist_cell_t *p = l->head;
+	dv_llist_cell_t *p = l->top;
 	dv_llist_cell_t *pp;
 	while (p) {
 		pp = p->next;
@@ -131,7 +131,7 @@ void dv_llist_fini(dv_llist_t *l) {
 		p = pp;
 	}
 	l->i = 0;
-	l->head = 0;
+	l->top = 0;
 }
 
 dv_llist_t * dv_llist_create() {
@@ -143,6 +143,13 @@ dv_llist_t * dv_llist_create() {
 void dv_llist_destroy(dv_llist_t *l) {
 	dv_llist_fini(l);
 	dv_free(l, sizeof(dv_llist_t));			
+}
+
+int dv_llist_empty(dv_llist_t *l) {
+	if (l->top)
+		return 0;
+	else
+		return 1;
 }
 
 dv_llist_cell_t * dv_llist_ensure_freelist() {
@@ -166,10 +173,10 @@ dv_llist_cell_t * dv_llist_ensure_freelist() {
 void dv_llist_add(dv_llist_t *l, void *x) {
 	dv_llist_cell_t * c = dv_llist_ensure_freelist();
 	c->item = x;
-	if (!l->head) {
-		l->head = c;
+	if (!l->top) {
+		l->top = c;
 	} else {
-		dv_llist_cell_t * h = l->head;
+		dv_llist_cell_t * h = l->top;
 		while (h->next)
 			h = h->next;
 		h->next = c;
@@ -177,10 +184,10 @@ void dv_llist_add(dv_llist_t *l, void *x) {
 }
 
 void * dv_llist_get(dv_llist_t *l) {
-	dv_llist_cell_t * c = l->head;
+	dv_llist_cell_t * c = l->top;
 	void * ret = 0;
 	if (c) {
-		l->head = c->next;
+		l->top = c->next;
 		ret = c->item;
 		c->item = 0;
 		c->next = FL;
@@ -191,7 +198,7 @@ void * dv_llist_get(dv_llist_t *l) {
 
 void * dv_llist_remove(dv_llist_t *l, void *x) {
 	void * ret = 0;
-	dv_llist_cell_t * h = l->head;
+	dv_llist_cell_t * h = l->top;
 	dv_linked_list_t * pre = 0;
 	while (h) {
 		if (h->item == x) {
@@ -205,7 +212,7 @@ void * dv_llist_remove(dv_llist_t *l, void *x) {
 		if (pre) {
 			pre->next = h->next;
 		} else {
-			l->head = h->next;
+			l->top = h->next;
 		}
 		h->item = 0;
 		h->next = FL;
@@ -222,7 +229,7 @@ void dv_llist_iterate_init(dv_llist_t *l) {
 void * dv_llist_iterate_next(dv_llist_t *l) {
 	dv_check(l);
 	int i = l->i;
-	dv_llist_cell_t * c = l->head;
+	dv_llist_cell_t * c = l->top;
 	while (i > 0) {
 		dv_check(c);
 		c = c->next;
@@ -236,4 +243,17 @@ void * dv_llist_iterate_next(dv_llist_t *l) {
 	}
 	
 	return ret;
+}
+
+
+
+
+const char * dv_convert_char_to_binary(int x)
+{
+	static char b[9];
+	b[0] = '\0';
+	int z;
+	for (z=1; z<=1<<3; z<<=1)
+		strcat(b, ((x & z) == z) ? "1" : "0");
+	return b;
 }
