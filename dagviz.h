@@ -64,6 +64,7 @@ typedef struct dv_llist {
 #define DV_STRING_LENGTH 100
 #define DV_STATUS_PADDING 7
 #define DV_SAFE_CLICK_RANGE 3
+#define DV_UNION_NODE_MARGIN 7
 
 /*-----------------Data Structures-----------------*/
 
@@ -126,6 +127,7 @@ typedef struct dv_dag_node {
 	dv_llist_t tails[1]; /* list of inner tail nodes */
 
 	double dc; /* down count */
+	double lc, rc; /* left/right counts */
 	double c; /* coordinate */
 	int lv; /* level */
 	struct dv_dag_node * parent;

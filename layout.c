@@ -70,6 +70,8 @@ static void dv_dag_node_init(dv_dag_node_t *u, dv_dag_node_t *p, dr_pi_dag_node 
 	u->hl = 0;
 	dv_grid_init(u->grid, u);
 	u->dc = 0L;
+	u->lc = 0L;
+	u->rc = 0L;
 	u->c = 0L;
 	u->parent = p;
 	u->lv = (p)?(p->lv + 1):0;
@@ -233,7 +235,7 @@ static void dv_layout_bind_node(dv_dag_node_t * u, dv_grid_line_t * l1, dv_grid_
 		break;
 	case dr_dag_node_kind_section:
 	case dr_dag_node_kind_task:
-		if (dv_node_flag_check(u->f, DV_NODE_FLAG_UNION)) {
+		if (dv_is_union(u)) {
 			
 			dv_check(u->heads->top);
 			dv_dag_node_t * hd = (dv_dag_node_t *) u->heads->top->item;
@@ -315,6 +317,7 @@ static double dv_layout_count_line_right(dv_grid_line_t *l) {
 			}
 			ll->rc = dv_layout_count_line_right(ll);
 			num += ll->rc;
+			node->rc = num;
 			if (num > max) {
 				max = num;
 			}
@@ -341,6 +344,7 @@ static double dv_layout_count_line_left(dv_grid_line_t *l) {
 			}
 			ll->lc = dv_layout_count_line_left(ll);
 			num += ll->lc;
+			node->lc = num;
 			if (num > max)
 				max = num;
 		}
@@ -506,11 +510,9 @@ static void dv_animation_set_moving_nodes(dv_dag_t *G, dv_animation_t *a) {
 			if (node->lv >= a->new_sel && !dv_is_shrinked(node)) {
 				// Need to be shrinked
 				dv_node_flag_set(node->f, DV_NODE_FLAG_SHRINKING);
-				printf("[%d] shrinking\n", node - G->T);
 			} else if (node->lv < a->new_sel && dv_is_shrinked(node)) {
 				// Need to be expanded
 				dv_node_flag_set(node->f, DV_NODE_FLAG_EXPANDING);
-				printf("[%d] expanding\n", node - G->T);
 			}
 			
 		}

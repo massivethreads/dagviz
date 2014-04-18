@@ -248,7 +248,7 @@ static void dv_status_init() {
 	S->pressy = 0.0;
 	S->accdisx = 0.0;
 	S->accdisy = 0.0;
-	S->nc = 0;
+	S->nc = 2;
 	S->sel = G->lvmax;
 	dv_llist_init(S->mnl);
 	dv_animation_init(S->a);
