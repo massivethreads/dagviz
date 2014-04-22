@@ -286,13 +286,16 @@ static void dv_layout_bind_node(dv_dag_node_t * u, dv_grid_line_t * l1, dv_grid_
 }
 
 static double dv_layout_calculate_gap(dv_dag_node_t *node) {
+	double ratio = S->a->ratio;
 	double gap = 1.0;
 	if (!node)
 		return gap;
 	if (dv_is_shrinking(node)) {
-		gap = 1.0 - S->a->ratio * 1.0;
+		//gap = 1.0 - ratio;
+		gap = (1.0 - ratio) * (1.0 - ratio);
 	} else if (dv_is_expanding(node)) {
-		gap = S->a->ratio * 1.0;		
+		//gap = ratio;
+		gap = 1.0 - (1.0 - ratio) * (1.0 - ratio);
 	}
 	return gap;
 }

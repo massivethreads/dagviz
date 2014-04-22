@@ -75,11 +75,19 @@ static void lookup_color(int v, double *r, double *g, double *b, double *a) {
 }
 
 static double get_alpha_fading_out() {
-	return (1.0 - S->a->ratio) * 0.75;
+	double ratio = S->a->ratio;
+	double ret;
+	//ret = (1.0 - ratio) * 0.75;
+	ret = 1.0 - ratio * ratio;
+	return ret;
 }
 
 static double get_alpha_fading_in() {
-	return S->a->ratio * 1.5;
+	double ratio = S->a->ratio;
+	double ret;
+	//ret = ratio * 1.5;
+	ret = ratio * ratio;
+	return ret;
 }
 
 static void draw_dvdag_node_1(cairo_t *cr, dv_dag_node_t *node) {
@@ -108,20 +116,24 @@ static void draw_dvdag_node_1(cairo_t *cr, dv_dag_node_t *node) {
 
 		double xx, yy, w, h;
 		if (dv_is_expanding(node) || dv_is_shrinking(node)) {
-			
-			// Large-sized box
-			xx = x - node->lc * DV_HDIS - DV_RADIUS - DV_UNION_NODE_MARGIN;
-			yy = y - DV_RADIUS - DV_UNION_NODE_MARGIN;
-			dv_dag_node_t * hd = (dv_dag_node_t *) node->heads->top->item;
-			h = hd->dc * DV_VDIS + 2 * (DV_RADIUS + DV_UNION_NODE_MARGIN);
-			w = (node->lc + node->rc) * DV_HDIS + 2 * (DV_RADIUS + DV_UNION_NODE_MARGIN);
+
+			double margin = 1.0;
 			if (dv_is_expanding(node)) {
 				// Fading out
 				alpha = get_alpha_fading_out();
+				margin = get_alpha_fading_in();
 			} else {
 				// Fading in
 				alpha = get_alpha_fading_in();
+				margin = get_alpha_fading_out();
 			}
+			// Large-sized box
+			margin *= DV_UNION_NODE_MARGIN;
+			xx = x - node->lc * DV_HDIS - DV_RADIUS - margin;
+			yy = y - DV_RADIUS - margin;
+			dv_dag_node_t * hd = (dv_dag_node_t *) node->heads->top->item;
+			h = hd->dc * DV_VDIS + 2 * (DV_RADIUS + margin);
+			w = (node->lc + node->rc) * DV_HDIS + 2 * (DV_RADIUS + margin);
 			
 		} else {
 			
@@ -139,7 +151,8 @@ static void draw_dvdag_node_1(cairo_t *cr, dv_dag_node_t *node) {
 			}
 			
 		}
-		
+
+		// Box
 		cairo_move_to(cr, xx, yy);
 		cairo_line_to(cr, xx + w, yy);
 		cairo_line_to(cr, xx + w, yy + h);
@@ -195,8 +208,15 @@ static void draw_dvdag_node_r(cairo_t *cr, dv_dag_node_t *u) {
 static void draw_dvdag_edge_1(cairo_t *cr, dv_dag_node_t *u, dv_dag_node_t *v) {
 	if (u->c + DV_RADIUS > v->c - DV_RADIUS)
 		return;
+	double alpha = 1.0;
+	if (u->lv > S->a->new_sel && v->lv > S->a->new_sel)
+		alpha = get_alpha_fading_out();
+	else if (u->lv > S->sel && v->lv > S->sel
+					 && u->lv <= S->a->new_sel
+					 && v->lv <= S->a->new_sel)
+		alpha = get_alpha_fading_in();
 	cairo_save(cr);
-	cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
+	cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
 	cairo_move_to(cr, u->vl->c, u->c + DV_RADIUS);
 	cairo_line_to(cr, v->vl->c, v->c - DV_RADIUS);
 	cairo_stroke(cr);
