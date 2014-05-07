@@ -269,12 +269,18 @@ static void dv_layout_bind_node(dv_dag_node_t * u, dv_grid_line_t * l1, dv_grid_
 	case 2:
 		v = (dv_dag_node_t *) u->links->top->item;
 		vv = (dv_dag_node_t *) u->links->top->next->item;
-		if (!l1->r)
+		if (!l1->r) {
 			l1->r = dv_grid_line_create();
-		if (!l1->l)
+			l1->r->l = l1;
+		}
+		if (!l1->l) {
 			l1->l = dv_grid_line_create();
-		if (!l2->r)
+			l1->l->r = l1;
+		}
+		if (!l2->r) {
 			l2->r = dv_grid_line_create();
+			l2->r->l = l2;
+		}
 		dv_layout_bind_node(v, l1->r, l2->r);
 		dv_layout_bind_node(vv, l1->l, l2->r);
 		break;

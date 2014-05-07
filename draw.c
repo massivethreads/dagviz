@@ -181,6 +181,73 @@ static void draw_dvdag_node_1(cairo_t *cr, dv_dag_node_t *node) {
 	cairo_restore(cr);
 }
 
+static void draw_grid_vl(cairo_t *cr, dv_grid_line_t *l, double y1, double y2) {
+	double x;
+	x = l->c;
+	cairo_save(cr);
+	cairo_new_path(cr);
+	cairo_set_source_rgba(cr, 0.0, 0.0, 0.0 ,0.8);
+	cairo_move_to(cr, x, y1);
+	cairo_line_to(cr, x, y2);
+	cairo_stroke(cr);
+	cairo_restore(cr);
+}
+
+static void draw_grid_hl(cairo_t *cr, dv_grid_line_t *l, double x1, double x2) {
+	double y;
+	y = 0.0;
+	dv_dag_node_t *node;
+	dv_llist_iterate_init(l->L);
+	node = dv_llist_iterate_next(l->L);
+	if (node)
+		y = node->c;
+	cairo_save(cr);
+	cairo_new_path(cr);
+	cairo_set_source_rgba(cr, 0.0, 0.0, 0.0 ,0.8);
+	cairo_move_to(cr, x1, y);
+	cairo_line_to(cr, x2, y);
+	cairo_stroke(cr);
+	cairo_restore(cr);
+}
+
+static void draw_grid(cairo_t *cr, dv_dag_node_t *node) {
+	// VL
+	double y1, y2;
+	y1 = node->c - DV_RADIUS - DV_UNION_NODE_MARGIN;
+	y2 = node->c + DV_RADIUS + DV_UNION_NODE_MARGIN;
+	dv_dag_node_t *nn;
+	if (nn = node->heads->top->item) {
+		y2 += nn->dc * DV_VDIS;
+	}
+	dv_grid_line_t *l;
+	l = node->grid->vl;
+	draw_grid_vl(cr, l, y1, y2);
+	while (l->l) {
+		l = l->l;
+		draw_grid_vl(cr, l, y1, y2);
+	}
+	l = node->grid->vl;
+	while (l->r) {
+		l = l->r;
+		draw_grid_vl(cr, l, y1, y2);
+	}
+	// HL
+	double x1, x2;
+	x1 = node->vl->c - node->vl->lc * DV_HDIS - DV_RADIUS - DV_UNION_NODE_MARGIN;
+	x2 = node->vl->c + node->vl->rc * DV_HDIS + DV_RADIUS + DV_UNION_NODE_MARGIN;
+	l = node->grid->hl;
+	draw_grid_hl(cr, l, x1, x2);
+	while (l->l) {
+		l = l->l;
+		draw_grid_hl(cr, l, x1, x2);
+	}
+	l = node->grid->hl;
+	while (l->r) {
+		l = l->r;
+		draw_grid_hl(cr, l, x1, x2);
+	}
+}
+
 static void draw_dvdag_node_r(cairo_t *cr, dv_dag_node_t *u) {
 	if (!u) return;
 	int call_head = 0;
@@ -202,6 +269,8 @@ static void draw_dvdag_node_r(cairo_t *cr, dv_dag_node_t *u) {
 		while (v = (dv_dag_node_t *) dv_llist_iterate_next(u->heads)) {
 			draw_dvdag_node_r(cr, v);
 		}
+		// Draw grid
+		//draw_grid(cr, u);
 	}
 }
 
