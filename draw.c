@@ -91,6 +91,8 @@ static double get_alpha_fading_in() {
 }
 
 static void draw_dvdag_node_1(cairo_t *cr, dv_dag_node_t *node) {
+	// Count node drawn
+	S->nd++;
 	// Node color
 	double x = node->vl->c;
 	double y = node->c;
@@ -259,8 +261,7 @@ static void draw_dvdag_node_r(cairo_t *cr, dv_dag_node_t *u) {
 	dv_dag_node_t * v;
 	dv_llist_iterate_init(u->links);
 	while (v = (dv_dag_node_t *) dv_llist_iterate_next(u->links)) {
-		draw_dvdag_node_r(cr, v);
-		
+		draw_dvdag_node_r(cr, v);		
 	}
 	// Call head
 	if (dv_is_union(u)
@@ -478,6 +479,7 @@ void dv_draw_dvdag(cairo_t *cr, dv_dag_t *G) {
 	cairo_set_line_width(cr, 2.0);
 	int i;
 	// Draw nodes
+	S->nd = 0;
 	draw_dvdag_node_r(cr, G->rt);
 	// Draw edges
 	draw_dvdag_edge_r(cr, G->rt);
@@ -485,7 +487,9 @@ void dv_draw_dvdag(cairo_t *cr, dv_dag_t *G) {
 	dv_llist_iterate_init(G->itl);
 	dv_dag_node_t * u;
 	while (u = (dv_dag_node_t *) dv_llist_iterate_next(G->itl)) {
-		draw_dvdag_infotag(cr, u);
+		if (dv_is_shrinked(u) && !dv_is_expanding(u)
+				&& (u->lv <= S->sel) && !dv_is_shrinking(u->parent))
+			draw_dvdag_infotag(cr, u);
 	}
 }
 
@@ -498,11 +502,18 @@ void dv_draw_status(cairo_t *cr) {
 	char *s[10];
 	int n = 0;
 	int length = 50;
-	
+
+	// Depth
 	s[n] = (char *) dv_malloc( length * sizeof(char) );
-	sprintf(s[n], "SEL=%d", S->sel);
+	sprintf(s[n], "D=%d/%d", S->sel, G->lvmax);
 	n++;
 
+	// Nodes drawn
+	s[n] = (char *) dv_malloc( length * sizeof(char) );
+	sprintf(s[n], "ND=%ld, ", S->nd);
+	n++;
+	
+	// ratio
 	if (S->a->on) {
 		s[n] = (char *) dv_malloc( length * sizeof(char) );
 		sprintf(s[n], "ratio=%0.2f, ", S->a->ratio);

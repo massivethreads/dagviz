@@ -70,8 +70,8 @@ typedef struct dv_llist {
 
 typedef struct dv_animation {
 	int on; /* on/off */
-	double duration; /* seconds */
-	double step; /* seconds */
+	double duration; /* milliseconds */
+	double step; /* milliseconds */
 	double started; /* started time */
 	int new_sel; /* new shrink/expand level */
 	double ratio;
@@ -88,8 +88,8 @@ typedef struct dv_status {
 	double vpw, vph;  /* viewport's size */
 	// Shrink/Expand animation
 	int sel; /* shrink/expand level */
-	dv_llist_t mnl[1]; /* moving node list */
 	dv_animation_t a[1]; /* animation struct */
+	long nd; /* number of nodes drawn */
 } dv_status_t;
 
 typedef struct dv_grid_line {

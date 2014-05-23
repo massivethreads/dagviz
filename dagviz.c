@@ -4,7 +4,7 @@ GtkWidget *window;
 GtkWidget *darea;
 
 
-/*-----------------GUI functions-------------------*/
+/*-----------------DV Visualizer GUI-------------------*/
 static void do_drawing(cairo_t *cr)
 {
 	// First time only
@@ -112,8 +112,9 @@ static dv_dag_node_t *find_clicked_node(double x, double y) {
 	dv_dag_node_t *node;
 	for (i=0; i<G->n; i++) {
 		node = G->T + i;
-		if (!dv_node_flag_check(node->f, DV_NODE_FLAG_UNION)
-				|| dv_node_flag_check(node->f, DV_NODE_FLAG_SHRINKED)) {
+		if ((node->lv <= S->sel)
+				&& (!dv_node_flag_check(node->f, DV_NODE_FLAG_UNION)
+						|| dv_node_flag_check(node->f, DV_NODE_FLAG_SHRINKED))) {
 			vc = node->vl->c;
 			hc = node->c;
 			if (vc - DV_RADIUS < x && x < vc + DV_RADIUS
@@ -240,7 +241,7 @@ int open_gui(int argc, char *argv[])
 /*-----------------end of DV Visualizer GUI-------------------*/
 
 
-/*-----------------Main begins-----------------*/
+/*---------------Initialization Functions------*/
 
 static void dv_status_init() {
 	S->drag_on = 0;
@@ -249,13 +250,55 @@ static void dv_status_init() {
 	S->accdisx = 0.0;
 	S->accdisy = 0.0;
 	S->nc = 2;
-	S->sel = G->lvmax;
-	dv_llist_init(S->mnl);
+	S->sel = 1;
 	dv_animation_init(S->a);
 }
 
+/*---------------end of Initialization Functions------*/
+
+
+/*---------------Environment Variables-----*/
+
+static int dv_get_env_int(char * s, int * t) {
+	char * v = getenv(s);
+	if (v) {
+		*t = atoi(v);
+		return 1;
+	}
+	return 0;
+}
+
+static int dv_get_env_long(char * s, long * t) {
+	char * v = getenv(s);
+	if (v) {
+		*t = atol(v);
+		return 1;
+	}
+	return 0;
+}
+
+static int dv_get_env_string(char * s, char ** t) {
+	char * v = getenv(s);
+	if (v) {
+		*t = strdup(v);
+		return 1;
+	}
+	return 0;
+}
+
+static void dv_get_env() {
+	dv_get_env_int("DV_DEPTH", &S->sel);
+}
+
+/*---------------end of Environment Variables-----*/
+
+
+/*-----------------Main begins-----------------*/
+
 int main(int argc, char *argv[])
 {
+	dv_status_init();
+	dv_get_env();
 	if (argc > 1) {
 		dv_read_dag_file_to_pidag(argv[1], P);
 		dv_convert_pidag_to_dvdag(P, G);
@@ -263,13 +306,9 @@ int main(int argc, char *argv[])
 		dv_layout_dvdag(G);
 		printf("finished layout.\n");
 		//print_layout(G);
-		//check_layout(G);
-		dv_status_init();
+		//check_layout(G);		
 	}
-	/*if (argc > 1)
-		print_dag_file(argv[1]);
-	return 1;
-	*/
+	//if (argc > 1)	print_dag_file(argv[1]);
 	return open_gui(argc, argv);
 	//return 1;
 }
