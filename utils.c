@@ -199,7 +199,7 @@ void * dv_llist_get(dv_llist_t *l) {
 void * dv_llist_remove(dv_llist_t *l, void *x) {
   void * ret = 0;
   dv_llist_cell_t * h = l->top;
-  dv_linked_list_t * pre = 0;
+  dv_llist_cell_t * pre = 0;
   while (h) {
     if (h->item == x) {
       break;
