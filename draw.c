@@ -94,8 +94,8 @@ static void draw_dvdag_node_1(cairo_t *cr, dv_dag_node_t *node) {
   // Count node drawn
   S->nd++;
   // Node color
-  double x = node->vl->c;
-  double y = node->c;
+  double x = node->x;
+  double y = node->y;
   double c[4];
   int v = 0;
   switch (S->nc) {
@@ -114,9 +114,9 @@ static void draw_dvdag_node_1(cairo_t *cr, dv_dag_node_t *node) {
   // Draw path
   cairo_save(cr);
   cairo_new_path(cr);
+  double xx, yy, w, h;
   if (dv_is_union(node)) {
 
-    double xx, yy, w, h;
     if (dv_is_expanding(node) || dv_is_shrinking(node)) {
 
       double margin = 1.0;
@@ -131,50 +131,51 @@ static void draw_dvdag_node_1(cairo_t *cr, dv_dag_node_t *node) {
       }
       // Large-sized box
       margin *= DV_UNION_NODE_MARGIN;
-      xx = x - node->lc * DV_HDIS - DV_RADIUS - margin;
-      yy = y - DV_RADIUS - margin;
-      dv_dag_node_t * hd = (dv_dag_node_t *) node->heads->top->item;
-      h = hd->dc * DV_VDIS + 2 * (DV_RADIUS + margin);
-      w = (node->lc + node->rc) * DV_HDIS + 2 * (DV_RADIUS + margin);
+      xx = x - node->lw - margin;
+      yy = y - margin;
+      w = node->lw + node->rw + 2 * margin;
+      h = node->dw + 2 * margin;
       
     } else {
       
       // Normal-sized box
-      xx = x - DV_RADIUS;
-      yy = y - DV_RADIUS;
-      w = 2 * DV_RADIUS;
-      h = 2 * DV_RADIUS;
-      if (node->lv > S->a->new_sel) {
+      xx = x - node->lw;
+      yy = y;
+      w = node->lw + node->rw;
+      h = node->dw;
+      if (node->d > S->a->new_d) {
         // Fading out
         alpha = get_alpha_fading_out();
-      } else if (node->lv > S->sel) {
+      } else if (node->d > S->cur_d) {
         // Fading in
         alpha = get_alpha_fading_in();
       }
       
     }
 
-    // Box
-    cairo_move_to(cr, xx, yy);
-    cairo_line_to(cr, xx + w, yy);
-    cairo_line_to(cr, xx + w, yy + h);
-    cairo_line_to(cr, xx, yy + h);
-    cairo_close_path(cr);
-    
   } else {
     
-    // Normal-sized circle
-    cairo_arc(cr, x, y, DV_RADIUS, 0.0, 2*M_PI);
-    if (node->lv > S->a->new_sel) {
+    // Normal-sized box (terminal node)
+    xx = x - node->lw;
+    yy = y;
+    w = node->lw + node->rw;
+    h = node->dw;
+    if (node->d > S->a->new_d) {
       // Fading out
       alpha = get_alpha_fading_out();
-    } else if (node->lv > S->sel) {
+    } else if (node->d > S->cur_d) {
       // Fading in
       alpha = get_alpha_fading_in();
     }
     
   }
-  
+  // Draw path
+  cairo_move_to(cr, xx, yy);
+  cairo_line_to(cr, xx + w, yy);
+  cairo_line_to(cr, xx + w, yy + h);
+  cairo_line_to(cr, xx, yy + h);
+  cairo_close_path(cr);
+
   // Draw node
   cairo_set_source_rgba(cr, c[0], c[1], c[2], c[3] * alpha);
   cairo_fill_preserve(cr);
@@ -183,112 +184,78 @@ static void draw_dvdag_node_1(cairo_t *cr, dv_dag_node_t *node) {
   cairo_restore(cr);
 }
 
-static void draw_grid_vl(cairo_t *cr, dv_grid_line_t *l, double y1, double y2) {
-  double x;
-  x = l->c;
-  cairo_save(cr);
-  cairo_new_path(cr);
-  cairo_set_source_rgba(cr, 0.0, 0.0, 0.0 ,0.8);
-  cairo_move_to(cr, x, y1);
-  cairo_line_to(cr, x, y2);
-  cairo_stroke(cr);
-  cairo_restore(cr);
-}
+static void draw_dvdag_node_r(cairo_t *cr, dv_dag_node_t *node) {
+  /* Draw node */
+  dv_check(node);
+  if (!dv_is_union(node)
+      || dv_is_shrinked(node) || dv_is_shrinking(node)) {
+    draw_dvdag_node_1(cr, node);
+  }
 
-static void draw_grid_hl(cairo_t *cr, dv_grid_line_t *l, double x1, double x2) {
-  double y;
-  y = 0.0;
-  dv_dag_node_t *node;
-  dv_llist_iterate_init(l->L);
-  node = dv_llist_iterate_next(l->L);
-  if (node)
-    y = node->c;
-  cairo_save(cr);
-  cairo_new_path(cr);
-  cairo_set_source_rgba(cr, 0.0, 0.0, 0.0 ,0.8);
-  cairo_move_to(cr, x1, y);
-  cairo_line_to(cr, x2, y);
-  cairo_stroke(cr);
-  cairo_restore(cr);
-}
-
-static void draw_grid(cairo_t *cr, dv_dag_node_t *node) {
-  // VL
-  double y1, y2;
-  y1 = node->c - DV_RADIUS - DV_UNION_NODE_MARGIN;
-  y2 = node->c + DV_RADIUS + DV_UNION_NODE_MARGIN;
-  dv_dag_node_t *nn;
-  if (nn = node->heads->top->item) {
-    y2 += nn->dc * DV_VDIS;
-  }
-  dv_grid_line_t *l;
-  l = node->grid->vl;
-  draw_grid_vl(cr, l, y1, y2);
-  while (l->l) {
-    l = l->l;
-    draw_grid_vl(cr, l, y1, y2);
-  }
-  l = node->grid->vl;
-  while (l->r) {
-    l = l->r;
-    draw_grid_vl(cr, l, y1, y2);
-  }
-  // HL
-  double x1, x2;
-  x1 = node->vl->c - node->vl->lc * DV_HDIS - DV_RADIUS - DV_UNION_NODE_MARGIN;
-  x2 = node->vl->c + node->vl->rc * DV_HDIS + DV_RADIUS + DV_UNION_NODE_MARGIN;
-  l = node->grid->hl;
-  draw_grid_hl(cr, l, x1, x2);
-  while (l->l) {
-    l = l->l;
-    draw_grid_hl(cr, l, x1, x2);
-  }
-  l = node->grid->hl;
-  while (l->r) {
-    l = l->r;
-    draw_grid_hl(cr, l, x1, x2);
-  }
-}
-
-static void draw_dvdag_node_r(cairo_t *cr, dv_dag_node_t *u) {
-  if (!u) return;
-  int call_head = 0;
-  if (!dv_is_union(u)
-      || dv_is_shrinked(u) || dv_is_shrinking(u)) {
-    draw_dvdag_node_1(cr, u);
-  }
-  // Iterate links
-  dv_dag_node_t * v;
-  dv_llist_iterate_init(u->links);
-  while (v = (dv_dag_node_t *) dv_llist_iterate_next(u->links)) {
-    draw_dvdag_node_r(cr, v);    
-  }
-  // Call head
-  if (dv_is_union(u)
-      && ( !dv_is_shrinked(u) || dv_is_expanding(u) )) {
-    dv_llist_iterate_init(u->heads);
-    while (v = (dv_dag_node_t *) dv_llist_iterate_next(u->heads)) {
-      draw_dvdag_node_r(cr, v);
+  /* Calculate inward */
+  int is_single_node = 1;
+  switch (node->pi->info.kind) {
+  case dr_dag_node_kind_wait_tasks:
+  case dr_dag_node_kind_end_task:
+  case dr_dag_node_kind_create_task:
+    break;
+  case dr_dag_node_kind_section:
+  case dr_dag_node_kind_task:
+    if (dv_is_union(node)
+        && ( !dv_is_shrinked(node) || dv_is_expanding(node) )) {
+      dv_check(node->head);
+      is_single_node = 0;
     }
-    // Draw grid
-    //draw_grid(cr, u);
+    break;
+  default:
+    dv_check(0);
+    break;
+  }
+  if (!is_single_node) {
+    // Recursive call
+    draw_dvdag_node_r(cr, node->head);
+  }
+    
+  /* Calculate link-along */
+  int n_links = dv_llist_size(node->links);
+  dv_dag_node_t * u; // linked node 1
+  dv_dag_node_t * v; // linked node 2
+  switch (n_links) {
+  case 0:
+    break;
+  case 1:
+    u = (dv_dag_node_t *) node->links->top->item;
+    // Recursive call
+    draw_dvdag_node_r(cr, u);
+    break;
+  case 2:
+    u = (dv_dag_node_t *) node->links->top->item; // cont node
+    v = (dv_dag_node_t *) node->links->top->next->item; // task node
+    // Recursive call
+    draw_dvdag_node_r(cr, u);
+    draw_dvdag_node_r(cr, v);
+    break;
+  default:
+    dv_check(0);
+    break;
   }
 }
 
 static void draw_dvdag_edge_1(cairo_t *cr, dv_dag_node_t *u, dv_dag_node_t *v) {
-  if (u->c + DV_RADIUS > v->c - DV_RADIUS)
+  if (u->y > v->y)
     return;
   double alpha = 1.0;
-  if (u->lv > S->a->new_sel && v->lv > S->a->new_sel)
+  if (u->d > S->a->new_d && v->d > S->a->new_d)
     alpha = get_alpha_fading_out();
-  else if (u->lv > S->sel && v->lv > S->sel
-           && u->lv <= S->a->new_sel
-           && v->lv <= S->a->new_sel)
+  else if (u->d > S->cur_d
+           && v->d > S->cur_d
+           && u->d <= S->a->new_d
+           && v->d <= S->a->new_d)
     alpha = get_alpha_fading_in();
   cairo_save(cr);
   cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
-  cairo_move_to(cr, u->vl->c, u->c + DV_RADIUS);
-  cairo_line_to(cr, v->vl->c, v->c - DV_RADIUS);
+  cairo_move_to(cr, u->x, u->y + u->dw);
+  cairo_line_to(cr, v->x, v->y);
   cairo_stroke(cr);
   cairo_restore(cr);
 }
@@ -298,100 +265,73 @@ static dv_dag_node_t * dv_dag_node_get_first(dv_dag_node_t *u) {
   while (dv_node_flag_check(u->f, DV_NODE_FLAG_UNION)
          && (!dv_node_flag_check(u->f, DV_NODE_FLAG_SHRINKED)
              || dv_node_flag_check(u->f, DV_NODE_FLAG_EXPANDING))) {
-    dv_check(u->heads->top);
-    u = (dv_dag_node_t *) u->heads->top->item;
+    dv_check(u->head);
+    u = u->head;
     dv_check(u);
   }
   return u;
 }
 
-static dv_dag_node_t * dv_dag_node_get_last(dv_dag_node_t *u) {
-  dv_check(u);
-  while (dv_node_flag_check(u->f, DV_NODE_FLAG_UNION)
-         && (!dv_node_flag_check(u->f, DV_NODE_FLAG_SHRINKED)
-             || dv_node_flag_check(u->f, DV_NODE_FLAG_EXPANDING))) {
-    dv_check(u->heads->top);
-    u = (dv_dag_node_t *) u->tails->top->item;
-    dv_check(u);
-  }
-  return u;
+static dv_dag_node_t * draw_dvdag_edge_last_r(cairo_t *cr, dv_dag_node_t *u, dv_dag_node_t *v) {
+  dv_llist_iterate_init(u->tails);
+  dv_dag_node_t *u_tail;
+  while (u_tail = (dv_dag_node_t *) dv_llist_iterate_next(u->tails)) {
+    if (!dv_is_union(u)
+        || (dv_is_shrinked(u) && !dv_is_expanding(u)))
+      draw_dvdag_edge_1(cr, u_tail, v);
+    else
+      draw_dvdag_edge_last_r(cr, u_tail, v);
+  }  
 }
 
 static void draw_dvdag_edge_r(cairo_t *cr, dv_dag_node_t *u) {
   if (!u) return;
+  // Call head
+  if (dv_is_union(u)
+      && ( !dv_is_shrinked(u) || dv_is_expanding(u) )) {
+    draw_dvdag_edge_r(cr, u->head);
+  }
   // Iterate links
   dv_dag_node_t * v;
   dv_llist_iterate_init(u->links);
   while (v = (dv_dag_node_t *) dv_llist_iterate_next(u->links)) {
 
-    dv_dag_node_t *u_tail, *v_head;
     if (!dv_is_union(u)
         || (dv_is_shrinked(u) && !dv_is_expanding(u))) {
       
       if (!dv_is_union(v)
-          || (dv_is_shrinked(v) && !dv_is_expanding(v))) {
-        
+          || (dv_is_shrinked(v) && !dv_is_expanding(v)))
         draw_dvdag_edge_1(cr, u, v);
-        
-      } else {
-        
-        dv_llist_iterate_init(v->heads);
-        while (v_head = (dv_dag_node_t *) dv_llist_iterate_next(v->heads)) {
-          dv_dag_node_t * v_first = dv_dag_node_get_first(v_head);
-          draw_dvdag_edge_1(cr, u, v_first);
-        }
-        
-      }
+      else
+        draw_dvdag_edge_1(cr, u, dv_dag_node_get_first(v->head));
       
     } else {
-      
-      dv_llist_iterate_init(u->tails);
-      while (u_tail = (dv_dag_node_t *) dv_llist_iterate_next(u->tails)) {
-        dv_dag_node_t * u_last = dv_dag_node_get_last(u_tail);
-        
-        if (!dv_is_union(v)
-            || (dv_is_shrinked(v) && !dv_is_expanding(v))) {
-          draw_dvdag_edge_1(cr, u_last, v);
-        } else {
-          
-          dv_llist_iterate_init(v->heads);
-          while (v_head = (dv_dag_node_t *) dv_llist_iterate_next(v->heads)) {
-            dv_dag_node_t * v_first = dv_dag_node_get_first(v_head);
-            draw_dvdag_edge_1(cr, u_last, v_first);
-          }
-          
-        }
-        
-      }
-      
+
+      if (!dv_is_union(v)
+          || (dv_is_shrinked(v) && !dv_is_expanding(v)))
+        draw_dvdag_edge_last_r(cr, u, v);
+      else
+        draw_dvdag_edge_last_r(cr, u, dv_dag_node_get_first(v->head));
+
     }
     draw_dvdag_edge_r(cr, v);
     
   }
-
-  // Call head
-  if (dv_is_union(u)
-      && ( !dv_is_shrinked(u) || dv_is_expanding(u) )) {
-    dv_llist_iterate_init(u->heads);
-    while (v = (dv_dag_node_t *) dv_llist_iterate_next(u->heads))
-      draw_dvdag_edge_r(cr, v);
-  }
-  
 }
 
 static void draw_dvdag_infotag(cairo_t *cr, dv_dag_node_t *node) {
   double line_height = 12;
   double padding = 4;
   int n = 6; /* number of lines */
-  double xx = node->vl->c + DV_RADIUS + padding;
-  double yy = node->c - DV_RADIUS - 2*padding - line_height * (n - 1);
+  double xx = node->x + node->rw + 2 * padding;
+  double yy = node->y - 2 * padding - line_height * (n - 1);
 
   // Cover rectangle
   double width = 450.0;
-  double height = n * line_height + 3*padding;
+  double height = n * line_height + 2 * padding;
   draw_rounded_rectangle(cr,
-                         node->vl->c + DV_RADIUS,
-                         node->c - DV_RADIUS - height,
+                         xx - padding,
+                         node->y - height - padding,
                          width,
                          height);
 
@@ -403,16 +343,14 @@ static void draw_dvdag_infotag(cairo_t *cr, dv_dag_node_t *node) {
   // Line 1
   /* TODO: adaptable string length */
   char *s = (char *) dv_malloc( DV_STRING_LENGTH * sizeof(char) );
-  sprintf(s, "[%ld] %s lv=%d f=%d%d%d%d dc=%0.1lf c=%0.1lf",
+  sprintf(s, "[%ld] %s d=%d f=%d%d%d%d",
           node - G->T,
           NODE_KIND_NAMES[node->pi->info.kind],
-          node->lv,
+          node->d,
           dv_is_union(node),
           dv_is_shrinked(node),
           dv_is_expanding(node),
-          dv_is_shrinking(node),
-          node->dc,
-          node->c);
+          dv_is_shrinking(node));
   cairo_move_to(cr, xx, yy);
   cairo_show_text(cr, s);
   yy += line_height;
@@ -421,7 +359,7 @@ static void draw_dvdag_infotag(cairo_t *cr, dv_dag_node_t *node) {
   sprintf(s, "%llu-%llu (%llu) est=%llu",
           node->pi->info.start.t,
           node->pi->info.end.t,
-          node->pi->info.start.t - node->pi->info.end.t,
+          node->pi->info.end.t - node->pi->info.start.t,
           node->pi->info.est);
   cairo_move_to(cr, xx, yy);
   cairo_show_text(cr, s);
@@ -488,7 +426,7 @@ void dv_draw_dvdag(cairo_t *cr, dv_dag_t *G) {
   dv_dag_node_t * u;
   while (u = (dv_dag_node_t *) dv_llist_iterate_next(G->itl)) {
     if (dv_is_shrinked(u) && !dv_is_expanding(u)
-        && (u->lv <= S->sel) && !dv_is_shrinking(u->parent))
+        && (u->d <= S->cur_d) && !dv_is_shrinking(u->parent))
       draw_dvdag_infotag(cr, u);
   }
 }
@@ -505,7 +443,7 @@ void dv_draw_status(cairo_t *cr) {
 
   // Depth
   s[n] = (char *) dv_malloc( length * sizeof(char) );
-  sprintf(s[n], "D=%d/%d", S->sel, G->lvmax);
+  sprintf(s[n], "D=%d/%d", S->cur_d, G->dmax);
   n++;
 
   // Nodes drawn

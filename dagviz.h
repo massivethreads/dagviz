@@ -65,6 +65,7 @@ typedef struct dv_llist {
 #define DV_STATUS_PADDING 7
 #define DV_SAFE_CLICK_RANGE 3
 #define DV_UNION_NODE_MARGIN 7
+#define DV_TIME_FACTOR 10E-8
 
 /*-----------------Data Structures-----------------*/
 
@@ -73,7 +74,7 @@ typedef struct dv_animation {
   double duration; /* milliseconds */
   double step; /* milliseconds */
   double started; /* started time */
-  int new_sel; /* new shrink/expand level */
+  int new_d; /* new depth */
   double ratio;
 } dv_animation_t;
 
@@ -87,53 +88,36 @@ typedef struct dv_status {
   // Window's size
   double vpw, vph;  /* viewport's size */
   // Shrink/Expand animation
-  int sel; /* shrink/expand level */
+  int cur_d; /* current depth */
   dv_animation_t a[1]; /* animation struct */
   long nd; /* number of nodes drawn */
 } dv_status_t;
 
-typedef struct dv_grid_line {
-  struct dv_grid_line * l;  /* left next grid line */
-  struct dv_grid_line * r;  /* right next grid line */
-  dv_llist_t L[1]; /* list of assigned nodes */
-  double lc;    /* left count */
-  double rc;    /* right count */
-  double c;  /* coordinate */
-} dv_grid_line_t;
-
-struct dv_dag_node;
-
-typedef struct dv_grid {
-  dv_grid_line_t vl[1];
-  dv_grid_line_t hl[1];
-  struct dv_dag_node * owner;
-} dv_grid_t;
-
 typedef struct dv_dag_node {
   
-  /* data */
+  /* task-parallel data */
   dr_pi_dag_node * pi;
-  /* node flags */
-  char f[1]; /* 0x0: single, 0x01: union/collapsed, 0x11: union/expanded  */
 
+  /* topology data */  
+  char f[1]; /* node flags, 0x0: single, 0x01: union/collapsed, 0x11: union/expanded */
+  int d; /* depth */
+  
   /* outward topology */
+  struct dv_dag_node * parent;
+  struct dv_dag_node * pre;
   dv_llist_t links[1]; /* linked nodes */
-  dv_grid_line_t * vl;  /* vertical line of outer grid */
-  dv_grid_line_t * hl;  /* horizontal line of outer grid */
+  double x, y; /* coordinates */
+  double xp; /* coordinates based on parent */
 
   /* inward topology */
-  dv_grid_t grid[1]; /* inner grid */
-  dv_llist_t heads[1]; /* list of inner head nodes */
+  struct dv_dag_node * head; /* inner head node */
   dv_llist_t tails[1]; /* list of inner tail nodes */
+  double lw, rw, dw; /* left/right/down widths */
 
-  double dc; /* down count */
-  double lc, rc; /* left/right counts */
-  double c; /* coordinate */
-  int lv; /* level */
-  struct dv_dag_node * parent;
-  
+  /* link-along topology */
+  double link_lw, link_rw, link_dw;
+
 } dv_dag_node_t;
-
 
 typedef struct dv_dag {
   /* data */
@@ -144,17 +128,15 @@ typedef struct dv_dag {
   /* topology */
   dv_dag_node_t * T;  /* array of all nodes */
   dv_dag_node_t * rt;  /* root task */
-  dv_grid_t grid[1];  /* root grid */
+  int dmax; /* depth max */
 
   /* drawing parameters */
   char init;     /* to recognize initial drawing */
   double zoom_ratio;  /* zoom ratio of the graph to draw */
   double x, y;        /* current coordinates of the central point */
-  double width, height;  /* graph's size */
   double basex, basey;
   dv_llist_t itl[1]; /* list of nodes that have info tag */
 
-  int lvmax; /* level max */
 } dv_dag_t;
 
 
@@ -182,13 +164,13 @@ void print_layout(dv_dag_t *);
 void print_dag_file(char *);
 void check_layout(dv_dag_t *);
 
-/* layout.c */
-void dv_grid_line_init(dv_grid_line_t *);
-dv_grid_line_t * dv_grid_line_create();
-void dv_grid_init(dv_grid_t *, dv_dag_node_t *);
-dv_grid_t * dv_grid_create(dv_dag_node_t *);
+/* read.c */
 void dv_read_dag_file_to_pidag(char *, dr_pi_dag *);
 void dv_convert_pidag_to_dvdag(dr_pi_dag *, dv_dag_t *);
+
+/* layout.c */
+double dv_layout_calculate_hsize(dv_dag_node_t *);
+double dv_layout_calculate_vsize(dv_dag_node_t *);
 void dv_layout_dvdag(dv_dag_t *);
 void dv_relayout_dvdag(dv_dag_t *);
 double dv_get_time();
@@ -215,7 +197,7 @@ void dv_llist_init(dv_llist_t *);
 void dv_llist_fini(dv_llist_t *);
 dv_llist_t * dv_llist_create();
 void dv_llist_destroy(dv_llist_t *);
-int dv_llist_empty(dv_llist_t *);
+int dv_llist_is_empty(dv_llist_t *);
 dv_llist_cell_t * dv_llist_ensure_freelist();
 void dv_llist_add(dv_llist_t *, void *);
 void * dv_llist_get(dv_llist_t *);
@@ -223,7 +205,10 @@ void * dv_llist_remove(dv_llist_t *, void *);
 void dv_llist_iterate_init(dv_llist_t *);
 void * dv_llist_iterate_next(dv_llist_t *);
 
+int dv_llist_size(dv_llist_t *);
+
 const char * dv_convert_char_to_binary(int );
+double dv_max(double, double);
 
 
 /*-----------------Inlines-----------------*/

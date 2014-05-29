@@ -10,8 +10,8 @@ static void do_drawing(cairo_t *cr)
   // First time only
   if (G->init) {
     double height = gtk_widget_get_allocated_height(darea);
-    double h = G->rt->dc * DV_VDIS;
-    double hh = height - 2 * (DV_ZOOM_TO_FIT_MARGIN + DV_RADIUS);
+    double h = G->rt->dw;
+    double hh = height - 2 * DV_ZOOM_TO_FIT_MARGIN;
     if (h > hh) {
       G->zoom_ratio = hh / h;
     }
@@ -26,9 +26,6 @@ static void do_drawing(cairo_t *cr)
 
   // Draw status line
   dv_draw_status(cr);
-  
-  //draw_hello(cr);
-  //draw_rounded_rectangle(cr);
 }
 
 static void do_zooming(double zoom_ratio, double posx, double posy)
@@ -64,8 +61,8 @@ static gboolean on_btn_zoomfit_clicked(GtkWidget *widget, cairo_t *cr, gpointer 
   G->x = 0.0;
   G->y = 0.0;
   // Need scaled
-  double h = G->rt->dc * DV_VDIS;
-  double hh = S->vph - 2 * (DV_ZOOM_TO_FIT_MARGIN + DV_RADIUS);
+  double h = G->rt->dw;
+  double hh = S->vph - 2 * DV_ZOOM_TO_FIT_MARGIN;
   if (h > hh) {
     zoom_ratio = hh / h;    
   }
@@ -76,9 +73,9 @@ static gboolean on_btn_zoomfit_clicked(GtkWidget *widget, cairo_t *cr, gpointer 
 
 static gboolean on_btn_shrink_clicked(GtkWidget *widget, cairo_t *cr, gpointer user_data)
 {
-  if (S->sel > 0) {
+  if (S->cur_d > 0) {
     if (!S->a->on) {
-      S->a->new_sel = S->sel - 1;
+      S->a->new_d = S->cur_d - 1;
       dv_animation_start(S->a);
     }
   }
@@ -87,9 +84,9 @@ static gboolean on_btn_shrink_clicked(GtkWidget *widget, cairo_t *cr, gpointer u
 
 static gboolean on_btn_expand_clicked(GtkWidget *widget, cairo_t *cr, gpointer user_data)
 {
-  if (S->sel < G->lvmax) {
+  if (S->cur_d < G->dmax) {
     if (!S->a->on) {
-      S->a->new_sel = S->sel + 1;
+      S->a->new_d = S->cur_d + 1;
       dv_animation_start(S->a);
     }
   }
@@ -107,18 +104,14 @@ static gboolean on_scroll_event(GtkWidget *widget, GdkEventScroll *event, gpoint
 
 static dv_dag_node_t *find_clicked_node(double x, double y) {
   dv_dag_node_t * ret = NULL;
-  double vc, hc;
   int i;
   dv_dag_node_t *node;
   for (i=0; i<G->n; i++) {
     node = G->T + i;
-    if ((node->lv <= S->sel)
-        && (!dv_node_flag_check(node->f, DV_NODE_FLAG_UNION)
-            || dv_node_flag_check(node->f, DV_NODE_FLAG_SHRINKED))) {
-      vc = node->vl->c;
-      hc = node->c;
-      if (vc - DV_RADIUS < x && x < vc + DV_RADIUS
-          && hc - DV_RADIUS < y && y < hc + DV_RADIUS) {
+    if ((node->d <= S->cur_d)
+        && (!dv_is_union(node) || dv_is_shrinked(node))) {
+      if (node->x - node->lw < x && x < node->x + node->rw
+          && node->y < y && y < node->y + node->dw) {
         ret = node;
         break;
       }
@@ -245,13 +238,13 @@ int open_gui(int argc, char *argv[])
 
 static void dv_status_init() {
   S->drag_on = 0;
-  S->pressx = 0.0;
-  S->pressy = 0.0;
-  S->accdisx = 0.0;
-  S->accdisy = 0.0;
+  S->pressx = S->pressy = 0.0;
+  S->accdisx = S->accdisy = 0.0;
   S->nc = 2;
-  S->sel = 1;
+  S->vpw = S->vph = 0.0;
+  S->cur_d = 1;
   dv_animation_init(S->a);
+  S->nd = 0;
 }
 
 /*---------------end of Initialization Functions------*/
@@ -287,7 +280,7 @@ static int dv_get_env_string(char * s, char ** t) {
 }
 
 static void dv_get_env() {
-  dv_get_env_int("DV_DEPTH", &S->sel);
+  dv_get_env_int("DV_DEPTH", &S->cur_d);
 }
 
 /*---------------end of Environment Variables-----*/
@@ -304,7 +297,6 @@ int main(int argc, char *argv[])
     dv_convert_pidag_to_dvdag(P, G);
     //print_dvdag(G);
     dv_layout_dvdag(G);
-    printf("finished layout.\n");
     //print_layout(G);
     //check_layout(G);    
   }

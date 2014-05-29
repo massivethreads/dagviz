@@ -63,18 +63,23 @@ void dv_read_dag_file_to_pidag(char * filename, dr_pi_dag * P) {
 static void dv_dag_node_init(dv_dag_node_t *u, dv_dag_node_t *p, dr_pi_dag_node *pi) {
   u->pi = pi;
   dv_node_flag_init(u->f);
-  dv_llist_init(u->links);
-  dv_llist_init(u->heads);
-  dv_llist_init(u->tails);
-  u->vl = 0;
-  u->hl = 0;
-  dv_grid_init(u->grid, u);
-  u->dc = 0L;
-  u->lc = 0L;
-  u->rc = 0L;
-  u->c = 0L;
+  u->d = (p)?(p->d + 1):0;
+
   u->parent = p;
-  u->lv = (p)?(p->lv + 1):0;
+  u->pre = 0;
+  dv_llist_init(u->links);
+  u->x = 0.0;
+  u->y = 0.0;
+
+  u->head = 0;
+  dv_llist_init(u->tails);
+  u->lw = 0.0;
+  u->rw = 0.0;
+  u->dw = 0.0;
+
+  u->link_lw = 0.0;
+  u->link_rw = 0.0;
+  u->link_dw = 0.0;
 }
 
 static dv_dag_node_t * dv_traverse_node(dr_pi_dag_node *pi, dv_dag_node_t *u, dv_dag_node_t *p, dv_dag_node_t *plim, dv_stack_t *s, dv_dag_t *G) {
@@ -110,20 +115,21 @@ static dv_dag_node_t * dv_traverse_node(dr_pi_dag_node *pi, dv_dag_node_t *u, dv
       for (u_x = u_a; u_x < u_b; u_x++) {
         dv_dag_node_init(u_x, u, pi_x);
         pi_x++;
-        if (u_x->lv > G->lvmax)
-          G->lvmax = u_x->lv;
+        if (u_x->d > G->dmax)
+          G->dmax = u_x->d;
       }
       // Push child nodes to stack
       for (u_x = u_b-1; u_x >= u_a; u_x--) {
         dv_stack_push(s, (void *) u_x);
       }
-      // Set u.heads, u.tails
-      dv_llist_add(u->heads, (void *) u_a);
+      // Set u.head, u.tails
+      u->head = u_a;
       dv_llist_add(u->tails, (void *) (u_b - 1));
       // Set ux.links, u.tails
       for (u_x = u_a; u_x < u_b - 1; u_x++) {
         // x -> x+1
         dv_llist_add(u_x->links, (void *) (u_x + 1));
+        (u_x + 1)->pre = u_x;
         if (u_x->pi->info.kind == dr_dag_node_kind_create_task) {
           pi_t = u_x->pi + u_x->pi->child_offset;
           dv_check(p < plim);
@@ -133,6 +139,7 @@ static dv_dag_node_t * dv_traverse_node(dr_pi_dag_node *pi, dv_dag_node_t *u, dv
           dv_stack_push(s, (void *) u_t);
           // c -> T
           dv_llist_add(u_x->links, (void *) u_t);
+          u_t->pre = u_x;
           // --> u.tails
           dv_llist_add(u->tails, (void *) u_t);
         }
@@ -163,7 +170,7 @@ void dv_convert_pidag_to_dvdag(dr_pi_dag *P, dv_dag_t *G) {
   dv_check(p < plim);
   G->rt = p++;
   dv_dag_node_init(G->rt, 0, P->T);
-  G->lvmax = 0;
+  G->dmax = 0;
   // Traverse pidag's nodes
   dv_stack_t s[1];
   dv_stack_init(s);
@@ -177,7 +184,6 @@ void dv_convert_pidag_to_dvdag(dr_pi_dag *P, dv_dag_t *G) {
   G->zoom_ratio = 1.0;
   G->x = 0.0;
   G->y = 0.0;
-  G->width = G->height = 0.0;
   G->basex = G->basey = 0.0;
   dv_llist_init(G->itl);
   // Set initial state
@@ -186,7 +192,7 @@ void dv_convert_pidag_to_dvdag(dr_pi_dag *P, dv_dag_t *G) {
   for (i=0; i<G->n; i++) {
     node = G->T + i;
     if (dv_is_union(node)) {      
-      if (node->lv >= S->sel) {
+      if (node->d >= S->cur_d) {
         dv_node_flag_set(node->f, DV_NODE_FLAG_SHRINKED);
       }      
     }

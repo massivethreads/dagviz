@@ -139,14 +139,16 @@ static void print_layout_node(dv_dag_node_t *node, int i) {
   printf(
          "  Node %d:\n"
          "    info.kind: (%s)\n"
-         "    (vl->c,c): (%0.1f,%0.1f)\n"
-         "    grid->vl->(lc,rc): (%0.1f,%0.1f)\n"
-         "    dc: %0.1f\n",
+         "    (x,y): (%0.1f,%0.1f)\n"
+         "    lw: %0.1f\n"
+         "    rw: %0.1f\n"
+         "    dw: %0.1f\n",
          i,
          NODE_KIND_NAMES[kind],
-         node->vl->c, node->c,
-         node->grid->vl->lc, node->grid->vl->rc,
-         node->dc);
+         node->x, node->y,
+         node->lw,
+         node->rw,
+         node->dw);
 }
 
 void print_layout(dv_dag_t *G) {

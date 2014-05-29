@@ -145,7 +145,7 @@ void dv_llist_destroy(dv_llist_t *l) {
   dv_free(l, sizeof(dv_llist_t));      
 }
 
-int dv_llist_empty(dv_llist_t *l) {
+int dv_llist_is_empty(dv_llist_t *l) {
   if (l->top)
     return 0;
   else
@@ -245,6 +245,16 @@ void * dv_llist_iterate_next(dv_llist_t *l) {
   return ret;
 }
 
+int dv_llist_size(dv_llist_t *l) {
+  dv_check(l);
+  int n = 0;
+  dv_llist_cell_t * c = l->top;
+  while (c) {
+    n++;
+    c = c->next;
+  }
+  return n;
+}
 
 
 
@@ -257,3 +267,11 @@ const char * dv_convert_char_to_binary(int x)
     strcat(b, ((x & z) == z) ? "1" : "0");
   return b;
 }
+
+double dv_max(double d1, double d2) {
+  if (d1 > d2)
+    return d1;
+  else
+    return d2;
+}
+
