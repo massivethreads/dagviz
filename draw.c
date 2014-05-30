@@ -276,8 +276,7 @@ static dv_dag_node_t * draw_dvdag_edge_last_r(cairo_t *cr, dv_dag_node_t *u, dv_
   dv_llist_iterate_init(u->tails);
   dv_dag_node_t *u_tail;
   while (u_tail = (dv_dag_node_t *) dv_llist_iterate_next(u->tails)) {
-    if (!dv_is_union(u)
-        || (dv_is_shrinked(u) && !dv_is_expanding(u)))
+    if (dv_is_single(u_tail))
       draw_dvdag_edge_1(cr, u_tail, v);
     else
       draw_dvdag_edge_last_r(cr, u_tail, v);
@@ -296,19 +295,16 @@ static void draw_dvdag_edge_r(cairo_t *cr, dv_dag_node_t *u) {
   dv_llist_iterate_init(u->links);
   while (v = (dv_dag_node_t *) dv_llist_iterate_next(u->links)) {
 
-    if (!dv_is_union(u)
-        || (dv_is_shrinked(u) && !dv_is_expanding(u))) {
+    if (dv_is_single(u)) {
       
-      if (!dv_is_union(v)
-          || (dv_is_shrinked(v) && !dv_is_expanding(v)))
+      if (dv_is_single(v))
         draw_dvdag_edge_1(cr, u, v);
       else
         draw_dvdag_edge_1(cr, u, dv_dag_node_get_first(v->head));
       
     } else {
-
-      if (!dv_is_union(v)
-          || (dv_is_shrinked(v) && !dv_is_expanding(v)))
+    
+      if (dv_is_single(v))
         draw_dvdag_edge_last_r(cr, u, v);
       else
         draw_dvdag_edge_last_r(cr, u, dv_dag_node_get_first(v->head));
@@ -414,7 +410,7 @@ static void draw_dvdag_infotag(cairo_t *cr, dv_dag_node_t *node) {
 }
 
 void dv_draw_dvdag(cairo_t *cr, dv_dag_t *G) {
-  cairo_set_line_width(cr, 2.0);
+  cairo_set_line_width(cr, DV_NODE_LINE_WIDTH);
   int i;
   // Draw nodes
   S->nd = 0;
@@ -425,8 +421,8 @@ void dv_draw_dvdag(cairo_t *cr, dv_dag_t *G) {
   dv_llist_iterate_init(G->itl);
   dv_dag_node_t * u;
   while (u = (dv_dag_node_t *) dv_llist_iterate_next(G->itl)) {
-    if (dv_is_shrinked(u) && !dv_is_expanding(u)
-        && (u->d <= S->cur_d) && !dv_is_shrinking(u->parent))
+    if (dv_is_visible(u) && !dv_is_expanding(u)
+        && !dv_is_shrinking(u->parent))
       draw_dvdag_infotag(cr, u);
   }
 }

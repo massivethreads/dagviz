@@ -26,19 +26,20 @@ static double dv_layout_calculate_hgap(dv_dag_node_t *node) {
 
 static double dv_layout_calculate_vgap(dv_dag_node_t *node, double time_gap) {
   double gap = dv_layout_calculate_gap(node);
-  double vgap = gap * time_gap * DV_TIME_FACTOR;
+  double vgap = gap * log(time_gap)/log(DV_VLOG) * DV_VFACTOR;
   return vgap;
 }
 
 double dv_layout_calculate_hsize(dv_dag_node_t *node) {
-  return DV_RADIUS;
+  double gap = dv_layout_calculate_gap(node);
+  double hsize = gap * DV_HDIS;
+  return hsize;
 }
 
 double dv_layout_calculate_vsize(dv_dag_node_t *node) {
   double gap = dv_layout_calculate_gap(node);
   double time = node->pi->info.end.t - node->pi->info.start.t;
-  double vsize = gap * time * DV_TIME_FACTOR;
-  printf("vsize: %0.1lf\n", vsize);
+  double vsize = gap * log(time)/log(DV_VLOG) * DV_VFACTOR;
   return vsize;
 }
 
@@ -53,14 +54,27 @@ static dv_dag_node_t * dv_layout_node_get_last_tail(dv_dag_node_t *node) {
   return ret;
 }
 
-static double dv_layout_node_get_displacement(dv_dag_node_t *node) {
+static double dv_layout_node_get_node_xp(dv_dag_node_t *node) {
   dv_dag_node_t * u = node;
   double dis = 0.0;
   while (u) {
-    dis += u->x;
+    dis += u->xpre;
     u = u->pre;
   }
   return dis;
+}
+
+static double dv_layout_node_get_last_tail_xp_r(dv_dag_node_t *node) {
+  dv_check(node);
+  double ret = 0.0;
+  dv_dag_node_t * last_tail = 0;
+  if (!dv_is_single(node))
+    last_tail = dv_layout_node_get_last_tail(node);
+  if (last_tail) {
+    ret += dv_layout_node_get_node_xp(last_tail);
+    ret += dv_layout_node_get_last_tail_xp_r(last_tail);
+  }
+  return ret;
 }
 
 static void dv_layout_node(dv_dag_node_t *node) {
@@ -90,8 +104,8 @@ static void dv_layout_node(dv_dag_node_t *node) {
     node->dw = dv_layout_calculate_vsize(node);
   } else {
     // node's head's outward
-    node->head->xp = 0.0;
-    node->head->y = 0.0;
+    node->head->xpre = 0.0;
+    node->head->y = node->y;
     // Recursive call
     dv_layout_node(node->head);
     // node's inward
@@ -117,18 +131,14 @@ static void dv_layout_node(dv_dag_node_t *node) {
     // node & u's gap
     time_gap = (double) u->pi->info.start.t - node->pi->info.end.t;
     gap = dv_layout_calculate_vgap(node->parent, time_gap);
-    // node's linked u's outward
-    dv_dag_node_t * last_tail = dv_layout_node_get_last_tail(node);
-    if (last_tail)
-      u->xp = dv_layout_node_get_displacement(last_tail);
-    else
-      u->xp = 0.0;
+    // node's linked u's outward    
+    u->xpre = dv_layout_node_get_last_tail_xp_r(node);
     u->y = node->y + node->dw + gap;
     // Recursive call
     dv_layout_node(u);
     // node's link-along
-    node->link_lw = dv_max(node->lw, u->link_lw - u->x);
-    node->link_rw = dv_max(node->rw, u->link_rw + u->x);
+    node->link_lw = dv_max(node->lw, u->link_lw - u->xpre);
+    node->link_rw = dv_max(node->rw, u->link_rw + u->xpre);
     node->link_dw = node->dw + gap + u->link_dw;
     break;
   case 2:
@@ -146,11 +156,11 @@ static void dv_layout_node(dv_dag_node_t *node) {
     dv_layout_node(u);
     dv_layout_node(v);
     // node's linked u,v's outward
-    u->xp = dv_layout_calculate_hgap(u->parent) + u->link_lw;
-    v->xp = - dv_layout_calculate_hgap(v->parent) - v->link_rw;
+    u->xpre = dv_layout_calculate_hgap(u->parent) + u->link_lw;
+    v->xpre = - dv_layout_calculate_hgap(v->parent) - v->link_rw;
     // node's link-along
-    node->link_lw = dv_max(node->lw, - v->x + v->link_lw);
-    node->link_rw = dv_max(node->rw, u->x + u->link_rw);
+    node->link_lw = dv_max(node->lw, - v->xpre + v->link_lw);
+    node->link_rw = dv_max(node->rw, u->xpre + u->link_rw);
     node->link_dw = node->dw + dv_max(ugap + u->link_dw, vgap + v->link_dw);
     break;
   default:
@@ -160,7 +170,7 @@ static void dv_layout_node(dv_dag_node_t *node) {
   
 }
 
-static void dv_layout_reset_coord(dv_dag_node_t *node) {
+static void dv_layout_node_2nd(dv_dag_node_t *node) {
   /* Calculate inward */
   int is_single_node = 1;
   switch (node->pi->info.kind) {
@@ -185,7 +195,7 @@ static void dv_layout_reset_coord(dv_dag_node_t *node) {
     node->head->xp = 0.0;
     node->head->x = node->x;
     // Recursive call
-    dv_layout_node(node->head);
+    dv_layout_node_2nd(node->head);
   }
     
   /* Calculate link-along */
@@ -198,22 +208,22 @@ static void dv_layout_reset_coord(dv_dag_node_t *node) {
   case 1:
     u = (dv_dag_node_t *) node->links->top->item;
     // node's linked u's outward
-    u->xp += node->xp;
+    u->xp = u->xpre + node->xp;
     u->x = u->xp + u->parent->x;
     // Recursive call
-    dv_layout_node(u);
+    dv_layout_node_2nd(u);
     break;
   case 2:
     u = (dv_dag_node_t *) node->links->top->item; // cont node
     v = (dv_dag_node_t *) node->links->top->next->item; // task node
     // node's linked u,v's outward
-    u->xp += node->xp;
+    u->xp = u->xpre + node->xp;
     u->x = u->xp + u->parent->x;
-    v->xp += node->xp;
+    v->xp = v->xpre + node->xp;
     v->x = v->xp + v->parent->x;
     // Recursive call
-    dv_layout_node(u);
-    dv_layout_node(v);
+    dv_layout_node_2nd(u);
+    dv_layout_node_2nd(v);
     break;
   default:
     dv_check(0);
@@ -223,32 +233,25 @@ static void dv_layout_reset_coord(dv_dag_node_t *node) {
 }
 
 void dv_layout_dvdag(dv_dag_t *G) {
-  printf("dv_layout_dvdag() begins ..\n");
 
   // Relative coord
-  G->rt->xp = 0.0; // pre-based
+  G->rt->xpre = 0.0; // pre-based
   G->rt->y = 0.0;
   dv_layout_node(G->rt);
 
   // Absolute coord
   G->rt->xp = 0.0; // parent-based
   G->rt->x = 0.0;
-  dv_layout_reset_coord(G->rt);
+  dv_layout_node_2nd(G->rt);
 
-  printf("layout ended.\n");
+  // Check
+  print_layout(G);  
+
 }
 
 void dv_relayout_dvdag(dv_dag_t *G) {
-  
-  // Relative coord
-  G->rt->xp = 0.0; // pre-based
-  G->rt->y = 0.0;
-  dv_layout_node(G->rt);
 
-  // Absolute coord
-  G->rt->xp = 0.0; // parent-based
-  G->rt->x = 0.0;
-  dv_layout_reset_coord(G->rt);
+  dv_layout_dvdag(G);
   
 }
 

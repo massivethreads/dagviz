@@ -65,7 +65,10 @@ typedef struct dv_llist {
 #define DV_STATUS_PADDING 7
 #define DV_SAFE_CLICK_RANGE 3
 #define DV_UNION_NODE_MARGIN 7
-#define DV_TIME_FACTOR 10E-8
+#define DV_NODE_LINE_WIDTH 1.0
+#define DV_EDGE_LINE_WIDTH 1.0
+#define DV_VLOG 10
+#define DV_VFACTOR 10
 
 /*-----------------Data Structures-----------------*/
 
@@ -107,7 +110,7 @@ typedef struct dv_dag_node {
   struct dv_dag_node * pre;
   dv_llist_t links[1]; /* linked nodes */
   double x, y; /* coordinates */
-  double xp; /* coordinates based on parent */
+  double xp, xpre; /* coordinates based on parent, pre */
 
   /* inward topology */
   struct dv_dag_node * head; /* inner head node */
@@ -273,6 +276,18 @@ static int dv_is_expanding(dv_dag_node_t *node) {
 
 static int dv_is_shrinking(dv_dag_node_t *node) {
   return dv_node_flag_check(node->f, DV_NODE_FLAG_SHRINKING);
+}
+
+static int dv_is_single(dv_dag_node_t *node) {
+  return (!dv_is_union(node) || (dv_is_shrinked(node) && !dv_is_expanding(node)));
+}
+
+static int dv_is_visible(dv_dag_node_t *node) {
+  if (node->d <= S->cur_d) {
+    if (!dv_is_union(node) || dv_is_shrinked(node))
+      return 1;
+  }
+  return 0;
 }
 
 #endif /* DAGVIZ_HEADER_ */

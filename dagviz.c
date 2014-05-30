@@ -108,8 +108,7 @@ static dv_dag_node_t *find_clicked_node(double x, double y) {
   dv_dag_node_t *node;
   for (i=0; i<G->n; i++) {
     node = G->T + i;
-    if ((node->d <= S->cur_d)
-        && (!dv_is_union(node) || dv_is_shrinked(node))) {
+    if (dv_is_single(node)) {
       if (node->x - node->lw < x && x < node->x + node->rw
           && node->y < y && y < node->y + node->dw) {
         ret = node;
@@ -242,7 +241,7 @@ static void dv_status_init() {
   S->accdisx = S->accdisy = 0.0;
   S->nc = 2;
   S->vpw = S->vph = 0.0;
-  S->cur_d = 1;
+  S->cur_d = 2;
   dv_animation_init(S->a);
   S->nd = 0;
 }
@@ -297,7 +296,6 @@ int main(int argc, char *argv[])
     dv_convert_pidag_to_dvdag(P, G);
     //print_dvdag(G);
     dv_layout_dvdag(G);
-    //print_layout(G);
     //check_layout(G);    
   }
   //if (argc > 1)  print_dag_file(argv[1]);
