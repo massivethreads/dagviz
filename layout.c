@@ -44,7 +44,8 @@ static double dv_layout_calculate_vgap(dv_dag_node_t *parent, dv_dag_node_t *nod
 double dv_layout_calculate_vsize(dv_dag_node_t *node) {
   double gap = dv_layout_calculate_gap(node->parent);
   double time = node->pi->info.end.t - node->pi->info.start.t;
-  double vsize = gap * log(time)/log(DV_VLOG) * DV_VFACTOR;
+  double vsize = gap * log(time) / log(DV_VLOG) * DV_VFACTOR;
+  //double vsize = gap * sqrt(time) * DV_VFACTOR;
 	/*double time1 = log(node->pi->info.start.t - G->bt) / log(DV_VLOG);
 	double time2 = log(node->pi->info.end.t - G->bt) / log(DV_VLOG);
 	double vsize = gap * (time2 - time1);
@@ -272,7 +273,7 @@ void dv_layout_dvdag(dv_dag_t *G) {
   dv_layout_node_2nd(G->rt);
 
   // Check
-  print_layout(G);  
+  //print_layout(G);  
 
 }
 

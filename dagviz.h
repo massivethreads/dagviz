@@ -67,10 +67,10 @@ typedef struct dv_llist {
 #define DV_UNION_NODE_MARGIN 2
 #define DV_NODE_LINE_WIDTH 1.0
 #define DV_EDGE_LINE_WIDTH 1.0
-#define DV_VLOG 1.5
+#define DV_VLOG 1.8
 #define DV_VFACTOR 1
 
-#define DV_ANIMATION_DURATION 2000 // milliseconds
+#define DV_ANIMATION_DURATION 600 // milliseconds
 #define DV_ANIMATION_STEP 50 // milliseconds
 
 /*-----------------Data Structures-----------------*/

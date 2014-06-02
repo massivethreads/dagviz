@@ -254,8 +254,14 @@ static void draw_dvdag_edge_1(cairo_t *cr, dv_dag_node_t *u, dv_dag_node_t *v) {
     alpha = get_alpha_fading_in();
   cairo_save(cr);
   cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
-  cairo_move_to(cr, u->x, u->y + u->dw);
-  cairo_line_to(cr, v->x, v->y);
+  double x1, y1, x2, y2;
+  x1 = u->x;
+  y1 = u->y + u->dw;
+  x2 = v->x;
+  y2 = v->y;
+  cairo_move_to(cr, x1, y1);
+  cairo_line_to(cr, x1, y2);
+  cairo_line_to(cr, x2, y2);
   cairo_stroke(cr);
   cairo_restore(cr);
 }
