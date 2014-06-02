@@ -49,9 +49,9 @@ typedef struct dv_llist {
 /*-----------------Constants-----------------*/
 
 #define DV_ZOOM_INCREMENT 1.25
-#define DV_HDIS 70
+#define DV_HDIS 40
 #define DV_VDIS 100
-#define DV_RADIUS 30
+#define DV_RADIUS 20
 #define NUM_COLORS 34
 
 #define DV_NODE_FLAG_NONE      0
@@ -64,11 +64,14 @@ typedef struct dv_llist {
 #define DV_STRING_LENGTH 100
 #define DV_STATUS_PADDING 7
 #define DV_SAFE_CLICK_RANGE 3
-#define DV_UNION_NODE_MARGIN 7
+#define DV_UNION_NODE_MARGIN 2
 #define DV_NODE_LINE_WIDTH 1.0
 #define DV_EDGE_LINE_WIDTH 1.0
-#define DV_VLOG 10
-#define DV_VFACTOR 10
+#define DV_VLOG 1.5
+#define DV_VFACTOR 1
+
+#define DV_ANIMATION_DURATION 2000 // milliseconds
+#define DV_ANIMATION_STEP 50 // milliseconds
 
 /*-----------------Data Structures-----------------*/
 
@@ -120,6 +123,8 @@ typedef struct dv_dag_node {
   /* link-along topology */
   double link_lw, link_rw, link_dw;
 
+	int avoid_inward;
+
 } dv_dag_node_t;
 
 typedef struct dv_dag {
@@ -132,6 +137,7 @@ typedef struct dv_dag {
   dv_dag_node_t * T;  /* array of all nodes */
   dv_dag_node_t * rt;  /* root task */
   int dmax; /* depth max */
+	double bt; /* begin time */
 
   /* drawing parameters */
   char init;     /* to recognize initial drawing */

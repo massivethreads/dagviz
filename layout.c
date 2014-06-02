@@ -24,22 +24,41 @@ static double dv_layout_calculate_hgap(dv_dag_node_t *node) {
   return hgap;
 }
 
-static double dv_layout_calculate_vgap(dv_dag_node_t *node, double time_gap) {
-  double gap = dv_layout_calculate_gap(node);
-  double vgap = gap * log(time_gap)/log(DV_VLOG) * DV_VFACTOR;
-  return vgap;
-}
-
 double dv_layout_calculate_hsize(dv_dag_node_t *node) {
-  double gap = dv_layout_calculate_gap(node);
-  double hsize = gap * DV_HDIS;
+  double gap = dv_layout_calculate_gap(node->parent);
+  double hsize = gap * DV_RADIUS;
   return hsize;
 }
 
+static double dv_layout_calculate_vgap(dv_dag_node_t *parent, dv_dag_node_t *node1, dv_dag_node_t *node2) {
+  double gap = dv_layout_calculate_gap(parent);
+	double time_gap = node2->pi->info.start.t - node1->pi->info.end.t;
+  double vgap = gap * log(time_gap) / log(DV_VLOG) * DV_VFACTOR;
+	/*double time1 = log(node1->pi->info.end.t - G->bt) / log(DV_VLOG);
+	double time2 = log(node2->pi->info.start.t - G->bt) / log(DV_VLOG);
+	double vgap = gap * (time2 - time1);
+	printf("vgap %0.1lf -> %0.1lf = %0.1lf\n", time1, time2, vgap);*/
+  return vgap;
+}
+
 double dv_layout_calculate_vsize(dv_dag_node_t *node) {
-  double gap = dv_layout_calculate_gap(node);
+  double gap = dv_layout_calculate_gap(node->parent);
   double time = node->pi->info.end.t - node->pi->info.start.t;
   double vsize = gap * log(time)/log(DV_VLOG) * DV_VFACTOR;
+	/*double time1 = log(node->pi->info.start.t - G->bt) / log(DV_VLOG);
+	double time2 = log(node->pi->info.end.t - G->bt) / log(DV_VLOG);
+	double vsize = gap * (time2 - time1);
+	printf("vsize %0.1lf -> %0.1lf = %0.1lf\n", time1, time2, vsize);*/
+  return vsize;
+}
+
+double dv_layout_calculate_vsize_pure(dv_dag_node_t *node) {
+  double time = node->pi->info.end.t - node->pi->info.start.t;
+  double vsize = log(time)/log(DV_VLOG) * DV_VFACTOR;
+	/*double time1 = log(node->pi->info.start.t - G->bt) / log(DV_VLOG);
+	double time2 = log(node->pi->info.end.t - G->bt) / log(DV_VLOG);
+	double vsize = (time2 - time1);
+	printf("vsize %0.1lf -> %0.1lf = %0.1lf\n", time1, time2, vsize);*/
   return vsize;
 }
 
@@ -112,6 +131,17 @@ static void dv_layout_node(dv_dag_node_t *node) {
     node->lw = node->head->link_lw;
     node->rw = node->head->link_rw;
     node->dw = node->head->link_dw;
+		node->avoid_inward = 0;
+		// avoid shrinking too small
+		double comp = dv_layout_calculate_vsize_pure(node);
+		if (node->lw < DV_RADIUS
+				&& node->rw < DV_RADIUS
+				&& node->dw < comp) {
+			node->lw = DV_RADIUS;
+			node->rw = DV_RADIUS;
+			node->dw = comp;
+			node->avoid_inward = 1;
+		}
   }
     
   /* Calculate link-along */
@@ -129,8 +159,7 @@ static void dv_layout_node(dv_dag_node_t *node) {
   case 1:
     u = (dv_dag_node_t *) node->links->top->item;
     // node & u's gap
-    time_gap = (double) u->pi->info.start.t - node->pi->info.end.t;
-    gap = dv_layout_calculate_vgap(node->parent, time_gap);
+    gap = dv_layout_calculate_vgap(node->parent, node, u);
     // node's linked u's outward    
     u->xpre = dv_layout_node_get_last_tail_xp_r(node);
     u->y = node->y + node->dw + gap;
@@ -145,10 +174,8 @@ static void dv_layout_node(dv_dag_node_t *node) {
     u = (dv_dag_node_t *) node->links->top->item; // cont node
     v = (dv_dag_node_t *) node->links->top->next->item; // task node
     // node & u,v's gap
-    time_gap = (double) u->pi->info.start.t - node->pi->info.end.t;
-    ugap = dv_layout_calculate_vgap(node->parent, time_gap);
-    time_gap = (double) v->pi->info.start.t - node->pi->info.end.t;
-    vgap = dv_layout_calculate_vgap(node->parent, time_gap);
+    ugap = dv_layout_calculate_vgap(node->parent, node, u);
+    vgap = dv_layout_calculate_vgap(node->parent, node, v);
     // node's linked u,v's outward
     u->y = node->y + node->dw + ugap;
     v->y = node->y + node->dw + vgap;
@@ -289,8 +316,8 @@ double dv_get_time()
 
 void dv_animation_init(dv_animation_t *a) {
   a->on = 0;
-  a->duration = 600; // milliseconds
-  a->step = 50; // milliseconds
+  a->duration = DV_ANIMATION_DURATION;
+  a->step = DV_ANIMATION_STEP;
   a->started = 0.0;
   a->new_d = 0;
   a->ratio = 0.0;

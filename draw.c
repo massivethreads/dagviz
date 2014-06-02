@@ -201,8 +201,7 @@ static void draw_dvdag_node_r(cairo_t *cr, dv_dag_node_t *node) {
     break;
   case dr_dag_node_kind_section:
   case dr_dag_node_kind_task:
-    if (dv_is_union(node)
-        && ( !dv_is_shrinked(node) || dv_is_expanding(node) )) {
+    if (!dv_is_single(node)) {
       dv_check(node->head);
       is_single_node = 0;
     }
@@ -213,7 +212,8 @@ static void draw_dvdag_node_r(cairo_t *cr, dv_dag_node_t *node) {
   }
   if (!is_single_node) {
     // Recursive call
-    draw_dvdag_node_r(cr, node->head);
+		if (!node->avoid_inward)
+			draw_dvdag_node_r(cr, node->head);
   }
     
   /* Calculate link-along */
@@ -272,7 +272,11 @@ static dv_dag_node_t * dv_dag_node_get_first(dv_dag_node_t *u) {
   return u;
 }
 
-static dv_dag_node_t * draw_dvdag_edge_last_r(cairo_t *cr, dv_dag_node_t *u, dv_dag_node_t *v) {
+static void draw_dvdag_edge_last_r(cairo_t *cr, dv_dag_node_t *u, dv_dag_node_t *v) {
+	if (u->avoid_inward) {
+		draw_dvdag_edge_1(cr, u, v);
+		return;
+	}
   dv_llist_iterate_init(u->tails);
   dv_dag_node_t *u_tail;
   while (u_tail = (dv_dag_node_t *) dv_llist_iterate_next(u->tails)) {
@@ -286,9 +290,9 @@ static dv_dag_node_t * draw_dvdag_edge_last_r(cairo_t *cr, dv_dag_node_t *u, dv_
 static void draw_dvdag_edge_r(cairo_t *cr, dv_dag_node_t *u) {
   if (!u) return;
   // Call head
-  if (dv_is_union(u)
-      && ( !dv_is_shrinked(u) || dv_is_expanding(u) )) {
-    draw_dvdag_edge_r(cr, u->head);
+  if (!dv_is_single(u)) {
+		if (!u->avoid_inward)
+			draw_dvdag_edge_r(cr, u->head);
   }
   // Iterate links
   dv_dag_node_t * v;
@@ -422,7 +426,7 @@ void dv_draw_dvdag(cairo_t *cr, dv_dag_t *G) {
   dv_dag_node_t * u;
   while (u = (dv_dag_node_t *) dv_llist_iterate_next(G->itl)) {
     if (dv_is_visible(u) && !dv_is_expanding(u)
-        && !dv_is_shrinking(u->parent))
+        && (!u->parent || !dv_is_shrinking(u->parent)))
       draw_dvdag_infotag(cr, u);
   }
 }
