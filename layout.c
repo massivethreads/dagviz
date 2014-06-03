@@ -30,32 +30,57 @@ double dv_layout_calculate_hsize(dv_dag_node_t *node) {
   return hsize;
 }
 
+static double dv_layout_calculate_vresize(double val) {
+  double ret;
+  switch (S->sdt) {
+  case 0:
+    ret = log(val) / log(S->log_radix);
+    break;
+  case 1:
+    ret = pow(val, S->power_radix);
+    break;
+  default:
+    dv_check(0);
+    break;
+  }
+  return ret;
+}
+
 static double dv_layout_calculate_vgap(dv_dag_node_t *parent, dv_dag_node_t *node1, dv_dag_node_t *node2) {
   double gap = dv_layout_calculate_gap(parent);
-	double time_gap = node2->pi->info.start.t - node1->pi->info.end.t;
-  double vgap = gap * log(time_gap) / log(DV_VLOG) * DV_VFACTOR;
-	/*double time1 = log(node1->pi->info.end.t - G->bt) / log(DV_VLOG);
-	double time2 = log(node2->pi->info.start.t - G->bt) / log(DV_VLOG);
-	double vgap = gap * (time2 - time1);
-	printf("vgap %0.1lf -> %0.1lf = %0.1lf\n", time1, time2, vgap);*/
+  double vgap;
+  if (!S->frombt) {
+    // begin - end
+    double time_gap = dv_layout_calculate_vresize(node2->pi->info.start.t - node1->pi->info.end.t);
+    vgap = gap * time_gap;
+  } else {
+    // from beginning
+    double time1 = dv_layout_calculate_vresize(node1->pi->info.end.t - G->bt);
+    double time2 = dv_layout_calculate_vresize(node2->pi->info.start.t - G->bt);
+    vgap = gap * (time2 - time1);
+  }
   return vgap;
 }
 
 double dv_layout_calculate_vsize(dv_dag_node_t *node) {
   double gap = dv_layout_calculate_gap(node->parent);
-  double time = node->pi->info.end.t - node->pi->info.start.t;
-  double vsize = gap * log(time) / log(DV_VLOG) * DV_VFACTOR;
-  //double vsize = gap * sqrt(time) * DV_VFACTOR;
-	/*double time1 = log(node->pi->info.start.t - G->bt) / log(DV_VLOG);
-	double time2 = log(node->pi->info.end.t - G->bt) / log(DV_VLOG);
-	double vsize = gap * (time2 - time1);
-	printf("vsize %0.1lf -> %0.1lf = %0.1lf\n", time1, time2, vsize);*/
+  double vsize;
+  if (!S->frombt) {
+    // begin - end
+    double time_gap = dv_layout_calculate_vresize(node->pi->info.end.t - node->pi->info.start.t);
+    vsize = gap * time_gap;
+  } else {
+    // from beginning
+    double time1 = dv_layout_calculate_vresize(node->pi->info.start.t - G->bt);
+    double time2 = dv_layout_calculate_vresize(node->pi->info.end.t - G->bt);
+    vsize = gap * (time2 - time1);
+  }
   return vsize;
 }
 
 double dv_layout_calculate_vsize_pure(dv_dag_node_t *node) {
   double time = node->pi->info.end.t - node->pi->info.start.t;
-  double vsize = log(time)/log(DV_VLOG) * DV_VFACTOR;
+  double vsize = log(time)/log(DV_VLOG);
 	/*double time1 = log(node->pi->info.start.t - G->bt) / log(DV_VLOG);
 	double time2 = log(node->pi->info.end.t - G->bt) / log(DV_VLOG);
 	double vsize = (time2 - time1);
@@ -279,7 +304,10 @@ void dv_layout_dvdag(dv_dag_t *G) {
 
 void dv_relayout_dvdag(dv_dag_t *G) {
 
-  dv_layout_dvdag(G);
+  if (S->lt == 0)
+    dv_layout_dvdag(G);
+  else if (S->lt == 1)
+    dv_layout_timeline_dvdag(G);
   
 }
 
@@ -368,3 +396,77 @@ void dv_animation_stop(dv_animation_t *a) {
 }
 
 /*-----------end of Animation functions----------------------*/
+
+
+/*-----------Animation functions----------------------*/
+
+static void dv_layout_timeline_node(dv_dag_node_t *node) {
+  /* Calculate inward */
+  int is_single_node = 1;
+  switch (node->pi->info.kind) {
+  case dr_dag_node_kind_wait_tasks:
+  case dr_dag_node_kind_end_task:
+  case dr_dag_node_kind_create_task:
+    break;
+  case dr_dag_node_kind_section:
+  case dr_dag_node_kind_task:
+    if (dv_is_union(node))
+      is_single_node = 0;
+    break;
+  default:
+    dv_check(0);
+    break;
+  }
+  // node's inward
+  node->lw = dv_layout_calculate_hsize(node);
+  node->rw = dv_layout_calculate_hsize(node);
+  node->dw = dv_layout_calculate_vresize(node->pi->info.end.t - G->bt) - dv_layout_calculate_vresize(node->pi->info.start.t - G->bt);
+  // node's outward
+  int worker = node->pi->info.worker;
+  node->x = DV_RADIUS + worker * (2 * DV_RADIUS + DV_HDIS);
+  node->y = dv_layout_calculate_vresize(node->pi->info.start.t - G->bt);
+  if (!is_single_node) {
+    // Recursive call
+    if (!dv_is_shrinked(node))
+      dv_layout_timeline_node(node->head);
+  }
+    
+  /* Calculate link-along */
+  int n_links = dv_llist_size(node->links);
+  dv_dag_node_t * u; // linked node 1
+  dv_dag_node_t * v; // linked node 2
+  double time_gap, gap, ugap, vgap;
+  switch (n_links) {
+  case 0:
+    break;
+  case 1:
+    u = (dv_dag_node_t *) node->links->top->item;
+    // Recursive call
+    dv_layout_timeline_node(u);
+    break;
+  case 2:
+    u = (dv_dag_node_t *) node->links->top->item; // cont node
+    v = (dv_dag_node_t *) node->links->top->next->item; // task node
+    // Recursive call
+    dv_layout_timeline_node(u);
+    dv_layout_timeline_node(v);
+    break;
+  default:
+    dv_check(0);
+    break;
+  }
+  
+}
+
+void dv_layout_timeline_dvdag(dv_dag_t *G) {
+
+  // Absolute coord
+  dv_layout_timeline_node(G->rt);
+
+  // Check
+  //print_layout(G);  
+  
+}
+
+/*-----------end of Animation functions----------------------*/
+

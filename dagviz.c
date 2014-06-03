@@ -21,7 +21,10 @@ static void do_drawing(cairo_t *cr)
   cairo_save(cr);
   cairo_translate(cr, G->basex + G->x, G->basey + G->y);
   cairo_scale(cr, G->zoom_ratio, G->zoom_ratio);
-  dv_draw_dvdag(cr, G);
+  if (S->lt == 0)
+    dv_draw_dvdag(cr, G);
+  else if (S->lt == 1)
+    dv_draw_timeline_dvdag(cr, G);
   cairo_restore(cr);
 
   // Draw status line
@@ -73,22 +76,56 @@ static gboolean on_btn_zoomfit_clicked(GtkWidget *widget, cairo_t *cr, gpointer 
 
 static gboolean on_btn_shrink_clicked(GtkWidget *widget, cairo_t *cr, gpointer user_data)
 {
-  if (S->cur_d > 0) {
-    if (!S->a->on) {
-      S->a->new_d = S->cur_d - 1;
-      dv_animation_start(S->a);
+  if (S->lt == 0) {
+    if (S->cur_d > 0) {
+      if (!S->a->on) {
+        S->a->new_d = S->cur_d - 1;
+        dv_animation_start(S->a);
+      }
     }
+  } else if (S->lt == 1) {
+    int new_d = S->cur_d - 1;
+    dv_dag_node_t *node;
+    int i;
+    for (i=0; i<G->n; i++) {
+      node = G->T + i;
+      if (node->d >= new_d && !dv_is_shrinked(node)) {
+        dv_node_flag_set(node->f, DV_NODE_FLAG_SHRINKED);
+      } else if (node->d < new_d && dv_is_shrinked(node)) {
+        dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKED);
+      }
+    }
+    S->cur_d = new_d;
+    dv_relayout_dvdag(G);
+    gtk_widget_queue_draw(darea);
   }
   return TRUE;
 }
 
 static gboolean on_btn_expand_clicked(GtkWidget *widget, cairo_t *cr, gpointer user_data)
 {
-  if (S->cur_d < G->dmax) {
-    if (!S->a->on) {
-      S->a->new_d = S->cur_d + 1;
-      dv_animation_start(S->a);
+  if (S->lt == 0) {
+    if (S->cur_d < G->dmax) {
+      if (!S->a->on) {
+        S->a->new_d = S->cur_d + 1;
+        dv_animation_start(S->a);
+      }
     }
+  } else if (S->lt == 1) {
+    int new_d = S->cur_d + 1;
+    dv_dag_node_t *node;
+    int i;
+    for (i=0; i<G->n; i++) {
+      node = G->T + i;
+      if (node->d >= new_d && !dv_is_shrinked(node)) {
+        dv_node_flag_set(node->f, DV_NODE_FLAG_SHRINKED);
+      } else if (node->d < new_d && dv_is_shrinked(node)) {
+        dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKED);
+      }
+    }
+    S->cur_d = new_d;
+    dv_relayout_dvdag(G);
+    gtk_widget_queue_draw(darea);
   }
   return TRUE;
 }
@@ -173,6 +210,27 @@ static gboolean on_combobox_changed(GtkComboBox *widget, gpointer user_data) {
   return TRUE;
 }
 
+static gboolean on_combobox2_changed(GtkComboBox *widget, gpointer user_data) {
+  S->lt = gtk_combo_box_get_active(widget);
+  dv_relayout_dvdag(G);
+  gtk_widget_queue_draw(darea);
+  return TRUE;
+}
+
+static gboolean on_combobox3_changed(GtkComboBox *widget, gpointer user_data) {
+  S->sdt = gtk_combo_box_get_active(widget);
+  dv_relayout_dvdag(G);
+  gtk_widget_queue_draw(darea);
+  return TRUE;
+}
+
+static gboolean on_combobox4_changed(GtkComboBox *widget, gpointer user_data) {
+  S->frombt = gtk_combo_box_get_active(widget);
+  dv_relayout_dvdag(G);
+  gtk_widget_queue_draw(darea);
+  return TRUE;
+}
+
 int open_gui(int argc, char *argv[])
 {
   gtk_init(&argc, &argv);
@@ -190,21 +248,53 @@ int open_gui(int argc, char *argv[])
 
   // Toolbar
   GtkWidget *toolbar = gtk_toolbar_new();
-  GtkToolItem *btn_zoomfit = gtk_tool_button_new_from_stock(GTK_STOCK_ZOOM_FIT);
-  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_zoomfit, -1);
-  g_signal_connect(G_OBJECT(btn_zoomfit), "clicked", G_CALLBACK(on_btn_zoomfit_clicked), NULL);
-  gtk_box_pack_start(GTK_BOX(vbox), toolbar, FALSE, FALSE, 0);
 
-  // Combo box
+  // Layout type combobox
+  GtkToolItem *btn_combo2 = gtk_tool_item_new();
+  GtkWidget *combobox2 = gtk_combo_box_text_new();
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox2), "bouding", "Bounding box");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox2), "timeline", "Timeline");
+  gtk_combo_box_set_active(GTK_COMBO_BOX(combobox2), DV_LAYOUT_TYPE_INIT);
+  g_signal_connect(G_OBJECT(combobox2), "changed", G_CALLBACK(on_combobox2_changed), NULL);
+  gtk_container_add(GTK_CONTAINER(btn_combo2), combobox2);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo2, -1);
+
+  // Node color combobox
   GtkToolItem *btn_combo = gtk_tool_item_new();
   GtkWidget *combobox = gtk_combo_box_text_new();
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "worker", "Worker");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "cpu", "CPU");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "kind", "Node kind");
-  gtk_combo_box_set_active(GTK_COMBO_BOX(combobox), 2);
+  gtk_combo_box_set_active(GTK_COMBO_BOX(combobox), DV_NODE_COLOR_INIT);
   g_signal_connect(G_OBJECT(combobox), "changed", G_CALLBACK(on_combobox_changed), NULL);
   gtk_container_add(GTK_CONTAINER(btn_combo), combobox);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo, -1);
+
+  // Scale-down type combobox
+  GtkToolItem *btn_combo3 = gtk_tool_item_new();
+  GtkWidget *combobox3 = gtk_combo_box_text_new();
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox3), "log", "Log");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox3), "power", "Power");
+  gtk_combo_box_set_active(GTK_COMBO_BOX(combobox3), DV_SCALE_TYPE_INIT);
+  g_signal_connect(G_OBJECT(combobox3), "changed", G_CALLBACK(on_combobox3_changed), NULL);
+  gtk_container_add(GTK_CONTAINER(btn_combo3), combobox3);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo3, -1);
+
+  // Frombt combobox
+  GtkToolItem *btn_combo4 = gtk_tool_item_new();
+  GtkWidget *combobox4 = gtk_combo_box_text_new();
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox4), "not", "Not frombt");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox4), "frombt", "From BT");
+  gtk_combo_box_set_active(GTK_COMBO_BOX(combobox4), DV_FROMBT_INIT);
+  g_signal_connect(G_OBJECT(combobox4), "changed", G_CALLBACK(on_combobox4_changed), NULL);
+  gtk_container_add(GTK_CONTAINER(btn_combo4), combobox4);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo4, -1);
+
+  // Zoomfit button
+  GtkToolItem *btn_zoomfit = gtk_tool_button_new_from_stock(GTK_STOCK_ZOOM_FIT);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_zoomfit, -1);
+  g_signal_connect(G_OBJECT(btn_zoomfit), "clicked", G_CALLBACK(on_btn_zoomfit_clicked), NULL);
+  gtk_box_pack_start(GTK_BOX(vbox), toolbar, FALSE, FALSE, 0);
 
   // Shrink/Expand buttons
   GtkToolItem *btn_shrink = gtk_tool_button_new_from_stock(GTK_STOCK_ZOOM_OUT);
@@ -239,11 +329,16 @@ static void dv_status_init() {
   S->drag_on = 0;
   S->pressx = S->pressy = 0.0;
   S->accdisx = S->accdisy = 0.0;
-  S->nc = 2;
+  S->nc = DV_NODE_COLOR_INIT;
   S->vpw = S->vph = 0.0;
   S->cur_d = 2;
   dv_animation_init(S->a);
   S->nd = 0;
+  S->lt = DV_LAYOUT_TYPE_INIT;
+  S->sdt = DV_SCALE_TYPE_INIT;
+  S->log_radix = DV_VLOG;
+  S->power_radix = DV_VPOWER;
+  S->frombt = DV_FROMBT_INIT;
 }
 
 /*---------------end of Initialization Functions------*/
@@ -295,8 +390,11 @@ int main(int argc, char *argv[])
     dv_read_dag_file_to_pidag(argv[1], P);
     dv_convert_pidag_to_dvdag(P, G);
     //print_dvdag(G);
-    dv_layout_dvdag(G);
-    //check_layout(G);    
+    if (S->lt == 0)
+      dv_layout_dvdag(G);
+    else if (S->lt == 1)
+      dv_layout_timeline_dvdag(G);
+    //check_layout(G);
   }
   //if (argc > 1)  print_dag_file(argv[1]);
   return open_gui(argc, argv);

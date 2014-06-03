@@ -49,7 +49,7 @@ typedef struct dv_llist {
 /*-----------------Constants-----------------*/
 
 #define DV_ZOOM_INCREMENT 1.25
-#define DV_HDIS 40
+#define DV_HDIS 80
 #define DV_VDIS 100
 #define DV_RADIUS 20
 #define NUM_COLORS 34
@@ -68,10 +68,15 @@ typedef struct dv_llist {
 #define DV_NODE_LINE_WIDTH 1.0
 #define DV_EDGE_LINE_WIDTH 1.0
 #define DV_VLOG 1.8
-#define DV_VFACTOR 1
+#define DV_VPOWER 0.42
 
 #define DV_ANIMATION_DURATION 600 // milliseconds
 #define DV_ANIMATION_STEP 50 // milliseconds
+
+#define DV_NODE_COLOR_INIT 0
+#define DV_LAYOUT_TYPE_INIT 1
+#define DV_SCALE_TYPE_INIT 1
+#define DV_FROMBT_INIT 0
 
 /*-----------------Data Structures-----------------*/
 
@@ -85,6 +90,7 @@ typedef struct dv_animation {
 } dv_animation_t;
 
 typedef struct dv_status {
+
   // Drag animation
   char drag_on; /* currently dragged or not */
   double pressx, pressy; /* currently pressed position */
@@ -97,6 +103,11 @@ typedef struct dv_status {
   int cur_d; /* current depth */
   dv_animation_t a[1]; /* animation struct */
   long nd; /* number of nodes drawn */
+  int lt; /* layout type */
+  int sdt; /* scale down type */
+  double log_radix;
+  double power_radix;
+  int frombt;
 } dv_status_t;
 
 typedef struct dv_dag_node {
@@ -186,9 +197,11 @@ double dv_get_time();
 void dv_animation_init(dv_animation_t *);
 void dv_animation_start(dv_animation_t *);
 void dv_animation_stop(dv_animation_t *);
+void dv_layout_timeline_dvdag(dv_dag_t *);
 
 /* draw.c */
 void dv_draw_dvdag(cairo_t *, dv_dag_t *);
+void dv_draw_timeline_dvdag(cairo_t *, dv_dag_t *);
 
 /* utils.c */
 void dv_stack_init(dv_stack_t *);

@@ -1,7 +1,7 @@
 #include "dagviz.h"
 
 
-/*-----------------Drawing functions-----------*/
+/*-----------------DAG Drawing functions-----------*/
 
 static void draw_text(cairo_t *cr) {
   cairo_select_font_face(cr, "Serif", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
@@ -489,4 +489,134 @@ void dv_draw_status(cairo_t *cr) {
 }
 
 /*-----------------end of DAG drawing functions-----------*/
+
+
+/*-----------------TIMELINE Drawing functions-----------*/
+
+static void draw_timeline_dvdag_node_1(cairo_t *cr, dv_dag_node_t *node) {
+  // Count node drawn
+  S->nd++;
+  // Node color
+  double x = node->x;
+  double y = node->y;
+  double c[4];
+  int v = 0;
+  switch (S->nc) {
+  case 0:
+    v = node->pi->info.worker; break;
+  case 1:
+    v = node->pi->info.cpu; break;
+  case 2:
+    v = node->pi->info.kind; break;
+  default:
+    v = node->pi->info.worker;
+  }
+  lookup_color(v, c, c+1, c+2, c+3);
+  // Alpha
+  double alpha = 1.0;
+  // Draw path
+  cairo_save(cr);
+  cairo_new_path(cr);
+  double xx, yy, w, h;
+  // Normal-sized box (terminal node)
+  xx = x - node->lw;
+  yy = y;
+  w = node->lw + node->rw;
+  h = node->dw;
+  // Draw path
+  cairo_move_to(cr, xx, yy);
+  cairo_line_to(cr, xx + w, yy);
+  cairo_line_to(cr, xx + w, yy + h);
+  cairo_line_to(cr, xx, yy + h);
+  cairo_close_path(cr);
+
+  // Draw node
+  cairo_set_source_rgba(cr, c[0], c[1], c[2], c[3] * alpha);
+  cairo_fill_preserve(cr);
+  cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
+  cairo_stroke(cr);
+  cairo_restore(cr);
+}
+
+static void draw_timeline_dvdag_node_r(cairo_t *cr, dv_dag_node_t *node) {
+  dv_check(node);
+  /* Calculate inward */
+  int is_single_node = 1;
+  switch (node->pi->info.kind) {
+  case dr_dag_node_kind_wait_tasks:
+  case dr_dag_node_kind_end_task:
+  case dr_dag_node_kind_create_task:
+    break;
+  case dr_dag_node_kind_section:
+  case dr_dag_node_kind_task:
+    if (dv_is_union(node))
+      is_single_node = 0;
+    break;
+  default:
+    dv_check(0);
+    break;
+  }
+  if (is_single_node) {
+    draw_timeline_dvdag_node_1(cr, node);
+  } else {
+    // Recursive call
+		if (!dv_is_shrinked(node))
+			draw_timeline_dvdag_node_r(cr, node->head);
+  }
+    
+  /* Calculate link-along */
+  int n_links = dv_llist_size(node->links);
+  dv_dag_node_t * u; // linked node 1
+  dv_dag_node_t * v; // linked node 2
+  switch (n_links) {
+  case 0:
+    break;
+  case 1:
+    u = (dv_dag_node_t *) node->links->top->item;
+    // Recursive call
+    draw_timeline_dvdag_node_r(cr, u);
+    break;
+  case 2:
+    u = (dv_dag_node_t *) node->links->top->item; // cont node
+    v = (dv_dag_node_t *) node->links->top->next->item; // task node
+    // Recursive call
+    draw_timeline_dvdag_node_r(cr, u);
+    draw_timeline_dvdag_node_r(cr, v);
+    break;
+  default:
+    dv_check(0);
+    break;
+  }
+}
+
+void dv_draw_timeline_dvdag(cairo_t *cr, dv_dag_t *G) {
+  cairo_set_line_width(cr, DV_NODE_LINE_WIDTH);
+  int i;
+  // Draw nodes
+  S->nd = 0;
+  draw_timeline_dvdag_node_r(cr, G->rt);
+  // Draw info tags
+  dv_llist_iterate_init(G->itl);
+  dv_dag_node_t * u;
+  while (u = (dv_dag_node_t *) dv_llist_iterate_next(G->itl)) {
+    if (dv_is_visible(u))        
+      draw_dvdag_infotag(cr, u);
+  }
+  // Draw worker numbers
+  cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
+  cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+  cairo_set_font_size(cr, 12);
+  char *s = (char *) dv_malloc( DV_STRING_LENGTH * sizeof(char) );
+  double xx, yy;
+  xx = DV_RADIUS;
+  yy = -4;
+  for (i=0; i<G->nw; i++) {
+    sprintf(s, "Worker %d", i);            
+    cairo_move_to(cr, xx - 5, yy);
+    cairo_show_text(cr, s);
+    xx += 2 * DV_RADIUS + DV_HDIS;
+  }
+}
+
+/*-----------------end of TIMELINE drawing functions-----------*/
 
