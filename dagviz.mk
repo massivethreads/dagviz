@@ -17,7 +17,7 @@ compile_done : $(exe)
 
 # /home/$(username)/parallel2/sys/inst/g
 $(exe) : dagviz.c
-	gcc -Wall -g -I$(parallel2_dir)/include dagviz.c read.c layout.c draw.c utils.c print.c -L$(parallel2_dir)/lib -Wl,-R$(parallel2_dir)/lib `pkg-config --cflags --libs gtk+-3.0` -o $(exe) -ldr -lm
+	gcc -Wall -g -I$(parallel2_dir)/include dagviz.c read.c layout.c draw.c utils.c print.c layout_grid.c draw_grid.c -L$(parallel2_dir)/lib -Wl,-R$(parallel2_dir)/lib `pkg-config --cflags --libs gtk+-3.0` -o $(exe) -ldr -lm
 
 install_done: compile_done
 	mkdir -p $(prefix)/bin

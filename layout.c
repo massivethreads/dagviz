@@ -1,9 +1,8 @@
 #include "dagviz.h"
 
+/*-----Common functions-----*/
 
-/*-----------------Layout functions-----------*/
-
-static double dv_layout_calculate_gap(dv_dag_node_t *node) {
+double dv_layout_calculate_gap(dv_dag_node_t *node) {
   double ratio = S->a->ratio;
   double gap = 1.0;
   if (!node)
@@ -17,6 +16,10 @@ static double dv_layout_calculate_gap(dv_dag_node_t *node) {
   }
   return gap;
 }
+
+/*-----end of Common functions-----*/
+
+/*-----------------BBox layout functions-----------*/
 
 static double dv_layout_calculate_hgap(dv_dag_node_t *node) {
   double gap = dv_layout_calculate_gap(node);
@@ -122,7 +125,7 @@ static double dv_layout_node_get_last_tail_xp_r(dv_dag_node_t *node) {
   return ret;
 }
 
-static void dv_layout_node(dv_dag_node_t *node) {
+static void dv_layout_bbox_node(dv_dag_node_t *node) {
   /* Calculate inward */
   int is_single_node = 1;
   switch (node->pi->info.kind) {
@@ -152,7 +155,7 @@ static void dv_layout_node(dv_dag_node_t *node) {
     node->head->xpre = 0.0;
     node->head->y = node->y;
     // Recursive call
-    dv_layout_node(node->head);
+    dv_layout_bbox_node(node->head);
     // node's inward
     node->lw = node->head->link_lw;
     node->rw = node->head->link_rw;
@@ -190,7 +193,7 @@ static void dv_layout_node(dv_dag_node_t *node) {
     u->xpre = dv_layout_node_get_last_tail_xp_r(node);
     u->y = node->y + node->dw + gap;
     // Recursive call
-    dv_layout_node(u);
+    dv_layout_bbox_node(u);
     // node's link-along
     node->link_lw = dv_max(node->lw, u->link_lw - u->xpre);
     node->link_rw = dv_max(node->rw, u->link_rw + u->xpre);
@@ -206,8 +209,8 @@ static void dv_layout_node(dv_dag_node_t *node) {
     u->y = node->y + node->dw + ugap;
     v->y = node->y + node->dw + vgap;
     // Recursive call
-    dv_layout_node(u);
-    dv_layout_node(v);
+    dv_layout_bbox_node(u);
+    dv_layout_bbox_node(v);
     // node's linked u,v's outward
     u->xpre = dv_layout_calculate_hgap(u->parent) + u->link_lw;
     v->xpre = - dv_layout_calculate_hgap(v->parent) - v->link_rw;
@@ -223,7 +226,7 @@ static void dv_layout_node(dv_dag_node_t *node) {
   
 }
 
-static void dv_layout_node_2nd(dv_dag_node_t *node) {
+static void dv_layout_bbox_node_2nd(dv_dag_node_t *node) {
   /* Calculate inward */
   int is_single_node = 1;
   switch (node->pi->info.kind) {
@@ -248,7 +251,7 @@ static void dv_layout_node_2nd(dv_dag_node_t *node) {
     node->head->xp = 0.0;
     node->head->x = node->x;
     // Recursive call
-    dv_layout_node_2nd(node->head);
+    dv_layout_bbox_node_2nd(node->head);
   }
     
   /* Calculate link-along */
@@ -264,7 +267,7 @@ static void dv_layout_node_2nd(dv_dag_node_t *node) {
     u->xp = u->xpre + node->xp;
     u->x = u->xp + u->parent->x;
     // Recursive call
-    dv_layout_node_2nd(u);
+    dv_layout_bbox_node_2nd(u);
     break;
   case 2:
     u = (dv_dag_node_t *) node->links->top->item; // cont node
@@ -275,8 +278,8 @@ static void dv_layout_node_2nd(dv_dag_node_t *node) {
     v->xp = v->xpre + node->xp;
     v->x = v->xp + v->parent->x;
     // Recursive call
-    dv_layout_node_2nd(u);
-    dv_layout_node_2nd(v);
+    dv_layout_bbox_node_2nd(u);
+    dv_layout_bbox_node_2nd(v);
     break;
   default:
     dv_check(0);
@@ -285,33 +288,24 @@ static void dv_layout_node_2nd(dv_dag_node_t *node) {
   
 }
 
-void dv_layout_dvdag(dv_dag_t *G) {
+void dv_layout_bbox_dvdag(dv_dag_t *G) {
 
   // Relative coord
   G->rt->xpre = 0.0; // pre-based
   G->rt->y = 0.0;
-  dv_layout_node(G->rt);
+  dv_layout_bbox_node(G->rt);
 
   // Absolute coord
   G->rt->xp = 0.0; // parent-based
   G->rt->x = 0.0;
-  dv_layout_node_2nd(G->rt);
+  dv_layout_bbox_node_2nd(G->rt);
 
   // Check
   //print_layout(G);  
 
 }
 
-void dv_relayout_dvdag(dv_dag_t *G) {
-
-  if (S->lt == 0)
-    dv_layout_dvdag(G);
-  else if (S->lt == 1)
-    dv_layout_timeline_dvdag(G);
-  
-}
-
-/*-----------------end of Layout functions-----------*/
+/*-----------------end of BBox layout functions-----------*/
 
 
 /*-----------Animation functions----------------------*/
@@ -398,7 +392,7 @@ void dv_animation_stop(dv_animation_t *a) {
 /*-----------end of Animation functions----------------------*/
 
 
-/*-----------Animation functions----------------------*/
+/*-----------Timeline layout functions----------------------*/
 
 static void dv_layout_timeline_node(dv_dag_node_t *node) {
   /* Calculate inward */
@@ -458,7 +452,7 @@ static void dv_layout_timeline_node(dv_dag_node_t *node) {
   
 }
 
-void dv_layout_timeline_dvdag(dv_dag_t *G) {
+static void dv_layout_timeline_dvdag(dv_dag_t *G) {
 
   // Absolute coord
   dv_layout_timeline_node(G->rt);
@@ -468,5 +462,32 @@ void dv_layout_timeline_dvdag(dv_dag_t *G) {
   
 }
 
-/*-----------end of Animation functions----------------------*/
+/*-----------end of Timeline layout functions----------------------*/
+
+
+/*-----------Main layout functions-------------------------*/
+
+void dv_layout_dvdag(dv_dag_t *G) {
+	
+	if (S->lt == 0)
+		dv_layout_glike_dvdag(G);
+	else if (S->lt == 1)
+		dv_layout_bbox_dvdag(G);
+	else if (S->lt == 2)
+		dv_layout_timeline_dvdag(G);
+
+}
+
+void dv_relayout_dvdag(dv_dag_t *G) {
+
+	if (S->lt == 0)
+		dv_relayout_glike_dvdag(G);
+	else if (S->lt == 1)
+		dv_layout_bbox_dvdag(G);
+	else if (S->lt == 2)
+		dv_layout_timeline_dvdag(G);
+  
+}
+
+/*-----------end of Main layout functions-------------------------*/
 

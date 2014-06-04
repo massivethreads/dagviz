@@ -49,7 +49,7 @@ typedef struct dv_llist {
 /*-----------------Constants-----------------*/
 
 #define DV_ZOOM_INCREMENT 1.25
-#define DV_HDIS 80
+#define DV_HDIS 50
 #define DV_VDIS 100
 #define DV_RADIUS 20
 #define NUM_COLORS 34
@@ -74,9 +74,33 @@ typedef struct dv_llist {
 #define DV_ANIMATION_STEP 50 // milliseconds
 
 #define DV_NODE_COLOR_INIT 0
-#define DV_LAYOUT_TYPE_INIT 1
+#define DV_LAYOUT_TYPE_INIT 2
 #define DV_SCALE_TYPE_INIT 1
 #define DV_FROMBT_INIT 0
+
+#define DV_COLOR_POOL_SIZE 100
+#define DV_NUM_COLOR_POOLS 6
+
+/*--Grid-like layout--*/
+
+typedef struct dv_grid_line {
+  struct dv_grid_line * l;  /* left next grid line */
+  struct dv_grid_line * r;  /* right next grid line */
+  dv_llist_t L[1]; /* list of assigned nodes */
+  double lc;    /* left count */
+  double rc;    /* right count */
+  double c;  /* coordinate */
+} dv_grid_line_t;
+
+struct dv_dag_node;
+
+typedef struct dv_grid {
+  dv_grid_line_t vl[1];
+  dv_grid_line_t hl[1];
+  struct dv_dag_node * owner;
+} dv_grid_t;
+
+/*--end of Grid-like layout--*/
 
 /*-----------------Data Structures-----------------*/
 
@@ -90,7 +114,6 @@ typedef struct dv_animation {
 } dv_animation_t;
 
 typedef struct dv_status {
-
   // Drag animation
   char drag_on; /* currently dragged or not */
   double pressx, pressy; /* currently pressed position */
@@ -108,6 +131,9 @@ typedef struct dv_status {
   double log_radix;
   double power_radix;
   int frombt;
+  // Color pool
+  int CP[DV_NUM_COLOR_POOLS][DV_COLOR_POOL_SIZE][4]; // worker, cpu, nodekind, cp1, cp2, cp3
+  int CP_sizes[DV_NUM_COLOR_POOLS];
 } dv_status_t;
 
 typedef struct dv_dag_node {
@@ -115,27 +141,31 @@ typedef struct dv_dag_node {
   /* task-parallel data */
   dr_pi_dag_node * pi;
 
-  /* topology data */  
+  /* state data */  
   char f[1]; /* node flags, 0x0: single, 0x01: union/collapsed, 0x11: union/expanded */
   int d; /* depth */
   
-  /* outward topology */
+  /* linking structure */
   struct dv_dag_node * parent;
   struct dv_dag_node * pre;
   dv_llist_t links[1]; /* linked nodes */
-  double x, y; /* coordinates */
-  double xp, xpre; /* coordinates based on parent, pre */
-
-  /* inward topology */
   struct dv_dag_node * head; /* inner head node */
   dv_llist_t tails[1]; /* list of inner tail nodes */
+
+  /* bbox/timeline layouts */
+  double x, y; /* coordinates */
+  double xp, xpre; /* coordinates based on parent, pre */
   double lw, rw, dw; /* left/right/down widths */
-
-  /* link-along topology */
   double link_lw, link_rw, link_dw;
-
 	int avoid_inward;
 
+	/* grid-like layout */
+  dv_grid_line_t * vl;  /* vertical line of outer grid */
+  dv_grid_line_t * hl;  /* horizontal line of outer grid */
+  dv_grid_t grid[1]; /* inner grid */
+  double lc, rc, dc; /* left/right/down counts */
+  double c; /* coordinate */
+	
 } dv_dag_node_t;
 
 typedef struct dv_dag {
@@ -157,6 +187,9 @@ typedef struct dv_dag {
   double basex, basey;
   dv_llist_t itl[1]; /* list of nodes that have info tag */
 
+	/* grid-like layout */
+  dv_grid_t grid[1];  /* root grid */
+
 } dv_dag_t;
 
 
@@ -172,6 +205,7 @@ extern dv_dag_t G[];
 extern GtkWidget *window;
 extern GtkWidget *darea;
 extern dv_llist_cell_t *FL;
+
 
 /*-----------------Headers-----------------*/
 
@@ -189,6 +223,7 @@ void dv_read_dag_file_to_pidag(char *, dr_pi_dag *);
 void dv_convert_pidag_to_dvdag(dr_pi_dag *, dv_dag_t *);
 
 /* layout.c */
+double dv_layout_calculate_gap(dv_dag_node_t *);
 double dv_layout_calculate_hsize(dv_dag_node_t *);
 double dv_layout_calculate_vsize(dv_dag_node_t *);
 void dv_layout_dvdag(dv_dag_t *);
@@ -197,11 +232,21 @@ double dv_get_time();
 void dv_animation_init(dv_animation_t *);
 void dv_animation_start(dv_animation_t *);
 void dv_animation_stop(dv_animation_t *);
-void dv_layout_timeline_dvdag(dv_dag_t *);
+/* layout_grid.c */
+void dv_layout_glike_dvdag(dv_dag_t *);
+void dv_relayout_glike_dvdag(dv_dag_t *);
 
 /* draw.c */
+void dv_draw_text(cairo_t *);
+void dv_draw_rounded_rectangle(cairo_t *, double, double, double, double);
+void dv_lookup_color(dv_dag_node_t *, double *, double *, double *, double *);
+double dv_get_alpha_fading_out();
+double dv_get_alpha_fading_in();
+void dv_draw_status(cairo_t *);
+void dv_draw_bbox_infotags(cairo_t *, dv_dag_t *);
 void dv_draw_dvdag(cairo_t *, dv_dag_t *);
-void dv_draw_timeline_dvdag(cairo_t *, dv_dag_t *);
+/* draw_grid.c */
+void dv_draw_glike_dvdag(cairo_t *, dv_dag_t *);
 
 /* utils.c */
 void dv_stack_init(dv_stack_t *);
@@ -226,7 +271,6 @@ void * dv_llist_get(dv_llist_t *);
 void * dv_llist_remove(dv_llist_t *, void *);
 void dv_llist_iterate_init(dv_llist_t *);
 void * dv_llist_iterate_next(dv_llist_t *);
-
 int dv_llist_size(dv_llist_t *);
 
 const char * dv_convert_char_to_binary(int );
