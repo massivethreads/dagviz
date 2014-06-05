@@ -224,7 +224,7 @@ static void draw_dvdag_node_1(cairo_t *cr, dv_dag_node_t *node) {
   cairo_restore(cr);
 }
 
-static void draw_dvdag_node_r(cairo_t *cr, dv_dag_node_t *node) {
+static void draw_bbox_dvdag_node_r(cairo_t *cr, dv_dag_node_t *node) {
   /* Draw node */
   dv_check(node);
   if (!dv_is_union(node)
@@ -253,7 +253,7 @@ static void draw_dvdag_node_r(cairo_t *cr, dv_dag_node_t *node) {
   if (!is_single_node) {
     // Recursive call
 		if (!node->avoid_inward)
-			draw_dvdag_node_r(cr, node->head);
+			draw_bbox_dvdag_node_r(cr, node->head);
   }
     
   /* Calculate link-along */
@@ -266,14 +266,14 @@ static void draw_dvdag_node_r(cairo_t *cr, dv_dag_node_t *node) {
   case 1:
     u = (dv_dag_node_t *) node->links->top->item;
     // Recursive call
-    draw_dvdag_node_r(cr, u);
+    draw_bbox_dvdag_node_r(cr, u);
     break;
   case 2:
     u = (dv_dag_node_t *) node->links->top->item; // cont node
     v = (dv_dag_node_t *) node->links->top->next->item; // task node
     // Recursive call
-    draw_dvdag_node_r(cr, u);
-    draw_dvdag_node_r(cr, v);
+    draw_bbox_dvdag_node_r(cr, u);
+    draw_bbox_dvdag_node_r(cr, v);
     break;
   default:
     dv_check(0);
@@ -333,12 +333,12 @@ static void draw_dvdag_edge_last_r(cairo_t *cr, dv_dag_node_t *u, dv_dag_node_t 
   }  
 }
 
-static void draw_dvdag_edge_r(cairo_t *cr, dv_dag_node_t *u) {
+static void draw_bbox_dvdag_edge_r(cairo_t *cr, dv_dag_node_t *u) {
   if (!u) return;
   // Call head
   if (!dv_is_single(u)) {
 		if (!u->avoid_inward)
-			draw_dvdag_edge_r(cr, u->head);
+			draw_bbox_dvdag_edge_r(cr, u->head);
   }
   // Iterate links
   dv_dag_node_t * v;
@@ -360,7 +360,7 @@ static void draw_dvdag_edge_r(cairo_t *cr, dv_dag_node_t *u) {
         draw_dvdag_edge_last_r(cr, u, dv_dag_node_get_first(v->head));
 
     }
-    draw_dvdag_edge_r(cr, v);
+    draw_bbox_dvdag_edge_r(cr, v);
     
   }
 }
@@ -474,9 +474,9 @@ void dv_draw_bbox_dvdag(cairo_t *cr, dv_dag_t *G) {
   int i;
   // Draw nodes
   S->nd = 0;
-  draw_dvdag_node_r(cr, G->rt);
+  draw_bbox_dvdag_node_r(cr, G->rt);
   // Draw edges
-  draw_dvdag_edge_r(cr, G->rt);
+  draw_bbox_dvdag_edge_r(cr, G->rt);
 }
 
 
@@ -514,8 +514,8 @@ static void draw_timeline_dvdag_node_1(cairo_t *cr, dv_dag_node_t *node) {
   // Draw node
   cairo_set_source_rgba(cr, c[0], c[1], c[2], c[3] * alpha);
   cairo_fill_preserve(cr);
-  cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
-  cairo_stroke(cr);
+  //cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
+  //cairo_stroke(cr);
   cairo_restore(cr);
 }
 

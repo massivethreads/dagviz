@@ -63,7 +63,7 @@ typedef struct dv_llist {
 #define DV_ZOOM_TO_FIT_MARGIN 20
 #define DV_STRING_LENGTH 100
 #define DV_STATUS_PADDING 7
-#define DV_SAFE_CLICK_RANGE 3
+#define DV_SAFE_CLICK_RANGE 1
 #define DV_UNION_NODE_MARGIN 2
 #define DV_NODE_LINE_WIDTH 1.0
 #define DV_EDGE_LINE_WIDTH 1.0

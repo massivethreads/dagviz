@@ -71,12 +71,12 @@ static void dv_do_drawing(cairo_t *cr)
 }
 
 static void dv_do_expanding(int e) {
+  if (S->cur_d + e < 0 || S->cur_d + e > G->dmax)
+    return;
   if (S->lt == 0 || S->lt == 1) {
-    if (S->cur_d > 0) {
-      if (!S->a->on) {
-        S->a->new_d = S->cur_d + e;
-        dv_animation_start(S->a);
-      }
+    if (!S->a->on) {
+      S->a->new_d = S->cur_d + e;
+      dv_animation_start(S->a);
     }
   } else if (S->lt == 2) {
     int new_d = S->cur_d + e;
@@ -239,9 +239,11 @@ static gboolean on_combobox_changed(GtkComboBox *widget, gpointer user_data) {
 }
 
 static gboolean on_combobox2_changed(GtkComboBox *widget, gpointer user_data) {
+  int old_lt = S->lt;
   S->lt = gtk_combo_box_get_active(widget);
   dv_relayout_dvdag(G);
-  gtk_widget_queue_draw(darea);
+  if (S->lt != old_lt)
+    dv_do_zoomfit();
   return TRUE;
 }
 
