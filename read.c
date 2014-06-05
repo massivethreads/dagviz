@@ -68,20 +68,28 @@ static void dv_dag_node_init(dv_dag_node_t *u, dv_dag_node_t *p, dr_pi_dag_node 
   u->parent = p;
   u->pre = 0;
   dv_llist_init(u->links);
-  u->x = 0.0;
-  u->y = 0.0;
-
   u->head = 0;
   dv_llist_init(u->tails);
+
+  u->x = 0.0;
+  u->y = 0.0;
+  u->xp = 0.0;
+  u->xpre = 0.0;
   u->lw = 0.0;
   u->rw = 0.0;
   u->dw = 0.0;
-
   u->link_lw = 0.0;
   u->link_rw = 0.0;
   u->link_dw = 0.0;
-
 	u->avoid_inward = 0;
+
+  u->vl = 0;
+  u->hl = 0;
+  dv_grid_init(u->grid, u);
+  u->lc = 0L;
+  u->rc = 0L;
+  u->dc = 0L;
+  u->c = 0L;
 }
 
 static dv_dag_node_t * dv_traverse_node(dr_pi_dag_node *pi, dv_dag_node_t *u, dv_dag_node_t *p, dv_dag_node_t *plim, dv_stack_t *s, dv_dag_t *G) {
