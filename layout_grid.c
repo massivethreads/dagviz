@@ -288,7 +288,8 @@ void dv_layout_glike_dvdag(dv_dag_t *G) {
 }
 
 void dv_relayout_glike_dvdag(dv_dag_t *G) {
-	
+
+  /*
   // Count lines
   G->grid->vl->rc = dv_layout_count_line_right(G->grid->vl);
   G->grid->vl->lc = dv_layout_count_line_left(G->grid->vl);
@@ -299,7 +300,9 @@ void dv_relayout_glike_dvdag(dv_dag_t *G) {
   G->grid->hl->c = 0.0;
   dv_layout_align_line_rightleft(G->grid);
   G->rt->c = 0.0;
-  dv_layout_align_line_down(G->rt);
+  dv_layout_align_line_down(G->rt);*/
+
+  dv_layout_glike_dvdag(G);
 	
 }
 
