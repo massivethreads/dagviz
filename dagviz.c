@@ -2,7 +2,7 @@
 
 GtkWidget *window;
 GtkWidget *darea;
-
+GtkWidget *dv_entry_radix;
 
 /*--------Interactive processing functions------------*/
 
@@ -182,6 +182,36 @@ static dv_dag_node_t *dv_do_finding_clicked_node(double x, double y) {
   return ret;
 }
 
+static void dv_set_entry_radix_text() {
+  char str[DV_ENTRY_RADIX_MAX_LENGTH];
+  double radix;
+  if (S->sdt == 0)
+    radix = S->log_radix;
+  else if (S->sdt == 1)
+    radix = S->power_radix;
+  else if (S->sdt == 2)
+    radix = S->linear_radix;
+  else
+    dv_check(0);
+  sprintf(str, "%0.3lf", radix);
+  gtk_entry_set_width_chars(GTK_ENTRY(dv_entry_radix), strlen(str));
+  gtk_entry_set_text(GTK_ENTRY(dv_entry_radix), str);
+}
+
+static void dv_get_entry_radix_text() {
+  double radix = atof(gtk_entry_get_text(GTK_ENTRY(dv_entry_radix)));
+  if (S->sdt == 0)
+    S->log_radix = radix;
+  else if (S->sdt == 1)
+    S->power_radix = radix;
+  else if (S->sdt == 2)
+    S->linear_radix = radix;
+  else
+    dv_check(0);
+  dv_relayout_dvdag(G);
+  gtk_widget_queue_draw(darea);
+}
+
 /*--------end of Interactive processing functions------------*/
 
 
@@ -307,6 +337,7 @@ static gboolean on_combobox2_changed(GtkComboBox *widget, gpointer user_data) {
 
 static gboolean on_combobox3_changed(GtkComboBox *widget, gpointer user_data) {
   S->sdt = gtk_combo_box_get_active(widget);
+  dv_set_entry_radix_text();
   dv_relayout_dvdag(G);
   gtk_widget_queue_draw(darea);
   return TRUE;
@@ -316,6 +347,11 @@ static gboolean on_combobox4_changed(GtkComboBox *widget, gpointer user_data) {
   S->frombt = gtk_combo_box_get_active(widget);
   dv_relayout_dvdag(G);
   gtk_widget_queue_draw(darea);
+  return TRUE;
+}
+
+static gboolean on_entry_radix_activate(GtkEntry *entry, gpointer user_data) {
+  dv_get_entry_radix_text();
   return TRUE;
 }
 
@@ -375,6 +411,15 @@ int open_gui(int argc, char *argv[])
   g_signal_connect(G_OBJECT(combobox3), "changed", G_CALLBACK(on_combobox3_changed), NULL);
   gtk_container_add(GTK_CONTAINER(btn_combo3), combobox3);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo3, -1);
+
+  // Radix value input
+  GtkToolItem *btn_entry_radix = gtk_tool_item_new();
+  dv_entry_radix = gtk_entry_new();
+  //gtk_entry_set_max_length(GTK_ENTRY(dv_entry_radix), 10);
+  dv_set_entry_radix_text();
+  g_signal_connect(G_OBJECT(dv_entry_radix), "activate", G_CALLBACK(on_entry_radix_activate), NULL);
+  gtk_container_add(GTK_CONTAINER(btn_entry_radix), dv_entry_radix);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_entry_radix, -1);
 
   // Frombt combobox
   GtkToolItem *btn_combo4 = gtk_tool_item_new();

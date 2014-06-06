@@ -83,6 +83,7 @@ typedef struct dv_llist {
 #define DV_NUM_COLOR_POOLS 6
 
 #define DV_TIMELINE_NODE_WITH_BORDER 1
+#define DV_ENTRY_RADIX_MAX_LENGTH 20
 
 /*--Grid-like layout--*/
 
