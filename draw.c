@@ -252,8 +252,8 @@ static void draw_bbox_dvdag_node_r(cairo_t *cr, dv_dag_node_t *node) {
   }
   if (!is_single_node) {
     // Recursive call
-		if (!node->avoid_inward)
-			draw_bbox_dvdag_node_r(cr, node->head);
+    if (!node->avoid_inward)
+      draw_bbox_dvdag_node_r(cr, node->head);
   }
     
   /* Calculate link-along */
@@ -319,10 +319,10 @@ static dv_dag_node_t * dv_dag_node_get_first(dv_dag_node_t *u) {
 }
 
 static void draw_dvdag_edge_last_r(cairo_t *cr, dv_dag_node_t *u, dv_dag_node_t *v) {
-	if (u->avoid_inward) {
-		draw_dvdag_edge_1(cr, u, v);
-		return;
-	}
+  if (u->avoid_inward) {
+    draw_dvdag_edge_1(cr, u, v);
+    return;
+  }
   dv_llist_iterate_init(u->tails);
   dv_dag_node_t *u_tail;
   while (u_tail = (dv_dag_node_t *) dv_llist_iterate_next(u->tails)) {
@@ -337,8 +337,8 @@ static void draw_bbox_dvdag_edge_r(cairo_t *cr, dv_dag_node_t *u) {
   if (!u) return;
   // Call head
   if (!dv_is_single(u)) {
-		if (!u->avoid_inward)
-			draw_bbox_dvdag_edge_r(cr, u->head);
+    if (!u->avoid_inward)
+      draw_bbox_dvdag_edge_r(cr, u->head);
   }
   // Iterate links
   dv_dag_node_t * v;
@@ -514,8 +514,10 @@ static void draw_timeline_dvdag_node_1(cairo_t *cr, dv_dag_node_t *node) {
   // Draw node
   cairo_set_source_rgba(cr, c[0], c[1], c[2], c[3] * alpha);
   cairo_fill_preserve(cr);
-  //cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
-  //cairo_stroke(cr);
+  if (DV_TIMELINE_NODE_WITH_BORDER) {
+    cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
+    cairo_stroke(cr);
+  }
   cairo_restore(cr);
 }
 
@@ -541,8 +543,8 @@ static void draw_timeline_dvdag_node_r(cairo_t *cr, dv_dag_node_t *node) {
     draw_timeline_dvdag_node_1(cr, node);
   } else {
     // Recursive call
-		if (!dv_is_shrinked(node))
-			draw_timeline_dvdag_node_r(cr, node->head);
+    if (!dv_is_shrinked(node))
+      draw_timeline_dvdag_node_r(cr, node->head);
   }
     
   /* Calculate link-along */
@@ -661,17 +663,17 @@ void dv_draw_bbox_infotags(cairo_t *cr, dv_dag_t *G) {
 void dv_draw_dvdag(cairo_t *cr, dv_dag_t *G) {
 
   // Draw DAG
-	if (S->lt == 0)
-		dv_draw_glike_dvdag(cr, G);
+  if (S->lt == 0)
+    dv_draw_glike_dvdag(cr, G);
   else if (S->lt == 1)
-		dv_draw_bbox_dvdag(cr, G);
-	else if (S->lt == 2)
-		dv_draw_timeline_dvdag(cr, G);
+    dv_draw_bbox_dvdag(cr, G);
+  else if (S->lt == 2)
+    dv_draw_timeline_dvdag(cr, G);
   else
     dv_check(0);
   // Draw infotags
   dv_draw_bbox_infotags(cr, G);
-	
+  
 }
 
 /*-----end of Main drawing functions-----*/

@@ -8,46 +8,98 @@ GtkWidget *darea;
 
 static void dv_do_zooming(double zoom_ratio, double posx, double posy)
 {
-  if (posx != 0.0 || posy != 0.0) {
-    posx -= G->basex + G->x;
-    posy -= G->basey + G->y;
-    double deltax = posx / G->zoom_ratio * zoom_ratio - posx;
-    double deltay = posy / G->zoom_ratio * zoom_ratio - posy;
-    G->x -= deltax;
-    G->y -= deltay;
-  }
+  posx -= G->basex + G->x;
+  posy -= G->basey + G->y;
+  double deltax = posx / G->zoom_ratio * zoom_ratio - posx;
+  double deltay = posy / G->zoom_ratio * zoom_ratio - posy;
+  G->x -= deltax;
+  G->y -= deltay;
   G->zoom_ratio = zoom_ratio;
   gtk_widget_queue_draw(darea);
 }
 
-static double dv_get_zoomfit_ratio(double w, double h) {
+static void dv_get_zoomfit_hoz_ratio(double w, double h, double *pz, double *px, double *py) {
   double zoom_ratio = 1.0;
+  double x = 0.0;
+  double y = 0.0;
   double d1, d2;
+  double lw, rw;
   if (S->lt == 0) {
-    d1 = G->rt->dc * DV_VDIS;
-    d2 = h - 2 * (DV_ZOOM_TO_FIT_MARGIN + DV_RADIUS);
-    if (d1 > d2) {
-      zoom_ratio = d2 / d1;    
-    }
-  } else if (S->lt == 1) {
-    d1 = G->rt->dw;
-    d2 = h - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    // Grid-based
+    lw = G->rt->vl->lc * DV_HDIS;
+    rw = G->rt->vl->rc * DV_HDIS;
+    d1 = lw + rw;
+    d2 = w - 2 * (DV_ZOOM_TO_FIT_MARGIN + DV_RADIUS);
     if (d1 > d2)
-      zoom_ratio = d2 / d1;    
+      zoom_ratio = d2 / d1;
+    x -= (rw - lw) * 0.5 * zoom_ratio;
+  } else if (S->lt == 1) {
+    // Bounding box
+    d1 = G->rt->lw + G->rt->rw;
+    d2 = w - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    if (d1 > d2)
+      zoom_ratio = d2 / d1;
+    x -= (G->rt->rw - G->rt->lw) * 0.5 * zoom_ratio;
   } else if (S->lt == 2) {
+    // Timeline
     d1 = 2*DV_RADIUS + (G->nw - 1) * (2*DV_RADIUS + DV_HDIS);
     d2 = w - 2 * DV_ZOOM_TO_FIT_MARGIN;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
   } else
     dv_check(0);
-  return zoom_ratio;
+  *pz = zoom_ratio;
+  *px = x;
+  *py = y;
 }
 
-static void dv_do_zoomfit() {
-  double zoom_ratio = dv_get_zoomfit_ratio(S->vpw, S->vph);
+static void dv_get_zoomfit_ver_ratio(double w, double h, double *pz, double *px, double *py) {
+  double zoom_ratio = 1.0;
+  double x = 0.0;
+  double y = 0.0;
+  double d1, d2;
+  double lw, rw;
+  if (S->lt == 0) {
+    // Grid-based
+    d1 = G->rt->dc * DV_VDIS;
+    d2 = h - 2 * (DV_ZOOM_TO_FIT_MARGIN + DV_RADIUS);
+    if (d1 > d2)
+      zoom_ratio = d2 / d1;
+    lw = G->rt->vl->lc * DV_HDIS;
+    rw = G->rt->vl->rc * DV_HDIS;
+    x -= (rw - lw) * 0.5 * zoom_ratio;
+  } else if (S->lt == 1) {
+    // Bounding box
+    d1 = G->rt->dw;
+    d2 = h - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    if (d1 > d2)
+      zoom_ratio = d2 / d1;    
+    x -= (G->rt->rw - G->rt->lw) * 0.5 * zoom_ratio;
+  } else if (S->lt == 2) {
+    // Timeline
+    d1 = 10 + G->rt->dw;
+    d2 = h - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    if (d1 > d2)
+      zoom_ratio = d2 / d1;
+    double lrw = 2*DV_RADIUS + (G->nw - 1) * (2*DV_RADIUS + DV_HDIS);
+    x += (w - lrw * zoom_ratio) * 0.5;
+  } else
+    dv_check(0);
+  *pz = zoom_ratio;
+  *px = x;
+  *py = y;
+}
+
+static void dv_do_zoomfit_hoz() {
   G->x = G->y = 0.0;
-  dv_do_zooming(zoom_ratio, 0.0, 0.0);
+  dv_get_zoomfit_hoz_ratio(S->vpw, S->vph, &G->zoom_ratio, &G->x, &G->y);
+  gtk_widget_queue_draw(darea);
+}
+
+static void dv_do_zoomfit_ver() {
+  G->x = G->y = 0.0;
+  dv_get_zoomfit_ver_ratio(S->vpw, S->vph, &G->zoom_ratio, &G->x, &G->y);
+  gtk_widget_queue_draw(darea);
 }
 
 static void dv_do_drawing(cairo_t *cr)
@@ -56,14 +108,14 @@ static void dv_do_drawing(cairo_t *cr)
   if (G->init) {
     double w = gtk_widget_get_allocated_width(darea);
     double h = gtk_widget_get_allocated_height(darea);
-    G->zoom_ratio = dv_get_zoomfit_ratio(w, h);
+    dv_get_zoomfit_hoz_ratio(w, h, &G->zoom_ratio, &G->x, &G->y);
     G->init = 0;
   }
   // Draw graph
   cairo_save(cr);
   cairo_translate(cr, G->basex + G->x, G->basey + G->y);
   cairo_scale(cr, G->zoom_ratio, G->zoom_ratio);
-	dv_draw_dvdag(cr, G);
+  dv_draw_dvdag(cr, G);
   cairo_restore(cr);
 
   // Draw status line
@@ -73,12 +125,12 @@ static void dv_do_drawing(cairo_t *cr)
 static void dv_do_expanding(int e) {
   if (S->cur_d + e < 0 || S->cur_d + e > G->dmax)
     return;
-  if (S->lt == 0 || S->lt == 1) {
+  if (S->lt == 0) {
     if (!S->a->on) {
       S->a->new_d = S->cur_d + e;
       dv_animation_start(S->a);
     }
-  } else if (S->lt == 2) {
+  } else if (S->lt == 2 || S->lt == 1) {
     int new_d = S->cur_d + e;
     dv_dag_node_t *node;
     int i;
@@ -145,7 +197,8 @@ static gboolean on_draw_event(GtkWidget *widget, cairo_t *cr, gpointer user_data
     G->basex = 0.5 * S->vpw;
     G->basey = DV_ZOOM_TO_FIT_MARGIN + DV_RADIUS;
   } else if (S->lt == 1) {
-    G->basex = 0.5 * S->vpw - (G->rt->rw - G->rt->lw)/2;
+    //G->basex = 0.5 * S->vpw - 0.5 * (G->rt->rw - G->rt->lw);
+    G->basex = 0.5 * S->vpw;
     G->basey = DV_ZOOM_TO_FIT_MARGIN;
   } else if (S->lt == 2) {
     G->basex = DV_ZOOM_TO_FIT_MARGIN;
@@ -157,9 +210,15 @@ static gboolean on_draw_event(GtkWidget *widget, cairo_t *cr, gpointer user_data
   return FALSE;
 }
 
-static gboolean on_btn_zoomfit_clicked(GtkWidget *widget, cairo_t *cr, gpointer user_data)
+static gboolean on_btn_zoomfit_hoz_clicked(GtkWidget *widget, cairo_t *cr, gpointer user_data)
 {
-  dv_do_zoomfit();
+  dv_do_zoomfit_hoz();
+  return TRUE;
+}
+
+static gboolean on_btn_zoomfit_ver_clicked(GtkWidget *widget, cairo_t *cr, gpointer user_data)
+{
+  dv_do_zoomfit_ver();
   return TRUE;
 }
 
@@ -243,7 +302,7 @@ static gboolean on_combobox2_changed(GtkComboBox *widget, gpointer user_data) {
   S->lt = gtk_combo_box_get_active(widget);
   dv_relayout_dvdag(G);
   if (S->lt != old_lt)
-    dv_do_zoomfit();
+    dv_do_zoomfit_hoz();
   return TRUE;
 }
 
@@ -309,6 +368,7 @@ int open_gui(int argc, char *argv[])
   GtkWidget *combobox3 = gtk_combo_box_text_new();
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox3), "log", "Log");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox3), "power", "Power");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox3), "linear", "Linear");
   gtk_combo_box_set_active(GTK_COMBO_BOX(combobox3), DV_SCALE_TYPE_INIT);
   g_signal_connect(G_OBJECT(combobox3), "changed", G_CALLBACK(on_combobox3_changed), NULL);
   gtk_container_add(GTK_CONTAINER(btn_combo3), combobox3);
@@ -324,10 +384,16 @@ int open_gui(int argc, char *argv[])
   gtk_container_add(GTK_CONTAINER(btn_combo4), combobox4);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo4, -1);
 
-  // Zoomfit button
-  GtkToolItem *btn_zoomfit = gtk_tool_button_new_from_stock(GTK_STOCK_ZOOM_FIT);
-  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_zoomfit, -1);
-  g_signal_connect(G_OBJECT(btn_zoomfit), "clicked", G_CALLBACK(on_btn_zoomfit_clicked), NULL);
+  // Zoomfit-horizontally button
+  GtkToolItem *btn_zoomfit_hoz = gtk_tool_button_new_from_stock(GTK_STOCK_ZOOM_FIT);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_zoomfit_hoz, -1);
+  g_signal_connect(G_OBJECT(btn_zoomfit_hoz), "clicked", G_CALLBACK(on_btn_zoomfit_hoz_clicked), NULL);
+  gtk_box_pack_start(GTK_BOX(vbox), toolbar, FALSE, FALSE, 0);
+
+  // Zoomfit-vertically button
+  GtkToolItem *btn_zoomfit_ver = gtk_tool_button_new_from_stock(GTK_STOCK_ZOOM_FIT);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_zoomfit_ver, -1);
+  g_signal_connect(G_OBJECT(btn_zoomfit_ver), "clicked", G_CALLBACK(on_btn_zoomfit_ver_clicked), NULL);
   gtk_box_pack_start(GTK_BOX(vbox), toolbar, FALSE, FALSE, 0);
 
   // Shrink/Expand buttons
@@ -370,8 +436,9 @@ static void dv_status_init() {
   S->nd = 0;
   S->lt = DV_LAYOUT_TYPE_INIT;
   S->sdt = DV_SCALE_TYPE_INIT;
-  S->log_radix = DV_VLOG;
-  S->power_radix = DV_VPOWER;
+  S->log_radix = DV_RADIX_LOG;
+  S->power_radix = DV_RADIX_POWER;
+  S->linear_radix = DV_RADIX_LINEAR;
   S->frombt = DV_FROMBT_INIT;
   int i;
   for (i=0; i<DV_NUM_COLOR_POOLS; i++)
@@ -427,7 +494,7 @@ int main(int argc, char *argv[])
     dv_read_dag_file_to_pidag(argv[1], P);
     dv_convert_pidag_to_dvdag(P, G);
     //print_dvdag(G);
-		dv_layout_dvdag(G);
+    dv_layout_dvdag(G);
     //check_layout(G);
   }
   //if (argc > 1)  print_dag_file(argv[1]);

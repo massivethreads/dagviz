@@ -67,19 +67,22 @@ typedef struct dv_llist {
 #define DV_UNION_NODE_MARGIN 2
 #define DV_NODE_LINE_WIDTH 1.0
 #define DV_EDGE_LINE_WIDTH 1.0
-#define DV_VLOG 1.8
-#define DV_VPOWER 0.42
+#define DV_RADIX_LOG 1.8
+#define DV_RADIX_POWER 0.42
+#define DV_RADIX_LINEAR 100000
 
 #define DV_ANIMATION_DURATION 600 // milliseconds
 #define DV_ANIMATION_STEP 50 // milliseconds
 
+#define DV_LAYOUT_TYPE_INIT 0
 #define DV_NODE_COLOR_INIT 0
-#define DV_LAYOUT_TYPE_INIT 2
 #define DV_SCALE_TYPE_INIT 1
 #define DV_FROMBT_INIT 0
 
 #define DV_COLOR_POOL_SIZE 100
 #define DV_NUM_COLOR_POOLS 6
+
+#define DV_TIMELINE_NODE_WITH_BORDER 1
 
 /*--Grid-like layout--*/
 
@@ -130,6 +133,7 @@ typedef struct dv_status {
   int sdt; /* scale down type */
   double log_radix;
   double power_radix;
+  double linear_radix;
   int frombt;
   // Color pool
   int CP[DV_NUM_COLOR_POOLS][DV_COLOR_POOL_SIZE][4]; // worker, cpu, nodekind, cp1, cp2, cp3
@@ -157,15 +161,15 @@ typedef struct dv_dag_node {
   double xp, xpre; /* coordinates based on parent, pre */
   double lw, rw, dw; /* left/right/down widths */
   double link_lw, link_rw, link_dw;
-	int avoid_inward;
+  int avoid_inward;
 
-	/* grid-like layout */
+  /* grid-like layout */
   dv_grid_line_t * vl;  /* vertical line of outer grid */
   dv_grid_line_t * hl;  /* horizontal line of outer grid */
   dv_grid_t grid[1]; /* inner grid */
   double lc, rc, dc; /* left/right/down counts */
   double c; /* coordinate */
-	
+  
 } dv_dag_node_t;
 
 typedef struct dv_dag {
@@ -174,11 +178,12 @@ typedef struct dv_dag {
   long nw;      /* number of workers */
   dr_pi_string_table * st;   /* string table */
 
-  /* topology */
+  /* DAG data */
   dv_dag_node_t * T;  /* array of all nodes */
   dv_dag_node_t * rt;  /* root task */
   int dmax; /* depth max */
-	double bt; /* begin time */
+  double bt; /* begin time */
+  double et; /* end time */
 
   /* drawing parameters */
   char init;     /* to recognize initial drawing */
@@ -187,8 +192,8 @@ typedef struct dv_dag {
   double basex, basey;
   dv_llist_t itl[1]; /* list of nodes that have info tag */
 
-	/* grid-like layout */
-  dv_grid_t grid[1];  /* root grid */
+  /* grid-like layout */
+  dv_grid_t grid[1];  /* root grid */  
 
 } dv_dag_t;
 

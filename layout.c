@@ -42,6 +42,9 @@ static double dv_layout_calculate_vresize(double val) {
   case 1:
     ret = pow(val, S->power_radix);
     break;
+  case 2:
+    ret = val / S->linear_radix;
+    break;
   default:
     dv_check(0);
     break;
@@ -82,12 +85,15 @@ double dv_layout_calculate_vsize(dv_dag_node_t *node) {
 }
 
 double dv_layout_calculate_vsize_pure(dv_dag_node_t *node) {
-  double time = node->pi->info.end.t - node->pi->info.start.t;
-  double vsize = log(time)/log(DV_VLOG);
-	/*double time1 = log(node->pi->info.start.t - G->bt) / log(DV_VLOG);
-	double time2 = log(node->pi->info.end.t - G->bt) / log(DV_VLOG);
-	double vsize = (time2 - time1);
-	printf("vsize %0.1lf -> %0.1lf = %0.1lf\n", time1, time2, vsize);*/
+  double vsize;
+  if (!S->frombt) {
+    double time = node->pi->info.end.t - node->pi->info.start.t;
+    vsize = dv_layout_calculate_vresize(time);
+  } else {
+    double time1 = dv_layout_calculate_vresize(node->pi->info.start.t - G->bt);
+    double time2 = dv_layout_calculate_vresize(node->pi->info.end.t - G->bt);
+    double vsize = time2 - time1;
+  }
   return vsize;
 }
 
@@ -160,17 +166,17 @@ static void dv_layout_bbox_node(dv_dag_node_t *node) {
     node->lw = node->head->link_lw;
     node->rw = node->head->link_rw;
     node->dw = node->head->link_dw;
-		node->avoid_inward = 0;
-		// avoid shrinking too small
-		double comp = dv_layout_calculate_vsize_pure(node);
-		if (node->lw < DV_RADIUS
-				&& node->rw < DV_RADIUS
-				&& node->dw < comp) {
-			node->lw = DV_RADIUS;
-			node->rw = DV_RADIUS;
-			node->dw = comp;
-			node->avoid_inward = 1;
-		}
+    node->avoid_inward = 0;
+    // avoid shrinking too small
+    double comp = dv_layout_calculate_vsize_pure(node);
+    if (node->lw < DV_RADIUS
+        && node->rw < DV_RADIUS
+        && node->dw < comp) {
+      node->lw = DV_RADIUS;
+      node->rw = DV_RADIUS;
+      node->dw = comp;
+      node->avoid_inward = 1;
+    }
   }
     
   /* Calculate link-along */
@@ -468,24 +474,24 @@ static void dv_layout_timeline_dvdag(dv_dag_t *G) {
 /*-----------Main layout functions-------------------------*/
 
 void dv_layout_dvdag(dv_dag_t *G) {
-	
-	if (S->lt == 0)
-		dv_layout_glike_dvdag(G);
-	else if (S->lt == 1)
-		dv_layout_bbox_dvdag(G);
-	else if (S->lt == 2)
-		dv_layout_timeline_dvdag(G);
+  
+  if (S->lt == 0)
+    dv_layout_glike_dvdag(G);
+  else if (S->lt == 1)
+    dv_layout_bbox_dvdag(G);
+  else if (S->lt == 2)
+    dv_layout_timeline_dvdag(G);
 
 }
 
 void dv_relayout_dvdag(dv_dag_t *G) {
 
-	if (S->lt == 0)
-		dv_relayout_glike_dvdag(G);
-	else if (S->lt == 1)
-		dv_layout_bbox_dvdag(G);
-	else if (S->lt == 2)
-		dv_layout_timeline_dvdag(G);
+  if (S->lt == 0)
+    dv_relayout_glike_dvdag(G);
+  else if (S->lt == 1)
+    dv_layout_bbox_dvdag(G);
+  else if (S->lt == 2)
+    dv_layout_timeline_dvdag(G);
   
 }
 
