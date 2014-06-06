@@ -97,7 +97,6 @@ static void dv_do_zoomfit_hoz() {
 }
 
 static void dv_do_zoomfit_ver() {
-  G->x = G->y = 0.0;
   dv_get_zoomfit_ver_ratio(S->vpw, S->vph, &G->zoom_ratio, &G->x, &G->y);
   gtk_widget_queue_draw(darea);
 }
@@ -323,6 +322,8 @@ static gboolean on_combobox4_changed(GtkComboBox *widget, gpointer user_data) {
 int open_gui(int argc, char *argv[])
 {
   gtk_init(&argc, &argv);
+  GdkRGBA white[1];
+  gdk_rgba_parse(white, "white");
 
   // Main window
   window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
@@ -337,6 +338,7 @@ int open_gui(int argc, char *argv[])
 
   // Toolbar
   GtkWidget *toolbar = gtk_toolbar_new();
+  gtk_widget_override_background_color(GTK_WIDGET(toolbar), GTK_STATE_FLAG_NORMAL, white);
 
   // Layout type combobox
   GtkToolItem *btn_combo2 = gtk_tool_item_new();
@@ -406,6 +408,7 @@ int open_gui(int argc, char *argv[])
 
   // Drawing Area
   darea = gtk_drawing_area_new();
+  gtk_widget_override_background_color(GTK_WIDGET(darea), GTK_STATE_FLAG_NORMAL, white);
   g_signal_connect(G_OBJECT(darea), "draw", G_CALLBACK(on_draw_event), NULL);
   gtk_widget_add_events(GTK_WIDGET(darea), GDK_SCROLL_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK | GDK_POINTER_MOTION_MASK);
   g_signal_connect(G_OBJECT(darea), "scroll-event", G_CALLBACK(on_scroll_event), NULL);
