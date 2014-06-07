@@ -374,7 +374,7 @@ int open_gui(int argc, char *argv[])
 
   // Toolbar
   GtkWidget *toolbar = gtk_toolbar_new();
-  gtk_widget_override_background_color(GTK_WIDGET(toolbar), GTK_STATE_FLAG_NORMAL, white);
+  //gtk_widget_override_background_color(GTK_WIDGET(toolbar), GTK_STATE_FLAG_NORMAL, white);
 
   // Layout type combobox
   GtkToolItem *btn_combo2 = gtk_tool_item_new();
