@@ -661,7 +661,9 @@ void dv_draw_bbox_infotags(cairo_t *cr, dv_dag_t *G) {
 }
 
 void dv_draw_dvdag(cairo_t *cr, dv_dag_t *G) {
-
+  printf("draw begins...\n");
+  double start = dv_get_time();
+  
   // Draw DAG
   if (S->lt == 0)
     dv_draw_glike_dvdag(cr, G);
@@ -674,6 +676,8 @@ void dv_draw_dvdag(cairo_t *cr, dv_dag_t *G) {
   // Draw infotags
   dv_draw_bbox_infotags(cr, G);
   
+  double end = dv_get_time();
+  printf("...draw done: %0.3lf\n", end - start);
 }
 
 /*-----end of Main drawing functions-----*/

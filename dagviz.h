@@ -139,6 +139,7 @@ typedef struct dv_status {
   // Color pool
   int CP[DV_NUM_COLOR_POOLS][DV_COLOR_POOL_SIZE][4]; // worker, cpu, nodekind, cp1, cp2, cp3
   int CP_sizes[DV_NUM_COLOR_POOLS];
+  long fcc; /* function call count */
 } dv_status_t;
 
 typedef struct dv_dag_node {

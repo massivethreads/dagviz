@@ -105,9 +105,7 @@ static void dv_do_drawing(cairo_t *cr)
 {
   // First time only
   if (G->init) {
-    double w = gtk_widget_get_allocated_width(darea);
-    double h = gtk_widget_get_allocated_height(darea);
-    dv_get_zoomfit_hoz_ratio(w, h, &G->zoom_ratio, &G->x, &G->y);
+    dv_get_zoomfit_hoz_ratio(S->vpw, S->vph, &G->zoom_ratio, &G->x, &G->y);
     G->init = 0;
   }
   // Draw graph
@@ -219,9 +217,6 @@ static void dv_get_entry_radix_text() {
 
 static gboolean on_draw_event(GtkWidget *widget, cairo_t *cr, gpointer user_data)
 {
-  // Set parameters
-  S->vpw = gtk_widget_get_allocated_width(widget);
-  S->vph = gtk_widget_get_allocated_height(widget);
   if (S->lt == 0) {
     G->basex = 0.5 * S->vpw;
     G->basey = DV_ZOOM_TO_FIT_MARGIN + DV_RADIUS;
@@ -355,6 +350,12 @@ static gboolean on_entry_radix_activate(GtkEntry *entry, gpointer user_data) {
   return TRUE;
 }
 
+static gboolean on_darea_configure_event(GtkWidget *widget, GdkEventConfigure *event, gpointer user_data) {
+  S->vpw = event->width;
+  S->vph = event->height;
+  return TRUE;
+}
+
 int open_gui(int argc, char *argv[])
 {
   gtk_init(&argc, &argv);
@@ -460,6 +461,7 @@ int open_gui(int argc, char *argv[])
   g_signal_connect(G_OBJECT(darea), "button-press-event", G_CALLBACK(on_button_event), NULL);
   g_signal_connect(G_OBJECT(darea), "button-release-event", G_CALLBACK(on_button_event), NULL);
   g_signal_connect(G_OBJECT(darea), "motion-notify-event", G_CALLBACK(on_motion_event), NULL);
+  g_signal_connect(G_OBJECT(darea), "configure-event", G_CALLBACK(on_darea_configure_event), NULL);
   gtk_box_pack_start(GTK_BOX(vbox), darea, TRUE, TRUE, 0);
 
   // Run main loop
@@ -491,6 +493,7 @@ static void dv_status_init() {
   int i;
   for (i=0; i<DV_NUM_COLOR_POOLS; i++)
     S->CP_sizes[i] = 0;
+  S->fcc = 0;
 }
 
 /*---------------end of Initialization Functions------*/

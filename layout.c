@@ -356,6 +356,7 @@ static gboolean dv_animation_tick(gpointer data) {
   dv_animation_t *a = (dv_animation_t *) data;
   dv_check(a->on);
   a->ratio = (dv_get_time() - a->started) / a->duration;
+  //printf("tick: ratio=%0.3lf\n", a->ratio * a->duration);
   dv_check(a->ratio >= 0);
   if (a->ratio >= 1.0) {
     dv_animation_stop(a);
@@ -474,6 +475,8 @@ static void dv_layout_timeline_dvdag(dv_dag_t *G) {
 /*-----------Main layout functions-------------------------*/
 
 void dv_layout_dvdag(dv_dag_t *G) {
+  printf("layout begins...\n");
+  double start = dv_get_time();
   
   if (S->lt == 0)
     dv_layout_glike_dvdag(G);
@@ -482,9 +485,13 @@ void dv_layout_dvdag(dv_dag_t *G) {
   else if (S->lt == 2)
     dv_layout_timeline_dvdag(G);
 
+  double end = dv_get_time();
+  printf("...layout done: %0.3lf\n", end - start);
 }
 
 void dv_relayout_dvdag(dv_dag_t *G) {
+  printf("relayout begins...\n");
+  double start = dv_get_time();
 
   if (S->lt == 0)
     dv_relayout_glike_dvdag(G);
@@ -492,7 +499,9 @@ void dv_relayout_dvdag(dv_dag_t *G) {
     dv_layout_bbox_dvdag(G);
   else if (S->lt == 2)
     dv_layout_timeline_dvdag(G);
-  
+
+  double end = dv_get_time();
+  printf("...relayout done: %0.3lf\n", end - start);
 }
 
 /*-----------end of Main layout functions-------------------------*/

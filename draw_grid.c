@@ -153,6 +153,7 @@ static void draw_grid(cairo_t *cr, dv_dag_node_t *node) {
 }
 
 static void draw_dvdag_node_r(cairo_t *cr, dv_dag_node_t *u) {
+  S->fcc++;
   if (!u) return;
   int call_head = 0;
   if (!dv_is_union(u)
@@ -216,6 +217,7 @@ static dv_dag_node_t * dv_dag_node_get_last(dv_dag_node_t *u) {
 }
 
 static void draw_dvdag_edge_r(cairo_t *cr, dv_dag_node_t *u) {
+  S->fcc++;
   if (!u) return;
   // Iterate links
   dv_dag_node_t * v;
@@ -276,9 +278,11 @@ void dv_draw_glike_dvdag(cairo_t *cr, dv_dag_t *G) {
   int i;
   // Draw nodes
   S->nd = 0;
+  S->fcc = 0;
   draw_dvdag_node_r(cr, G->rt);
   // Draw edges
   draw_dvdag_edge_r(cr, G->rt);
+  printf("draw: fcc = %ld\n", S->fcc);
 }
 
 /*-----------------end of Gridlike DAG drawing functions-----------*/

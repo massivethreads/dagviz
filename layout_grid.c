@@ -107,6 +107,7 @@ static void dv_layout_bind_node(dv_dag_node_t * u, dv_grid_line_t * l1, dv_grid_
 static double dv_layout_count_line_left(dv_grid_line_t *);
 
 static double dv_layout_count_line_right(dv_grid_line_t *l) {
+  S->fcc++;
   dv_llist_iterate_init(l->L);
   dv_dag_node_t * node;
   double max = 0.0;
@@ -134,6 +135,7 @@ static double dv_layout_count_line_right(dv_grid_line_t *l) {
 }
 
 static double dv_layout_count_line_left(dv_grid_line_t *l) {
+  S->fcc++;
   dv_llist_iterate_init(l->L);
   dv_dag_node_t * node;
   double max = 0.0;
@@ -160,6 +162,7 @@ static double dv_layout_count_line_left(dv_grid_line_t *l) {
 }
 
 static double dv_layout_count_line_down(dv_dag_node_t *node) {
+  S->fcc++;
   double c = 0.0;
   switch (node->pi->info.kind) {
   case dr_dag_node_kind_wait_tasks:
@@ -204,6 +207,7 @@ static double dv_layout_count_line_down(dv_dag_node_t *node) {
 }
 
 static void dv_layout_align_line_rightleft(dv_grid_t *grid) {
+  S->fcc++;
   dv_grid_line_t * l = grid->vl;
   double gap = dv_layout_calculate_gap(grid->owner);
   dv_grid_line_t * ll;
@@ -226,27 +230,32 @@ static void dv_layout_align_line_rightleft(dv_grid_t *grid) {
   ll = l;
   while (ll) {
     dv_llist_iterate_init(ll->L);
-    dv_dag_node_t * n;
-    while (n = (dv_dag_node_t *) dv_llist_iterate_next(ll->L)) {
-      n->grid->vl->c = ll->c;
-      dv_layout_align_line_rightleft(n->grid);
-    }
+    dv_dag_node_t * node;
+    while (node = (dv_dag_node_t *) dv_llist_iterate_next(ll->L))
+      if (dv_is_union(node)
+          && ( !dv_is_shrinked(node) || dv_is_expanding(node) )) {
+        node->grid->vl->c = ll->c;
+        dv_layout_align_line_rightleft(node->grid);
+      }
     ll = ll->r;
   }
   // Call recursive left
   ll = l->l;
   while (ll) {
     dv_llist_iterate_init(ll->L);
-    dv_dag_node_t * n;
-    while (n = (dv_dag_node_t *) dv_llist_iterate_next(ll->L)) {
-      n->grid->vl->c = ll->c;
-      dv_layout_align_line_rightleft(n->grid);
-    }
+    dv_dag_node_t * node;
+    while (node = (dv_dag_node_t *) dv_llist_iterate_next(ll->L))
+      if (dv_is_union(node)
+          && ( !dv_is_shrinked(node) || dv_is_expanding(node) )) {
+        node->grid->vl->c = ll->c;
+        dv_layout_align_line_rightleft(node->grid);
+      }
     ll = ll->l;
   }
 }
 
 static void dv_layout_align_line_down(dv_dag_node_t *node) {
+  S->fcc++;
   dv_check(node);
   dv_dag_node_t * n;
   double max = 0.0;
@@ -260,7 +269,8 @@ static void dv_layout_align_line_down(dv_dag_node_t *node) {
     n->c = node->c + (node->dc - max) * DV_VDIS;
     dv_layout_align_line_down(n);
   }
-  if (node->head) {
+  if (dv_is_union(node)
+      && ( !dv_is_shrinked(node) || dv_is_expanding(node) )) {
     n = node->head;
     n->c = node->c;
     dv_layout_align_line_down(n);
@@ -294,18 +304,26 @@ void dv_relayout_glike_dvdag(dv_dag_t *G) {
     dv_grid_init(G->grid, 0);
     dv_layout_bind_node(G->rt, G->grid->vl, G->grid->hl);    
   }
-  
+
   // Count lines
+  S->fcc = 0;
   G->grid->vl->rc = dv_layout_count_line_right(G->grid->vl);
   G->grid->vl->lc = dv_layout_count_line_left(G->grid->vl);
+  printf("relayout count rl: fcc = %ld\n", S->fcc);
+  S->fcc = 0;
   G->rt->dc = dv_layout_count_line_down(G->rt);
+  printf("relayout count d: fcc = %ld\n", S->fcc);
 
   // Align lines
   G->grid->vl->c = 0.0;
   G->grid->hl->c = 0.0;
+  S->fcc = 0;
   dv_layout_align_line_rightleft(G->grid);
+  printf("relayout align rl: fcc = %ld\n", S->fcc);
   G->rt->c = 0.0;
+  S->fcc = 0;
   dv_layout_align_line_down(G->rt);
+  printf("relayout align d: fcc = %ld\n", S->fcc);
 
 }
 
