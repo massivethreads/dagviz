@@ -96,14 +96,6 @@ typedef struct dv_grid_line {
   double c;  /* coordinate */
 } dv_grid_line_t;
 
-struct dv_dag_node;
-
-typedef struct dv_grid {
-  dv_grid_line_t vl[1];
-  dv_grid_line_t hl[1];
-  struct dv_dag_node * owner;
-} dv_grid_t;
-
 /*--end of Grid-like layout--*/
 
 /*-----------------Data Structures-----------------*/
@@ -167,8 +159,7 @@ typedef struct dv_dag_node {
 
   /* grid-like layout */
   dv_grid_line_t * vl;  /* vertical line of outer grid */
-  dv_grid_line_t * hl;  /* horizontal line of outer grid */
-  dv_grid_t grid[1]; /* inner grid */
+  dv_grid_line_t * vl_in;  /* vertical line of inner grid */
   double lc, rc, dc; /* left/right/down counts */
   double c; /* coordinate */
   
@@ -195,7 +186,7 @@ typedef struct dv_dag {
   dv_llist_t itl[1]; /* list of nodes that have info tag */
 
   /* grid-like layout */
-  dv_grid_t grid[1];  /* root grid */  
+  dv_grid_line_t rvl[1]; /* root vl */
 
 } dv_dag_t;
 
@@ -240,6 +231,7 @@ void dv_animation_init(dv_animation_t *);
 void dv_animation_start(dv_animation_t *);
 void dv_animation_stop(dv_animation_t *);
 /* layout_grid.c */
+void dv_grid_line_init(dv_grid_line_t *);
 void dv_layout_glike_dvdag(dv_dag_t *);
 void dv_relayout_glike_dvdag(dv_dag_t *);
 
@@ -250,7 +242,7 @@ void dv_lookup_color(dv_dag_node_t *, double *, double *, double *, double *);
 double dv_get_alpha_fading_out();
 double dv_get_alpha_fading_in();
 void dv_draw_status(cairo_t *);
-void dv_draw_bbox_infotags(cairo_t *, dv_dag_t *);
+void dv_draw_infotags(cairo_t *, dv_dag_t *);
 void dv_draw_dvdag(cairo_t *, dv_dag_t *);
 /* draw_grid.c */
 void dv_draw_glike_dvdag(cairo_t *, dv_dag_t *);

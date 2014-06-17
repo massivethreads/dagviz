@@ -84,8 +84,7 @@ static void dv_dag_node_init(dv_dag_node_t *u, dv_dag_node_t *p, dr_pi_dag_node 
   u->avoid_inward = 0;
 
   u->vl = 0;
-  u->hl = 0;
-  dv_grid_init(u->grid, u);
+  u->vl_in = 0;
   u->lc = 0L;
   u->rc = 0L;
   u->dc = 0L;

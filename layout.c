@@ -466,7 +466,7 @@ static void dv_layout_timeline_dvdag(dv_dag_t *G) {
 
   // Check
   //print_layout(G);  
-  
+
 }
 
 /*-----------end of Timeline layout functions----------------------*/
@@ -475,8 +475,6 @@ static void dv_layout_timeline_dvdag(dv_dag_t *G) {
 /*-----------Main layout functions-------------------------*/
 
 void dv_layout_dvdag(dv_dag_t *G) {
-  printf("layout begins...\n");
-  double start = dv_get_time();
   
   if (S->lt == 0)
     dv_layout_glike_dvdag(G);
@@ -485,14 +483,10 @@ void dv_layout_dvdag(dv_dag_t *G) {
   else if (S->lt == 2)
     dv_layout_timeline_dvdag(G);
 
-  double end = dv_get_time();
-  printf("...layout done: %0.3lf\n", end - start);
 }
 
 void dv_relayout_dvdag(dv_dag_t *G) {
-  printf("relayout begins...\n");
-  double start = dv_get_time();
-
+  
   if (S->lt == 0)
     dv_relayout_glike_dvdag(G);
   else if (S->lt == 1)
@@ -500,8 +494,6 @@ void dv_relayout_dvdag(dv_dag_t *G) {
   else if (S->lt == 2)
     dv_layout_timeline_dvdag(G);
 
-  double end = dv_get_time();
-  printf("...relayout done: %0.3lf\n", end - start);
 }
 
 /*-----------end of Main layout functions-------------------------*/
