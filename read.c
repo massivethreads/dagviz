@@ -23,8 +23,9 @@ void dv_read_dag_file_to_pidag(char * filename, dr_pi_dag * P) {
     exit(1);
   }
   printf("File status:\n"
-         "  st_size = %d\n",
-         (int) statbuf.st_size);
+         "  st_size = %d bytes (%0.0lfMB)\n",
+         (int) statbuf.st_size,
+         ((double) statbuf.st_size) / (1024.0 * 1024.0));
   
   dp = mmap(0, statbuf.st_size, PROT_READ, MAP_SHARED, fd, 0);
   if (!dp) {
@@ -89,6 +90,8 @@ static void dv_dag_node_init(dv_dag_node_t *u, dv_dag_node_t *p, dr_pi_dag_node 
   u->rc = 0L;
   u->dc = 0L;
   u->c = 0L;
+
+  u->started = 0.0;
 }
 
 static dv_dag_node_t * dv_traverse_node(dr_pi_dag_node *pi, dv_dag_node_t *u, dv_dag_node_t *p, dv_dag_node_t *plim, dv_stack_t *s, dv_dag_t *G) {
@@ -114,6 +117,7 @@ static dv_dag_node_t * dv_traverse_node(dr_pi_dag_node *pi, dv_dag_node_t *u, dv
 
       // Set u.f
       dv_node_flag_set(u->f, DV_NODE_FLAG_UNION);
+      dv_node_flag_set(u->f, DV_NODE_FLAG_SHRINKED);
       // Allocate memory for all child nodes
       u_a = p;
       u_b = p + (pi_b - pi_a);
@@ -193,21 +197,12 @@ void dv_convert_pidag_to_dvdag(dr_pi_dag *P, dv_dag_t *G) {
   // Drawing parameters
   G->init = 1;
   G->zoom_ratio = 1.0;
-  G->x = 0.0;
-  G->y = 0.0;
+  G->x = G->y = 0.0;
   G->basex = G->basey = 0.0;
   dv_llist_init(G->itl);
-  // Set initial state
-  int i;
-  dv_dag_node_t * node;
-  for (i=0; i<G->n; i++) {
-    node = G->T + i;
-    if (dv_is_union(node)) {      
-      if (node->d >= S->cur_d) {
-        dv_node_flag_set(node->f, DV_NODE_FLAG_SHRINKED);
-      }      
-    }
-  }
+  // Layout status
+  G->cur_d = 0;
+  G->cur_d_ex = 0;
 }
 
 /*-----------------end of Read .dag format-----------*/

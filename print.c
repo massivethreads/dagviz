@@ -138,7 +138,6 @@ static void print_layout_node(dv_dag_node_t *node, int i) {
   int kind = node->pi->info.kind;
   printf(
          "  Node %d: (%s)\n"
-         "    d/cur_d/is_visible: %d/%d/%d\n"
          "    f(U/Sked/Epding/Sking)=%d%d%d%d\n"
          "    (xpre,xp): (%0.1f,%0.1f)\n"
          "    (x,y): (%0.1f,%0.1f)\n"
@@ -146,7 +145,6 @@ static void print_layout_node(dv_dag_node_t *node, int i) {
          "    (link_lw/rw/dw): (%0.1f,%0.1f,%0.1f)\n",
          i,
          NODE_KIND_NAMES[kind],
-         node->d, S->cur_d, dv_is_visible(node),
          dv_is_union(node),
          dv_is_shrinked(node),
          dv_is_expanding(node),

@@ -198,25 +198,33 @@ void * dv_llist_get(dv_llist_t *l) {
 
 void * dv_llist_remove(dv_llist_t *l, void *x) {
   void * ret = 0;
+  int i = 0;
   dv_llist_cell_t * h = l->top;
   dv_llist_cell_t * pre = 0;
+  // find item
   while (h) {
     if (h->item == x) {
       break;
     }
     pre = h;
     h = h->next;
+    i++;
   }
   if (h && h->item == x) {
+    // remove item
     ret = h->item;
     if (pre) {
       pre->next = h->next;
     } else {
       l->top = h->next;
     }
+    // recycle llist_cell
     h->item = 0;
     h->next = FL;
     FL = h;
+    // adjust index i
+    if (i < l->i)
+      l->i--;
   }
   return ret;
 }

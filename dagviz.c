@@ -119,31 +119,121 @@ static void dv_do_drawing(cairo_t *cr)
   dv_draw_status(cr);
 }
 
-static void dv_do_expanding(int e) {
-  if (S->cur_d + e < 0 || S->cur_d + e > G->dmax)
-    return;
-  if (S->lt == 0) {
-    if (!S->a->on) {
-      S->a->new_d = S->cur_d + e;
-      dv_animation_start(S->a);
+
+static void dv_do_expanding_one_1(dv_dag_node_t *node) {
+  switch (S->lt) {
+  case 0:
+    // add to animation
+    if (dv_is_shrinking(node)) {
+      dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKING);
+      dv_node_flag_set(node->f, DV_NODE_FLAG_EXPANDING);
+      dv_animation_reverse(S->a, node);
+    } else {
+      dv_node_flag_set(node->f, DV_NODE_FLAG_EXPANDING);
+      dv_animation_add(S->a, node);
     }
-  } else if (S->lt == 2 || S->lt == 1) {
-    int new_d = S->cur_d + e;
-    dv_dag_node_t *node;
-    int i;
-    for (i=0; i<G->n; i++) {
-      node = G->T + i;
-      if (node->d >= new_d && !dv_is_shrinked(node)) {
-        dv_node_flag_set(node->f, DV_NODE_FLAG_SHRINKED);
-      } else if (node->d < new_d && dv_is_shrinked(node)) {
-        dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKED);
-      }
-    }
-    S->cur_d = new_d;
-    dv_relayout_dvdag(G);
-    gtk_widget_queue_draw(darea);
-  } else {
+    break;
+  case 1:
+  case 2:
+    // set expanded
+    dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKED);
+    break;
+  default:
     dv_check(0);
+  }
+}
+
+static void dv_do_expanding_one_r(dv_dag_node_t *node) {
+  if ((dv_is_shrinked(node) || dv_is_shrinking(node))
+      && !dv_is_expanding(node)) {
+    // expand node
+    dv_do_expanding_one_1(node);
+  } else if (dv_is_union(node)) {
+    /* Call inward */
+    dv_check(node->head);
+    dv_do_expanding_one_r(node->head);
+  }
+  /* Call link-along */
+  dv_llist_iterate_init(node->links);
+  dv_dag_node_t *u;
+  while (u = (dv_dag_node_t *) dv_llist_iterate_next(node->links)) {
+    dv_do_expanding_one_r(u);
+  }
+}
+
+static void dv_do_expanding_one() {
+  dv_do_expanding_one_r(G->rt);
+  if (!S->a->on) {
+    dv_layout_dvdag(G);
+    gtk_widget_queue_draw(darea);
+  }
+}
+
+
+static void dv_do_collapsing_one_1(dv_dag_node_t *node) {
+  switch (S->lt) {
+  case 0:
+    // add to animation
+    if (dv_is_expanding(node)) {
+      dv_node_flag_remove(node->f, DV_NODE_FLAG_EXPANDING);
+      dv_node_flag_set(node->f, DV_NODE_FLAG_SHRINKING);
+      dv_animation_reverse(S->a, node);
+    } else {
+      dv_node_flag_set(node->f, DV_NODE_FLAG_SHRINKING);
+      dv_animation_add(S->a, node);
+    }
+    break;
+  case 1:
+  case 2:
+    // set shrinked
+    dv_node_flag_set(node->f, DV_NODE_FLAG_SHRINKED);
+    break;
+  default:
+    dv_check(0);
+  }
+}
+
+static void dv_do_collapsing_one_r(dv_dag_node_t *node) {
+  if (dv_is_union(node) && !dv_is_shrinking(node)
+      && (dv_is_expanded(node) || dv_is_expanding(node))) {
+    // check if node has expanded node, excluding shrinking nodes
+    int has_expanded_node = 0;
+    dv_stack_t s[1];
+    dv_stack_init(s);
+    dv_check(node->head);
+    dv_stack_push(s, (void *) node->head);
+    while (s->top) {
+      dv_dag_node_t * x = (dv_dag_node_t *) dv_stack_pop(s);
+      if (dv_is_union(x) && (dv_is_expanded(x) || dv_is_expanding(x))
+          && !dv_is_shrinking(x))
+        has_expanded_node = 1;
+      dv_llist_iterate_init(x->links);
+      dv_dag_node_t *xx;
+      while (xx = (dv_dag_node_t *) dv_llist_iterate_next(x->links)) {
+        dv_stack_push(s, (void *) xx);
+      }      
+    }
+    if (!has_expanded_node) {
+      // collapsing node's parent
+      dv_do_collapsing_one_1(node);
+    } else {
+      /* Call inward */
+      dv_do_collapsing_one_r(node->head);
+    }
+  } 
+  /* Call link-along */
+  dv_llist_iterate_init(node->links);
+  dv_dag_node_t *u;
+  while (u = (dv_dag_node_t *) dv_llist_iterate_next(node->links)) {
+    dv_do_collapsing_one_r(u);
+  }
+}
+
+static void dv_do_collapsing_one() {
+  dv_do_collapsing_one_r(G->rt);
+  if (!S->a->on) {
+    dv_layout_dvdag(G);
+    gtk_widget_queue_draw(darea);
   }
 }
 
@@ -206,7 +296,7 @@ static void dv_get_entry_radix_text() {
     S->linear_radix = radix;
   else
     dv_check(0);
-  dv_relayout_dvdag(G);
+  dv_layout_dvdag(G);
   gtk_widget_queue_draw(darea);
 }
 
@@ -248,13 +338,13 @@ static gboolean on_btn_zoomfit_ver_clicked(GtkWidget *widget, cairo_t *cr, gpoin
 
 static gboolean on_btn_shrink_clicked(GtkWidget *widget, cairo_t *cr, gpointer user_data)
 {
-  dv_do_expanding(-1);
+  dv_do_collapsing_one();
   return TRUE;
 }
 
 static gboolean on_btn_expand_clicked(GtkWidget *widget, cairo_t *cr, gpointer user_data)
 {
-  dv_do_expanding(1);
+  dv_do_expanding_one();
   return TRUE;
 }
 
@@ -324,7 +414,7 @@ static gboolean on_combobox_changed(GtkComboBox *widget, gpointer user_data) {
 static gboolean on_combobox2_changed(GtkComboBox *widget, gpointer user_data) {
   int old_lt = S->lt;
   S->lt = gtk_combo_box_get_active(widget);
-  dv_relayout_dvdag(G);
+  dv_layout_dvdag(G);
   if (S->lt != old_lt)
     dv_do_zoomfit_hoz();
   return TRUE;
@@ -333,14 +423,14 @@ static gboolean on_combobox2_changed(GtkComboBox *widget, gpointer user_data) {
 static gboolean on_combobox3_changed(GtkComboBox *widget, gpointer user_data) {
   S->sdt = gtk_combo_box_get_active(widget);
   dv_set_entry_radix_text();
-  dv_relayout_dvdag(G);
+  dv_layout_dvdag(G);
   gtk_widget_queue_draw(darea);
   return TRUE;
 }
 
 static gboolean on_combobox4_changed(GtkComboBox *widget, gpointer user_data) {
   S->frombt = gtk_combo_box_get_active(widget);
-  dv_relayout_dvdag(G);
+  dv_layout_dvdag(G);
   gtk_widget_queue_draw(darea);
   return TRUE;
 }
@@ -481,7 +571,6 @@ static void dv_status_init() {
   S->accdisx = S->accdisy = 0.0;
   S->nc = DV_NODE_COLOR_INIT;
   S->vpw = S->vph = 0.0;
-  S->cur_d = 2;
   dv_animation_init(S->a);
   S->nd = 0;
   S->lt = DV_LAYOUT_TYPE_INIT;
@@ -493,7 +582,6 @@ static void dv_status_init() {
   int i;
   for (i=0; i<DV_NUM_COLOR_POOLS; i++)
     S->CP_sizes[i] = 0;
-  S->fcc = 0;
 }
 
 /*---------------end of Initialization Functions------*/
@@ -529,7 +617,7 @@ static int dv_get_env_string(char * s, char ** t) {
 }
 
 static void dv_get_env() {
-  dv_get_env_int("DV_DEPTH", &S->cur_d);
+  //dv_get_env_int("DV_DEPTH", &S->cur_d);
 }
 
 /*---------------end of Environment Variables-----*/
@@ -545,7 +633,10 @@ int main(int argc, char *argv[])
     dv_read_dag_file_to_pidag(argv[1], P);
     dv_convert_pidag_to_dvdag(P, G);
     //print_dvdag(G);
-    dv_layout_dvdag(G);
+    int i;
+    for (i=0; i<2; i++)
+      dv_do_expanding_one();
+    //dv_layout_dvdag(G);
     //check_layout(G);
   }
   //if (argc > 1)  print_dag_file(argv[1]);

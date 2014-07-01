@@ -119,16 +119,16 @@ void dv_lookup_color(dv_dag_node_t *node, double *r, double *g, double *b, doubl
   dv_lookup_color_value(v, r, g, b, a);
 }
 
-double dv_get_alpha_fading_out() {
-  double ratio = S->a->ratio;
+double dv_get_alpha_fading_out(dv_dag_node_t *node) {
+  double ratio = (dv_get_time() - node->started) / S->a->duration;
   double ret;
   //ret = (1.0 - ratio) * 0.75;
   ret = 1.0 - ratio * ratio;
   return ret;
 }
 
-double dv_get_alpha_fading_in() {
-  double ratio = S->a->ratio;
+double dv_get_alpha_fading_in(dv_dag_node_t *node) {
+  double ratio = (dv_get_time() - node->started) / S->a->duration;
   double ret;
   //ret = ratio * 1.5;
   ret = ratio * ratio;
@@ -136,367 +136,6 @@ double dv_get_alpha_fading_in() {
 }
 
 /*-----------------end of Common Drawing functions-----------*/
-
-
-/*-----------------DAG BBox Drawing functions-----------*/
-
-static void draw_bbox_node_1(cairo_t *cr, dv_dag_node_t *node) {
-  // Count node drawn
-  S->nd++;
-  // Node color
-  double x = node->x;
-  double y = node->y;
-  double c[4];
-  dv_lookup_color(node, c, c+1, c+2, c+3);
-  // Alpha
-  double alpha = 1.0;
-  // Draw path
-  cairo_save(cr);
-  cairo_new_path(cr);
-  double xx, yy, w, h;
-  if (dv_is_union(node)) {
-
-    if (dv_is_expanding(node) || dv_is_shrinking(node)) {
-
-      double margin = 1.0;
-      if (dv_is_expanding(node)) {
-        // Fading out
-        alpha = dv_get_alpha_fading_out();
-        margin = dv_get_alpha_fading_in();
-      } else {
-        // Fading in
-        alpha = dv_get_alpha_fading_in();
-        margin = dv_get_alpha_fading_out();
-      }
-      // Large-sized box
-      margin *= DV_UNION_NODE_MARGIN;
-      xx = x - node->lw - margin;
-      yy = y - margin;
-      w = node->lw + node->rw + 2 * margin;
-      h = node->dw + 2 * margin;
-      
-    } else {
-      
-      // Normal-sized box
-      xx = x - node->lw;
-      yy = y;
-      w = node->lw + node->rw;
-      h = node->dw;
-      if (!S->a->on) {
-        // No animation
-        alpha = 1.0;
-      } else if (node->d > S->a->new_d) {
-        // Fading out
-        alpha = dv_get_alpha_fading_out();
-      } else if (node->d > S->cur_d) {
-        // Fading in
-        alpha = dv_get_alpha_fading_in();
-      }
-      
-    }
-
-  } else {
-    
-    // Normal-sized box (terminal node)
-    xx = x - node->lw;
-    yy = y;
-    w = node->lw + node->rw;
-    h = node->dw;
-    if (!S->a->on) {
-      // No animation
-      alpha = 1.0;
-    } else if (node->d > S->a->new_d) {
-      // Fading out
-      alpha = dv_get_alpha_fading_out();
-    } else if (node->d > S->cur_d) {
-      // Fading in
-      alpha = dv_get_alpha_fading_in();
-    }
-    
-  }
-  // Draw path
-  cairo_move_to(cr, xx, yy);
-  cairo_line_to(cr, xx + w, yy);
-  cairo_line_to(cr, xx + w, yy + h);
-  cairo_line_to(cr, xx, yy + h);
-  cairo_close_path(cr);
-
-  // Draw node
-  cairo_set_source_rgba(cr, c[0], c[1], c[2], c[3] * alpha);
-  cairo_fill_preserve(cr);
-  cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
-  cairo_stroke(cr);
-  cairo_restore(cr);
-}
-
-static void draw_bbox_node_r(cairo_t *cr, dv_dag_node_t *node) {
-  /* Draw node */
-  dv_check(node);
-  if (!dv_is_union(node)
-      || dv_is_shrinked(node) || dv_is_shrinking(node)) {
-    draw_bbox_node_1(cr, node);
-  }
-
-  /* Calculate inward */
-  int is_single_node = 1;
-  switch (node->pi->info.kind) {
-  case dr_dag_node_kind_wait_tasks:
-  case dr_dag_node_kind_end_task:
-  case dr_dag_node_kind_create_task:
-    break;
-  case dr_dag_node_kind_section:
-  case dr_dag_node_kind_task:
-    if (!dv_is_single(node)) {
-      dv_check(node->head);
-      is_single_node = 0;
-    }
-    break;
-  default:
-    dv_check(0);
-    break;
-  }
-  if (!is_single_node) {
-    // Recursive call
-    if (!node->avoid_inward)
-      draw_bbox_node_r(cr, node->head);
-  }
-    
-  /* Calculate link-along */
-  int n_links = dv_llist_size(node->links);
-  dv_dag_node_t * u; // linked node 1
-  dv_dag_node_t * v; // linked node 2
-  switch (n_links) {
-  case 0:
-    break;
-  case 1:
-    u = (dv_dag_node_t *) node->links->top->item;
-    // Recursive call
-    draw_bbox_node_r(cr, u);
-    break;
-  case 2:
-    u = (dv_dag_node_t *) node->links->top->item; // cont node
-    v = (dv_dag_node_t *) node->links->top->next->item; // task node
-    // Recursive call
-    draw_bbox_node_r(cr, u);
-    draw_bbox_node_r(cr, v);
-    break;
-  default:
-    dv_check(0);
-    break;
-  }
-}
-
-static void draw_bbox_edge_1(cairo_t *cr, dv_dag_node_t *u, dv_dag_node_t *v) {
-  if (u->y > v->y)
-    return;
-  double alpha = 1.0;
-  if (!S->a->on)
-    alpha = 1.0;
-  else if (u->d > S->a->new_d && v->d > S->a->new_d)
-    alpha = dv_get_alpha_fading_out();
-  else if (u->d > S->cur_d
-           && v->d > S->cur_d
-           && u->d <= S->a->new_d
-           && v->d <= S->a->new_d)
-    alpha = dv_get_alpha_fading_in();
-  cairo_save(cr);
-  cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
-  double x1, y1, x2, y2;
-  x1 = u->x;
-  y1 = u->y + u->dw;
-  x2 = v->x;
-  y2 = v->y;
-  cairo_move_to(cr, x1, y1);
-  cairo_line_to(cr, x1, y2);
-  cairo_line_to(cr, x2, y2);
-  cairo_stroke(cr);
-  cairo_restore(cr);
-}
-
-static dv_dag_node_t * dv_dag_node_get_first(dv_dag_node_t *u) {
-  dv_check(u);
-  while (!dv_is_single(u)) {
-    dv_check(u->head);
-    u = u->head;
-    dv_check(u);
-  }
-  return u;
-}
-
-static void draw_bbox_edge_last_r(cairo_t *cr, dv_dag_node_t *u, dv_dag_node_t *v) {
-  if (u->avoid_inward) {
-    draw_bbox_edge_1(cr, u, v);
-    return;
-  }
-  dv_llist_iterate_init(u->tails);
-  dv_dag_node_t *u_tail;
-  while (u_tail = (dv_dag_node_t *) dv_llist_iterate_next(u->tails)) {
-    if (dv_is_single(u_tail))
-      draw_bbox_edge_1(cr, u_tail, v);
-    else
-      draw_bbox_edge_last_r(cr, u_tail, v);
-  }  
-}
-
-static void draw_bbox_edge_r(cairo_t *cr, dv_dag_node_t *u) {
-  if (!u) return;
-  // Call head
-  if (!dv_is_single(u)) {
-    if (!u->avoid_inward)
-      draw_bbox_edge_r(cr, u->head);
-  }
-  // Iterate links
-  dv_dag_node_t * v;
-  dv_llist_iterate_init(u->links);
-  while (v = (dv_dag_node_t *) dv_llist_iterate_next(u->links)) {
-
-    if (dv_is_single(u)) {
-      
-      if (dv_is_single(v))
-        draw_bbox_edge_1(cr, u, v);
-      else
-        draw_bbox_edge_1(cr, u, dv_dag_node_get_first(v->head));
-      
-    } else {
-    
-      if (dv_is_single(v))
-        draw_bbox_edge_last_r(cr, u, v);
-      else
-        draw_bbox_edge_last_r(cr, u, dv_dag_node_get_first(v->head));
-
-    }
-    draw_bbox_edge_r(cr, v);
-    
-  }
-}
-
-
-void dv_draw_bbox_dvdag(cairo_t *cr, dv_dag_t *G) {
-  cairo_set_line_width(cr, DV_NODE_LINE_WIDTH);
-  int i;
-  // Draw nodes
-  S->nd = 0;
-  draw_bbox_node_r(cr, G->rt);
-  // Draw edges
-  draw_bbox_edge_r(cr, G->rt);
-}
-
-
-/*-----------------end of DAG BBox drawing functions-----------*/
-
-
-/*-----------------TIMELINE Drawing functions-----------*/
-
-static void draw_timeline_node_1(cairo_t *cr, dv_dag_node_t *node) {
-  // Count node drawn
-  S->nd++;
-  // Node color
-  double x = node->x;
-  double y = node->y;
-  double c[4];
-  dv_lookup_color(node, c, c+1, c+2, c+3);
-  // Alpha
-  double alpha = 1.0;
-  // Draw path
-  cairo_save(cr);
-  cairo_new_path(cr);
-  double xx, yy, w, h;
-  // Normal-sized box (terminal node)
-  xx = x - node->lw;
-  yy = y;
-  w = node->lw + node->rw;
-  h = node->dw;
-  // Draw path
-  cairo_move_to(cr, xx, yy);
-  cairo_line_to(cr, xx + w, yy);
-  cairo_line_to(cr, xx + w, yy + h);
-  cairo_line_to(cr, xx, yy + h);
-  cairo_close_path(cr);
-
-  // Draw node
-  cairo_set_source_rgba(cr, c[0], c[1], c[2], c[3] * alpha);
-  cairo_fill_preserve(cr);
-  if (DV_TIMELINE_NODE_WITH_BORDER) {
-    cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
-    cairo_stroke(cr);
-  }
-  cairo_restore(cr);
-}
-
-static void draw_timeline_node_r(cairo_t *cr, dv_dag_node_t *node) {
-  dv_check(node);
-  /* Calculate inward */
-  int is_single_node = 1;
-  switch (node->pi->info.kind) {
-  case dr_dag_node_kind_wait_tasks:
-  case dr_dag_node_kind_end_task:
-  case dr_dag_node_kind_create_task:
-    break;
-  case dr_dag_node_kind_section:
-  case dr_dag_node_kind_task:
-    if (dv_is_union(node))
-      is_single_node = 0;
-    break;
-  default:
-    dv_check(0);
-    break;
-  }
-  if (is_single_node) {
-    draw_timeline_node_1(cr, node);
-  } else {
-    // Recursive call
-    if (!dv_is_shrinked(node))
-      draw_timeline_node_r(cr, node->head);
-  }
-    
-  /* Calculate link-along */
-  int n_links = dv_llist_size(node->links);
-  dv_dag_node_t * u; // linked node 1
-  dv_dag_node_t * v; // linked node 2
-  switch (n_links) {
-  case 0:
-    break;
-  case 1:
-    u = (dv_dag_node_t *) node->links->top->item;
-    // Recursive call
-    draw_timeline_node_r(cr, u);
-    break;
-  case 2:
-    u = (dv_dag_node_t *) node->links->top->item; // cont node
-    v = (dv_dag_node_t *) node->links->top->next->item; // task node
-    // Recursive call
-    draw_timeline_node_r(cr, u);
-    draw_timeline_node_r(cr, v);
-    break;
-  default:
-    dv_check(0);
-    break;
-  }
-}
-
-static void dv_draw_timeline_dvdag(cairo_t *cr, dv_dag_t *G) {
-  cairo_set_line_width(cr, DV_NODE_LINE_WIDTH);
-  int i;
-  // Draw nodes
-  S->nd = 0;
-  draw_timeline_node_r(cr, G->rt);
-  // Draw worker numbers
-  cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
-  cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-  cairo_set_font_size(cr, 12);
-  char *s = (char *) dv_malloc( DV_STRING_LENGTH * sizeof(char) );
-  double xx, yy;
-  xx = DV_RADIUS;
-  yy = -4;
-  for (i=0; i<G->nw; i++) {
-    sprintf(s, "Worker %d", i);            
-    cairo_move_to(cr, xx - 30, yy);
-    cairo_show_text(cr, s);
-    xx += 2 * DV_RADIUS + DV_HDIS;
-  }
-}
-
-/*-----------------end of TIMELINE drawing functions-----------*/
 
 
 /*-----Main drawing functions-----*/
@@ -513,7 +152,7 @@ void dv_draw_status(cairo_t *cr) {
 
   // Depth
   s[n] = (char *) dv_malloc( length * sizeof(char) );
-  sprintf(s[n], "D=%d/%d", S->cur_d, G->dmax);
+  sprintf(s[n], "D=%d-%d/%d", G->cur_d_ex, G->cur_d, G->dmax);
   n++;
 
   // Nodes drawn
@@ -522,11 +161,13 @@ void dv_draw_status(cairo_t *cr) {
   n++;
   
   // ratio
+  /*
   if (S->a->on) {
     s[n] = (char *) dv_malloc( length * sizeof(char) );
     sprintf(s[n], "ratio=%0.2f, ", S->a->ratio);
     n++;
   }
+  */
 
   /*s[n] = (char *) dv_malloc( length * sizeof(char) );
   sprintf(s[n], ", ");
@@ -669,6 +310,9 @@ void dv_draw_infotags(cairo_t *cr, dv_dag_t *G) {
 void dv_draw_dvdag(cairo_t *cr, dv_dag_t *G) {
   
   // Draw DAG
+  S->nd = 0;
+  G->cur_d = 0;
+  G->cur_d_ex = G->dmax;
   if (S->lt == 0)
     dv_draw_glike_dvdag(cr, G);
   else if (S->lt == 1)
