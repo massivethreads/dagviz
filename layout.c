@@ -18,6 +18,18 @@ double dv_layout_calculate_gap(dv_dag_node_t *node) {
   return gap;
 }
 
+double dv_layout_calculate_reverse_ratio(dv_dag_node_t *node) {
+  double ret = 0.0;
+  if (!node) return ret;
+  double gap = dv_layout_calculate_gap(node);
+  if (dv_is_shrinking(node)) {
+    ret = 1.0 - sqrt(1.0 - gap);
+  } else if (dv_is_expanding(node)) {
+    ret = 1.0 - sqrt(gap);
+  }
+  return ret;
+}
+
 /*-----end of Common functions-----*/
 
 /*-----------Animation functions----------------------*/
@@ -44,7 +56,6 @@ static gboolean dv_animation_tick(gpointer data) {
   dv_dag_node_t *node;
   // iterate moving nodes
   while (node = (dv_dag_node_t *) dv_llist_iterate_next(a->movings)) {
-    dv_check(cur >= node->started);
     if (cur - node->started >= a->duration) {
       // Stop this node from animation
       dv_llist_remove(a->movings, node);
@@ -92,7 +103,8 @@ void dv_animation_remove(dv_animation_t *a, dv_dag_node_t *node) {
 void dv_animation_reverse(dv_animation_t *a, dv_dag_node_t *node) {
   dv_llist_remove(a->movings, node);
   double cur = dv_get_time();
-  node->started = 2 * cur - a->duration - node->started;
+  //node->started = 2 * cur - a->duration - node->started;
+  node->started = cur - a->duration * dv_layout_calculate_reverse_ratio(node);
   dv_llist_add(a->movings, node);
 }
 

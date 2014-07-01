@@ -64,7 +64,7 @@ typedef struct dv_llist {
 #define DV_STRING_LENGTH 100
 #define DV_STATUS_PADDING 7
 #define DV_SAFE_CLICK_RANGE 1
-#define DV_UNION_NODE_MARGIN 2
+#define DV_UNION_NODE_MARGIN 4
 #define DV_NODE_LINE_WIDTH 1.0
 #define DV_EDGE_LINE_WIDTH 1.0
 #define DV_RADIX_LOG 1.8
@@ -225,6 +225,7 @@ void dv_convert_pidag_to_dvdag(dr_pi_dag *, dv_dag_t *);
 
 /* layout.c */
 double dv_layout_calculate_gap(dv_dag_node_t *);
+double dv_layout_calculate_reverse_ratio(dv_dag_node_t *);
 void dv_layout_dvdag(dv_dag_t *);
 double dv_get_time();
 void dv_animation_init(dv_animation_t *);

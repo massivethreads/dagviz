@@ -126,6 +126,7 @@ static void dv_do_expanding_one_1(dv_dag_node_t *node) {
     // add to animation
     if (dv_is_shrinking(node)) {
       dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKING);
+      dv_node_flag_set(node->f, DV_NODE_FLAG_SHRINKED);
       dv_node_flag_set(node->f, DV_NODE_FLAG_EXPANDING);
       dv_animation_reverse(S->a, node);
     } else {
@@ -176,6 +177,7 @@ static void dv_do_collapsing_one_1(dv_dag_node_t *node) {
     // add to animation
     if (dv_is_expanding(node)) {
       dv_node_flag_remove(node->f, DV_NODE_FLAG_EXPANDING);
+      dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKED);
       dv_node_flag_set(node->f, DV_NODE_FLAG_SHRINKING);
       dv_animation_reverse(S->a, node);
     } else {
@@ -446,6 +448,26 @@ static gboolean on_darea_configure_event(GtkWidget *widget, GdkEventConfigure *e
   return TRUE;
 }
 
+static gboolean on_window_key_event(GtkWidget *widget, GdkEvent *event, gpointer user_data) {
+  GdkEventKey *e = (GdkEventKey *) event;
+  //printf("key: %d\n", e->keyval);
+  switch (e->keyval) {
+  case 120: /* x */
+    dv_do_expanding_one();    
+    break;
+  case 99: /* c */
+    dv_do_collapsing_one();
+    break;
+  case 104: /* h */
+    dv_do_zoomfit_hoz();
+    break;
+  case 118: /* v */
+    dv_do_zoomfit_ver();
+    break;
+  }
+  return TRUE;
+}
+
 int open_gui(int argc, char *argv[])
 {
   gtk_init(&argc, &argv);
@@ -459,7 +481,8 @@ int open_gui(int argc, char *argv[])
   //gtk_window_fullscreen(GTK_WINDOW(window));
   gtk_window_maximize(GTK_WINDOW(window));
   gtk_window_set_title(GTK_WINDOW(window), "DAG Visualizer");
-  g_signal_connect(window, "destroy", G_CALLBACK(gtk_main_quit), NULL);
+  g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
+  g_signal_connect(G_OBJECT(window), "key-release-event", G_CALLBACK(on_window_key_event), NULL);
   GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
   gtk_container_add(GTK_CONTAINER(window), vbox);  
 
