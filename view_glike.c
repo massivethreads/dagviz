@@ -427,6 +427,9 @@ static void draw_glike_node_r(cairo_t *cr, dv_dag_node_t *u) {
 }
 
 static void draw_glike_edge_1(cairo_t *cr, dv_dag_node_t *u, dv_dag_node_t *v) {
+  draw_edge_1(cr, u, v);
+  return;
+#if 0
   if (u->c + DV_RADIUS > v->c - DV_RADIUS)
     return;
   double alpha = 1.0;
@@ -438,10 +441,50 @@ static void draw_glike_edge_1(cairo_t *cr, dv_dag_node_t *u, dv_dag_node_t *v) {
     alpha = dv_get_alpha_fading_in(u->parent);
   cairo_save(cr);
   cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
-  cairo_move_to(cr, u->vl->c, u->c + DV_RADIUS);
-  cairo_line_to(cr, v->vl->c, v->c - DV_RADIUS);
+  double x1, y1, x2, y2;
+  x1 = u->vl->c;
+  y1 = u->c + DV_RADIUS;
+  x2 = v->vl->c;
+  y2 = v->c - DV_RADIUS;
+  cairo_move_to(cr, x1, y1);
+  // edge affix
+  if (S->edge_affix != 0) {
+    cairo_line_to(cr, x1, y1 + S->edge_affix);
+    y1 += S->edge_affix;
+    y2 -= S->edge_affix;
+  }
+  /* edge type */
+  switch (S->et) {
+  case 0:
+    // no edge
+    break;
+  case 1:
+    // straight
+    cairo_line_to(cr, x2, y2);
+    break;
+  case 2:
+    // down
+    cairo_line_to(cr, x1, y2);
+    cairo_line_to(cr, x2, y2);
+    break;
+  case 3:
+    // winding
+    if (u->pi->info.kind == dr_dag_node_kind_create_task)
+      cairo_line_to(cr, x2, y1);
+    else
+      cairo_line_to(cr, x1, y2);
+    cairo_line_to(cr, x2, y2);
+    break;
+  default:
+    dv_check(0);
+  }    
+  // edge affix
+  if (S->edge_affix != 0) {
+    cairo_line_to(cr, x2, y2 + S->edge_affix);
+  }    
   cairo_stroke(cr);
   cairo_restore(cr);
+#endif
 }
 
 static dv_dag_node_t * dv_dag_node_get_first(dv_dag_node_t *u) {

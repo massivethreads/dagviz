@@ -49,7 +49,7 @@ typedef struct dv_llist {
 /*-----------------Constants-----------------*/
 
 #define DV_ZOOM_INCREMENT 1.25
-#define DV_HDIS 50
+#define DV_HDIS 70
 #define DV_VDIS 100
 #define DV_RADIUS 20
 #define NUM_COLORS 34
@@ -78,6 +78,8 @@ typedef struct dv_llist {
 #define DV_NODE_COLOR_INIT 0
 #define DV_SCALE_TYPE_INIT 1
 #define DV_FROMBT_INIT 0
+#define DV_EDGE_TYPE_INIT 3
+#define DV_EDGE_AFFIX_LENGTH 10
 
 #define DV_COLOR_POOL_SIZE 100
 #define DV_NUM_COLOR_POOLS 6
@@ -128,6 +130,8 @@ typedef struct dv_status {
   // Color pool
   int CP[DV_NUM_COLOR_POOLS][DV_COLOR_POOL_SIZE][4]; // worker, cpu, nodekind, cp1, cp2, cp3
   int CP_sizes[DV_NUM_COLOR_POOLS];
+  int et; /* edge type */
+  int edge_affix; /* edge affix length */
 } dv_status_t;
 
 typedef struct dv_dag_node {
@@ -238,6 +242,7 @@ void dv_draw_rounded_rectangle(cairo_t *, double, double, double, double);
 void dv_lookup_color(dv_dag_node_t *, double *, double *, double *, double *);
 double dv_get_alpha_fading_out(dv_dag_node_t *);
 double dv_get_alpha_fading_in(dv_dag_node_t *);
+void draw_edge_1(cairo_t *, dv_dag_node_t *, dv_dag_node_t *);
 void dv_draw_status(cairo_t *);
 void dv_draw_infotags(cairo_t *, dv_dag_t *);
 void dv_draw_dvdag(cairo_t *, dv_dag_t *);

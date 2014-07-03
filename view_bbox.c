@@ -445,6 +445,8 @@ static void draw_bbox_node_r(cairo_t *cr, dv_dag_node_t *node) {
 }
 
 static void draw_bbox_edge_1(cairo_t *cr, dv_dag_node_t *u, dv_dag_node_t *v) {
+  draw_edge_1(cr, u, v);
+#if 0
   if (u->y > v->y)
     return;
   double alpha = 1.0;
@@ -464,6 +466,7 @@ static void draw_bbox_edge_1(cairo_t *cr, dv_dag_node_t *u, dv_dag_node_t *v) {
   cairo_line_to(cr, x2, y2);
   cairo_stroke(cr);
   cairo_restore(cr);
+#endif
 }
 
 static dv_dag_node_t * dv_dag_node_get_first(dv_dag_node_t *u) {

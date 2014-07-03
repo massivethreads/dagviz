@@ -437,6 +437,21 @@ static gboolean on_combobox4_changed(GtkComboBox *widget, gpointer user_data) {
   return TRUE;
 }
 
+static gboolean on_combobox_et_changed(GtkComboBox *widget, gpointer user_data) {
+  S->et = gtk_combo_box_get_active(widget);
+  gtk_widget_queue_draw(darea);
+  return TRUE;
+}
+
+static void on_togg_eaffix_toggled(GtkWidget *widget, gpointer user_data) {
+  if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget))) {
+    S->edge_affix = DV_EDGE_AFFIX_LENGTH;    
+  } else {
+    S->edge_affix = 0;
+  }
+  gtk_widget_queue_draw(darea);
+}
+
 static gboolean on_entry_radix_activate(GtkEntry *entry, gpointer user_data) {
   dv_get_entry_radix_text();
   return TRUE;
@@ -482,7 +497,7 @@ int open_gui(int argc, char *argv[])
   gtk_window_maximize(GTK_WINDOW(window));
   gtk_window_set_title(GTK_WINDOW(window), "DAG Visualizer");
   g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
-  g_signal_connect(G_OBJECT(window), "key-release-event", G_CALLBACK(on_window_key_event), NULL);
+  g_signal_connect(G_OBJECT(window), "key-press-event", G_CALLBACK(on_window_key_event), NULL);
   GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
   gtk_container_add(GTK_CONTAINER(window), vbox);  
 
@@ -545,6 +560,26 @@ int open_gui(int argc, char *argv[])
   gtk_container_add(GTK_CONTAINER(btn_combo4), combobox4);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo4, -1);
 
+  // Edge type combobox
+  GtkToolItem *btn_combo_et = gtk_tool_item_new();
+  GtkWidget *combobox_et = gtk_combo_box_text_new();
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_et), "none", "None");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_et), "straight", "Straight");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_et), "down", "Down");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_et), "winding", "Winding");
+  gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_et), DV_EDGE_TYPE_INIT);
+  g_signal_connect(G_OBJECT(combobox_et), "changed", G_CALLBACK(on_combobox_et_changed), NULL);
+  gtk_container_add(GTK_CONTAINER(btn_combo_et), combobox_et);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo_et, -1);
+
+  // Edge affix toggle
+  GtkToolItem * btn_togg_eaffix = gtk_tool_item_new();
+  GtkWidget * togg_eaffix = gtk_toggle_button_new_with_label("Edge Affix");
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togg_eaffix), TRUE);
+  g_signal_connect(G_OBJECT(togg_eaffix), "toggled", G_CALLBACK(on_togg_eaffix_toggled), NULL);
+  gtk_container_add(GTK_CONTAINER(btn_togg_eaffix), togg_eaffix);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_togg_eaffix, -1);
+  
   // Zoomfit-horizontally button
   GtkToolItem *btn_zoomfit_hoz = gtk_tool_button_new_from_stock(GTK_STOCK_ZOOM_FIT);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_zoomfit_hoz, -1);
@@ -605,6 +640,8 @@ static void dv_status_init() {
   int i;
   for (i=0; i<DV_NUM_COLOR_POOLS; i++)
     S->CP_sizes[i] = 0;
+  S->et = DV_EDGE_TYPE_INIT;
+  S->edge_affix = DV_EDGE_AFFIX_LENGTH;
 }
 
 /*---------------end of Initialization Functions------*/
