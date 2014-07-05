@@ -3,6 +3,7 @@
 GtkWidget *window;
 GtkWidget *darea;
 GtkWidget *dv_entry_radix;
+GtkWidget *dv_combobox_lt;
 
 /*--------Interactive processing functions------------*/
 
@@ -99,6 +100,15 @@ static void dv_do_zoomfit_hoz() {
 static void dv_do_zoomfit_ver() {
   dv_get_zoomfit_ver_ratio(S->vpw, S->vph, &G->zoom_ratio, &G->x, &G->y);
   gtk_widget_queue_draw(darea);
+}
+
+static void dv_do_changing_lt(int new_lt) {
+  int old_lt = S->lt;
+  S->lt = new_lt;
+  gtk_combo_box_set_active(GTK_COMBO_BOX(dv_combobox_lt), new_lt);
+  dv_layout_dvdag(G);
+  if (S->lt != old_lt)
+    dv_do_zoomfit_hoz();
 }
 
 static void dv_do_drawing(cairo_t *cr)
@@ -407,22 +417,19 @@ static gboolean on_motion_event(GtkWidget *widget, GdkEventMotion *event, gpoint
   return TRUE;
 }
 
-static gboolean on_combobox_changed(GtkComboBox *widget, gpointer user_data) {
+static gboolean on_combobox_lt_changed(GtkComboBox *widget, gpointer user_data) {
+  int new_lt = gtk_combo_box_get_active(widget);
+  dv_do_changing_lt(new_lt);
+  return TRUE;  
+}
+
+static gboolean on_combobox_nc_changed(GtkComboBox *widget, gpointer user_data) {
   S->nc = gtk_combo_box_get_active(widget);
   gtk_widget_queue_draw(darea);
   return TRUE;
 }
 
-static gboolean on_combobox2_changed(GtkComboBox *widget, gpointer user_data) {
-  int old_lt = S->lt;
-  S->lt = gtk_combo_box_get_active(widget);
-  dv_layout_dvdag(G);
-  if (S->lt != old_lt)
-    dv_do_zoomfit_hoz();
-  return TRUE;
-}
-
-static gboolean on_combobox3_changed(GtkComboBox *widget, gpointer user_data) {
+static gboolean on_combobox_sdt_changed(GtkComboBox *widget, gpointer user_data) {
   S->sdt = gtk_combo_box_get_active(widget);
   dv_set_entry_radix_text();
   dv_layout_dvdag(G);
@@ -430,7 +437,7 @@ static gboolean on_combobox3_changed(GtkComboBox *widget, gpointer user_data) {
   return TRUE;
 }
 
-static gboolean on_combobox4_changed(GtkComboBox *widget, gpointer user_data) {
+static gboolean on_combobox_frombt_changed(GtkComboBox *widget, gpointer user_data) {
   S->frombt = gtk_combo_box_get_active(widget);
   dv_layout_dvdag(G);
   gtk_widget_queue_draw(darea);
@@ -479,6 +486,15 @@ static gboolean on_window_key_event(GtkWidget *widget, GdkEvent *event, gpointer
   case 118: /* v */
     dv_do_zoomfit_ver();
     break;
+  case 49: /* 1 */
+    dv_do_changing_lt(0);
+    break;
+  case 50: /* 2 */
+    dv_do_changing_lt(1);
+    break;
+  case 51: /* 3 */
+    dv_do_changing_lt(2);
+    break;
   }
   return TRUE;
 }
@@ -506,40 +522,40 @@ int open_gui(int argc, char *argv[])
   //gtk_widget_override_background_color(GTK_WIDGET(toolbar), GTK_STATE_FLAG_NORMAL, white);
 
   // Layout type combobox
-  GtkToolItem *btn_combo2 = gtk_tool_item_new();
-  GtkWidget *combobox2 = gtk_combo_box_text_new();
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox2), "grid", "Grid like");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox2), "bounding", "Bounding box");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox2), "timeline", "Timeline");
-  gtk_combo_box_set_active(GTK_COMBO_BOX(combobox2), DV_LAYOUT_TYPE_INIT);
-  g_signal_connect(G_OBJECT(combobox2), "changed", G_CALLBACK(on_combobox2_changed), NULL);
-  gtk_container_add(GTK_CONTAINER(btn_combo2), combobox2);
-  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo2, -1);
+  GtkToolItem *btn_combo_lt = gtk_tool_item_new();
+  dv_combobox_lt = gtk_combo_box_text_new();
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(dv_combobox_lt), "grid", "Grid like");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(dv_combobox_lt), "bounding", "Bounding box");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(dv_combobox_lt), "timeline", "Timeline");
+  gtk_combo_box_set_active(GTK_COMBO_BOX(dv_combobox_lt), DV_LAYOUT_TYPE_INIT);
+  g_signal_connect(G_OBJECT(dv_combobox_lt), "changed", G_CALLBACK(on_combobox_lt_changed), NULL);
+  gtk_container_add(GTK_CONTAINER(btn_combo_lt), dv_combobox_lt);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo_lt, -1);
 
   // Node color combobox
-  GtkToolItem *btn_combo = gtk_tool_item_new();
-  GtkWidget *combobox = gtk_combo_box_text_new();
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "worker", "Worker");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "cpu", "CPU");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "kind", "Node kind");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "code_start", "Code start");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "code_end", "Code end");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "code_start_end", "Code start-end");
-  gtk_combo_box_set_active(GTK_COMBO_BOX(combobox), DV_NODE_COLOR_INIT);
-  g_signal_connect(G_OBJECT(combobox), "changed", G_CALLBACK(on_combobox_changed), NULL);
-  gtk_container_add(GTK_CONTAINER(btn_combo), combobox);
-  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo, -1);
+  GtkToolItem *btn_combo_nc = gtk_tool_item_new();
+  GtkWidget *combobox_nc = gtk_combo_box_text_new();
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_nc), "worker", "Worker");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_nc), "cpu", "CPU");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_nc), "kind", "Node kind");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_nc), "code_start", "Code start");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_nc), "code_end", "Code end");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_nc), "code_start_end", "Code start-end");
+  gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_nc), DV_NODE_COLOR_INIT);
+  g_signal_connect(G_OBJECT(combobox_nc), "changed", G_CALLBACK(on_combobox_nc_changed), NULL);
+  gtk_container_add(GTK_CONTAINER(btn_combo_nc), combobox_nc);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo_nc, -1);
 
   // Scale-down type combobox
-  GtkToolItem *btn_combo3 = gtk_tool_item_new();
-  GtkWidget *combobox3 = gtk_combo_box_text_new();
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox3), "log", "Log");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox3), "power", "Power");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox3), "linear", "Linear");
-  gtk_combo_box_set_active(GTK_COMBO_BOX(combobox3), DV_SCALE_TYPE_INIT);
-  g_signal_connect(G_OBJECT(combobox3), "changed", G_CALLBACK(on_combobox3_changed), NULL);
-  gtk_container_add(GTK_CONTAINER(btn_combo3), combobox3);
-  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo3, -1);
+  GtkToolItem *btn_combo_sdt = gtk_tool_item_new();
+  GtkWidget *combobox_sdt = gtk_combo_box_text_new();
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_sdt), "log", "Log");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_sdt), "power", "Power");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_sdt), "linear", "Linear");
+  gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_sdt), DV_SCALE_TYPE_INIT);
+  g_signal_connect(G_OBJECT(combobox_sdt), "changed", G_CALLBACK(on_combobox_sdt_changed), NULL);
+  gtk_container_add(GTK_CONTAINER(btn_combo_sdt), combobox_sdt);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo_sdt, -1);
 
   // Radix value input
   GtkToolItem *btn_entry_radix = gtk_tool_item_new();
@@ -551,14 +567,14 @@ int open_gui(int argc, char *argv[])
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_entry_radix, -1);
 
   // Frombt combobox
-  GtkToolItem *btn_combo4 = gtk_tool_item_new();
-  GtkWidget *combobox4 = gtk_combo_box_text_new();
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox4), "not", "Not frombt");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox4), "frombt", "From BT");
-  gtk_combo_box_set_active(GTK_COMBO_BOX(combobox4), DV_FROMBT_INIT);
-  g_signal_connect(G_OBJECT(combobox4), "changed", G_CALLBACK(on_combobox4_changed), NULL);
-  gtk_container_add(GTK_CONTAINER(btn_combo4), combobox4);
-  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo4, -1);
+  GtkToolItem *btn_combo_frombt = gtk_tool_item_new();
+  GtkWidget *combobox_frombt = gtk_combo_box_text_new();
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_frombt), "not", "Not frombt");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_frombt), "frombt", "From BT");
+  gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_frombt), DV_FROMBT_INIT);
+  g_signal_connect(G_OBJECT(combobox_frombt), "changed", G_CALLBACK(on_combobox_frombt_changed), NULL);
+  gtk_container_add(GTK_CONTAINER(btn_combo_frombt), combobox_frombt);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo_frombt, -1);
 
   // Edge type combobox
   GtkToolItem *btn_combo_et = gtk_tool_item_new();
