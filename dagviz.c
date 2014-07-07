@@ -381,17 +381,34 @@ static gboolean on_button_event(GtkWidget *widget, GdkEventButton *event, gpoint
   }  else if (event->type == GDK_BUTTON_RELEASE) {
     // Drag
     S->drag_on = 0;
-    // Info tag
+    // Node clicked
     if (S->accdisx < DV_SAFE_CLICK_RANGE
         && S->accdisy < DV_SAFE_CLICK_RANGE) {
       double ox = (event->x - G->basex - G->x) / G->zoom_ratio;
       double oy = (event->y - G->basey - G->y) / G->zoom_ratio;
-      dv_dag_node_t *node_pressed = dv_do_finding_clicked_node(ox, oy);
-      if (node_pressed) {
-        if (!dv_llist_remove(G->itl, node_pressed)) {
-          dv_llist_add(G->itl, node_pressed);
+      dv_dag_node_t *node = dv_do_finding_clicked_node(ox, oy);
+      if (node) {
+        switch (S->cm) {
+        case 0:
+          // Info tag        
+          if (!dv_llist_remove(G->itl, node)) {
+            dv_llist_add(G->itl, node);
+          }
+          gtk_widget_queue_draw(darea);
+          break;
+        case 1:
+          // Expand/Collapse
+          if (dv_is_union(node)) {
+            if ((dv_is_shrinked(node) || dv_is_shrinking(node))
+                && !dv_is_expanding(node))
+              dv_do_expanding_one_1(node);
+          } else {
+            dv_do_collapsing_one_r(node->parent);
+          }
+          break;
+        default:
+          dv_check(0);
         }
-        gtk_widget_queue_draw(darea);
       }
     }
   } else if (event->type == GDK_2BUTTON_PRESS) {
@@ -457,6 +474,11 @@ static void on_togg_eaffix_toggled(GtkWidget *widget, gpointer user_data) {
     S->edge_affix = 0;
   }
   gtk_widget_queue_draw(darea);
+}
+
+static gboolean on_combobox_cm_changed(GtkComboBox *widget, gpointer user_data) {
+  S->cm = gtk_combo_box_get_active(widget);
+  return TRUE;
 }
 
 static gboolean on_entry_radix_activate(GtkEntry *entry, gpointer user_data) {
@@ -596,6 +618,16 @@ int open_gui(int argc, char *argv[])
   gtk_container_add(GTK_CONTAINER(btn_togg_eaffix), togg_eaffix);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_togg_eaffix, -1);
   
+  // Click mode combobox
+  GtkToolItem *btn_combo_cm = gtk_tool_item_new();
+  GtkWidget *combobox_cm = gtk_combo_box_text_new();
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_cm), "info", "Infotag");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_cm), "expand", "Expand");
+  gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_cm), DV_CLICK_MODE_INIT);
+  g_signal_connect(G_OBJECT(combobox_cm), "changed", G_CALLBACK(on_combobox_cm_changed), NULL);
+  gtk_container_add(GTK_CONTAINER(btn_combo_cm), combobox_cm);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo_cm, -1);
+
   // Zoomfit-horizontally button
   GtkToolItem *btn_zoomfit_hoz = gtk_tool_button_new_from_stock(GTK_STOCK_ZOOM_FIT);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_zoomfit_hoz, -1);
@@ -658,6 +690,7 @@ static void dv_status_init() {
     S->CP_sizes[i] = 0;
   S->et = DV_EDGE_TYPE_INIT;
   S->edge_affix = DV_EDGE_AFFIX_LENGTH;
+  S->cm = DV_CLICK_MODE_INIT;
 }
 
 /*---------------end of Initialization Functions------*/

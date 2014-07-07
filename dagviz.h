@@ -80,6 +80,7 @@ typedef struct dv_llist {
 #define DV_FROMBT_INIT 0
 #define DV_EDGE_TYPE_INIT 3
 #define DV_EDGE_AFFIX_LENGTH 10
+#define DV_CLICK_MODE_INIT 1
 
 #define DV_COLOR_POOL_SIZE 100
 #define DV_NUM_COLOR_POOLS 6
@@ -132,6 +133,7 @@ typedef struct dv_status {
   int CP_sizes[DV_NUM_COLOR_POOLS];
   int et; /* edge type */
   int edge_affix; /* edge affix length */
+  int cm; /* click mode */
 } dv_status_t;
 
 typedef struct dv_dag_node {
