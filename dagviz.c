@@ -281,11 +281,14 @@ static dv_dag_node_t *dv_do_finding_clicked_node_1(double x, double y, dv_dag_no
 }
 
 static dv_dag_node_t *dv_do_finding_clicked_node_r(double x, double y, dv_dag_node_t *node) {
+  dv_dag_node_t *ret;
   /* Call inward */
   if (dv_is_union(node)
       && !dv_is_shrinking(node)
       && (dv_is_expanded(node) || dv_is_expanding(node))) {
-    dv_do_finding_clicked_node_r(x, y, node->head);
+    ret = dv_do_finding_clicked_node_r(x, y, node->head);
+    if (ret)
+      return ret;
   } else if (dv_do_finding_clicked_node_1(x, y, node)) {
       return node;
   }
@@ -293,8 +296,9 @@ static dv_dag_node_t *dv_do_finding_clicked_node_r(double x, double y, dv_dag_no
   dv_llist_iterate_init(node->links);
   dv_dag_node_t *u;
   while (u = (dv_dag_node_t *) dv_llist_iterate_next(node->links)) {
-    if (dv_do_finding_clicked_node_r(x, y, u))
-      return u;
+    ret = dv_do_finding_clicked_node_r(x, y, u);
+    if (ret)
+      return ret;
   }
   return 0;
 }
