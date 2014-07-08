@@ -113,7 +113,8 @@ void print_pi_string_table(dr_pi_string_table * stp, int i) {
 
 
 static void print_dvdag_node(dv_dag_node_t *node, int i) {
-  int kind = node->pi->info.kind;
+  dr_pi_dag_node *pi = dv_pidag_get_node(node->pii);
+  int kind = pi->info.kind;
   printf("Node %d (%p): %d(%s)\n",         
          i,
          node,
@@ -135,7 +136,8 @@ void print_dvdag(dv_dag_t *G) {
 }
 
 static void print_layout_node(dv_dag_node_t *node, int i) {
-  int kind = node->pi->info.kind;
+  dr_pi_dag_node *pi = dv_pidag_get_node(node->pii);
+  int kind = pi->info.kind;
   printf(
          "  Node %d: (%s)\n"
          "    f(U/Sked/Epding/Sking)=%d%d%d%d\n"

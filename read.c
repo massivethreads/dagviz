@@ -1,8 +1,17 @@
 #include "dagviz.h"
 
-dv_status_t S[1];
-dr_pi_dag P[1];
-dv_dag_t G[1];
+/*---------PIDAG Reader's functions---------------*/
+
+dr_pi_dag_node * dv_pidag_get_node(long idx) {
+  dv_check(idx >=0 && idx < P->n);
+  dr_pi_dag_node *pi = P->T + idx;
+  return pi;
+}
+
+/*---------end of PIDAG Reader's functions---------------*/
+
+
+
 
 /*-----------------Read .dag format-----------*/
 
@@ -61,8 +70,8 @@ void dv_read_dag_file_to_pidag(char * filename, dr_pi_dag * P) {
   close(fd);
 }
 
-static void dv_dag_node_init(dv_dag_node_t *u, dv_dag_node_t *p, dr_pi_dag_node *pi) {
-  u->pi = pi;
+static void dv_dag_node_init(dv_dag_node_t *u, dv_dag_node_t *p, long pii) {
+  u->pii = pii;
   dv_node_flag_init(u->f);
   u->d = (p)?(p->d + 1):0;
 
@@ -103,18 +112,12 @@ static dv_dag_node_t * dv_traverse_node(dr_pi_dag_node *pi, dv_dag_node_t *u, dv
   dv_dag_node_t * u_b;
   dv_dag_node_t * u_x;
   dv_dag_node_t * u_t;
-  switch (pi->info.kind) {
-  case dr_dag_node_kind_wait_tasks:
-  case dr_dag_node_kind_end_task:
-  case dr_dag_node_kind_create_task:
-    // Do nothing
-    break;
-  case dr_dag_node_kind_section:
-  case dr_dag_node_kind_task:
+  if (pi->info.kind == dr_dag_node_kind_section
+      || pi->info.kind == dr_dag_node_kind_task) {
     pi_a = pi + pi->subgraphs_begin_offset;
     pi_b = pi + pi->subgraphs_end_offset;
     if (pi_a < pi_b) {
-
+      
       // Set u.f
       dv_node_flag_set(u->f, DV_NODE_FLAG_UNION);
       dv_node_flag_set(u->f, DV_NODE_FLAG_SHRINKED);
@@ -126,7 +129,7 @@ static dv_dag_node_t * dv_traverse_node(dr_pi_dag_node *pi, dv_dag_node_t *u, dv
       // Set ux.pi
       pi_x = pi_a;
       for (u_x = u_a; u_x < u_b; u_x++) {
-        dv_dag_node_init(u_x, u, pi_x);
+        dv_dag_node_init(u_x, u, pi_x - P->T);
         pi_x++;
         if (u_x->d > G->dmax)
           G->dmax = u_x->d;
@@ -143,11 +146,12 @@ static dv_dag_node_t * dv_traverse_node(dr_pi_dag_node *pi, dv_dag_node_t *u, dv
         // x -> x+1
         dv_llist_add(u_x->links, (void *) (u_x + 1));
         (u_x + 1)->pre = u_x;
-        if (u_x->pi->info.kind == dr_dag_node_kind_create_task) {
-          pi_t = u_x->pi + u_x->pi->child_offset;
+        pi_x = dv_pidag_get_node(u_x->pii);
+        if (pi_x->info.kind == dr_dag_node_kind_create_task) {
+          pi_t = pi_x + pi_x->child_offset;
           dv_check(p < plim);
           u_t = p++;
-          dv_dag_node_init(u_t, u, pi_t);
+          dv_dag_node_init(u_t, u, pi_t - P->T);
           // Push u_t to stack
           dv_stack_push(s, (void *) u_t);
           // c -> T
@@ -158,15 +162,7 @@ static dv_dag_node_t * dv_traverse_node(dr_pi_dag_node *pi, dv_dag_node_t *u, dv
         }
       }
 
-    } else {
-
-      // Do nothing
-      
     }
-    break;
-  default:
-    dv_check(0);
-    break;
   }
 
   return p;
@@ -182,17 +178,19 @@ void dv_convert_pidag_to_dvdag(dr_pi_dag *P, dv_dag_t *G) {
   dv_dag_node_t * plim = G->T + G->n;
   dv_check(p < plim);
   G->rt = p++;
-  dv_dag_node_init(G->rt, 0, P->T);
+  dv_dag_node_init(G->rt, 0, 0);
   G->dmax = 0;
-  G->bt = G->rt->pi->info.start.t - 1;
-  G->et = G->rt->pi->info.end.t + 1;
+  dr_pi_dag_node *pi = dv_pidag_get_node(G->rt->pii);
+  G->bt = pi->info.start.t - 1;
+  G->et = pi->info.end.t + 1;
   // Traverse pidag's nodes
   dv_stack_t s[1];
   dv_stack_init(s);
   dv_stack_push(s, (void *) G->rt);
   while (s->top) {
     dv_dag_node_t * x = (dv_dag_node_t *) dv_stack_pop(s);
-    p = dv_traverse_node(x->pi, x, p, plim, s, G);
+    pi = dv_pidag_get_node(x->pii);
+    p = dv_traverse_node(pi, x, p, plim, s, G);
   }
   // Drawing parameters
   G->init = 1;

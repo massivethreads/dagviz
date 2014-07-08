@@ -1,5 +1,9 @@
 #include "dagviz.h"
 
+dv_status_t S[1];
+dr_pi_dag P[1];
+dv_dag_t G[1];
+
 GtkWidget *window;
 GtkWidget *darea;
 GtkWidget *dv_entry_radix;
@@ -249,37 +253,54 @@ static void dv_do_collapsing_one() {
   }
 }
 
-static dv_dag_node_t *dv_do_finding_clicked_node(double x, double y) {
+static dv_dag_node_t *dv_do_finding_clicked_node_1(double x, double y, dv_dag_node_t *node) {
   dv_dag_node_t * ret = NULL;
-  int i;
-  dv_dag_node_t *node;
-  for (i=0; i<G->n; i++) {
-    node = G->T + i;
-    // Split process based on layout type
-    if (S->lt == 0) {
-      // grid-like layout
-      if (dv_is_visible(node)) {
-        double vc, hc;
-        vc = node->vl->c;
-        hc = node->c;
-        if (vc - DV_RADIUS < x && x < vc + DV_RADIUS
-            && hc - DV_RADIUS < y && y < hc + DV_RADIUS) {
-          ret = node;
-          break;
-        }
-      }      
-    } else if (S->lt == 1 || S->lt == 2) {
-      // bbox/timeline layouts
-      if (dv_is_single(node)) {
-        if (node->x - node->lw < x && x < node->x + node->rw
-            && node->y < y && y < node->y + node->dw) {
-          ret = node;
-          break;
-        }
-      }
+  double vc, hc;
+  switch (S->lt) {
+  case 0:
+    // grid-like layout
+    vc = node->vl->c;
+    hc = node->c;
+    if (vc - DV_RADIUS < x && x < vc + DV_RADIUS
+        && hc - DV_RADIUS < y && y < hc + DV_RADIUS) {
+      ret = node;
     }
+    break;
+  case 1:
+  case 2:
+    // bbox/timeline layouts
+    if (node->x - node->lw < x && x < node->x + node->rw
+        && node->y < y && y < node->y + node->dw) {
+      ret = node;
+    }
+    break;
+  default:
+    dv_check(0);
   }
   return ret;
+}
+
+static dv_dag_node_t *dv_do_finding_clicked_node_r(double x, double y, dv_dag_node_t *node) {
+  /* Call inward */
+  if (dv_is_union(node)
+      && !dv_is_shrinking(node)
+      && (dv_is_expanded(node) || dv_is_expanding(node))) {
+    dv_do_finding_clicked_node_r(x, y, node->head);
+  } else if (dv_do_finding_clicked_node_1(x, y, node)) {
+      return node;
+  }
+  /* Call link-along */
+  dv_llist_iterate_init(node->links);
+  dv_dag_node_t *u;
+  while (u = (dv_dag_node_t *) dv_llist_iterate_next(node->links)) {
+    if (dv_do_finding_clicked_node_r(x, y, u))
+      return u;
+  }
+  return 0;
+}
+
+static dv_dag_node_t *dv_do_finding_clicked_node(double x, double y) {
+  return dv_do_finding_clicked_node_r(x, y, G->rt);
 }
 
 static void dv_set_entry_radix_text() {

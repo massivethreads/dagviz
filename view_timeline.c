@@ -5,7 +5,8 @@
 static void dv_layout_timeline_node(dv_dag_node_t *node) {
   /* Calculate inward */
   int is_single_node = 1;
-  switch (node->pi->info.kind) {
+  dr_pi_dag_node * pi = dv_pidag_get_node(node->pii);
+  switch (pi->info.kind) {
   case dr_dag_node_kind_wait_tasks:
   case dr_dag_node_kind_end_task:
   case dr_dag_node_kind_create_task:
@@ -22,11 +23,11 @@ static void dv_layout_timeline_node(dv_dag_node_t *node) {
   // node's inward
   node->lw = dv_layout_calculate_hsize(node);
   node->rw = dv_layout_calculate_hsize(node);
-  node->dw = dv_layout_calculate_vresize(node->pi->info.end.t - G->bt) - dv_layout_calculate_vresize(node->pi->info.start.t - G->bt);
+  node->dw = dv_layout_calculate_vresize(pi->info.end.t - G->bt) - dv_layout_calculate_vresize(pi->info.start.t - G->bt);
   // node's outward
-  int worker = node->pi->info.worker;
+  int worker = pi->info.worker;
   node->x = DV_RADIUS + worker * (2 * DV_RADIUS + DV_HDIS);
-  node->y = dv_layout_calculate_vresize(node->pi->info.start.t - G->bt);
+  node->y = dv_layout_calculate_vresize(pi->info.start.t - G->bt);
   if (!is_single_node) {
     // Recursive call
     if (!dv_is_shrinked(node))
@@ -120,7 +121,8 @@ static void draw_timeline_node_r(cairo_t *cr, dv_dag_node_t *node) {
   dv_check(node);
   /* Calculate inward */
   int is_single_node = 1;
-  switch (node->pi->info.kind) {
+  dr_pi_dag_node * pi = dv_pidag_get_node(node->pii);
+  switch (pi->info.kind) {
   case dr_dag_node_kind_wait_tasks:
   case dr_dag_node_kind_end_task:
   case dr_dag_node_kind_create_task:

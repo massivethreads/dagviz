@@ -34,45 +34,49 @@ double dv_layout_calculate_vresize(double val) {
 }
 
 static double dv_layout_calculate_vgap(dv_dag_node_t *parent, dv_dag_node_t *node1, dv_dag_node_t *node2) {
+  dr_pi_dag_node * pi1 = dv_pidag_get_node(node1->pii);
+  dr_pi_dag_node * pi2 = dv_pidag_get_node(node2->pii);
   double gap = dv_layout_calculate_gap(parent);
   double vgap;
   if (!S->frombt) {
     // begin - end
-    double time_gap = dv_layout_calculate_vresize(node2->pi->info.start.t - node1->pi->info.end.t);
+    double time_gap = dv_layout_calculate_vresize(pi2->info.start.t - pi1->info.end.t);
     vgap = gap * time_gap;
   } else {
     // from beginning
-    double time1 = dv_layout_calculate_vresize(node1->pi->info.end.t - G->bt);
-    double time2 = dv_layout_calculate_vresize(node2->pi->info.start.t - G->bt);
+    double time1 = dv_layout_calculate_vresize(pi1->info.end.t - G->bt);
+    double time2 = dv_layout_calculate_vresize(pi2->info.start.t - G->bt);
     vgap = gap * (time2 - time1);
   }
   return vgap;
 }
 
 double dv_layout_calculate_vsize(dv_dag_node_t *node) {
+  dr_pi_dag_node * pi = dv_pidag_get_node(node->pii);
   double gap = dv_layout_calculate_gap(node->parent);
   double vsize;
   if (!S->frombt) {
     // begin - end
-    double time_gap = dv_layout_calculate_vresize(node->pi->info.end.t - node->pi->info.start.t);
+    double time_gap = dv_layout_calculate_vresize(pi->info.end.t - pi->info.start.t);
     vsize = gap * time_gap;
   } else {
     // from beginning
-    double time1 = dv_layout_calculate_vresize(node->pi->info.start.t - G->bt);
-    double time2 = dv_layout_calculate_vresize(node->pi->info.end.t - G->bt);
+    double time1 = dv_layout_calculate_vresize(pi->info.start.t - G->bt);
+    double time2 = dv_layout_calculate_vresize(pi->info.end.t - G->bt);
     vsize = gap * (time2 - time1);
   }
   return vsize;
 }
 
 static double dv_layout_calculate_vsize_pure(dv_dag_node_t *node) {
+  dr_pi_dag_node * pi = dv_pidag_get_node(node->pii);
   double vsize;
   if (!S->frombt) {
-    double time = node->pi->info.end.t - node->pi->info.start.t;
+    double time = pi->info.end.t - pi->info.start.t;
     vsize = dv_layout_calculate_vresize(time);
   } else {
-    double time1 = dv_layout_calculate_vresize(node->pi->info.start.t - G->bt);
-    double time2 = dv_layout_calculate_vresize(node->pi->info.end.t - G->bt);
+    double time1 = dv_layout_calculate_vresize(pi->info.start.t - G->bt);
+    double time2 = dv_layout_calculate_vresize(pi->info.end.t - G->bt);
     double vsize = time2 - time1;
   }
   return vsize;
@@ -83,7 +87,9 @@ static dv_dag_node_t * dv_layout_node_get_last_tail(dv_dag_node_t *node) {
   dv_dag_node_t * tail;
   dv_llist_iterate_init(node->tails);
   while (tail = (dv_dag_node_t *) dv_llist_iterate_next(node->tails)) {
-    if (!ret || ret->pi->info.end.t < tail->pi->info.end.t)
+    dr_pi_dag_node * ret_pi = dv_pidag_get_node(ret->pii);
+    dr_pi_dag_node * tail_pi = dv_pidag_get_node(tail->pii);
+    if (!ret || ret_pi->info.end.t < tail_pi->info.end.t)
       ret = tail;
   }
   return ret;
@@ -115,7 +121,8 @@ static double dv_layout_node_get_last_tail_xp_r(dv_dag_node_t *node) {
 static void dv_layout_bbox_node(dv_dag_node_t *node) {
   /* Calculate inward */
   int is_single_node = 1;
-  switch (node->pi->info.kind) {
+  dr_pi_dag_node * pi = dv_pidag_get_node(node->pii);
+  switch (pi->info.kind) {
   case dr_dag_node_kind_wait_tasks:
   case dr_dag_node_kind_end_task:
   case dr_dag_node_kind_create_task:
@@ -216,7 +223,8 @@ static void dv_layout_bbox_node(dv_dag_node_t *node) {
 static void dv_layout_bbox_node_2nd(dv_dag_node_t *node) {
   /* Calculate inward */
   int is_single_node = 1;
-  switch (node->pi->info.kind) {
+  dr_pi_dag_node * pi = dv_pidag_get_node(node->pii);
+  switch (pi->info.kind) {
   case dr_dag_node_kind_wait_tasks:
   case dr_dag_node_kind_end_task:
   case dr_dag_node_kind_create_task:
@@ -397,7 +405,8 @@ static void draw_bbox_node_r(cairo_t *cr, dv_dag_node_t *node) {
 
   /* Calculate inward */
   int is_single_node = 1;
-  switch (node->pi->info.kind) {
+  dr_pi_dag_node * pi = dv_pidag_get_node(node->pii);
+  switch (pi->info.kind) {
   case dr_dag_node_kind_wait_tasks:
   case dr_dag_node_kind_end_task:
   case dr_dag_node_kind_create_task:
