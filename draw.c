@@ -92,7 +92,7 @@ static void dv_lookup_color_value(int v, double *r, double *g, double *b, double
 
 void dv_lookup_color(dv_dag_node_t *node, double *r, double *g, double *b, double *a) {
   int v = 0;
-  dr_pi_dag_node *pi = dv_pidag_get_node(node->pii);
+  dr_pi_dag_node *pi = dv_pidag_get_node(node);
   dv_check(S->nc < DV_NUM_COLOR_POOLS);
   switch (S->nc) {
   case 0:
@@ -194,7 +194,7 @@ void draw_edge_1(cairo_t *cr, dv_dag_node_t *u, dv_dag_node_t *v) {
     break;
   case 3:
     // winding
-    pi = dv_pidag_get_node(u->pii);
+    pi = dv_pidag_get_node(u);
     if (pi->info.kind == dr_dag_node_kind_create_task)
       cairo_line_to(cr, x2, y1);
     else
@@ -303,7 +303,7 @@ static void dv_draw_infotag_1(cairo_t *cr, dv_dag_node_t *node) {
 
   // Line 1
   /* TODO: adaptable string length */
-  dr_pi_dag_node *pi = dv_pidag_get_node(node->pii);
+  dr_pi_dag_node *pi = dv_pidag_get_node(node);
   char *s = (char *) dv_malloc( DV_STRING_LENGTH * sizeof(char) );
   sprintf(s, "[%ld] %s d=%d f=%d%d%d%d",
           node - G->T,

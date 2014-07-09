@@ -5,7 +5,7 @@
 static void dv_layout_timeline_node(dv_dag_node_t *node) {
   /* Calculate inward */
   int is_single_node = 1;
-  dr_pi_dag_node * pi = dv_pidag_get_node(node->pii);
+  dr_pi_dag_node * pi = dv_pidag_get_node(node);
   switch (pi->info.kind) {
   case dr_dag_node_kind_wait_tasks:
   case dr_dag_node_kind_end_task:
@@ -121,7 +121,7 @@ static void draw_timeline_node_r(cairo_t *cr, dv_dag_node_t *node) {
   dv_check(node);
   /* Calculate inward */
   int is_single_node = 1;
-  dr_pi_dag_node * pi = dv_pidag_get_node(node->pii);
+  dr_pi_dag_node * pi = dv_pidag_get_node(node);
   switch (pi->info.kind) {
   case dr_dag_node_kind_wait_tasks:
   case dr_dag_node_kind_end_task:

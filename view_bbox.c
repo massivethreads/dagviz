@@ -34,8 +34,8 @@ double dv_layout_calculate_vresize(double val) {
 }
 
 static double dv_layout_calculate_vgap(dv_dag_node_t *parent, dv_dag_node_t *node1, dv_dag_node_t *node2) {
-  dr_pi_dag_node * pi1 = dv_pidag_get_node(node1->pii);
-  dr_pi_dag_node * pi2 = dv_pidag_get_node(node2->pii);
+  dr_pi_dag_node * pi1 = dv_pidag_get_node(node1);
+  dr_pi_dag_node * pi2 = dv_pidag_get_node(node2);
   double gap = dv_layout_calculate_gap(parent);
   double vgap;
   if (!S->frombt) {
@@ -52,7 +52,7 @@ static double dv_layout_calculate_vgap(dv_dag_node_t *parent, dv_dag_node_t *nod
 }
 
 double dv_layout_calculate_vsize(dv_dag_node_t *node) {
-  dr_pi_dag_node * pi = dv_pidag_get_node(node->pii);
+  dr_pi_dag_node * pi = dv_pidag_get_node(node);
   double gap = dv_layout_calculate_gap(node->parent);
   double vsize;
   if (!S->frombt) {
@@ -69,7 +69,7 @@ double dv_layout_calculate_vsize(dv_dag_node_t *node) {
 }
 
 static double dv_layout_calculate_vsize_pure(dv_dag_node_t *node) {
-  dr_pi_dag_node * pi = dv_pidag_get_node(node->pii);
+  dr_pi_dag_node * pi = dv_pidag_get_node(node);
   double vsize;
   if (!S->frombt) {
     double time = pi->info.end.t - pi->info.start.t;
@@ -87,8 +87,8 @@ static dv_dag_node_t * dv_layout_node_get_last_tail(dv_dag_node_t *node) {
   dv_dag_node_t * tail;
   dv_llist_iterate_init(node->tails);
   while (tail = (dv_dag_node_t *) dv_llist_iterate_next(node->tails)) {
-    dr_pi_dag_node * ret_pi = dv_pidag_get_node(ret->pii);
-    dr_pi_dag_node * tail_pi = dv_pidag_get_node(tail->pii);
+    dr_pi_dag_node * ret_pi = dv_pidag_get_node(ret);
+    dr_pi_dag_node * tail_pi = dv_pidag_get_node(tail);
     if (!ret || ret_pi->info.end.t < tail_pi->info.end.t)
       ret = tail;
   }
@@ -121,7 +121,7 @@ static double dv_layout_node_get_last_tail_xp_r(dv_dag_node_t *node) {
 static void dv_layout_bbox_node(dv_dag_node_t *node) {
   /* Calculate inward */
   int is_single_node = 1;
-  dr_pi_dag_node * pi = dv_pidag_get_node(node->pii);
+  dr_pi_dag_node * pi = dv_pidag_get_node(node);
   switch (pi->info.kind) {
   case dr_dag_node_kind_wait_tasks:
   case dr_dag_node_kind_end_task:
@@ -223,7 +223,7 @@ static void dv_layout_bbox_node(dv_dag_node_t *node) {
 static void dv_layout_bbox_node_2nd(dv_dag_node_t *node) {
   /* Calculate inward */
   int is_single_node = 1;
-  dr_pi_dag_node * pi = dv_pidag_get_node(node->pii);
+  dr_pi_dag_node * pi = dv_pidag_get_node(node);
   switch (pi->info.kind) {
   case dr_dag_node_kind_wait_tasks:
   case dr_dag_node_kind_end_task:
@@ -405,7 +405,7 @@ static void draw_bbox_node_r(cairo_t *cr, dv_dag_node_t *node) {
 
   /* Calculate inward */
   int is_single_node = 1;
-  dr_pi_dag_node * pi = dv_pidag_get_node(node->pii);
+  dr_pi_dag_node * pi = dv_pidag_get_node(node);
   switch (pi->info.kind) {
   case dr_dag_node_kind_wait_tasks:
   case dr_dag_node_kind_end_task:

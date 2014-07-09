@@ -227,7 +227,7 @@ void print_dag_file(char *);
 void check_layout(dv_dag_t *);
 
 /* read.c */
-dr_pi_dag_node * dv_pidag_get_node(long);
+dr_pi_dag_node * dv_pidag_get_node(dv_dag_node_t *);
 void dv_read_dag_file_to_pidag(char *, dr_pi_dag *);
 void dv_convert_pidag_to_dvdag(dr_pi_dag *, dv_dag_t *);
 

@@ -28,7 +28,7 @@ static void dv_layout_bind_node(dv_dag_node_t * u, dv_grid_line_t * l) {
   // Bind itself
   bind_node_1(u, l);
   // Bind child nodes
-  dr_pi_dag_node * pi = dv_pidag_get_node(u->pii);
+  dr_pi_dag_node * pi = dv_pidag_get_node(u);
   switch (pi->info.kind) {
   case dr_dag_node_kind_wait_tasks:
   case dr_dag_node_kind_end_task:
@@ -144,7 +144,7 @@ static double dv_layout_count_line_left(dv_grid_line_t *l) {
 
 static double dv_layout_count_line_down(dv_dag_node_t *node) {
   double c = 0.0;
-  dr_pi_dag_node * pi = dv_pidag_get_node(node->pii);
+  dr_pi_dag_node * pi = dv_pidag_get_node(node);
   switch (pi->info.kind) {
   case dr_dag_node_kind_wait_tasks:
   case dr_dag_node_kind_end_task:
@@ -456,7 +456,7 @@ static void draw_glike_edge_1(cairo_t *cr, dv_dag_node_t *u, dv_dag_node_t *v) {
     y2 -= S->edge_affix;
   }
   /* edge type */
-  dr_pi_dag_node * pi = dv_pidag_get_node(u->pii);
+  dr_pi_dag_node * pi = dv_pidag_get_node(u);
   switch (S->et) {
   case 0:
     // no edge

@@ -642,7 +642,7 @@ int open_gui(int argc, char *argv[])
   g_signal_connect(G_OBJECT(togg_eaffix), "toggled", G_CALLBACK(on_togg_eaffix_toggled), NULL);
   gtk_container_add(GTK_CONTAINER(btn_togg_eaffix), togg_eaffix);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_togg_eaffix, -1);
-  
+
   // Click mode combobox
   GtkToolItem *btn_combo_cm = gtk_tool_item_new();
   GtkWidget *combobox_cm = gtk_combo_box_text_new();
@@ -654,20 +654,22 @@ int open_gui(int argc, char *argv[])
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo_cm, -1);
 
   // Zoomfit-horizontally button
-  GtkToolItem *btn_zoomfit_hoz = gtk_tool_button_new_from_stock(GTK_STOCK_ZOOM_FIT);
+  GtkToolItem *btn_zoomfit_hoz = gtk_tool_button_new(NULL, "Best _Fit");
+  gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_zoomfit_hoz), "zoom-fit-best");
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_zoomfit_hoz, -1);
   g_signal_connect(G_OBJECT(btn_zoomfit_hoz), "clicked", G_CALLBACK(on_btn_zoomfit_hoz_clicked), NULL);
-  gtk_box_pack_start(GTK_BOX(vbox), toolbar, FALSE, FALSE, 0);
 
   // Zoomfit-vertically button
-  GtkToolItem *btn_zoomfit_ver = gtk_tool_button_new_from_stock(GTK_STOCK_ZOOM_FIT);
+  GtkToolItem *btn_zoomfit_ver = gtk_tool_button_new(NULL, "Best _Fit");
+  gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_zoomfit_ver), "zoom-fit-best");
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_zoomfit_ver, -1);
   g_signal_connect(G_OBJECT(btn_zoomfit_ver), "clicked", G_CALLBACK(on_btn_zoomfit_ver_clicked), NULL);
-  gtk_box_pack_start(GTK_BOX(vbox), toolbar, FALSE, FALSE, 0);
 
   // Shrink/Expand buttons
-  GtkToolItem *btn_shrink = gtk_tool_button_new_from_stock(GTK_STOCK_ZOOM_OUT);
-  GtkToolItem *btn_expand = gtk_tool_button_new_from_stock(GTK_STOCK_ZOOM_IN);
+  GtkToolItem *btn_shrink = gtk_tool_button_new(NULL, "Zoom _Out");
+  gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_shrink), "zoom-out");
+  GtkToolItem *btn_expand = gtk_tool_button_new(NULL, "Zoom _In");
+  gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_expand), "zoom-in");
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_shrink, -1);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_expand, -1);
   g_signal_connect(G_OBJECT(btn_shrink), "clicked", G_CALLBACK(on_btn_shrink_clicked), NULL);
@@ -683,6 +685,9 @@ int open_gui(int argc, char *argv[])
   g_signal_connect(G_OBJECT(darea), "button-release-event", G_CALLBACK(on_button_event), NULL);
   g_signal_connect(G_OBJECT(darea), "motion-notify-event", G_CALLBACK(on_motion_event), NULL);
   g_signal_connect(G_OBJECT(darea), "configure-event", G_CALLBACK(on_darea_configure_event), NULL);
+
+  // Pack to vbox
+  gtk_box_pack_start(GTK_BOX(vbox), toolbar, FALSE, FALSE, 0);
   gtk_box_pack_start(GTK_BOX(vbox), darea, TRUE, TRUE, 0);
 
   // Run main loop

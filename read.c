@@ -2,7 +2,9 @@
 
 /*---------PIDAG Reader's functions---------------*/
 
-dr_pi_dag_node * dv_pidag_get_node(long idx) {
+dr_pi_dag_node * dv_pidag_get_node(dv_dag_node_t *node) {
+  if (!node) return NULL;
+  long idx = node->pii;
   dv_check(idx >=0 && idx < P->n);
   dr_pi_dag_node *pi = P->T + idx;
   return pi;
@@ -146,7 +148,7 @@ static dv_dag_node_t * dv_traverse_node(dr_pi_dag_node *pi, dv_dag_node_t *u, dv
         // x -> x+1
         dv_llist_add(u_x->links, (void *) (u_x + 1));
         (u_x + 1)->pre = u_x;
-        pi_x = dv_pidag_get_node(u_x->pii);
+        pi_x = dv_pidag_get_node(u_x);
         if (pi_x->info.kind == dr_dag_node_kind_create_task) {
           pi_t = pi_x + pi_x->child_offset;
           dv_check(p < plim);
@@ -180,7 +182,7 @@ void dv_convert_pidag_to_dvdag(dr_pi_dag *P, dv_dag_t *G) {
   G->rt = p++;
   dv_dag_node_init(G->rt, 0, 0);
   G->dmax = 0;
-  dr_pi_dag_node *pi = dv_pidag_get_node(G->rt->pii);
+  dr_pi_dag_node *pi = dv_pidag_get_node(G->rt);
   G->bt = pi->info.start.t - 1;
   G->et = pi->info.end.t + 1;
   // Traverse pidag's nodes
@@ -189,7 +191,7 @@ void dv_convert_pidag_to_dvdag(dr_pi_dag *P, dv_dag_t *G) {
   dv_stack_push(s, (void *) G->rt);
   while (s->top) {
     dv_dag_node_t * x = (dv_dag_node_t *) dv_stack_pop(s);
-    pi = dv_pidag_get_node(x->pii);
+    pi = dv_pidag_get_node(x);
     p = dv_traverse_node(pi, x, p, plim, s, G);
   }
   // Drawing parameters
