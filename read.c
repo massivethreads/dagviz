@@ -2,22 +2,14 @@
 
 /*---------PIDAG Reader's functions---------------*/
 
-dr_pi_dag_node * dv_pidag_get_node(dv_dag_node_t *node) {
-  if (!node) return NULL;
-  long idx = node->pii;
-  dv_check(idx >=0 && idx < P->n);
-  dr_pi_dag_node *pi = P->T + idx;
-  return pi;
-}
-
-/*---------end of PIDAG Reader's functions---------------*/
-
-
-
-
-/*-----------------Read .dag format-----------*/
-
-void dv_read_dag_file_to_pidag(char * filename, dr_pi_dag * P) {
+dr_pi_dag * dv_pidag_read_new_file(char * filename) {
+  /* Get new PIDAG */
+  dv_check(CS->nP < DV_MAX_DAG_FILE);
+  CS->Pfn[CS->nP] = filename;
+  dr_pi_dag * P = &CS->P[CS->nP];
+  CS->nP++;
+  
+  /* Read file */
   int err;
   int fd;
   struct stat statbuf;
@@ -70,122 +62,356 @@ void dv_read_dag_file_to_pidag(char * filename, dr_pi_dag * P) {
   P->S = S;
   
   close(fd);
+  return P;
 }
 
-static void dv_dag_node_init(dv_dag_node_t *u, dv_dag_node_t *p, long pii) {
-  u->pii = pii;
-  dv_node_flag_init(u->f);
-  u->d = (p)?(p->d + 1):0;
-
-  u->parent = p;
-  u->pre = 0;
-  dv_llist_init(u->links);
-  u->head = 0;
-  dv_llist_init(u->tails);
-
-  u->x = 0.0;
-  u->y = 0.0;
-  u->xp = 0.0;
-  u->xpre = 0.0;
-  u->lw = 0.0;
-  u->rw = 0.0;
-  u->dw = 0.0;
-  u->link_lw = 0.0;
-  u->link_rw = 0.0;
-  u->link_dw = 0.0;
-  u->avoid_inward = 0;
-
-  u->vl = 0;
-  u->vl_in = 0;
-  u->lc = 0L;
-  u->rc = 0L;
-  u->dc = 0L;
-  u->c = 0L;
-
-  u->started = 0.0;
+dr_pi_dag_node * dv_pidag_get_node(dr_pi_dag *P, dv_dag_node_t *node) {
+  if (!node) return NULL;
+  long idx = node->pii;
+  dv_check(idx >=0 && idx < P->n);
+  dr_pi_dag_node *ret = P->T + idx;
+  return ret;
 }
 
-static dv_dag_node_t * dv_traverse_node(dr_pi_dag_node *pi, dv_dag_node_t *u, dv_dag_node_t *p, dv_dag_node_t *plim, dv_stack_t *s, dv_dag_t *G) {
-  dr_pi_dag_node * pi_a;
-  dr_pi_dag_node * pi_b;
-  dr_pi_dag_node * pi_x;
-  dr_pi_dag_node * pi_t;
-  dv_dag_node_t * u_a;
-  dv_dag_node_t * u_b;
-  dv_dag_node_t * u_x;
-  dv_dag_node_t * u_t;
-  if (pi->info.kind == dr_dag_node_kind_section
-      || pi->info.kind == dr_dag_node_kind_task) {
-    pi_a = pi + pi->subgraphs_begin_offset;
-    pi_b = pi + pi->subgraphs_end_offset;
-    if (pi_a < pi_b) {
-      
-      // Set u.f
-      dv_node_flag_set(u->f, DV_NODE_FLAG_UNION);
-      dv_node_flag_set(u->f, DV_NODE_FLAG_SHRINKED);
-      // Allocate memory for all child nodes
-      u_a = p;
-      u_b = p + (pi_b - pi_a);
-      dv_check(u_b <= plim);
-      p = u_b;
-      // Set ux.pi
-      pi_x = pi_a;
-      for (u_x = u_a; u_x < u_b; u_x++) {
-        dv_dag_node_init(u_x, u, pi_x - P->T);
-        pi_x++;
-        if (u_x->d > G->dmax)
-          G->dmax = u_x->d;
-      }
-      // Push child nodes to stack
-      for (u_x = u_b-1; u_x >= u_a; u_x--) {
-        dv_stack_push(s, (void *) u_x);
-      }
-      // Set u.head, u.tails
-      u->head = u_a;
-      dv_llist_add(u->tails, (void *) (u_b - 1));
-      // Set ux.links, u.tails
-      for (u_x = u_a; u_x < u_b - 1; u_x++) {
-        // x -> x+1
-        dv_llist_add(u_x->links, (void *) (u_x + 1));
-        (u_x + 1)->pre = u_x;
-        pi_x = dv_pidag_get_node(u_x);
-        if (pi_x->info.kind == dr_dag_node_kind_create_task) {
-          pi_t = pi_x + pi_x->child_offset;
-          dv_check(p < plim);
-          u_t = p++;
-          dv_dag_node_init(u_t, u, pi_t - P->T);
-          // Push u_t to stack
-          dv_stack_push(s, (void *) u_t);
-          // c -> T
-          dv_llist_add(u_x->links, (void *) u_t);
-          u_t->pre = u_x;
-          // --> u.tails
-          dv_llist_add(u->tails, (void *) u_t);
-        }
-      }
+dr_pi_dag_node * dv_pidag_get_node_offset(dr_pi_dag *P, dr_pi_dag_node *pi, long offset) {
+  if (!pi) return NULL;
+  long idx = pi - P->T + offset;
+  dv_check(idx >=0 && idx < P->n);
+  dr_pi_dag_node *ret = P->T + idx;
+  return ret;
+}
 
+long dv_pidag_get_idx(dr_pi_dag *P, dr_pi_dag_node *pi) {
+  long ret = pi - P->T;
+  return ret;
+}
+
+long dv_pidag_get_idx_with_offset(dr_pi_dag *P, dr_pi_dag_node *pi, long offset) {
+  long ret = pi - P->T + offset;
+  return ret;
+}
+  
+/*---------end of PIDAG Reader's functions---------------*/
+
+
+/*---------DAG's functions---------------*/
+
+void dv_dag_node_pool_init(dv_dag_t *D) {
+  if (!D) return;
+  if (D->T) return;
+  D->Tsz = DV_DAG_NODE_POOL_SIZE;
+  D->T = (dv_dag_node_t *) dv_malloc( sizeof(dv_dag_node_t) * D->Tsz );  
+  D->To = (char *) dv_malloc( sizeof(char) * D->Tsz );
+  int i;
+  for (i=0; i<D->Tsz; i++)
+    D->To[i] = 0;
+  D->Tn = 0;
+}
+
+int dv_dag_node_pool_is_empty(dv_dag_t *D) {
+  return (D->Tn >= D->Tsz);
+}
+
+dv_dag_node_t * dv_dag_node_pool_pop(dv_dag_t *D) {
+  if (dv_dag_node_pool_is_empty(D)) {
+    dv_dag_clear_shrinked_nodes(D);
+    if (dv_dag_node_pool_is_empty(D))
+      return NULL;
+  }
+  int i;
+  for (i=0; i<D->Tsz; i++)
+    if (!D->To[i]) {
+      D->To[i] = 1;
+      D->Tn++;
+      return D->T + i;
+    }
+  return NULL;
+}
+
+void dv_dag_node_pool_push(dv_dag_t *D, dv_dag_node_t *node) {
+  int i = node - D->T;
+  dv_check(i < D->Tsz);
+  dv_check(D->To[i]);
+  D->To[i] = 0;
+  D->Tn--;
+}
+
+int dv_dag_node_pool_avail(dv_dag_t *D) {
+  return D->Tsz - D->Tn;
+}
+
+dv_dag_node_t * dv_dag_node_pool_pop_contiguous(dv_dag_t *D, long num) {
+  long avail, new_avail;
+  avail = -1;
+  new_avail = dv_dag_node_pool_avail(D);
+  while (new_avail > avail) {
+    avail = new_avail;
+    dv_dag_clear_shrinked_nodes(D);
+    new_avail = dv_dag_node_pool_avail(D);
+  }
+  if (dv_dag_node_pool_avail(D) < num)
+    return NULL;
+  long i, j;
+  int ok;
+  for (i=0; i<D->Tsz-num+1; i++) {
+    ok = 1;
+    for (j=i; j<i+num; j++)
+      if (D->To[j]) {
+        ok = 0;
+        break;
+      }
+    if (ok) {
+      for (j=i; j<i+num; j++)
+        D->To[j] = 1;
+      D->Tn += num;
+      return D->T + i;
     }
   }
-
-  return p;
+  return NULL;
 }
 
-void dv_convert_pidag_to_dvdag(dr_pi_dag *P, dv_dag_t *G) {
-  G->n = P->n;
-  G->nw = P->num_workers;
-  G->st = P->S;
-  // Initialize rt, T
-  G->T = (dv_dag_node_t *) dv_malloc( sizeof(dv_dag_node_t) * G->n );
-  dv_dag_node_t * p = G->T;
-  dv_dag_node_t * plim = G->T + G->n;
-  dv_check(p < plim);
-  G->rt = p++;
-  dv_dag_node_init(G->rt, 0, 0);
-  G->dmax = 0;
-  dr_pi_dag_node *pi = dv_pidag_get_node(G->rt);
-  G->bt = pi->info.start.t - 1;
-  G->et = pi->info.end.t + 1;
+void dv_dag_node_init(dv_dag_node_t *node, dv_dag_node_t *parent, long pii) {
+  node->pii = pii;
+  dv_node_flag_init(node->f);
+  node->d = (parent)?(parent->d + 1):0;
+
+  node->parent = parent;
+  node->pre = 0;
+  dv_llist_init(node->links);
+  node->head = 0;
+  dv_llist_init(node->tails);
+
+  node->x = 0.0;
+  node->y = 0.0;
+  node->xp = 0.0;
+  node->xpre = 0.0;
+  node->lw = 0.0;
+  node->rw = 0.0;
+  node->dw = 0.0;
+  node->link_lw = 0.0;
+  node->link_rw = 0.0;
+  node->link_dw = 0.0;
+  node->avoid_inward = 0;
+
+  node->vl = 0;
+  node->vl_in = 0;
+  node->lc = 0L;
+  node->rc = 0L;
+  node->dc = 0L;
+  node->c = 0L;
+
+  node->started = 0.0;
+}
+
+int dv_dag_node_set(dv_dag_t *D, dv_dag_node_t *node) {
+  dr_pi_dag *P = D->P;
+  dr_pi_dag_node *pi = dv_pidag_get_node(P, node);
+
+  if (pi->info.kind == dr_dag_node_kind_section
+      || pi->info.kind == dr_dag_node_kind_task) {
+
+    if (pi->subgraphs_begin_offset < pi->subgraphs_end_offset)
+      dv_node_flag_set(node->f, DV_NODE_FLAG_UNION);
+    else
+      dv_node_flag_remove(node->f, DV_NODE_FLAG_UNION);
+    
+  } else { // kind == (section || task)
+
+    dv_node_flag_remove(node->f, DV_NODE_FLAG_UNION);
+    
+  }
+  
+  dv_node_flag_set(node->f, DV_NODE_FLAG_SET);
+  dv_node_flag_remove(node->f, DV_NODE_FLAG_INNER_LOADED);
+
+  return DV_OK;
+}
+
+int dv_dag_build_node_inner(dv_dag_t *D, dv_dag_node_t *node) {
+  dr_pi_dag *P = D->P;
+
+  if (!dv_is_set(node))
+    dv_dag_node_set(D, node);
+  
+  if (dv_is_union(node)) {
+    
+    dr_pi_dag_node *pi, *pi_a, *pi_b, *pi_x;
+    dv_dag_node_t *node_a, *node_b, *node_x, *node_t;
+
+    pi = dv_pidag_get_node(P, node);    
+    pi_a = dv_pidag_get_node_offset(P, pi, pi->subgraphs_begin_offset);
+    pi_b = dv_pidag_get_node_offset(P, pi, pi->subgraphs_end_offset - 1);
+    dv_check(pi_a < pi_b);
+    
+    // Check node pool for all child nodes
+    long num_children;
+    num_children = pi_b - pi_a + 1;
+    node_a = dv_dag_node_pool_pop_contiguous(D, num_children);
+    if (!node_a)
+      return dv_log_set_error(DV_ERROR_OONP);
+    node_b = node_a + num_children - 1;
+    
+      // Initialize children
+    pi_x = pi_a;
+    for (node_x = node_a; node_x <= node_b; node_x++) {
+      dv_dag_node_init(node_x, node, dv_pidag_get_idx(P, pi_x));
+      dv_dag_node_set(D, node_x);
+      pi_x++;
+      if (node_x->d > D->dmax)
+        D->dmax = node_x->d;
+    }
+    
+    // Set node->head, node->tails
+    node->head = node_a;
+    dv_llist_add(node->tails, (void *) (node_b));
+    // Set children's links, node->tails
+    for (node_x = node_a; node_x < node_b; node_x++) {
+      // x -> x+1
+      dv_llist_add(node_x->links, (void *) (node_x + 1));
+      (node_x + 1)->pre = node_x;
+      // x = create
+      pi_x = dv_pidag_get_node(P, node_x);
+      if (pi_x->info.kind == dr_dag_node_kind_create_task) {
+        node_t = dv_dag_node_pool_pop(D);
+        if (!node_t)
+          return dv_log_set_error(DV_ERROR_OONP);
+        dv_dag_node_init(node_t, node, dv_pidag_get_idx_with_offset(P, pi_x, pi_x->child_offset));
+        dv_dag_node_set(D, node_t);
+        // x -> Child
+        dv_llist_add(node_x->links, (void *) node_t);
+        node_t->pre = node_x;
+        // Set node->tails
+        dv_llist_add(node->tails, (void *) node_t);
+      }
+    }
+    
+    // Set node->f
+    dv_node_flag_set(node->f, DV_NODE_FLAG_INNER_LOADED);
+    dv_node_flag_set(node->f, DV_NODE_FLAG_SHRINKED);
+    
+  }    
+
+  return DV_OK;
+}
+
+int dv_dag_destroy_node_innner(dv_dag_t *D, dv_dag_node_t *node) {
+  // Check flags node->f
+  if (dv_is_set(node) && dv_is_union(node)
+      && dv_is_inner_loaded(node)) {
+
+    dv_dag_node_t *node_a, *node_b, *node_x, *node_t;
+    
+    node_a = node->head;
+    node_b = (dv_dag_node_t *) dv_llist_pop(node->tails);
+    dv_check(node_b > node_a);
+
+    // Unset node->head, node->tails
+    for (node_x = node_a; node_x <= node_b; node_x++) {
+      dv_dag_node_pool_push(D, node_x);
+    }
+    while (!dv_llist_is_empty(node->tails)) {
+      node_t = (dv_dag_node_t *) dv_llist_pop(node->tails);
+      dv_dag_node_pool_push(D, node_t);
+    }
+
+    // Unset node->f
+    dv_node_flag_remove(node->f, DV_NODE_FLAG_INNER_LOADED);
+
+  }  
+  return DV_OK;
+}
+
+static void dv_dag_clear_shrinked_nodes_1(dv_dag_t *D, dv_dag_node_t *node) {
+  dv_dag_destroy_node_innner(D, node);
+}
+
+static void dv_dag_clear_shrinked_nodes_r(dv_dag_t *D, dv_dag_node_t *node) {
+  if (!dv_is_set(node))
+    return;
+  if (dv_is_union(node) && dv_is_inner_loaded(node)) {
+
+    if (dv_is_shrinked(node)
+        && !dv_is_shrinking(node)
+        && !dv_is_expanding(node)) {
+      // check if node has inner_loaded node
+      int has_no_innerloaded_node = 1;
+      dv_stack_t s[1];
+      dv_stack_init(s);
+      dv_check(node->head);
+      dv_stack_push(s, (void *) node->head);
+      while (s->top) {
+        dv_dag_node_t * x = (dv_dag_node_t *) dv_stack_pop(s);
+        if (dv_is_set(node) && dv_is_union(x) && dv_is_inner_loaded(x))
+          has_no_innerloaded_node = 0;
+        dv_llist_iterate_init(x->links);
+        dv_dag_node_t *xx;
+        while (xx = (dv_dag_node_t *) dv_llist_iterate_next(x->links)) {
+          dv_stack_push(s, (void *) xx);
+        }      
+      }
+      if (has_no_innerloaded_node) {
+        // destroy inner
+        dv_dag_clear_shrinked_nodes_1(D, node);
+      } else {
+        /* Call inward */
+        dv_dag_clear_shrinked_nodes_r(D, node->head);
+      }
+      
+    } else {
+      /* Call inward */
+      dv_dag_clear_shrinked_nodes_r(D, node->head);      
+    }
+    
+  }
+  
+  /* Call link-along */
+  dv_llist_iterate_init(node->links);
+  dv_dag_node_t *u;
+  while (u = (dv_dag_node_t *) dv_llist_iterate_next(node->links)) {
+    dv_dag_clear_shrinked_nodes_r(D, u);
+  }
+}
+
+void dv_dag_clear_shrinked_nodes(dv_dag_t *D) {
+  dv_dag_clear_shrinked_nodes_r(D, D->rt);
+}
+
+void dv_dag_init(dv_dag_t *D, dr_pi_dag *P) {
+  D->P = P;
+  dv_dag_node_pool_init(D);
+  dv_check(!dv_dag_node_pool_is_empty(D));
+  D->rt = dv_dag_node_pool_pop(D);
+  dv_dag_node_init(D->rt, 0, 0);
+  if (P)
+    dv_dag_node_set(D, D->rt);
+  D->dmax = 0;
+  D->bt = 0.0;
+  D->et = 0.0;
+  // Drawing parameters
+  D->init = 1;
+  D->zoom_ratio = 1.0;
+  D->x = D->y = 0.0;
+  D->basex = D->basey = 0.0;
+  dv_llist_init(D->itl);
+  // Layout status
+  D->cur_d = 0;
+  D->cur_d_ex = 0;
+}
+
+dv_dag_t * dv_dag_create_new_with_pidag(dr_pi_dag *P) {
+  /* Get new DAG */
+  dv_check(CS->nD < DV_MAX_DAG);
+  dv_dag_t * D = &CS->D[CS->nD];
+  CS->nD++;
+  dv_dag_init(D, P);
+
+  /* Set values */
+  dr_pi_dag_node *pi = dv_pidag_get_node(P, D->rt);
+  D->bt = pi->info.start.t - 1;
+  D->et = pi->info.end.t + 1;
+  
   // Traverse pidag's nodes
+  /*
   dv_stack_t s[1];
   dv_stack_init(s);
   dv_stack_push(s, (void *) G->rt);
@@ -194,15 +420,9 @@ void dv_convert_pidag_to_dvdag(dr_pi_dag *P, dv_dag_t *G) {
     pi = dv_pidag_get_node(x);
     p = dv_traverse_node(pi, x, p, plim, s, G);
   }
-  // Drawing parameters
-  G->init = 1;
-  G->zoom_ratio = 1.0;
-  G->x = G->y = 0.0;
-  G->basex = G->basey = 0.0;
-  dv_llist_init(G->itl);
-  // Layout status
-  G->cur_d = 0;
-  G->cur_d_ex = 0;
+  */
+
+  return D;
 }
 
-/*-----------------end of Read .dag format-----------*/
+/*-----------------end of DAG's functions-----------*/

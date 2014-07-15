@@ -1,11 +1,27 @@
 #include "dagviz.h"
 
+/*-----------Main layout functions-------------------------*/
+
+void dv_view_layout(dv_view_t *V) {
+  dv_view_status_t *S = V->S;
+  
+  if (S->lt == 0)
+    dv_view_layout_glike(V);
+  else if (S->lt == 1)
+    dv_view_layout_bbox(V);
+  else if (S->lt == 2)
+    dv_view_layout_timeline(V);
+
+}
+
+/*-----------end of Main layout functions-------------------------*/
+
 /*-----Common functions-----*/
 
-double dv_layout_calculate_gap(dv_dag_node_t *node) {
+double dv_view_calculate_gap(dv_view_t *V, dv_dag_node_t *node) {
   double gap = 1.0;
   if (!node) return gap;
-  double ratio = (dv_get_time() - node->started) / S->a->duration;
+  double ratio = (dv_get_time() - node->started) / V->S->a->duration;
   if (ratio > 1.0)
     ratio = 1.0;
   if (dv_is_shrinking(node)) {
@@ -18,10 +34,10 @@ double dv_layout_calculate_gap(dv_dag_node_t *node) {
   return gap;
 }
 
-double dv_layout_calculate_reverse_ratio(dv_dag_node_t *node) {
+double dv_view_calculate_reverse_ratio(dv_view_t *V, dv_dag_node_t *node) {
   double ret = 0.0;
   if (!node) return ret;
-  double gap = dv_layout_calculate_gap(node);
+  double gap = dv_view_calculate_gap(V, node);
   if (dv_is_shrinking(node)) {
     ret = 1.0 - sqrt(1.0 - gap);
   } else if (dv_is_expanding(node)) {
@@ -41,11 +57,12 @@ double dv_get_time() {
   return tv.tv_sec * 1.0E3 + ((double)tv.tv_usec) / 1.0E3;
 }
 
-void dv_animation_init(dv_animation_t *a) {
+void dv_animation_init(dv_view_t *V, dv_animation_t *a) {
   a->on = 0;
   a->duration = DV_ANIMATION_DURATION;
   a->step = DV_ANIMATION_STEP;
   dv_llist_init(a->movings);
+  a->V = V;
 }
 
 static gboolean dv_animation_tick(gpointer data) {
@@ -68,8 +85,8 @@ static gboolean dv_animation_tick(gpointer data) {
       }
     }
   }
-  dv_layout_dvdag(G);
-  gtk_widget_queue_draw(darea);
+  dv_view_layout(a->V);
+  dv_queue_draw(a->V);
   // stop timer when there is no moving node 
   if (dv_llist_size(a->movings) == 0) {
     dv_animation_stop(a);
@@ -104,25 +121,11 @@ void dv_animation_reverse(dv_animation_t *a, dv_dag_node_t *node) {
   dv_llist_remove(a->movings, node);
   double cur = dv_get_time();
   //node->started = 2 * cur - a->duration - node->started;
-  node->started = cur - a->duration * dv_layout_calculate_reverse_ratio(node);
+  node->started = cur - a->duration * dv_view_calculate_reverse_ratio(a->V, node);
   dv_llist_add(a->movings, node);
 }
 
 /*-----------end of Animation functions----------------------*/
 
 
-/*-----------Main layout functions-------------------------*/
-
-void dv_layout_dvdag(dv_dag_t *G) {
-  
-  if (S->lt == 0)
-    dv_layout_glike_dvdag(G);
-  else if (S->lt == 1)
-    dv_layout_bbox_dvdag(G);
-  else if (S->lt == 2)
-    dv_layout_timeline_dvdag(G);
-
-}
-
-/*-----------end of Main layout functions-------------------------*/
 

@@ -9,23 +9,45 @@ const char * const DV_COLORS[] =
    "lightgoldenrod", "lightgoldenrodyellow", "lightpink2", "lightsalmon2", "lightskyblue1",
    "lightsteelblue3", "lightyellow3", "maroon1", "yellowgreen"};
 
-const char * const NODE_KIND_NAMES[] = {
-  "create",
-  "wait",
-  "end",
-  "section",
-  "task"
-};
+char * dv_get_node_kind_name(dr_dag_node_kind_t kind) {
+  switch (kind) {
+  case dr_dag_node_kind_create_task:
+    return "create";
+  case dr_dag_node_kind_wait_tasks:
+    return "wait";
+  case dr_dag_node_kind_other:
+    return "other";
+  case dr_dag_node_kind_end_task:
+    return "end";
+  case dr_dag_node_kind_section:
+    return "section";
+  case dr_dag_node_kind_task:
+    return "task";
+  default:
+    return "unknown";
+  }
+}
 
-const char * const EDGE_KIND_NAMES[] = {
-  "end",
-  "create",
-  "create_cont",
-  "wait_cont",
-  "max",
-};
+char * dv_get_edge_kind_name(dr_dag_edge_kind_t kind) {
+  switch (kind) {
+  case dr_dag_edge_kind_end:
+    return "end";
+  case dr_dag_edge_kind_create:
+    return "create";
+  case dr_dag_edge_kind_create_cont:
+    return "create_cont";
+  case dr_dag_edge_kind_wait_cont:
+    return "wait_cont";
+  case dr_dag_edge_kind_other_cont:
+    return "other_cont";
+  case dr_dag_edge_kind_max:
+    return "max";
+  default:
+    return "unknown";
+  }
+}
 
-void print_pi_dag_node(dr_pi_dag_node * dn, int i) {
+void dv_print_pidag_node(dr_pi_dag_node * dn, int i) {
   printf(
     "DAG node %d:\n"
     "  info.start: %llu, %p, %ld, %ld\n"
@@ -48,7 +70,7 @@ void print_pi_dag_node(dr_pi_dag_node * dn, int i) {
     dn->info.end.pos.line,
     //(unsigned long long) dn->info.est,
     dn->info.kind,
-    NODE_KIND_NAMES[dn->info.kind],
+    dv_get_node_kind_name(dn->info.kind),
     dn->info.logical_node_counts[0],
     dn->info.logical_node_counts[1],
     dn->info.logical_node_counts[2],
@@ -75,7 +97,7 @@ void print_pi_dag_node(dr_pi_dag_node * dn, int i) {
   }
 }
 
-void print_pi_dag_edge(dr_pi_dag_edge * de, int i) {
+void dv_print_pidag_edge(dr_pi_dag_edge * de, int i) {
   printf(
          "DAG edge %d:\n"
          "  kind: %d (%s)\n"
@@ -83,13 +105,13 @@ void print_pi_dag_edge(dr_pi_dag_edge * de, int i) {
          "  v: %ld\n",
          i,
          de->kind,
-         EDGE_KIND_NAMES[de->kind],
+         dv_get_edge_kind_name(de->kind),
          de->u,
          de->v
          );
 }
 
-void print_pi_string_table(dr_pi_string_table * stp, int i) {
+void dv_print_pi_string_table(dr_pi_string_table * stp, int i) {
   printf(
          "String table %d:\n"
          "  n: %ld\n"
@@ -112,31 +134,31 @@ void print_pi_string_table(dr_pi_string_table * stp, int i) {
 }
 
 
-static void print_dvdag_node(dv_dag_node_t *node, int i) {
-  dr_pi_dag_node *pi = dv_pidag_get_node(node);
+static void print_dvdag_node(dv_dag_t *D, dv_dag_node_t *node, int i) {
+  dr_pi_dag_node *pi = dv_pidag_get_node(D->P, node);
   int kind = pi->info.kind;
   printf("Node %d (%p): %d(%s)\n",         
          i,
          node,
          kind,
-         NODE_KIND_NAMES[kind]);
+         dv_get_node_kind_name(kind));
 }
 
-void print_dvdag(dv_dag_t *G) {
+void dv_print_dvdag(dv_dag_t *D) {
   printf(
          "DV DAG: \n"
          "  n: %ld\n"
          "  nw: %ld\n",
-         G->n,
-         G->nw);
+         D->P->n,
+         D->P->num_workers);
   int i;
-  for (i=0; i<G->n; i++) {
-      print_dvdag_node(G->T + i, i);
-  }
+  for (i=0; i<D->Tsz; i++)
+    if (D->To[i])
+      print_dvdag_node(D, D->T + i, i);
 }
 
-static void print_layout_node(dv_dag_node_t *node, int i) {
-  dr_pi_dag_node *pi = dv_pidag_get_node(node);
+static void print_layout_node(dv_dag_t *D, dv_dag_node_t *node, int i) {
+  dr_pi_dag_node *pi = dv_pidag_get_node(D->P, node);
   int kind = pi->info.kind;
   printf(
          "  Node %d: (%s)\n"
@@ -146,7 +168,7 @@ static void print_layout_node(dv_dag_node_t *node, int i) {
          "    (lw,rw,dw): (%0.1f,%0.1f,%0.1f)\n"
          "    (link_lw/rw/dw): (%0.1f,%0.1f,%0.1f)\n",
          i,
-         NODE_KIND_NAMES[kind],
+         dv_get_node_kind_name(kind),
          dv_is_union(node),
          dv_is_shrinked(node),
          dv_is_expanding(node),
@@ -157,13 +179,14 @@ static void print_layout_node(dv_dag_node_t *node, int i) {
          node->link_lw, node->link_rw, node->link_dw);
 }
 
-void print_layout(dv_dag_t *G) {
+void dv_print_layout(dv_dag_t *D) {
   printf(
          "Layout of DV DAG: (n=%ld)\n",
-         G->n);
+         D->P->n);
   int i;
-  for (i=0; i<G->n; i++)
-    print_layout_node(G->T + i, i);
+  for (i=0; i<D->Tsz; i++)
+    if (D->To[i])
+      print_layout_node(D, D->T + i, i);
 }
 
 
@@ -188,7 +211,7 @@ static void * read_pi_string_table(void * dp, dr_pi_string_table * des) {
 }
 
 
-void print_dag_file(char * filename) {
+void dv_print_dag_file(char * filename) {
   int err;
   int fd;
   struct stat statbuf;
@@ -230,22 +253,22 @@ void print_dag_file(char * filename) {
   int i;
   for (i=0; i<n; i++) {
     dp = read_pi_dag_node(dp, &dn);
-    print_pi_dag_node(&dn, i);
+    dv_print_pidag_node(&dn, i);
   }
   dr_pi_dag_edge de;
   for (i=0; i<m; i++) {
     dp = read_pi_dag_edge(dp, &de);
-    print_pi_dag_edge(&de, i);
+    dv_print_pidag_edge(&de, i);
   }
   dr_pi_string_table S;
   dp = read_pi_string_table(dp, &S);
-  print_pi_string_table(&S, 0);
+  dv_print_pi_string_table(&S, 0);
   printf("Have read %ld bytes\n", dp - dp_head);
   
   close(fd);
 }
 
-void check_layout(dv_dag_t *G) {
+void dv_check_layout(dv_dag_t *G) {
   /*int i;
   for (i=0; i<G->n; i++) {
     dv_dag_node_t *node = G->T + i;

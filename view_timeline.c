@@ -2,57 +2,40 @@
 
 /*-----------Timeline layout functions----------------------*/
 
-static void dv_layout_timeline_node(dv_dag_node_t *node) {
+static void dv_view_layout_timeline_node(dv_view_t *V, dv_dag_node_t *node) {
+  dv_dag_t *D = V->D;
+  dr_pi_dag_node * pi = dv_pidag_get_node(D->P, node);
   /* Calculate inward */
-  int is_single_node = 1;
-  dr_pi_dag_node * pi = dv_pidag_get_node(node);
-  switch (pi->info.kind) {
-  case dr_dag_node_kind_wait_tasks:
-  case dr_dag_node_kind_end_task:
-  case dr_dag_node_kind_create_task:
-    break;
-  case dr_dag_node_kind_section:
-  case dr_dag_node_kind_task:
-    if (dv_is_union(node))
-      is_single_node = 0;
-    break;
-  default:
-    dv_check(0);
-    break;
-  }
-  // node's inward
-  node->lw = dv_layout_calculate_hsize(node);
-  node->rw = dv_layout_calculate_hsize(node);
-  node->dw = dv_layout_calculate_vresize(pi->info.end.t - G->bt) - dv_layout_calculate_vresize(pi->info.start.t - G->bt);
+  node->lw = dv_view_calculate_hsize(V, node);
+  node->rw = dv_view_calculate_hsize(V, node);
+  node->dw = dv_view_calculate_vresize(V, pi->info.end.t - D->bt) - dv_view_calculate_vresize(V, pi->info.start.t - D->bt);
   // node's outward
   int worker = pi->info.worker;
   node->x = DV_RADIUS + worker * (2 * DV_RADIUS + DV_HDIS);
-  node->y = dv_layout_calculate_vresize(pi->info.start.t - G->bt);
-  if (!is_single_node) {
+  node->y = dv_view_calculate_vresize(V, pi->info.start.t - D->bt);
+  if (dv_is_union(node) && dv_is_inner_loaded(node)) {
     // Recursive call
-    if (!dv_is_shrinked(node))
-      dv_layout_timeline_node(node->head);
+    if (dv_is_expanded(node))
+      dv_view_layout_timeline_node(V, node->head);
   }
     
   /* Calculate link-along */
   int n_links = dv_llist_size(node->links);
-  dv_dag_node_t * u; // linked node 1
-  dv_dag_node_t * v; // linked node 2
-  double time_gap, gap, ugap, vgap;
+  dv_dag_node_t *u, *v; // linked nodes
   switch (n_links) {
   case 0:
     break;
   case 1:
     u = (dv_dag_node_t *) node->links->top->item;
     // Recursive call
-    dv_layout_timeline_node(u);
+    dv_view_layout_timeline_node(V, u);
     break;
   case 2:
     u = (dv_dag_node_t *) node->links->top->item; // cont node
     v = (dv_dag_node_t *) node->links->top->next->item; // task node
     // Recursive call
-    dv_layout_timeline_node(u);
-    dv_layout_timeline_node(v);
+    dv_view_layout_timeline_node(V, u);
+    dv_view_layout_timeline_node(V, v);
     break;
   default:
     dv_check(0);
@@ -61,10 +44,10 @@ static void dv_layout_timeline_node(dv_dag_node_t *node) {
   
 }
 
-void dv_layout_timeline_dvdag(dv_dag_t *G) {
+void dv_view_layout_timeline(dv_view_t *V) {
 
   // Absolute coord
-  dv_layout_timeline_node(G->rt);
+  dv_view_layout_timeline_node(V, V->D->rt);
 
   // Check
   //print_layout(G);  
@@ -76,19 +59,23 @@ void dv_layout_timeline_dvdag(dv_dag_t *G) {
 
 /*-----------------TIMELINE Drawing functions-----------*/
 
-static void draw_timeline_node_1(cairo_t *cr, dv_dag_node_t *node) {
+static void dv_view_draw_timeline_node_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *node) {
+  dv_dag_t *D = V->D;
+  dv_view_status_t *S = V->S;
   // Count node drawn
   S->nd++;
-  if (node->d > G->cur_d)
-    G->cur_d = node->d;
-  if (dv_is_union(node) && dv_is_shrinked(node)
-      && node->d < G->cur_d_ex)
-    G->cur_d_ex = node->d;
+  if (node->d > D->cur_d)
+    D->cur_d = node->d;
+  if (dv_is_union(node) && dv_is_inner_loaded(node)
+      && dv_is_shrinked(node)
+      && node->d < D->cur_d_ex)
+    D->cur_d_ex = node->d;
   // Node color
   double x = node->x;
   double y = node->y;
   double c[4];
-  dv_lookup_color(node, c, c+1, c+2, c+3);
+  dr_pi_dag_node *pi = dv_pidag_get_node(D->P, node);
+  dv_lookup_color(pi, S->nc, c, c+1, c+2, c+3);
   // Alpha
   double alpha = 1.0;
   // Draw path
@@ -117,64 +104,29 @@ static void draw_timeline_node_1(cairo_t *cr, dv_dag_node_t *node) {
   cairo_restore(cr);
 }
 
-static void draw_timeline_node_r(cairo_t *cr, dv_dag_node_t *node) {
-  dv_check(node);
-  /* Calculate inward */
-  int is_single_node = 1;
-  dr_pi_dag_node * pi = dv_pidag_get_node(node);
-  switch (pi->info.kind) {
-  case dr_dag_node_kind_wait_tasks:
-  case dr_dag_node_kind_end_task:
-  case dr_dag_node_kind_create_task:
-    break;
-  case dr_dag_node_kind_section:
-  case dr_dag_node_kind_task:
-    if (dv_is_union(node))
-      is_single_node = 0;
-    break;
-  default:
-    dv_check(0);
-    break;
-  }
-  if (is_single_node) {
-    draw_timeline_node_1(cr, node);
+static void dv_view_draw_timeline_node_r(dv_view_t *V, cairo_t *cr, dv_dag_node_t *node) {
+  if (!node || !dv_is_set(node))
+    return;
+  /* Call inward */
+  if (dv_is_union(node)) {
+    if (dv_is_inner_loaded(node) && !dv_is_shrinked(node))
+      dv_view_draw_timeline_node_r(V, cr, node->head);
   } else {
-    // Recursive call
-    if (!dv_is_shrinked(node))
-      draw_timeline_node_r(cr, node->head);
+    dv_view_draw_timeline_node_1(V, cr, node);
   }
-    
-  /* Calculate link-along */
-  int n_links = dv_llist_size(node->links);
-  dv_dag_node_t * u; // linked node 1
-  dv_dag_node_t * v; // linked node 2
-  switch (n_links) {
-  case 0:
-    break;
-  case 1:
-    u = (dv_dag_node_t *) node->links->top->item;
-    // Recursive call
-    draw_timeline_node_r(cr, u);
-    break;
-  case 2:
-    u = (dv_dag_node_t *) node->links->top->item; // cont node
-    v = (dv_dag_node_t *) node->links->top->next->item; // task node
-    // Recursive call
-    draw_timeline_node_r(cr, u);
-    draw_timeline_node_r(cr, v);
-    break;
-  default:
-    dv_check(0);
-    break;
+  /* Call link-along */
+  dv_dag_node_t * u;
+  dv_llist_iterate_init(node->links);
+  while (u = (dv_dag_node_t *) dv_llist_iterate_next(node->links)) {
+    dv_view_draw_timeline_node_r(V, cr, u);
   }
 }
 
-void dv_draw_timeline_dvdag(cairo_t *cr, dv_dag_t *G) {
+void dv_view_draw_timeline(dv_view_t *V, cairo_t *cr) {
   cairo_set_line_width(cr, DV_NODE_LINE_WIDTH);
   int i;
   // Draw nodes
-  S->nd = 0;
-  draw_timeline_node_r(cr, G->rt);
+  dv_view_draw_timeline_node_r(V, cr, V->D->rt);
   // Draw worker numbers
   cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
   cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
@@ -183,7 +135,7 @@ void dv_draw_timeline_dvdag(cairo_t *cr, dv_dag_t *G) {
   double xx, yy;
   xx = DV_RADIUS;
   yy = -4;
-  for (i=0; i<G->nw; i++) {
+  for (i=0; i<V->D->P->num_workers; i++) {
     sprintf(s, "Worker %d", i);            
     cairo_move_to(cr, xx - 30, yy);
     cairo_show_text(cr, s);

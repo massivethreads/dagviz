@@ -3,8 +3,6 @@
 #define DV_STACK_CELL_SZ 1
 #define DV_LLIST_CELL_SZ 1
 
-dv_llist_cell_t *FL = 0;
-
 
 /* DV LINKED_LIST  */
 
@@ -126,8 +124,8 @@ void dv_llist_fini(dv_llist_t *l) {
   dv_llist_cell_t *pp;
   while (p) {
     pp = p->next;
-    p->next = FL;
-    FL = p;
+    p->next = CS->FL;
+    CS->FL = p;
     p = pp;
   }
   l->i = 0;
@@ -153,8 +151,9 @@ int dv_llist_is_empty(dv_llist_t *l) {
 }
 
 dv_llist_cell_t * dv_llist_ensure_freelist() {
-  if (!FL) {
+  if (!CS->FL) {
     int n = DV_LLIST_CELL_SZ;
+    dv_llist_cell_t *FL;
     FL = (dv_llist_cell_t *) dv_malloc(sizeof(dv_llist_cell_t) * n);
     int i;
     for (i=0; i<n-1; i++) {
@@ -163,9 +162,10 @@ dv_llist_cell_t * dv_llist_ensure_freelist() {
     }
     FL[n-1].item = 0;
     FL[n-1].next = 0;
+    CS->FL = FL;
   }
-  dv_llist_cell_t * c = FL;
-  FL = FL->next;
+  dv_llist_cell_t * c = CS->FL;
+  CS->FL = CS->FL->next;
   c->next = 0;
   return c;
 }
@@ -183,16 +183,22 @@ void dv_llist_add(dv_llist_t *l, void *x) {
   }
 }
 
-void * dv_llist_get(dv_llist_t *l) {
+void * dv_llist_pop(dv_llist_t *l) {
   dv_llist_cell_t * c = l->top;
   void * ret = 0;
   if (c) {
     l->top = c->next;
     ret = c->item;
     c->item = 0;
-    c->next = FL;
-    FL = c;
+    c->next = CS->FL;
+    CS->FL = c;
   }
+  return ret;
+}
+
+void * dv_llist_get(dv_llist_t *l) {
+  dv_llist_cell_t * c = l->top;
+  void * ret = c->item;
   return ret;
 }
 
@@ -220,8 +226,8 @@ void * dv_llist_remove(dv_llist_t *l, void *x) {
     }
     // recycle llist_cell
     h->item = 0;
-    h->next = FL;
-    FL = h;
+    h->next = CS->FL;
+    CS->FL = h;
     // adjust index i
     if (i < l->i)
       l->i--;

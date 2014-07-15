@@ -45,19 +45,19 @@ void dv_draw_rounded_rectangle(cairo_t *cr, double x, double y, double width, do
 }
 
 static int dv_get_color_pool_index(int t, int v0, int v1, int v2, int v3) {
-  int n = S->CP_sizes[t];
+  int n = CS->CP_sizes[t];
   int i;
   for (i=0; i<n; i++) {
-    if (S->CP[t][i][0] == v0 && S->CP[t][i][1] == v1
-        && S->CP[t][i][2] == v2 && S->CP[t][i][3] == v3)
+    if (CS->CP[t][i][0] == v0 && CS->CP[t][i][1] == v1
+        && CS->CP[t][i][2] == v2 && CS->CP[t][i][3] == v3)
       return i;
   }
   dv_check(n < DV_COLOR_POOL_SIZE);
-  S->CP[t][n][0] = v0;
-  S->CP[t][n][1] = v1;
-  S->CP[t][n][2] = v2;
-  S->CP[t][n][3] = v3;
-  S->CP_sizes[t]++;
+  CS->CP[t][n][0] = v0;
+  CS->CP[t][n][1] = v1;
+  CS->CP[t][n][2] = v2;
+  CS->CP[t][n][3] = v3;
+  CS->CP_sizes[t]++;
   return n;
 }
 
@@ -90,28 +90,27 @@ static void dv_lookup_color_value(int v, double *r, double *g, double *b, double
     }*/
 }
 
-void dv_lookup_color(dv_dag_node_t *node, double *r, double *g, double *b, double *a) {
+void dv_lookup_color(dr_pi_dag_node *pi, int nc, double *r, double *g, double *b, double *a) {
   int v = 0;
-  dr_pi_dag_node *pi = dv_pidag_get_node(node);
-  dv_check(S->nc < DV_NUM_COLOR_POOLS);
-  switch (S->nc) {
+  dv_check(nc < DV_NUM_COLOR_POOLS);
+  switch (nc) {
   case 0:
-    v = dv_get_color_pool_index(S->nc, 0, 0, 0, pi->info.worker);
+    v = dv_get_color_pool_index(nc, 0, 0, 0, pi->info.worker);
     break;
   case 1:
-    v = dv_get_color_pool_index(S->nc, 0, 0, 0, pi->info.cpu);
+    v = dv_get_color_pool_index(nc, 0, 0, 0, pi->info.cpu);
     break;
   case 2:
-    v = dv_get_color_pool_index(S->nc, 0, 0, 0, pi->info.kind);
+    v = dv_get_color_pool_index(nc, 0, 0, 0, pi->info.kind);
     break;
   case 3:
-    v = dv_get_color_pool_index(S->nc, 0, 0, pi->info.start.pos.file_idx, pi->info.start.pos.line);
+    v = dv_get_color_pool_index(nc, 0, 0, pi->info.start.pos.file_idx, pi->info.start.pos.line);
     break;
   case 4:
-    v = dv_get_color_pool_index(S->nc, 0, 0, pi->info.end.pos.file_idx, pi->info.end.pos.line);
+    v = dv_get_color_pool_index(nc, 0, 0, pi->info.end.pos.file_idx, pi->info.end.pos.line);
     break;
   case 5:
-    v = dv_get_color_pool_index(S->nc, pi->info.start.pos.file_idx, pi->info.start.pos.line, pi->info.end.pos.file_idx, pi->info.end.pos.line);
+    v = dv_get_color_pool_index(nc, pi->info.start.pos.file_idx, pi->info.start.pos.line, pi->info.end.pos.file_idx, pi->info.end.pos.line);
     break;
   default:
     dv_check(0);
@@ -120,23 +119,24 @@ void dv_lookup_color(dv_dag_node_t *node, double *r, double *g, double *b, doubl
   dv_lookup_color_value(v, r, g, b, a);
 }
 
-double dv_get_alpha_fading_out(dv_dag_node_t *node) {
-  double ratio = (dv_get_time() - node->started) / S->a->duration;
+double dv_view_get_alpha_fading_out(dv_view_t *V, dv_dag_node_t *node) {
+  double ratio = (dv_get_time() - node->started) / V->S->a->duration;
   double ret;
   //ret = (1.0 - ratio) * 0.75;
   ret = 1.0 - ratio * ratio;
   return ret;
 }
 
-double dv_get_alpha_fading_in(dv_dag_node_t *node) {
-  double ratio = (dv_get_time() - node->started) / S->a->duration;
+double dv_view_get_alpha_fading_in(dv_view_t *V, dv_dag_node_t *node) {
+  double ratio = (dv_get_time() - node->started) / V->S->a->duration;
   double ret;
   //ret = ratio * 1.5;
   ret = ratio * ratio;
   return ret;
 }
 
-void draw_edge_1(cairo_t *cr, dv_dag_node_t *u, dv_dag_node_t *v) {
+void dv_view_draw_edge_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *u, dv_dag_node_t *v) {
+  dv_view_status_t *S = V->S;
   if (S->et == 0)
     return;
   double x1, y1, x2, y2;
@@ -165,10 +165,10 @@ void draw_edge_1(cairo_t *cr, dv_dag_node_t *u, dv_dag_node_t *v) {
   double alpha = 1.0;
   if ((!u->parent || dv_is_shrinking(u->parent))
       && (!v->parent || dv_is_shrinking(v->parent)))
-    alpha = dv_get_alpha_fading_out(u->parent);
+    alpha = dv_view_get_alpha_fading_out(V, u->parent);
   else if ((!u->parent || dv_is_expanding(u->parent))
            && (!v->parent || dv_is_expanding(v->parent)))            
-    alpha = dv_get_alpha_fading_in(u->parent);
+    alpha = dv_view_get_alpha_fading_in(V, u->parent);
   cairo_save(cr);
   cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
   cairo_move_to(cr, x1, y1);
@@ -194,7 +194,7 @@ void draw_edge_1(cairo_t *cr, dv_dag_node_t *u, dv_dag_node_t *v) {
     break;
   case 3:
     // winding
-    pi = dv_pidag_get_node(u);
+    pi = dv_pidag_get_node(V->D->P, u);
     if (pi->info.kind == dr_dag_node_kind_create_task)
       cairo_line_to(cr, x2, y1);
     else
@@ -217,7 +217,9 @@ void draw_edge_1(cairo_t *cr, dv_dag_node_t *u, dv_dag_node_t *v) {
 
 /*-----Main drawing functions-----*/
 
-void dv_draw_status(cairo_t *cr) {
+void dv_view_draw_status(dv_view_t *V, cairo_t *cr) {
+  dv_dag_t *D = V->D;
+  dv_view_status_t *S = V->S;
   cairo_save(cr);
   cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
   cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
@@ -229,7 +231,7 @@ void dv_draw_status(cairo_t *cr) {
 
   // Depth
   s[n] = (char *) dv_malloc( length * sizeof(char) );
-  sprintf(s[n], "D=%d-%d/%d", G->cur_d_ex, G->cur_d, G->dmax);
+  sprintf(s[n], "d=%d-%d/%d", D->cur_d_ex, D->cur_d, D->dmax);
   n++;
 
   // Nodes drawn
@@ -270,7 +272,9 @@ void dv_draw_status(cairo_t *cr) {
     dv_free(s[i], length * sizeof(char));
 }
 
-static void dv_draw_infotag_1(cairo_t *cr, dv_dag_node_t *node) {
+static void dv_view_draw_infotag_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *node) {
+  dv_dag_t *D = V->D;
+  dv_view_status_t *S = V->S;
   double line_height = 12;
   double padding = 4;
   int n = 6; /* number of lines */
@@ -303,13 +307,15 @@ static void dv_draw_infotag_1(cairo_t *cr, dv_dag_node_t *node) {
 
   // Line 1
   /* TODO: adaptable string length */
-  dr_pi_dag_node *pi = dv_pidag_get_node(node);
+  dr_pi_dag_node *pi = dv_pidag_get_node(D->P, node);
   char *s = (char *) dv_malloc( DV_STRING_LENGTH * sizeof(char) );
-  sprintf(s, "[%ld] %s d=%d f=%d%d%d%d",
-          node - G->T,
-          NODE_KIND_NAMES[pi->info.kind],
+  sprintf(s, "[%ld] %s d=%d f=%d%d%d%d%d%d",
+          node - D->T,
+          dv_get_node_kind_name(pi->info.kind),
           node->d,
+          dv_is_set(node),
           dv_is_union(node),
+          dv_is_inner_loaded(node),
           dv_is_shrinked(node),
           dv_is_expanding(node),
           dv_is_shrinking(node));
@@ -352,7 +358,7 @@ static void dv_draw_infotag_1(cairo_t *cr, dv_dag_node_t *node) {
 
   // Line 5
   dv_free(s, DV_STRING_LENGTH * sizeof(char));
-  const char *ss = P->S->C + P->S->I[pi->info.start.pos.file_idx];
+  const char *ss = D->P->S->C + D->P->S->I[pi->info.start.pos.file_idx];
   s = (char *) dv_malloc( strlen(ss) + 10 );
   sprintf(s, "%s:%ld",
           ss,
@@ -363,7 +369,7 @@ static void dv_draw_infotag_1(cairo_t *cr, dv_dag_node_t *node) {
 
   // Line 6
   dv_free(s, strlen(ss) + 10);
-  ss = P->S->C + P->S->I[pi->info.end.pos.file_idx];
+  ss = D->P->S->C + D->P->S->I[pi->info.end.pos.file_idx];
   s = (char *) dv_malloc( strlen(ss) + 10 );  
   sprintf(s, "%s:%ld",
           ss,
@@ -375,33 +381,35 @@ static void dv_draw_infotag_1(cairo_t *cr, dv_dag_node_t *node) {
   dv_free(s, strlen(ss) + 10);
 }
 
-void dv_draw_infotags(cairo_t *cr, dv_dag_t *G) {
-  dv_llist_iterate_init(G->itl);
+void dv_view_draw_infotags(dv_view_t *V, cairo_t *cr) {
+  dv_dag_t *D = V->D;
+  dv_llist_iterate_init(D->itl);
   dv_dag_node_t * u;
-  while (u = (dv_dag_node_t *) dv_llist_iterate_next(G->itl)) {
+  while (u = (dv_dag_node_t *) dv_llist_iterate_next(D->itl)) {
     if (dv_is_visible(u) && !dv_is_expanding(u)
         && (!u->parent || !dv_is_shrinking(u->parent)))
-      dv_draw_infotag_1(cr, u);
+      dv_view_draw_infotag_1(V, cr, u);
   }
 }
 
-void dv_draw_dvdag(cairo_t *cr, dv_dag_t *G) {
+void dv_view_draw(dv_view_t *V, cairo_t *cr) {
+  dv_dag_t *D = V->D;
+  dv_view_status_t *S = V->S;
   
   // Draw DAG
   S->nd = 0;
-  G->cur_d = 0;
-  G->cur_d_ex = G->dmax;
+  D->cur_d = 0;
+  D->cur_d_ex = D->dmax;
   if (S->lt == 0)
-    dv_draw_glike_dvdag(cr, G);
+    dv_view_draw_glike(V, cr);
   else if (S->lt == 1)
-    dv_draw_bbox_dvdag(cr, G);
+    dv_view_draw_bbox(V, cr);
   else if (S->lt == 2)
-    dv_draw_timeline_dvdag(cr, G);
+    dv_view_draw_timeline(V, cr);
   else
     dv_check(0);
   // Draw infotags
-  dv_draw_infotags(cr, G);
-  
+  dv_view_draw_infotags(V, cr);  
 }
 
 /*-----end of Main drawing functions-----*/

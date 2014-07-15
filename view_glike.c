@@ -2,6 +2,7 @@
 
 /*-----------------Grid-like Layout functions-----------*/
 
+
 /*-----------------Grid-related functions-----------*/
 
 static void dv_grid_line_init(dv_grid_line_t * l) {
@@ -26,37 +27,20 @@ static void bind_node_1(dv_dag_node_t *u, dv_grid_line_t *l) {
 
 static void dv_layout_bind_node(dv_dag_node_t * u, dv_grid_line_t * l) {
   // Bind itself
-  bind_node_1(u, l);
+  if (l != NULL)
+    bind_node_1(u, l);
   // Bind child nodes
-  dr_pi_dag_node * pi = dv_pidag_get_node(u);
-  switch (pi->info.kind) {
-  case dr_dag_node_kind_wait_tasks:
-  case dr_dag_node_kind_end_task:
-  case dr_dag_node_kind_create_task:
-    break;
-  case dr_dag_node_kind_section:
-  case dr_dag_node_kind_task:
-    if (dv_is_union(u)) {
-      
-      dv_check(u->head);
-      if (!u->vl_in)
-        u->vl_in = dv_grid_line_create();
-      dv_layout_bind_node(u->head, u->vl_in);
-      
-    }
-    break;
-  default:
-    dv_check(0);
-    break;
+  if (dv_is_union(u) && dv_is_inner_loaded(u)) {
+    dv_check(u->head);
+    if (!u->vl_in)
+      u->vl_in = dv_grid_line_create();
+    dv_layout_bind_node(u->head, u->vl_in);
   }
 
   // Call following links
-  int count = 0;
-  dv_llist_cell_t * c = u->links->top;
-  while (c) {
-    count++;
-    c = c->next;
-  }
+  if (l == NULL)
+    return;
+  int count = dv_llist_size(u->links);
   dv_dag_node_t * v;
   dv_dag_node_t * vv;
   switch (count) {
@@ -87,25 +71,26 @@ static void dv_layout_bind_node(dv_dag_node_t * u, dv_grid_line_t * l) {
 
 }
 
-static double dv_layout_count_line_left(dv_grid_line_t *);
+static double dv_layout_count_line_left(dv_view_t *V, dv_grid_line_t *);
 
-static double dv_layout_count_line_right(dv_grid_line_t *l) {
+static double dv_layout_count_line_right(dv_view_t *V, dv_grid_line_t *l) {
   dv_llist_iterate_init(l->L);
   dv_dag_node_t * node;
   double max = 0.0;
   while ( node = (dv_dag_node_t *) dv_llist_iterate_next(l->L) ) {
-    if (dv_is_union(node)
-        && ( !dv_is_shrinked(node) || dv_is_expanding(node) )) {
+    if (dv_is_inward_callable(node)) {
+      if (!node->vl_in || node->head->vl == NULL)
+        dv_layout_bind_node(node, NULL);
       dv_grid_line_t * ll = node->vl_in;
       double num = 0.0;
-      double gap = dv_layout_calculate_gap(node);
+      double gap = dv_view_calculate_gap(V, node);
       while (ll->r) {
-        ll->rc = dv_layout_count_line_right(ll);
-        ll->r->lc = dv_layout_count_line_left(ll->r);
+        ll->rc = dv_layout_count_line_right(V, ll);
+        ll->r->lc = dv_layout_count_line_left(V, ll->r);
         num += ll->rc + gap + ll->r->lc;
         ll = ll->r;
       }
-      ll->rc = dv_layout_count_line_right(ll);
+      ll->rc = dv_layout_count_line_right(V, ll);
       num += ll->rc;
       node->rc = num;
       if (num > max) {
@@ -116,23 +101,24 @@ static double dv_layout_count_line_right(dv_grid_line_t *l) {
   return max;
 }
 
-static double dv_layout_count_line_left(dv_grid_line_t *l) {
+static double dv_layout_count_line_left(dv_view_t *V, dv_grid_line_t *l) {
   dv_llist_iterate_init(l->L);
   dv_dag_node_t * node;
   double max = 0.0;
   while ( node = (dv_dag_node_t *) dv_llist_iterate_next(l->L) ) {
-    if (dv_is_union(node)
-        && ( !dv_is_shrinked(node) || dv_is_expanding(node) )) {
+    if (dv_is_inward_callable(node)) {
+      if (!node->vl_in)
+        dv_layout_bind_node(node, NULL);
       dv_grid_line_t * ll = node->vl_in;
       double num = 0.0;
-      double gap = dv_layout_calculate_gap(node);
+      double gap = dv_view_calculate_gap(V, node);
       while (ll->l) {
-        ll->lc = dv_layout_count_line_left(ll);
-        ll->l->rc = dv_layout_count_line_right(ll->l);
+        ll->lc = dv_layout_count_line_left(V, ll);
+        ll->l->rc = dv_layout_count_line_right(V, ll->l);
         num += ll->lc + gap + ll->l->rc;
         ll = ll->l;
       }
-      ll->lc = dv_layout_count_line_left(ll);
+      ll->lc = dv_layout_count_line_left(V, ll);
       num += ll->lc;
       node->lc = num;
       if (num > max)
@@ -142,36 +128,22 @@ static double dv_layout_count_line_left(dv_grid_line_t *l) {
   return max;
 }
 
-static double dv_layout_count_line_down(dv_dag_node_t *node) {
+static double dv_layout_count_line_down(dv_view_t *V, dv_dag_node_t *node) {
   double c = 0.0;
-  dr_pi_dag_node * pi = dv_pidag_get_node(node);
-  switch (pi->info.kind) {
-  case dr_dag_node_kind_wait_tasks:
-  case dr_dag_node_kind_end_task:
-  case dr_dag_node_kind_create_task:
-    break;
-  case dr_dag_node_kind_section:
-  case dr_dag_node_kind_task:
-    if (dv_is_union(node)
-        && ( !dv_is_shrinked(node) || dv_is_expanding(node) )) {
-
-      // Call recursive head
-      dv_check(node->head);
-      dv_dag_node_t * hd = node->head;
-      hd->dc = dv_layout_count_line_down(hd);
-      c = hd->dc;
-      
-    }
-    break;
-  default:
-    dv_check(0);
-    break;
+  if (dv_is_inward_callable(node)) {
+    
+    // Call recursive head
+    dv_check(node->head);
+    dv_dag_node_t * hd = node->head;
+    hd->dc = dv_layout_count_line_down(V, hd);
+    c = hd->dc;
+    
   }
 
   // Calculate gap
   double gap = 0.0;
   if (node->links->top)
-    gap = dv_layout_calculate_gap(node->parent);
+    gap = dv_view_calculate_gap(V, node->parent);
 
   // Call following links
   dv_llist_iterate_init(node->links);
@@ -179,7 +151,7 @@ static double dv_layout_count_line_down(dv_dag_node_t *node) {
   double max = 0L;
   double num;
   while (n = (dv_dag_node_t *) dv_llist_iterate_next(node->links)) {
-    n->dc = dv_layout_count_line_down(n);
+    n->dc = dv_layout_count_line_down(V, n);
     if (n->dc > max)
       max = n->dc;
   }
@@ -187,9 +159,9 @@ static double dv_layout_count_line_down(dv_dag_node_t *node) {
   return c + gap + max;
 }
 
-static void dv_layout_align_line_rightleft(dv_dag_node_t *node) {
+static void dv_layout_align_line_rightleft(dv_view_t *V, dv_dag_node_t *node) {
   dv_grid_line_t * l = node->vl_in;
-  double gap = dv_layout_calculate_gap(node);
+  double gap = dv_view_calculate_gap(V, node);
   dv_grid_line_t * ll;
   dv_grid_line_t * lll;
   // Set c right
@@ -212,10 +184,9 @@ static void dv_layout_align_line_rightleft(dv_dag_node_t *node) {
     dv_llist_iterate_init(ll->L);
     dv_dag_node_t * n;
     while (n = (dv_dag_node_t *) dv_llist_iterate_next(ll->L))
-      if (dv_is_union(n)
-          && ( !dv_is_shrinked(n) || dv_is_expanding(n) )) {
+      if (dv_is_inward_callable(n)) {
         n->vl_in->c = ll->c;
-        dv_layout_align_line_rightleft(n);
+        dv_layout_align_line_rightleft(V, n);
       }
     ll = ll->r;
   }
@@ -225,10 +196,9 @@ static void dv_layout_align_line_rightleft(dv_dag_node_t *node) {
     dv_llist_iterate_init(ll->L);
     dv_dag_node_t * n;
     while (n = (dv_dag_node_t *) dv_llist_iterate_next(ll->L))
-      if (dv_is_union(n)
-          && ( !dv_is_shrinked(n) || dv_is_expanding(n) )) {
+      if (dv_is_inward_callable(n)) {
         n->vl_in->c = ll->c;
-        dv_layout_align_line_rightleft(n);
+        dv_layout_align_line_rightleft(V, n);
       }
     ll = ll->l;
   }
@@ -248,32 +218,32 @@ static void dv_layout_align_line_down(dv_dag_node_t *node) {
     n->c = node->c + (node->dc - max) * DV_VDIS;
     dv_layout_align_line_down(n);
   }
-  if (dv_is_union(node)
-      && ( !dv_is_shrinked(node) || dv_is_expanding(node) )) {
+  if (dv_is_inward_callable(node)) {
     n = node->head;
     n->c = node->c;
     dv_layout_align_line_down(n);
   }
 }
 
-void dv_layout_glike_dvdag(dv_dag_t *G) {
-
-  if (!G->rt->vl) {
+void dv_view_layout_glike(dv_view_t *V) {
+  dv_dag_t *D = V->D;
+  
+  if (!D->rt->vl) {
     // Bind nodes to lines
-    dv_grid_line_init(G->rvl);
-    dv_layout_bind_node(G->rt, G->rvl);
+    dv_grid_line_init(D->rvl);
+    dv_layout_bind_node(D->rt, D->rvl);
   }
 
   // Count lines
-  G->rvl->rc = dv_layout_count_line_right(G->rvl);
-  G->rvl->lc = dv_layout_count_line_left(G->rvl);
-  G->rt->dc = dv_layout_count_line_down(G->rt);
+  D->rvl->rc = dv_layout_count_line_right(V, D->rvl);
+  D->rvl->lc = dv_layout_count_line_left(V, D->rvl);
+  D->rt->dc = dv_layout_count_line_down(V, D->rt);
 
   // Align lines
-  G->rvl->c = 0.0;
-  dv_layout_align_line_rightleft(G->rt);
-  G->rt->c = 0.0;
-  dv_layout_align_line_down(G->rt);
+  D->rvl->c = 0.0;
+  dv_layout_align_line_rightleft(V, D->rt);
+  D->rt->c = 0.0;
+  dv_layout_align_line_down(D->rt);
 
 }
 
@@ -281,48 +251,52 @@ void dv_layout_glike_dvdag(dv_dag_t *G) {
 
 
 
-/*-----------------Gridlike Drawing functions-----------*/
+/*-----------------Grid-like Drawing functions-----------*/
 
-static void draw_glike_node_1(cairo_t *cr, dv_dag_node_t *node) {
+static void dv_view_draw_glike_node_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *node) {
+  dv_dag_t *D = V->D;
+  dv_view_status_t *S = V->S;
   // Count node drawn
   S->nd++;
-  if (node->d > G->cur_d)
-    G->cur_d = node->d;
-  if (dv_is_union(node) && dv_is_shrinked(node)
-      && node->d < G->cur_d_ex)
-    G->cur_d_ex = node->d;
+  if (node->d > D->cur_d)
+    D->cur_d = node->d;
+  if (dv_is_union(node) && dv_is_inner_loaded(node)
+      && dv_is_shrinked(node)
+      && node->d < D->cur_d_ex)
+    D->cur_d_ex = node->d;
   // Node color
   double x = node->vl->c;
   double y = node->c;
   double c[4];
-  dv_lookup_color(node, c, c+1, c+2, c+3);
+  dr_pi_dag_node *pi = dv_pidag_get_node(D->P, node);
+  dv_lookup_color(pi, S->nc, c, c+1, c+2, c+3);
   // Alpha
   double alpha = 1.0;
   // Draw path
   cairo_save(cr);
   cairo_new_path(cr);
+  double xx, yy, w, h;
   if (dv_is_union(node)) {
 
-    double xx, yy, w, h;
     if (dv_is_expanding(node) || dv_is_shrinking(node)) {
 
       double margin = 1.0;
       if (dv_is_expanding(node)) {
         // Fading out
-        alpha = dv_get_alpha_fading_out(node);
-        margin = dv_get_alpha_fading_in(node);
+        alpha = dv_view_get_alpha_fading_out(V, node);
+        margin = dv_view_get_alpha_fading_in(V, node);
       } else {
         // Fading in
-        alpha = dv_get_alpha_fading_in(node);
-        margin = dv_get_alpha_fading_out(node);
+        alpha = dv_view_get_alpha_fading_in(V, node);
+        margin = dv_view_get_alpha_fading_out(V, node);
       }
       // Large-sized box
       margin *= DV_UNION_NODE_MARGIN;
       xx = x - node->lc * DV_HDIS - DV_RADIUS - margin;
       yy = y - DV_RADIUS - margin;
       dv_dag_node_t * hd = node->head;
-      h = hd->dc * DV_VDIS + 2 * (DV_RADIUS + margin);
       w = (node->lc + node->rc) * DV_HDIS + 2 * (DV_RADIUS + margin);
+      h = hd->dc * DV_VDIS + 2 * (DV_RADIUS + margin);
       
     } else {
       
@@ -334,10 +308,10 @@ static void draw_glike_node_1(cairo_t *cr, dv_dag_node_t *node) {
       alpha = 1.0;
       if (dv_is_shrinking(node->parent)) {
         // Fading out
-        alpha = dv_get_alpha_fading_out(node->parent);
+        alpha = dv_view_get_alpha_fading_out(V, node->parent);
       } else if (dv_is_expanding(node->parent)) {
         // Fading in
-        alpha = dv_get_alpha_fading_in(node->parent);
+        alpha = dv_view_get_alpha_fading_in(V, node->parent);
       }
       
     }
@@ -356,10 +330,10 @@ static void draw_glike_node_1(cairo_t *cr, dv_dag_node_t *node) {
     alpha = 1.0;
     if (dv_is_shrinking(node->parent)) {
       // Fading out
-      alpha = dv_get_alpha_fading_out(node->parent);
+      alpha = dv_view_get_alpha_fading_out(V, node->parent);
     } else if (dv_is_expanding(node->parent)) {
       // Fading in
-      alpha = dv_get_alpha_fading_in(node->parent);
+      alpha = dv_view_get_alpha_fading_in(V, node->parent);
     }
     
   }
@@ -372,122 +346,28 @@ static void draw_glike_node_1(cairo_t *cr, dv_dag_node_t *node) {
   cairo_restore(cr);
 }
 
-static void draw_grid_vl(cairo_t *cr, dv_grid_line_t *l, double y1, double y2) {
-  double x;
-  x = l->c;
-  cairo_save(cr);
-  cairo_new_path(cr);
-  cairo_set_source_rgba(cr, 0.0, 0.0, 0.0 ,0.8);
-  cairo_move_to(cr, x, y1);
-  cairo_line_to(cr, x, y2);
-  cairo_stroke(cr);
-  cairo_restore(cr);
-}
-
-static void draw_grid(cairo_t *cr, dv_dag_node_t *node) {
-  // VL
-  double y1, y2;
-  y1 = node->c - DV_RADIUS - DV_UNION_NODE_MARGIN;
-  y2 = node->c + DV_RADIUS + DV_UNION_NODE_MARGIN;
-  dv_dag_node_t *nn;
-  if (nn = node->head) {
-    y2 += nn->dc * DV_VDIS;
-  }
-  dv_grid_line_t *l;
-  l = node->vl_in;
-  draw_grid_vl(cr, l, y1, y2);
-  while (l->l) {
-    l = l->l;
-    draw_grid_vl(cr, l, y1, y2);
-  }
-  l = node->vl_in;
-  while (l->r) {
-    l = l->r;
-    draw_grid_vl(cr, l, y1, y2);
-  }
-}
-
-static void draw_glike_node_r(cairo_t *cr, dv_dag_node_t *u) {
-  if (!u) return;
-  int call_head = 0;
-  if (!dv_is_union(u)
+static void dv_view_draw_glike_node_r(dv_view_t *V, cairo_t *cr, dv_dag_node_t *u) {
+  if (!u || !dv_is_set(u))
+    return;
+  /* Draw node */
+  if (!dv_is_union(u) || !dv_is_inner_loaded(u)
       || dv_is_shrinked(u) || dv_is_shrinking(u)) {
-    draw_glike_node_1(cr, u);
+    dv_view_draw_glike_node_1(V, cr, u);
   }
-  // Iterate links
+  /* Call inward */
+  if (!dv_is_single(u)) {
+		dv_view_draw_glike_node_r(V, cr, u->head);
+  }
+  /* Call link-along */
   dv_dag_node_t * v;
   dv_llist_iterate_init(u->links);
   while (v = (dv_dag_node_t *) dv_llist_iterate_next(u->links)) {
-    draw_glike_node_r(cr, v);    
-  }
-  // Call head
-  if (!dv_is_single(u)) {
-		draw_glike_node_r(cr, u->head);
-    // Draw grid
-    //draw_grid(cr, u);
+    dv_view_draw_glike_node_r(V, cr, v);    
   }
 }
 
-static void draw_glike_edge_1(cairo_t *cr, dv_dag_node_t *u, dv_dag_node_t *v) {
-  draw_edge_1(cr, u, v);
-  return;
-#if 0
-  if (u->c + DV_RADIUS > v->c - DV_RADIUS)
-    return;
-  double alpha = 1.0;
-  if ((!u->parent || dv_is_shrinking(u->parent))
-      && (!v->parent || dv_is_shrinking(v->parent)))
-    alpha = dv_get_alpha_fading_out(u->parent);
-  else if ((!u->parent || dv_is_expanding(u->parent))
-           && (!v->parent || dv_is_expanding(v->parent)))            
-    alpha = dv_get_alpha_fading_in(u->parent);
-  cairo_save(cr);
-  cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
-  double x1, y1, x2, y2;
-  x1 = u->vl->c;
-  y1 = u->c + DV_RADIUS;
-  x2 = v->vl->c;
-  y2 = v->c - DV_RADIUS;
-  cairo_move_to(cr, x1, y1);
-  // edge affix
-  if (S->edge_affix != 0) {
-    cairo_line_to(cr, x1, y1 + S->edge_affix);
-    y1 += S->edge_affix;
-    y2 -= S->edge_affix;
-  }
-  /* edge type */
-  dr_pi_dag_node * pi = dv_pidag_get_node(u);
-  switch (S->et) {
-  case 0:
-    // no edge
-    break;
-  case 1:
-    // straight
-    cairo_line_to(cr, x2, y2);
-    break;
-  case 2:
-    // down
-    cairo_line_to(cr, x1, y2);
-    cairo_line_to(cr, x2, y2);
-    break;
-  case 3:
-    // winding
-    if (pi->info.kind == dr_dag_node_kind_create_task)
-      cairo_line_to(cr, x2, y1);
-    else
-      cairo_line_to(cr, x1, y2);
-    cairo_line_to(cr, x2, y2);
-    break;
-  default:
-    dv_check(0);
-  }    
-  // edge affix
-  if (S->edge_affix != 0) {
-    cairo_line_to(cr, x2, y2 + S->edge_affix);
-  }    
-  cairo_stroke(cr);
-  cairo_restore(cr);
-#endif
+static void dv_view_draw_glike_edge_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *u, dv_dag_node_t *v) {
+  dv_view_draw_edge_1(V, cr, u, v);
 }
 
 static dv_dag_node_t * dv_dag_node_get_first(dv_dag_node_t *u) {
@@ -509,13 +389,14 @@ static dv_dag_node_t * dv_dag_node_get_last(dv_dag_node_t *u) {
   return u;
 }
 
-static void draw_glike_edge_r(cairo_t *cr, dv_dag_node_t *u) {
-  if (!u) return;
-  // Call head
+static void dv_view_draw_glike_edge_r(dv_view_t *V, cairo_t *cr, dv_dag_node_t *u) {
+  if (!u || !dv_is_set(u))
+    return;
+  /* Call inward */
   if (!dv_is_single(u)) {
-		draw_glike_edge_r(cr, u->head);
+		dv_view_draw_glike_edge_r(V, cr, u->head);
   }
-  // Iterate links
+  /* Call link-along */
   dv_dag_node_t * v;
   dv_llist_iterate_init(u->links);
   while (v = (dv_dag_node_t *) dv_llist_iterate_next(u->links)) {
@@ -524,11 +405,11 @@ static void draw_glike_edge_r(cairo_t *cr, dv_dag_node_t *u) {
     if (dv_is_single(u)) {
       
       if (dv_is_single(v)) {
-        draw_glike_edge_1(cr, u, v);        
+        dv_view_draw_glike_edge_1(V, cr, u, v);        
       } else {
         v_head = v->head;
 				dv_dag_node_t * v_first = dv_dag_node_get_first(v_head);
-				draw_glike_edge_1(cr, u, v_first);
+				dv_view_draw_glike_edge_1(V, cr, u, v_first);
         
       }
       
@@ -539,31 +420,32 @@ static void draw_glike_edge_r(cairo_t *cr, dv_dag_node_t *u) {
         dv_dag_node_t * u_last = dv_dag_node_get_last(u_tail);
         
         if (dv_is_single(v)) {
-          draw_glike_edge_1(cr, u_last, v);
+          dv_view_draw_glike_edge_1(V, cr, u_last, v);
         } else {
           
           v_head = v->head;
 					dv_dag_node_t * v_first = dv_dag_node_get_first(v_head);
-					draw_glike_edge_1(cr, u_last, v_first);
+					dv_view_draw_glike_edge_1(V, cr, u_last, v_first);
           
         }
         
       }
       
     }
-    draw_glike_edge_r(cr, v);
+    dv_view_draw_glike_edge_r(V, cr, v);
     
   }
 }
 
-void dv_draw_glike_dvdag(cairo_t *cr, dv_dag_t *G) {
+void dv_view_draw_glike(dv_view_t *V, cairo_t *cr) {
   cairo_set_line_width(cr, 2.0);
   int i;
+  // Layout
+  dv_view_layout_glike(V);
   // Draw nodes
-  draw_glike_node_r(cr, G->rt);
+  dv_view_draw_glike_node_r(V, cr, V->D->rt);
   // Draw edges
-  draw_glike_edge_r(cr, G->rt);
+  dv_view_draw_glike_edge_r(V, cr, V->D->rt);
 }
 
-/*-----------------end of Gridlike Drawing functions-----------*/
-
+/*-----------------end of Grid-like Drawing functions-----------*/
