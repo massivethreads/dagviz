@@ -343,8 +343,6 @@ static void dv_do_collapsing_one(dv_view_t *V) {
 }
 
 static dv_dag_node_t *dv_do_finding_clicked_node_1(dv_view_t *V, double x, double y, dv_dag_node_t *node) {
-  if (node - V->D->T == 4)
-    printf("node 4\n");
   dv_dag_node_t * ret = NULL;
   double vc, hc;
   switch (V->S->lt) {
@@ -851,9 +849,105 @@ static int open_gui(int argc, char *argv[])
   g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
   g_signal_connect(G_OBJECT(CS->window), "key-press-event", G_CALLBACK(on_window_key_event), NULL);
 
+  // vbox0
+  GtkWidget *vbox0 = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+  gtk_container_add(GTK_CONTAINER(window), vbox0);
+
+  // Menu Bar
+  GtkWidget *menubar = gtk_menu_bar_new();
+  gtk_box_pack_start(GTK_BOX(vbox0), menubar, FALSE, FALSE, 0);
+  // submenu screens
+  GtkWidget *screens = gtk_menu_item_new_with_label("Screens");
+  gtk_menu_shell_append(GTK_MENU_SHELL(menubar), screens);
+  GtkWidget *screens_menu = gtk_menu_new();
+  gtk_menu_item_set_submenu(GTK_MENU_ITEM(screens), screens_menu);
+  GtkWidget *screen, *screen_menu;
+  GSList *group;
+  GtkWidget *item;
+  char s[100];
+  int i, j;
+  for (i=0; i<2; i++) {
+    group = NULL;
+    if (i == 0)
+      sprintf(s, "Left");
+    else
+      sprintf(s, "Right");
+    screen = gtk_menu_item_new_with_label(s);
+    gtk_menu_shell_append(GTK_MENU_SHELL(screens_menu), screen);
+    screen_menu = gtk_menu_new();
+    gtk_menu_item_set_submenu(GTK_MENU_ITEM(screen), screen_menu);
+    for (j=0; j<=CS->nV; j++) {
+      if (j == 0)
+        sprintf(s, "Hide");
+      else
+        sprintf(s, "VIEW %d", j-1);
+      item = gtk_radio_menu_item_new_with_label(group, s);
+      gtk_menu_shell_append(GTK_MENU_SHELL(screen_menu), item);
+      group = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(item));
+      if (j-1 == i)
+        gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), TRUE);      
+    }
+  }
+  // submenu views
+  GtkWidget *views = gtk_menu_item_new_with_label("VIEWs");
+  gtk_menu_shell_append(GTK_MENU_SHELL(menubar), views);
+  GtkWidget *views_menu = gtk_menu_new();
+  gtk_menu_item_set_submenu(GTK_MENU_ITEM(views), views_menu);
+  GtkWidget *view, *view_menu;
+  for (i=0; i<CS->nV; i++) {
+    group = NULL;
+    sprintf(s, "VIEW %d", i);
+    view = gtk_menu_item_new_with_label(s);
+    gtk_menu_shell_append(GTK_MENU_SHELL(views_menu), view);
+    view_menu = gtk_menu_new();
+    gtk_menu_item_set_submenu(GTK_MENU_ITEM(view), view_menu);
+    for (j=0; j<CS->nD; j++) {
+      sprintf(s, "DAG %d: %ld/%ld", j, CS->D[j].Tn, CS->D[j].Tsz);
+      item = gtk_radio_menu_item_new_with_label(group, s);
+      gtk_menu_shell_append(GTK_MENU_SHELL(view_menu), item);
+      group = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(item));
+      if (j == (CS->V[i].D - CS->D))
+        gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), TRUE);
+    }    
+  }
+  // submenu DAGs
+  GtkWidget *dags = gtk_menu_item_new_with_label("DAGs");
+  gtk_menu_shell_append(GTK_MENU_SHELL(menubar), dags);
+  GtkWidget *dags_menu = gtk_menu_new();
+  gtk_menu_item_set_submenu(GTK_MENU_ITEM(dags), dags_menu);
+  GtkWidget *dag, *dag_menu;
+  for (i=0; i<CS->nD; i++) {
+    group = NULL;
+    sprintf(s, "DAG %d: %ld/%ld", i, CS->D[i].Tn, CS->D[i].Tsz);
+    dag = gtk_menu_item_new_with_label(s);
+    gtk_menu_shell_append(GTK_MENU_SHELL(dags_menu), dag);
+    dag_menu = gtk_menu_new();
+    gtk_menu_item_set_submenu(GTK_MENU_ITEM(dag), dag_menu);
+    for (j=0; j<CS->nP; j++) {
+      sprintf(s, "PIDAG %d: (%ld)%s", j, CS->P[j].n, CS->Pfn[j]);
+      item = gtk_radio_menu_item_new_with_label(group, s);
+      gtk_menu_shell_append(GTK_MENU_SHELL(dag_menu), item);
+      group = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(item));
+      if (j == (CS->D[i].P - CS->P))
+        gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), TRUE);
+    }    
+  }
+  // submenu PIDAGs
+  GtkWidget *pidags = gtk_menu_item_new_with_label("PIDAGs");
+  gtk_menu_shell_append(GTK_MENU_SHELL(menubar), pidags);
+  GtkWidget *pidags_menu = gtk_menu_new();
+  gtk_menu_item_set_submenu(GTK_MENU_ITEM(pidags), pidags_menu);
+  GtkWidget *pidag;
+  for (i=0; i<CS->nP; i++) {
+    sprintf(s, "PIDAG %d: (%ld)%s", i, CS->P[i].n, CS->Pfn[i]);
+    pidag = gtk_menu_item_new_with_label(s);
+    gtk_menu_shell_append(GTK_MENU_SHELL(pidags_menu), pidag);
+  }
+  
+
   // hbox
   GtkWidget *hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-  gtk_container_add(GTK_CONTAINER(window), hbox);
+  gtk_box_pack_start(GTK_BOX(vbox0), hbox, TRUE, TRUE, 0);
   gtk_box_set_homogeneous(GTK_BOX(hbox), TRUE);
 
   // vbox
