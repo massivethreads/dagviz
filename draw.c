@@ -225,19 +225,35 @@ void dv_view_draw_status(dv_view_t *V, cairo_t *cr) {
   cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
   cairo_set_font_size(cr, 14);
 
-  char *s[10];
-  int n = 0;
-  int length = 50;
+  char s[50];
+  const double char_width = 8;
+  double x = S->vpw  - DV_STATUS_PADDING;
+  double y = S->vph - DV_STATUS_PADDING;
+  cairo_new_path(cr);
 
+  // Identifier
+  sprintf(s, "V%d-D%d-P%d", V - CS->V, D - CS->D, D->P - CS->P);
+  x -= strlen(s) * char_width;
+  cairo_move_to(cr, x, y);
+  cairo_show_text(cr, s);
+  
   // Depth
-  s[n] = (char *) dv_malloc( length * sizeof(char) );
-  sprintf(s[n], "d=%d-%d/%d", D->cur_d_ex, D->cur_d, D->dmax);
-  n++;
+  sprintf(s, "d=%d-%d/%d, ", D->cur_d_ex, D->cur_d, D->dmax);
+  x -= strlen(s) * char_width;
+  cairo_move_to(cr, x, y);
+  cairo_show_text(cr, s);
 
+  // Node pool
+  sprintf(s, "np=%d/%d, ", D->Tn, D->Tsz);
+  x -= strlen(s) * char_width;
+  cairo_move_to(cr, x, y);
+  cairo_show_text(cr, s);
+  
   // Nodes drawn
-  s[n] = (char *) dv_malloc( length * sizeof(char) );
-  sprintf(s[n], "ND=%ld, ", S->nd);
-  n++;
+  sprintf(s, "n=%ld/%ld, ", S->nd, S->ndh);
+  x -= strlen(s) * char_width;
+  cairo_move_to(cr, x, y);
+  cairo_show_text(cr, s);
   
   // ratio
   /*
@@ -252,24 +268,7 @@ void dv_view_draw_status(dv_view_t *V, cairo_t *cr) {
   sprintf(s[n], ", ");
   n++;*/
 
-  int slength = 0;
-  int i;
-  for (i=0; i<n; i++) {
-    slength += strlen(s[i]);
-  }
-  
-  const double char_width = 8;
-  double x = S->vpw  - DV_STATUS_PADDING - slength * char_width;
-  double y = S->vph - DV_STATUS_PADDING;
-  cairo_new_path(cr);
-  cairo_move_to(cr, x, y);
-  for (i=n-1; i>=0; i--) {
-    cairo_show_text(cr, s[i]);
-  }
   cairo_restore(cr);
-
-  for (i=0; i<n; i++)
-    dv_free(s[i], length * sizeof(char));
 }
 
 static void dv_view_draw_infotag_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *node) {
@@ -398,6 +397,7 @@ void dv_view_draw(dv_view_t *V, cairo_t *cr) {
   
   // Draw DAG
   S->nd = 0;
+  S->ndh = 0;
   D->cur_d = 0;
   D->cur_d_ex = D->dmax;
   if (S->lt == 0)

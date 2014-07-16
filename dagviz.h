@@ -90,7 +90,7 @@ typedef struct dv_llist {
 #define DV_TIMELINE_NODE_WITH_BORDER 1
 #define DV_ENTRY_RADIX_MAX_LENGTH 20
 
-#define DV_DAG_NODE_POOL_SIZE 20
+#define DV_DAG_NODE_POOL_SIZE 50
 
 #define DV_MAX_DAG_FILE 2
 #define DV_MAX_DAG 2
@@ -113,6 +113,17 @@ typedef struct dv_grid_line {
 /*--end of Grid-like layout--*/
 
 /*-----------------Data Structures-----------------*/
+
+typedef struct dv_pidag {
+  long n;			/* length of T */
+  long m;			/* length of E */
+  long num_workers;		/* number of workers */
+  dr_pi_dag_node * T;		/* all nodes in a contiguous array */
+  dr_pi_dag_edge * E;		/* all edges in a contiguous array */
+  dr_pi_string_table S[1];
+  char * fn; /* dag file name */
+  struct stat stat[1]; /* file stat structure */
+} dv_pidag_t;
 
 typedef struct dv_dag_node {
   
@@ -151,7 +162,7 @@ typedef struct dv_dag_node {
 
 typedef struct dv_dag {
   /* PIDAG */
-  dr_pi_dag * P;
+  dv_pidag_t * P;
 
   /* DAG's skeleton */
   dv_dag_node_t * T;  /* array of all nodes */
@@ -212,6 +223,7 @@ typedef struct dv_view_status {
   int et; /* edge type */
   int edge_affix; /* edge affix length */
   int cm; /* click mode */
+  long ndh; /* number of nodes including hidden ones */
 } dv_view_status_t;
 
 typedef struct dv_view {
@@ -221,11 +233,11 @@ typedef struct dv_view {
   GtkWidget * entry_radix;
   GtkWidget * combobox_lt;
   GtkWidget * darea;
+  GtkWidget * togg_focused;
 } dv_view_t;
 
 typedef struct dv_global_state {
-  char *    Pfn[DV_MAX_DAG_FILE];
-  dr_pi_dag P[DV_MAX_DAG_FILE];
+  dv_pidag_t P[DV_MAX_DAG_FILE];
   dv_dag_t  D[DV_MAX_DAG];
   dv_view_t V[DV_MAX_VIEW];
   int nP;
@@ -254,6 +266,7 @@ extern dv_global_state_t  CS[]; /* global common state */
 void dv_queue_draw(dv_view_t *);
 void dv_global_state_init(dv_global_state_t *);
 void dv_global_state_set_active_view(dv_view_t *);
+dv_view_t * dv_global_state_get_active_view();
 dv_view_t * dv_view_create_new_with_dag(dv_dag_t *);
 
 /* print.c */
@@ -269,8 +282,8 @@ void dv_check_layout(dv_dag_t *);
 
 
 /* read.c */
-dr_pi_dag *      dv_pidag_read_new_file(char *);
-dr_pi_dag_node * dv_pidag_get_node(dr_pi_dag *, dv_dag_node_t *);
+dv_pidag_t *     dv_pidag_read_new_file(char *);
+dr_pi_dag_node * dv_pidag_get_node(dv_pidag_t *, dv_dag_node_t *);
 
 void            dv_dag_node_pool_init(dv_dag_t *);
 int             dv_dag_node_pool_is_empty(dv_dag_t *);
@@ -284,8 +297,8 @@ int dv_dag_node_set(dv_dag_t *, dv_dag_node_t *);
 int  dv_dag_build_node_inner(dv_dag_t *, dv_dag_node_t *);
 int dv_dag_destroy_node_innner(dv_dag_t *, dv_dag_node_t *);
 void dv_dag_clear_shrinked_nodes(dv_dag_t *);
-void dv_dag_init(dv_dag_t *, dr_pi_dag *);
-dv_dag_t * dv_dag_create_new_with_pidag(dr_pi_dag *);
+void dv_dag_init(dv_dag_t *, dv_pidag_t *);
+dv_dag_t * dv_dag_create_new_with_pidag(dv_pidag_t *);
 
 
 /* layout.c */

@@ -2,17 +2,16 @@
 
 /*---------PIDAG Reader's functions---------------*/
 
-dr_pi_dag * dv_pidag_read_new_file(char * filename) {
+dv_pidag_t * dv_pidag_read_new_file(char * filename) {
   /* Get new PIDAG */
   dv_check(CS->nP < DV_MAX_DAG_FILE);
-  CS->Pfn[CS->nP] = filename;
-  dr_pi_dag * P = &CS->P[CS->nP];
-  CS->nP++;
+  dv_pidag_t * P = &CS->P[CS->nP++];
+  P->fn = filename;
   
   /* Read file */
   int err;
   int fd;
-  struct stat statbuf;
+  struct stat *statbuf = P->stat;
   void *dp;
   
   fd = open(filename, O_RDONLY);
@@ -20,17 +19,17 @@ dr_pi_dag * dv_pidag_read_new_file(char * filename) {
     fprintf(stderr, "open: %d\n", errno);
     exit(1);
   }
-  err = fstat(fd, &statbuf);
+  err = fstat(fd, statbuf);
   if (err < 0) {
     fprintf(stderr, "fstat: %d\n", errno);
     exit(1);
   }
   printf("File status:\n"
-         "  st_size = %d bytes (%0.0lfMB)\n",
-         (int) statbuf.st_size,
-         ((double) statbuf.st_size) / (1024.0 * 1024.0));
+         "  st_size = %ld bytes (%0.0lfMB)\n",
+         (long) statbuf->st_size,
+         ((double) statbuf->st_size) / (1024.0 * 1024.0));
   
-  dp = mmap(0, statbuf.st_size, PROT_READ, MAP_SHARED, fd, 0);
+  dp = mmap(0, statbuf->st_size, PROT_READ, MAP_SHARED, fd, 0);
   if (!dp) {
     fprintf(stderr, "mmap: error\n");
     exit(1);
@@ -55,17 +54,16 @@ dr_pi_dag * dv_pidag_read_new_file(char * filename) {
   P->T = (dr_pi_dag_node *) ldp;
   P->E = (dr_pi_dag_edge *) (P->T + n);
   dr_pi_string_table * stp = (dr_pi_string_table *) (P->E + m);
-  dr_pi_string_table * S = (dr_pi_string_table *) dv_malloc( sizeof(dr_pi_string_table) );
+  dr_pi_string_table * S = P->S;
   *S = *stp;
   S->I = (long *) (stp + 1);
   S->C = (const char *) (S->I + S->n);
-  P->S = S;
   
   close(fd);
   return P;
 }
 
-dr_pi_dag_node * dv_pidag_get_node(dr_pi_dag *P, dv_dag_node_t *node) {
+dr_pi_dag_node * dv_pidag_get_node(dv_pidag_t *P, dv_dag_node_t *node) {
   if (!node) return NULL;
   long idx = node->pii;
   dv_check(idx >=0 && idx < P->n);
@@ -73,7 +71,7 @@ dr_pi_dag_node * dv_pidag_get_node(dr_pi_dag *P, dv_dag_node_t *node) {
   return ret;
 }
 
-dr_pi_dag_node * dv_pidag_get_node_offset(dr_pi_dag *P, dr_pi_dag_node *pi, long offset) {
+dr_pi_dag_node * dv_pidag_get_node_offset(dv_pidag_t *P, dr_pi_dag_node *pi, long offset) {
   if (!pi) return NULL;
   long idx = pi - P->T + offset;
   dv_check(idx >=0 && idx < P->n);
@@ -81,12 +79,12 @@ dr_pi_dag_node * dv_pidag_get_node_offset(dr_pi_dag *P, dr_pi_dag_node *pi, long
   return ret;
 }
 
-long dv_pidag_get_idx(dr_pi_dag *P, dr_pi_dag_node *pi) {
+long dv_pidag_get_idx(dv_pidag_t *P, dr_pi_dag_node *pi) {
   long ret = pi - P->T;
   return ret;
 }
 
-long dv_pidag_get_idx_with_offset(dr_pi_dag *P, dr_pi_dag_node *pi, long offset) {
+long dv_pidag_get_idx_with_offset(dv_pidag_t *P, dr_pi_dag_node *pi, long offset) {
   long ret = pi - P->T + offset;
   return ret;
 }
@@ -204,7 +202,7 @@ void dv_dag_node_init(dv_dag_node_t *node, dv_dag_node_t *parent, long pii) {
 }
 
 int dv_dag_node_set(dv_dag_t *D, dv_dag_node_t *node) {
-  dr_pi_dag *P = D->P;
+  dv_pidag_t *P = D->P;
   dr_pi_dag_node *pi = dv_pidag_get_node(P, node);
 
   if (pi->info.kind == dr_dag_node_kind_section
@@ -228,7 +226,7 @@ int dv_dag_node_set(dv_dag_t *D, dv_dag_node_t *node) {
 }
 
 int dv_dag_build_node_inner(dv_dag_t *D, dv_dag_node_t *node) {
-  dr_pi_dag *P = D->P;
+  dv_pidag_t *P = D->P;
 
   if (!dv_is_set(node))
     dv_dag_node_set(D, node);
@@ -376,7 +374,7 @@ void dv_dag_clear_shrinked_nodes(dv_dag_t *D) {
   dv_dag_clear_shrinked_nodes_r(D, D->rt);
 }
 
-void dv_dag_init(dv_dag_t *D, dr_pi_dag *P) {
+void dv_dag_init(dv_dag_t *D, dv_pidag_t *P) {
   D->P = P;
   dv_dag_node_pool_init(D);
   dv_check(!dv_dag_node_pool_is_empty(D));
@@ -398,11 +396,10 @@ void dv_dag_init(dv_dag_t *D, dr_pi_dag *P) {
   D->cur_d_ex = 0;
 }
 
-dv_dag_t * dv_dag_create_new_with_pidag(dr_pi_dag *P) {
+dv_dag_t * dv_dag_create_new_with_pidag(dv_pidag_t *P) {
   /* Get new DAG */
   dv_check(CS->nD < DV_MAX_DAG);
-  dv_dag_t * D = &CS->D[CS->nD];
-  CS->nD++;
+  dv_dag_t * D = &CS->D[CS->nD++];
   dv_dag_init(D, P);
 
   /* Set values */

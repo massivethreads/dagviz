@@ -42,9 +42,6 @@ static void dv_get_env() {
 /*-----------------Global State-----------------*/
 
 void dv_global_state_init(dv_global_state_t *CS) {
-  int i;
-  for (i=0; i<DV_MAX_DAG_FILE; i++)
-    CS->Pfn[i] = NULL;
   CS->nP = 0;
   CS->nD = 0;
   CS->nV = 0;
@@ -52,12 +49,17 @@ void dv_global_state_init(dv_global_state_t *CS) {
   CS->window = NULL;
   CS->activeV = NULL;
   CS->err = DV_OK;
+  int i;
   for (i=0; i<DV_NUM_COLOR_POOLS; i++)
     CS->CP_sizes[i] = 0;
 }
 
 void dv_global_state_set_active_view(dv_view_t *V) {
   CS->activeV = V;
+}
+
+dv_view_t * dv_global_state_get_active_view() {
+  return CS->activeV;
 }
 
 /*-----------------end of Global State-----------------*/
@@ -428,6 +430,21 @@ static void dv_get_entry_radix_text(dv_view_t *V) {
   dv_queue_draw(V);
 }
 
+static void dv_do_set_focused_view(dv_view_t *V, int focused) {
+  if (focused) {
+    dv_global_state_set_active_view(V);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(V->togg_focused), TRUE);
+    int i;
+    for (i=0; i<CS->nV; i++)
+      if (V != CS->V + i)
+        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(CS->V[i].togg_focused), FALSE);        
+  } else {
+    if (V == dv_global_state_get_active_view())
+      dv_global_state_set_active_view(NULL);
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(V->togg_focused), FALSE);
+  }
+}
+
 /*--------end of Interactive processing functions------------*/
 
 
@@ -615,6 +632,12 @@ static void on_togg_eaffix_toggled(GtkWidget *widget, gpointer user_data) {
   dv_queue_draw(V);
 }
 
+static void on_togg_focused_toggled(GtkWidget *widget, gpointer user_data) {
+  dv_view_t *V = (dv_view_t *) user_data;
+  int focused = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+  dv_do_set_focused_view(V, focused);
+}
+
 static gboolean on_combobox_cm_changed(GtkComboBox *widget, gpointer user_data) {
   dv_view_t *V = (dv_view_t *) user_data;
   V->S->cm = gtk_combo_box_get_active(widget);
@@ -630,33 +653,58 @@ static gboolean on_darea_configure_event(GtkWidget *widget, GdkEventConfigure *e
 }
 
 static gboolean on_window_key_event(GtkWidget *widget, GdkEvent *event, gpointer user_data) {
-  dv_check(CS->activeV);
+  dv_view_t *aV = dv_global_state_get_active_view();
+  if (!aV)
+    return FALSE;
   GdkEventKey *e = (GdkEventKey *) event;
+  int i;
   //printf("key: %d\n", e->keyval);
   switch (e->keyval) {
   case 120: /* x */
-    dv_do_expanding_one(CS->activeV);    
+    dv_do_expanding_one(aV);    
     break;
   case 99: /* c */
-    dv_do_collapsing_one(CS->activeV);
+    dv_do_collapsing_one(aV);
     break;
   case 104: /* h */
-    dv_do_zoomfit_hoz(CS->activeV);
+    dv_do_zoomfit_hoz(aV);
     break;
   case 118: /* v */
-    dv_do_zoomfit_ver(CS->activeV);
+    dv_do_zoomfit_ver(aV);
     break;
   case 49: /* 1 */
-    dv_do_changing_lt(CS->activeV, 0);
+    dv_do_changing_lt(aV, 0);
     break;
   case 50: /* 2 */
-    dv_do_changing_lt(CS->activeV, 1);
+    dv_do_changing_lt(aV, 1);
     break;
   case 51: /* 3 */
-    dv_do_changing_lt(CS->activeV, 2);
+    dv_do_changing_lt(aV, 2);
     break;
+  case 65289: /* tab */
+    i = (aV - CS->V + 1) % CS->nV;
+    dv_do_set_focused_view(CS->V + i, 1);
+    break;
+  case 65361: /* left */
+    aV->D->x -= 15;
+    dv_queue_draw(aV);
+    return TRUE;
+  case 65362: /* up */
+    aV->D->y -= 15;
+    dv_queue_draw(aV);
+    return TRUE;
+  case 65363: /* right */
+    aV->D->x += 15;
+    dv_queue_draw(aV);
+    return TRUE;
+  case 65364: /* down */
+    aV->D->y += 15;
+    dv_queue_draw(aV);
+    return TRUE;
+  default:
+    return FALSE;
   }
-  return TRUE;
+  return FALSE;
 }
 
 static void dv_view_status_init(dv_view_t *V, dv_view_status_t *S) {
@@ -676,6 +724,7 @@ static void dv_view_status_init(dv_view_t *V, dv_view_status_t *S) {
   S->et = DV_EDGE_TYPE_INIT;
   S->edge_affix = DV_EDGE_AFFIX_LENGTH;
   S->cm = DV_CLICK_MODE_INIT;
+  S->ndh = 0;
 }
 
 static void dv_view_init(dv_view_t *V) {
@@ -685,13 +734,13 @@ static void dv_view_init(dv_view_t *V) {
   V->entry_radix = NULL;
   V->combobox_lt = NULL;
   V->darea = NULL;
+  V->togg_focused = NULL;
 }
 
 dv_view_t * dv_view_create_new_with_dag(dv_dag_t *D) {
   /* Get new VIEW */
   dv_check(CS->nV < DV_MAX_VIEW);
-  dv_view_t * V = &CS->V[CS->nV];
-  CS->nV++;
+  dv_view_t * V = &CS->V[CS->nV++];
   dv_view_init(V);
 
   // Set values
@@ -706,6 +755,14 @@ dv_view_t * dv_view_create_new_with_dag(dv_dag_t *D) {
   GtkWidget *toolbar = V->toolbar;
   //gtk_widget_override_background_color(GTK_WIDGET(toolbar), GTK_STATE_FLAG_NORMAL, white);
 
+  // Focused toggle
+  GtkToolItem *btn_togg_focused = gtk_tool_item_new();
+  V->togg_focused = gtk_toggle_button_new_with_label("Focused");
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(V->togg_focused), FALSE);
+  g_signal_connect(G_OBJECT(V->togg_focused), "toggled", G_CALLBACK(on_togg_focused_toggled), (void *) V);
+  gtk_container_add(GTK_CONTAINER(btn_togg_focused), V->togg_focused);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_togg_focused, -1);
+  
   // Layout type combobox
   GtkToolItem *btn_combo_lt = gtk_tool_item_new();
   V->combobox_lt = gtk_combo_box_text_new();
@@ -857,11 +914,13 @@ static int open_gui(int argc, char *argv[])
   GtkWidget *menubar = gtk_menu_bar_new();
   gtk_box_pack_start(GTK_BOX(vbox0), menubar, FALSE, FALSE, 0);
   // submenu screens
-  GtkWidget *screens = gtk_menu_item_new_with_label("Screens");
+  GtkWidget *screens = gtk_menu_item_new_with_mnemonic("_Screens");
   gtk_menu_shell_append(GTK_MENU_SHELL(menubar), screens);
   GtkWidget *screens_menu = gtk_menu_new();
   gtk_menu_item_set_submenu(GTK_MENU_ITEM(screens), screens_menu);
   GtkWidget *screen, *screen_menu;
+  screen = gtk_menu_item_new_with_label("Add new SCREEN");
+  gtk_menu_shell_append(GTK_MENU_SHELL(screens_menu), screen);
   GSList *group;
   GtkWidget *item;
   char s[100];
@@ -889,11 +948,13 @@ static int open_gui(int argc, char *argv[])
     }
   }
   // submenu views
-  GtkWidget *views = gtk_menu_item_new_with_label("VIEWs");
+  GtkWidget *views = gtk_menu_item_new_with_mnemonic("_VIEWs");
   gtk_menu_shell_append(GTK_MENU_SHELL(menubar), views);
   GtkWidget *views_menu = gtk_menu_new();
   gtk_menu_item_set_submenu(GTK_MENU_ITEM(views), views_menu);
   GtkWidget *view, *view_menu;
+  view = gtk_menu_item_new_with_label("Add new VIEW");
+  gtk_menu_shell_append(GTK_MENU_SHELL(views_menu), view);
   for (i=0; i<CS->nV; i++) {
     group = NULL;
     sprintf(s, "VIEW %d", i);
@@ -902,7 +963,7 @@ static int open_gui(int argc, char *argv[])
     view_menu = gtk_menu_new();
     gtk_menu_item_set_submenu(GTK_MENU_ITEM(view), view_menu);
     for (j=0; j<CS->nD; j++) {
-      sprintf(s, "DAG %d: %ld/%ld", j, CS->D[j].Tn, CS->D[j].Tsz);
+      sprintf(s, "DAG %d: %d/%d", j, CS->D[j].Tn, CS->D[j].Tsz);
       item = gtk_radio_menu_item_new_with_label(group, s);
       gtk_menu_shell_append(GTK_MENU_SHELL(view_menu), item);
       group = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(item));
@@ -911,20 +972,22 @@ static int open_gui(int argc, char *argv[])
     }    
   }
   // submenu DAGs
-  GtkWidget *dags = gtk_menu_item_new_with_label("DAGs");
+  GtkWidget *dags = gtk_menu_item_new_with_mnemonic("_DAGs");
   gtk_menu_shell_append(GTK_MENU_SHELL(menubar), dags);
   GtkWidget *dags_menu = gtk_menu_new();
   gtk_menu_item_set_submenu(GTK_MENU_ITEM(dags), dags_menu);
   GtkWidget *dag, *dag_menu;
+  dag = gtk_menu_item_new_with_label("Add new DAG");
+  gtk_menu_shell_append(GTK_MENU_SHELL(dags_menu), dag);
   for (i=0; i<CS->nD; i++) {
     group = NULL;
-    sprintf(s, "DAG %d: %ld/%ld", i, CS->D[i].Tn, CS->D[i].Tsz);
+    sprintf(s, "DAG %d: %d/%d", i, CS->D[i].Tn, CS->D[i].Tsz);
     dag = gtk_menu_item_new_with_label(s);
     gtk_menu_shell_append(GTK_MENU_SHELL(dags_menu), dag);
     dag_menu = gtk_menu_new();
     gtk_menu_item_set_submenu(GTK_MENU_ITEM(dag), dag_menu);
     for (j=0; j<CS->nP; j++) {
-      sprintf(s, "PIDAG %d: (%ld)%s", j, CS->P[j].n, CS->Pfn[j]);
+      sprintf(s, "PIDAG %d: (%ld)%s", j, CS->P[j].n, CS->P[j].fn);
       item = gtk_radio_menu_item_new_with_label(group, s);
       gtk_menu_shell_append(GTK_MENU_SHELL(dag_menu), item);
       group = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(item));
@@ -933,13 +996,15 @@ static int open_gui(int argc, char *argv[])
     }    
   }
   // submenu PIDAGs
-  GtkWidget *pidags = gtk_menu_item_new_with_label("PIDAGs");
+  GtkWidget *pidags = gtk_menu_item_new_with_mnemonic("_PIDAGs");
   gtk_menu_shell_append(GTK_MENU_SHELL(menubar), pidags);
   GtkWidget *pidags_menu = gtk_menu_new();
   gtk_menu_item_set_submenu(GTK_MENU_ITEM(pidags), pidags_menu);
   GtkWidget *pidag;
+  pidag = gtk_menu_item_new_with_label("Add new dag file");
+  gtk_menu_shell_append(GTK_MENU_SHELL(pidags_menu), pidag);
   for (i=0; i<CS->nP; i++) {
-    sprintf(s, "PIDAG %d: (%ld)%s", i, CS->P[i].n, CS->Pfn[i]);
+    sprintf(s, "PIDAG %d: [%0.0lfMB,%ld] %s", i, ((double) CS->P[i].stat->st_size) / (1024.0 * 1024.0), CS->P[i].n, CS->P[i].fn);
     pidag = gtk_menu_item_new_with_label(s);
     gtk_menu_shell_append(GTK_MENU_SHELL(pidags_menu), pidag);
   }
@@ -951,23 +1016,18 @@ static int open_gui(int argc, char *argv[])
   gtk_box_set_homogeneous(GTK_BOX(hbox), TRUE);
 
   // vbox
-  GtkWidget *vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-  gtk_container_add(GTK_CONTAINER(hbox), vbox);
-  // Pack activeV to vbox
-  dv_view_t *V = CS->activeV;
-  if (V && V->toolbar && V->darea) {
-    gtk_box_pack_start(GTK_BOX(vbox), V->toolbar, FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(vbox), V->darea, TRUE, TRUE, 0);
-  }
-
-  // vbox2
-  GtkWidget *vbox2 = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-  gtk_container_add(GTK_CONTAINER(hbox), vbox2);
-  // Pack V2 to vbox
-  dv_view_t *V2 = V + 1;
-  if (V2 && V2->toolbar && V2->darea) {
-    gtk_box_pack_start(GTK_BOX(vbox2), V2->toolbar, FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(vbox2), V2->darea, TRUE, TRUE, 0);
+  GtkWidget *vbox;
+  dv_view_t *V;
+  int min = (CS->nV < 2)?CS->nV:2;
+  for (i=0; i<min; i++) {
+    vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    gtk_container_add(GTK_CONTAINER(hbox), vbox);
+    // Pack VIEW to vbox
+    V = &CS->V[i];
+    if (V && V->toolbar && V->darea) {
+      gtk_box_pack_start(GTK_BOX(vbox), V->toolbar, FALSE, FALSE, 0);
+      gtk_box_pack_start(GTK_BOX(vbox), V->darea, TRUE, TRUE, 0);
+    }
   }
 
   // Run main loop
@@ -990,7 +1050,7 @@ int main(int argc, char *argv[])
   }
   if (CS->nP >= 1) {
     dv_dag_t *D = dv_dag_create_new_with_pidag(CS->P);
-    dv_dag_t *D2 = dv_dag_create_new_with_pidag(CS->P);
+    dv_dag_t *D2 = dv_dag_create_new_with_pidag((CS->nP>=1)?CS->P+1:CS->P);
     //print_dvdag(D);
     dv_view_t *V = dv_view_create_new_with_dag(D);
     dv_view_t *V2 = dv_view_create_new_with_dag(D2);
@@ -1000,7 +1060,7 @@ int main(int argc, char *argv[])
     dv_view_layout(V); // must be called before first call to view_draw() for rt->vl
     dv_do_expanding_one(V2);
     dv_view_layout(V2); // must be called before first call to view_draw() for rt->vl
-    dv_global_state_set_active_view(V);
+    dv_do_set_focused_view(V, 1);
   }
   return open_gui(argc, argv);
 }

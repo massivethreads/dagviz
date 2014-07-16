@@ -370,6 +370,8 @@ static void dv_view_draw_bbox_node_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *n
 }
 
 static void dv_view_draw_bbox_node_r(dv_view_t *V, cairo_t *cr, dv_dag_node_t *node) {
+  // Count node
+  V->S->ndh++;
   if (!node || !dv_is_set(node))
     return;
   /* Draw node */
