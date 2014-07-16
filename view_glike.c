@@ -74,10 +74,9 @@ static void dv_layout_bind_node(dv_dag_node_t * u, dv_grid_line_t * l) {
 static double dv_layout_count_line_left(dv_view_t *V, dv_grid_line_t *);
 
 static double dv_layout_count_line_right(dv_view_t *V, dv_grid_line_t *l) {
-  dv_llist_iterate_init(l->L);
-  dv_dag_node_t * node;
+  dv_dag_node_t * node = NULL;
   double max = 0.0;
-  while ( node = (dv_dag_node_t *) dv_llist_iterate_next(l->L) ) {
+  while ( node = (dv_dag_node_t *) dv_llist_iterate_next(l->L, node) ) {
     if (dv_is_inward_callable(node)) {
       if (!node->vl_in || node->head->vl == NULL)
         dv_layout_bind_node(node, NULL);
@@ -102,10 +101,9 @@ static double dv_layout_count_line_right(dv_view_t *V, dv_grid_line_t *l) {
 }
 
 static double dv_layout_count_line_left(dv_view_t *V, dv_grid_line_t *l) {
-  dv_llist_iterate_init(l->L);
-  dv_dag_node_t * node;
+  dv_dag_node_t * node = NULL;
   double max = 0.0;
-  while ( node = (dv_dag_node_t *) dv_llist_iterate_next(l->L) ) {
+  while ( node = (dv_dag_node_t *) dv_llist_iterate_next(l->L, node) ) {
     if (dv_is_inward_callable(node)) {
       if (!node->vl_in)
         dv_layout_bind_node(node, NULL);
@@ -146,11 +144,10 @@ static double dv_layout_count_line_down(dv_view_t *V, dv_dag_node_t *node) {
     gap = dv_view_calculate_gap(V, node->parent);
 
   // Call following links
-  dv_llist_iterate_init(node->links);
-  dv_dag_node_t * n;
+  dv_dag_node_t * n = NULL;
   double max = 0L;
   double num;
-  while (n = (dv_dag_node_t *) dv_llist_iterate_next(node->links)) {
+  while (n = (dv_dag_node_t *) dv_llist_iterate_next(node->links, n)) {
     n->dc = dv_layout_count_line_down(V, n);
     if (n->dc > max)
       max = n->dc;
@@ -181,9 +178,8 @@ static void dv_layout_align_line_rightleft(dv_view_t *V, dv_dag_node_t *node) {
   // Call recursive right
   ll = l;
   while (ll) {
-    dv_llist_iterate_init(ll->L);
-    dv_dag_node_t * n;
-    while (n = (dv_dag_node_t *) dv_llist_iterate_next(ll->L))
+    dv_dag_node_t * n = NULL;
+    while (n = (dv_dag_node_t *) dv_llist_iterate_next(ll->L, n))
       if (dv_is_inward_callable(n)) {
         n->vl_in->c = ll->c;
         dv_layout_align_line_rightleft(V, n);
@@ -193,9 +189,8 @@ static void dv_layout_align_line_rightleft(dv_view_t *V, dv_dag_node_t *node) {
   // Call recursive left
   ll = l->l;
   while (ll) {
-    dv_llist_iterate_init(ll->L);
-    dv_dag_node_t * n;
-    while (n = (dv_dag_node_t *) dv_llist_iterate_next(ll->L))
+    dv_dag_node_t * n = NULL;
+    while (n = (dv_dag_node_t *) dv_llist_iterate_next(ll->L, n))
       if (dv_is_inward_callable(n)) {
         n->vl_in->c = ll->c;
         dv_layout_align_line_rightleft(V, n);
@@ -206,15 +201,13 @@ static void dv_layout_align_line_rightleft(dv_view_t *V, dv_dag_node_t *node) {
 
 static void dv_layout_align_line_down(dv_dag_node_t *node) {
   dv_check(node);
-  dv_dag_node_t * n;
+  dv_dag_node_t * n = NULL;
   double max = 0.0;
-  dv_llist_iterate_init(node->links);
-  while (n = (dv_dag_node_t *) dv_llist_iterate_next(node->links)) {
+  while (n = (dv_dag_node_t *) dv_llist_iterate_next(node->links, n)) {
     if (n->dc > max)
       max = n->dc;
   }
-  dv_llist_iterate_init(node->links);
-  while (n = (dv_dag_node_t *) dv_llist_iterate_next(node->links)) {
+  while (n = (dv_dag_node_t *) dv_llist_iterate_next(node->links, n)) {
     n->c = node->c + (node->dc - max) * DV_VDIS;
     dv_layout_align_line_down(n);
   }
@@ -361,9 +354,8 @@ static void dv_view_draw_glike_node_r(dv_view_t *V, cairo_t *cr, dv_dag_node_t *
 		dv_view_draw_glike_node_r(V, cr, u->head);
   }
   /* Call link-along */
-  dv_dag_node_t * v;
-  dv_llist_iterate_init(u->links);
-  while (v = (dv_dag_node_t *) dv_llist_iterate_next(u->links)) {
+  dv_dag_node_t * v = NULL;
+  while (v = (dv_dag_node_t *) dv_llist_iterate_next(u->links, v)) {
     dv_view_draw_glike_node_r(V, cr, v);    
   }
 }
@@ -399,9 +391,8 @@ static void dv_view_draw_glike_edge_r(dv_view_t *V, cairo_t *cr, dv_dag_node_t *
 		dv_view_draw_glike_edge_r(V, cr, u->head);
   }
   /* Call link-along */
-  dv_dag_node_t * v;
-  dv_llist_iterate_init(u->links);
-  while (v = (dv_dag_node_t *) dv_llist_iterate_next(u->links)) {
+  dv_dag_node_t * v = NULL;
+  while (v = (dv_dag_node_t *) dv_llist_iterate_next(u->links, v)) {
 
     dv_dag_node_t *u_tail, *v_head;
     if (dv_is_single(u)) {
@@ -417,8 +408,8 @@ static void dv_view_draw_glike_edge_r(dv_view_t *V, cairo_t *cr, dv_dag_node_t *
       
     } else {
       
-      dv_llist_iterate_init(u->tails);
-      while (u_tail = (dv_dag_node_t *) dv_llist_iterate_next(u->tails)) {
+      u_tail = NULL;
+      while (u_tail = (dv_dag_node_t *) dv_llist_iterate_next(u->tails, u_tail)) {
         dv_dag_node_t * u_last = dv_dag_node_get_last(u_tail);
         
         if (dv_is_single(v)) {

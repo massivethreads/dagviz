@@ -91,9 +91,8 @@ static double dv_view_calculate_vsize_pure(dv_view_t *V, dv_dag_node_t *node) {
 
 static dv_dag_node_t * dv_layout_node_get_last_tail(dv_view_t *V, dv_dag_node_t *node) {
   dv_dag_node_t * ret = 0;
-  dv_dag_node_t * tail;
-  dv_llist_iterate_init(node->tails);
-  while (tail = (dv_dag_node_t *) dv_llist_iterate_next(node->tails)) {
+  dv_dag_node_t * tail = NULL;
+  while (tail = (dv_dag_node_t *) dv_llist_iterate_next(node->tails, tail)) {
     dr_pi_dag_node * ret_pi = dv_pidag_get_node(V->D->P, ret);
     dr_pi_dag_node * tail_pi = dv_pidag_get_node(V->D->P, tail);
     if (!ret || ret_pi->info.end.t < tail_pi->info.end.t)
@@ -385,9 +384,8 @@ static void dv_view_draw_bbox_node_r(dv_view_t *V, cairo_t *cr, dv_dag_node_t *n
       dv_view_draw_bbox_node_r(V, cr, node->head);
   }
   /* Call link-along */
-  dv_dag_node_t * u;
-  dv_llist_iterate_init(node->links);
-  while (u = (dv_dag_node_t *) dv_llist_iterate_next(node->links)) {
+  dv_dag_node_t * u = NULL;
+  while (u = (dv_dag_node_t *) dv_llist_iterate_next(node->links, u)) {
     dv_view_draw_bbox_node_r(V, cr, u);
   }
 }
@@ -411,9 +409,8 @@ static void dv_view_draw_bbox_edge_last_r(dv_view_t *V, cairo_t *cr, dv_dag_node
     dv_view_draw_bbox_edge_1(V, cr, u, v);
     return;
   }
-  dv_llist_iterate_init(u->tails);
-  dv_dag_node_t *u_tail;
-  while (u_tail = (dv_dag_node_t *) dv_llist_iterate_next(u->tails)) {
+  dv_dag_node_t *u_tail = NULL;
+  while (u_tail = (dv_dag_node_t *) dv_llist_iterate_next(u->tails, u_tail)) {
     if (dv_is_single(u_tail))
       dv_view_draw_bbox_edge_1(V, cr, u_tail, v);
     else
@@ -430,9 +427,8 @@ static void dv_view_draw_bbox_edge_r(dv_view_t *V, cairo_t *cr, dv_dag_node_t *u
       dv_view_draw_bbox_edge_r(V, cr, u->head);
   }
   // Iterate links
-  dv_dag_node_t * v;
-  dv_llist_iterate_init(u->links);
-  while (v = (dv_dag_node_t *) dv_llist_iterate_next(u->links)) {
+  dv_dag_node_t * v = NULL;
+  while (v = (dv_dag_node_t *) dv_llist_iterate_next(u->links, v)) {
 
     if (dv_is_single(u)) {
       

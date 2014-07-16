@@ -117,9 +117,8 @@ static void dv_view_draw_timeline_node_r(dv_view_t *V, cairo_t *cr, dv_dag_node_
     dv_view_draw_timeline_node_1(V, cr, node);
   }
   /* Call link-along */
-  dv_dag_node_t * u;
-  dv_llist_iterate_init(node->links);
-  while (u = (dv_dag_node_t *) dv_llist_iterate_next(node->links)) {
+  dv_dag_node_t * u = NULL;
+  while (u = (dv_dag_node_t *) dv_llist_iterate_next(node->links, u)) {
     dv_view_draw_timeline_node_r(V, cr, u);
   }
 }

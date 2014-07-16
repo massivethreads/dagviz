@@ -235,28 +235,22 @@ void * dv_llist_remove(dv_llist_t *l, void *x) {
   return ret;
 }
 
-void dv_llist_iterate_init(dv_llist_t *l) {
+void * dv_llist_iterate_next(dv_llist_t *l, void *u) {
   dv_check(l);
-  l->i = 0;
-}
-
-void * dv_llist_iterate_next(dv_llist_t *l) {
-  dv_check(l);
-  int i = l->i;
   dv_llist_cell_t * c = l->top;
-  while (i > 0) {
-    dv_check(c);
-    c = c->next;
-    i--;
+  if (!u) {
+    if (c)
+      return c->item;
+    else
+      return NULL;
+  } else {
+    while (c && c->item != u)
+      c = c->next;
+    if (c && c->item == u && c->next)
+      return c->next->item;
+    else
+      return NULL;
   }
-  
-  void * ret = 0;
-  if (c) {
-    l->i++;
-    ret = c->item;
-  }
-  
-  return ret;
 }
 
 int dv_llist_size(dv_llist_t *l) {

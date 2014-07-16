@@ -250,9 +250,8 @@ static void dv_do_expanding_one_r(dv_view_t *V, dv_dag_node_t *node) {
   }
   
   /* Call link-along */
-  dv_llist_iterate_init(node->links);
-  dv_dag_node_t *u;
-  while (u = (dv_dag_node_t *) dv_llist_iterate_next(node->links)) {
+  dv_dag_node_t *u = NULL;
+  while (u = (dv_dag_node_t *) dv_llist_iterate_next(node->links, u)) {
     dv_do_expanding_one_r(V, u);
   }
 }
@@ -311,9 +310,8 @@ static void dv_do_collapsing_one_r(dv_view_t *V, dv_dag_node_t *node) {
           && (dv_is_expanded(x) || dv_is_expanding(x))
           && !dv_is_shrinking(x))
         has_expanded_node = 1;
-      dv_llist_iterate_init(x->links);
-      dv_dag_node_t *xx;
-      while (xx = (dv_dag_node_t *) dv_llist_iterate_next(x->links)) {
+      dv_dag_node_t *xx = NULL;
+      while (xx = (dv_dag_node_t *) dv_llist_iterate_next(x->links, xx)) {
         dv_stack_push(s, (void *) xx);
       }      
     }
@@ -327,9 +325,8 @@ static void dv_do_collapsing_one_r(dv_view_t *V, dv_dag_node_t *node) {
   }
   
   /* Call link-along */
-  dv_llist_iterate_init(node->links);
-  dv_dag_node_t *u;
-  while (u = (dv_dag_node_t *) dv_llist_iterate_next(node->links)) {
+  dv_dag_node_t *u = NULL;
+  while (u = (dv_dag_node_t *) dv_llist_iterate_next(node->links, u)) {
     dv_do_collapsing_one_r(V, u);
   }
 }
@@ -384,9 +381,8 @@ static dv_dag_node_t *dv_do_finding_clicked_node_r(dv_view_t *V, double x, doubl
       return node;
   }
   /* Call link-along */
-  dv_llist_iterate_init(node->links);
-  dv_dag_node_t *u;
-  while (u = (dv_dag_node_t *) dv_llist_iterate_next(node->links)) {
+  dv_dag_node_t *u = NULL;
+  while (u = (dv_dag_node_t *) dv_llist_iterate_next(node->links, u)) {
     ret = dv_do_finding_clicked_node_r(V, x, y, u);
     if (ret)
       return ret;
@@ -399,6 +395,7 @@ static dv_dag_node_t *dv_do_finding_clicked_node(dv_view_t *V, double x, double 
 }
 
 static void dv_set_entry_radix_text(dv_view_t *V) {
+  if (!V->entry_radix) return;
   dv_view_status_t *S = V->S;
   char str[DV_ENTRY_RADIX_MAX_LENGTH];
   double radix;
@@ -686,19 +683,19 @@ static gboolean on_window_key_event(GtkWidget *widget, GdkEvent *event, gpointer
     dv_do_set_focused_view(CS->V + i, 1);
     break;
   case 65361: /* left */
-    aV->D->x -= 15;
-    dv_queue_draw(aV);
-    return TRUE;
-  case 65362: /* up */
-    aV->D->y -= 15;
-    dv_queue_draw(aV);
-    return TRUE;
-  case 65363: /* right */
     aV->D->x += 15;
     dv_queue_draw(aV);
     return TRUE;
-  case 65364: /* down */
+  case 65362: /* up */
     aV->D->y += 15;
+    dv_queue_draw(aV);
+    return TRUE;
+  case 65363: /* right */
+    aV->D->x -= 15;
+    dv_queue_draw(aV);
+    return TRUE;
+  case 65364: /* down */
+    aV->D->y -= 15;
     dv_queue_draw(aV);
     return TRUE;
   default:
@@ -1050,7 +1047,7 @@ int main(int argc, char *argv[])
   }
   if (CS->nP >= 1) {
     dv_dag_t *D = dv_dag_create_new_with_pidag(CS->P);
-    dv_dag_t *D2 = dv_dag_create_new_with_pidag((CS->nP>=1)?CS->P+1:CS->P);
+    dv_dag_t *D2 = dv_dag_create_new_with_pidag((CS->nP>1)?CS->P+1:CS->P);
     //print_dvdag(D);
     dv_view_t *V = dv_view_create_new_with_dag(D);
     dv_view_t *V2 = dv_view_create_new_with_dag(D2);

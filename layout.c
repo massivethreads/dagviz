@@ -69,10 +69,9 @@ static gboolean dv_animation_tick(gpointer data) {
   dv_animation_t *a = (dv_animation_t *) data;
   dv_check(a->on);
   double cur = dv_get_time();
-  dv_llist_iterate_init(a->movings);
-  dv_dag_node_t *node;
+  dv_dag_node_t *node = NULL;
   // iterate moving nodes
-  while (node = (dv_dag_node_t *) dv_llist_iterate_next(a->movings)) {
+  while (node = (dv_dag_node_t *) dv_llist_iterate_next(a->movings, node)) {
     if (cur - node->started >= a->duration) {
       // Stop this node from animation
       dv_llist_remove(a->movings, node);

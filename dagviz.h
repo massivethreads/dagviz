@@ -90,7 +90,7 @@ typedef struct dv_llist {
 #define DV_TIMELINE_NODE_WITH_BORDER 1
 #define DV_ENTRY_RADIX_MAX_LENGTH 20
 
-#define DV_DAG_NODE_POOL_SIZE 50
+#define DV_DAG_NODE_POOL_SIZE 1000
 
 #define DV_MAX_DAG_FILE 2
 #define DV_MAX_DAG 2
@@ -362,8 +362,7 @@ void dv_llist_add(dv_llist_t *, void *);
 void * dv_llist_pop(dv_llist_t *);
 void * dv_llist_get(dv_llist_t *);
 void * dv_llist_remove(dv_llist_t *, void *);
-void dv_llist_iterate_init(dv_llist_t *);
-void * dv_llist_iterate_next(dv_llist_t *);
+void * dv_llist_iterate_next(dv_llist_t *, void *);
 int dv_llist_size(dv_llist_t *);
 
 const char * dv_convert_char_to_binary(int );

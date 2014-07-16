@@ -139,6 +139,24 @@ int dv_dag_node_pool_avail(dv_dag_t *D) {
 }
 
 dv_dag_node_t * dv_dag_node_pool_pop_contiguous(dv_dag_t *D, long num) {
+  // Try searching
+  long i, j;
+  int ok;
+  for (i=0; i<D->Tsz-num+1; i++) {
+    ok = 1;
+    for (j=i; j<i+num; j++)
+      if (D->To[j]) {
+        ok = 0;
+        break;
+      }
+    if (ok) {
+      for (j=i; j<i+num; j++)
+        D->To[j] = 1;
+      D->Tn += num;
+      return D->T + i;
+    }
+  }
+  // If there is not, clear shrinked nodes
   long avail, new_avail;
   avail = -1;
   new_avail = dv_dag_node_pool_avail(D);
@@ -149,8 +167,7 @@ dv_dag_node_t * dv_dag_node_pool_pop_contiguous(dv_dag_t *D, long num) {
   }
   if (dv_dag_node_pool_avail(D) < num)
     return NULL;
-  long i, j;
-  int ok;
+  // Try searching again
   for (i=0; i<D->Tsz-num+1; i++) {
     ok = 1;
     for (j=i; j<i+num; j++)
@@ -341,9 +358,8 @@ static void dv_dag_clear_shrinked_nodes_r(dv_dag_t *D, dv_dag_node_t *node) {
         dv_dag_node_t * x = (dv_dag_node_t *) dv_stack_pop(s);
         if (dv_is_set(node) && dv_is_union(x) && dv_is_inner_loaded(x))
           has_no_innerloaded_node = 0;
-        dv_llist_iterate_init(x->links);
-        dv_dag_node_t *xx;
-        while (xx = (dv_dag_node_t *) dv_llist_iterate_next(x->links)) {
+        dv_dag_node_t *xx = NULL;
+        while (xx = (dv_dag_node_t *) dv_llist_iterate_next(x->links, xx)) {
           dv_stack_push(s, (void *) xx);
         }      
       }
@@ -363,9 +379,8 @@ static void dv_dag_clear_shrinked_nodes_r(dv_dag_t *D, dv_dag_node_t *node) {
   }
   
   /* Call link-along */
-  dv_llist_iterate_init(node->links);
-  dv_dag_node_t *u;
-  while (u = (dv_dag_node_t *) dv_llist_iterate_next(node->links)) {
+  dv_dag_node_t *u = NULL;
+  while (u = (dv_dag_node_t *) dv_llist_iterate_next(node->links, u)) {
     dv_dag_clear_shrinked_nodes_r(D, u);
   }
 }
