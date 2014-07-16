@@ -232,7 +232,7 @@ void dv_view_draw_status(dv_view_t *V, cairo_t *cr) {
   cairo_new_path(cr);
 
   // Identifier
-  sprintf(s, "V%d-D%d-P%d", V - CS->V, D - CS->D, D->P - CS->P);
+  sprintf(s, "V%ld-D%ld-P%ld", V - CS->V, D - CS->D, D->P - CS->P);
   x -= strlen(s) * char_width;
   cairo_move_to(cr, x, y);
   cairo_show_text(cr, s);
