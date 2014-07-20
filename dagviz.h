@@ -99,7 +99,6 @@ typedef struct dv_llist {
 #define DV_MAX_VIEW 5
 #define DV_MAX_VIEWPORT 4
 #define DV_NUM_VIEWPORTS_DEFAULT 2
-#define DV_MAX_INTERFACES_OF_A_VIEW 4
 
 #define DV_OK 0
 #define DV_ERROR_OONP 1 /* out of node pool */
@@ -207,39 +206,32 @@ typedef struct dv_view_status {
   int edge_affix; /* edge affix length */
   int cm; /* click mode */
   long ndh; /* number of nodes including hidden ones */
+  int focused;
 } dv_view_status_t;
 
 typedef struct dv_viewport dv_viewport_t;
+typedef struct dv_view dv_view_t;
 
-/*
 typedef struct dv_view_interface {
+  dv_view_t * V;
   dv_viewport_t * VP;
   GtkWidget * toolbar;
   GtkWidget * entry_radix;
   GtkWidget * combobox_lt;
-  GtkWidget * darea;
   GtkWidget * togg_focused;  
 } dv_view_interface_t;
-*/
 
 typedef struct dv_view {
-  dv_dag_t * D;
-  dv_view_status_t S[1];
-  //dv_view_interface_t * I[DV_MAX_INTERFACES_OF_A_VIEW];
-  
-  dv_viewport_t * VP;
-  GtkWidget * toolbar;
-  GtkWidget * entry_radix;
-  GtkWidget * combobox_lt;
-  GtkWidget * darea;
-  GtkWidget * togg_focused;  
+  dv_dag_t * D; /* DV DAG */
+  dv_view_status_t S[1]; /* layout/drawing attributes */
+  dv_view_interface_t * I[DV_MAX_VIEWPORT]; /* interfaces to viewports */
 } dv_view_t;
 
 typedef struct dv_viewport {
   GtkWidget * box; /* hbox or vbox */
   GtkWidget * darea; /* drawing area */
-  dv_llist_t views[1]; /* list of views drawn in this viewport */
   int orientation; /* box's orientation */
+  dv_view_interface_t * I[DV_MAX_VIEW]; /* interfaces to view */
 } dv_viewport_t;
 
 typedef struct dv_global_state {
@@ -271,21 +263,26 @@ extern dv_global_state_t  CS[]; /* global common state */
 /*-----------------Headers-----------------*/
 
 /* dagviz.c */
-void dv_queue_draw(dv_view_t *);
 void dv_global_state_init(dv_global_state_t *);
 void dv_global_state_set_active_view(dv_view_t *);
 dv_view_t * dv_global_state_get_active_view();
+
+void dv_queue_draw(dv_view_t *);
 
 void dv_view_status_init(dv_view_t *, dv_view_status_t *);
 
 void dv_view_init(dv_view_t *);
 dv_view_t * dv_view_create_new_with_dag(dv_dag_t *);
-void dv_view_set_viewport(dv_view_t *, dv_viewport_t *);
+dv_view_interface_t * dv_view_interface_create_new(dv_view_t *, dv_viewport_t *);
+void dv_view_interface_destroy(dv_view_interface_t *);
+void dv_view_add_viewport(dv_view_t *V, dv_viewport_t *VP);
 void dv_view_remove_viewport(dv_view_t *, dv_viewport_t *);
+dv_view_interface_t * dv_view_get_interface_to_viewport(dv_view_t *, dv_viewport_t *);
 
 void dv_viewport_init(dv_viewport_t *, int);
-void dv_viewport_add_view(dv_viewport_t *, dv_view_t *);
-void dv_viewport_remove_view(dv_viewport_t *, dv_view_t *);
+void dv_viewport_add_interface(dv_viewport_t *, dv_view_interface_t *);
+void dv_viewport_remove_interface(dv_viewport_t *, dv_view_interface_t *);
+dv_view_interface_t * dv_viewport_get_interface_to_view(dv_viewport_t *, dv_view_t *);
 
 /* print.c */
 char * dv_get_node_kind_name(dr_dag_node_kind_t);

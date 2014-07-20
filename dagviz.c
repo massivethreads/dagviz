@@ -72,8 +72,8 @@ dv_view_t * dv_global_state_get_active_view() {
 void dv_queue_draw(dv_view_t *V) {
   int i;
   for (i=0; i<CS->nVP; i++)
-    if (dv_llist_has(CS->VP[i].views, V))
-      gtk_widget_queue_draw(CS->VP[i].darea);
+    if (V->I[i])
+      gtk_widget_queue_draw(V->I[i]->VP->darea);
 }
 
 static void dv_do_zooming(dv_view_t *V, double zoom_ratio, double posx, double posy)
@@ -179,7 +179,10 @@ static void dv_do_changing_lt(dv_view_t *V, int new_lt) {
   dv_view_status_t *S = V->S;
   int old_lt = S->lt;
   S->lt = new_lt;
-  gtk_combo_box_set_active(GTK_COMBO_BOX(V->combobox_lt), new_lt);
+  int i;
+  for (i=0; i<CS->nVP; i++)
+    if (V->I[i])
+      gtk_combo_box_set_active(GTK_COMBO_BOX(V->I[i]->combobox_lt), new_lt);
   dv_view_layout(V);
   if (S->lt != old_lt)
     dv_do_zoomfit_ver(V);
@@ -264,7 +267,6 @@ static void dv_do_expanding_one(dv_view_t *V) {
     dv_queue_draw(V);
   }
 }
-
 
 static void dv_do_collapsing_one_1(dv_view_t *V, dv_dag_node_t *node) {
   dv_view_status_t *S = V->S;
@@ -394,7 +396,6 @@ static dv_dag_node_t *dv_do_finding_clicked_node(dv_view_t *V, double x, double 
 }
 
 static void dv_set_entry_radix_text(dv_view_t *V) {
-  if (!V->entry_radix) return;
   dv_view_status_t *S = V->S;
   char str[DV_ENTRY_RADIX_MAX_LENGTH];
   double radix;
@@ -407,13 +408,16 @@ static void dv_set_entry_radix_text(dv_view_t *V) {
   else
     dv_check(0);
   sprintf(str, "%0.3lf", radix);
-  gtk_entry_set_width_chars(GTK_ENTRY(V->entry_radix), strlen(str));
-  gtk_entry_set_text(GTK_ENTRY(V->entry_radix), str);
+  int i;
+  for (i=0; i<CS->nVP; i++)
+    if (V->I[i]) {      
+      gtk_entry_set_width_chars(GTK_ENTRY(V->I[i]->entry_radix), strlen(str));
+      gtk_entry_set_text(GTK_ENTRY(V->I[i]->entry_radix), str);
+    }
 }
 
-static void dv_get_entry_radix_text(dv_view_t *V) {
+static void dv_get_entry_radix_text(dv_view_t *V, double radix) {
   dv_view_status_t *S = V->S;
-  double radix = atof(gtk_entry_get_text(GTK_ENTRY(V->entry_radix)));
   if (S->sdt == 0)
     S->log_radix = radix;
   else if (S->sdt == 1)
@@ -422,6 +426,7 @@ static void dv_get_entry_radix_text(dv_view_t *V) {
     S->linear_radix = radix;
   else
     dv_check(0);
+  dv_set_entry_radix_text(V);
   dv_view_layout(V);
   dv_queue_draw(V);
 }
@@ -429,15 +434,22 @@ static void dv_get_entry_radix_text(dv_view_t *V) {
 static void dv_do_set_focused_view(dv_view_t *V, int focused) {
   if (focused) {
     dv_global_state_set_active_view(V);
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(V->togg_focused), TRUE);
+    V->S->focused = 1;
     int i;
+    for (i=0; i<CS->nVP; i++)
+      if (V->I[i])
+        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(V->I[i]->togg_focused), TRUE);
     for (i=0; i<CS->nV; i++)
       if (V != CS->V + i)
-        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(CS->V[i].togg_focused), FALSE);        
+        dv_do_set_focused_view(CS->V + i, 0);
   } else {
     if (V == dv_global_state_get_active_view())
       dv_global_state_set_active_view(NULL);
-    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(V->togg_focused), FALSE);
+    V->S->focused = 0;
+    int i;
+    for (i=0; i<CS->nVP; i++)
+      if (V->I[i])
+        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(V->I[i]->togg_focused), FALSE);
   }
 }
 
@@ -449,25 +461,30 @@ static void dv_do_set_focused_view(dv_view_t *V, int focused) {
 static gboolean on_draw_event(GtkWidget *widget, cairo_t *cr, gpointer user_data)
 {
   dv_viewport_t *VP = (dv_viewport_t *) user_data;
-  dv_view_t *V = NULL;
-  while (V = (dv_view_t *) dv_llist_iterate_next(VP->views, V)) {
-    dv_dag_t *D = V->D;
-    dv_view_status_t *S = V->S;
-    if (S->lt == 0) {
-      D->basex = 0.5 * S->vpw;
-      D->basey = DV_ZOOM_TO_FIT_MARGIN;
-    } else if (S->lt == 1) {
-      //G->basex = 0.5 * S->vpw - 0.5 * (G->rt->rw - G->rt->lw);
-      D->basex = 0.5 * S->vpw;
-      D->basey = DV_ZOOM_TO_FIT_MARGIN;
-    } else if (S->lt == 2) {
-      D->basex = DV_ZOOM_TO_FIT_MARGIN;
-      D->basey = DV_ZOOM_TO_FIT_MARGIN;
-    } else
-      dv_check(0);
-    // Draw
-    dv_do_drawing(V, cr);
-  }
+  dv_view_t *V;
+  dv_dag_t *D;
+  dv_view_status_t *S;
+  int i;
+  for (i=0; i<CS->nV; i++)
+    if (VP->I[i]) {
+      V = VP->I[i]->V;
+      D = V->D;
+      S = V->S;
+      if (S->lt == 0) {
+        D->basex = 0.5 * S->vpw;
+        D->basey = DV_ZOOM_TO_FIT_MARGIN;
+      } else if (S->lt == 1) {
+        //G->basex = 0.5 * S->vpw - 0.5 * (G->rt->rw - G->rt->lw);
+        D->basex = 0.5 * S->vpw;
+        D->basey = DV_ZOOM_TO_FIT_MARGIN;
+      } else if (S->lt == 2) {
+        D->basex = DV_ZOOM_TO_FIT_MARGIN;
+        D->basey = DV_ZOOM_TO_FIT_MARGIN;
+      } else
+        dv_check(0);
+      // Draw
+      dv_do_drawing(V, cr);
+    }
   return FALSE;
 }
 
@@ -506,12 +523,14 @@ static void dv_do_scrolling(dv_view_t *V, GdkEventScroll *event) {
 
 static gboolean on_scroll_event(GtkWidget *widget, GdkEventScroll *event, gpointer user_data) {
   dv_viewport_t *VP = (dv_viewport_t *) user_data;
-  if (dv_llist_has(VP->views, CS->activeV)) {
+  dv_view_interface_t *I = dv_viewport_get_interface_to_view(VP, CS->activeV);
+  if (I) {
     dv_do_scrolling(CS->activeV, event);
   } else {
-    dv_view_t *V = NULL;
-    while (V = (dv_view_t *) dv_llist_iterate_next(VP->views, V))
-      dv_do_scrolling(V, event);
+    int i;
+    for (i=0; i<CS->nV; i++)
+      if (VP->I[i])
+        dv_do_scrolling(VP->I[i]->V, event);
   }
   return TRUE;
 }
@@ -568,12 +587,14 @@ static void dv_do_button_event(dv_view_t *V, GdkEventButton *event)
 static gboolean on_button_event(GtkWidget *widget, GdkEventButton *event, gpointer user_data)
 {
   dv_viewport_t *VP = (dv_viewport_t *) user_data;
-  if (dv_llist_has(VP->views, CS->activeV)) {
+  dv_view_interface_t *I = dv_viewport_get_interface_to_view(VP, CS->activeV);
+  if (I) {
     dv_do_button_event(CS->activeV, event);
   } else {
-    dv_view_t *V = NULL;
-    while (V = (dv_view_t *) dv_llist_iterate_next(VP->views, V))
-      dv_do_button_event(V, event);
+    int i;
+    for (i=0; i<CS->nV; i++)
+      if (VP->I[i])
+        dv_do_button_event(VP->I[i]->V, event);
   }
   return TRUE;
 }
@@ -598,12 +619,14 @@ static void dv_do_motion_event(dv_view_t *V, GdkEventMotion *event) {
 static gboolean on_motion_event(GtkWidget *widget, GdkEventMotion *event, gpointer user_data)
 {
   dv_viewport_t *VP = (dv_viewport_t *) user_data;
-  if (dv_llist_has(VP->views, CS->activeV)) {
+  dv_view_interface_t *I = dv_viewport_get_interface_to_view(VP, CS->activeV);
+  if (I) {
     dv_do_motion_event(CS->activeV, event);
   } else {
-    dv_view_t *V = NULL;
-    while (V = (dv_view_t *) dv_llist_iterate_next(VP->views, V))
-      dv_do_motion_event(V, event);
+    int i;
+    for (i=0; i<CS->nV; i++)
+      if (VP->I[i])
+        dv_do_motion_event(VP->I[i]->V, event);
   }
   return TRUE;
 }
@@ -633,7 +656,8 @@ static gboolean on_combobox_sdt_changed(GtkComboBox *widget, gpointer user_data)
 
 static gboolean on_entry_radix_activate(GtkEntry *entry, gpointer user_data) {
   dv_view_t *V = (dv_view_t *) user_data;
-  dv_get_entry_radix_text(V);
+  double radix = atof(gtk_entry_get_text(GTK_ENTRY(entry)));
+  dv_get_entry_radix_text(V, radix);
   return TRUE;
 }
 
@@ -677,10 +701,13 @@ static gboolean on_combobox_cm_changed(GtkComboBox *widget, gpointer user_data) 
 static gboolean on_darea_configure_event(GtkWidget *widget, GdkEventConfigure *event, gpointer user_data) {
   dv_viewport_t *VP = (dv_viewport_t *) user_data;
   dv_view_t *V = NULL;
-  while (V = (dv_view_t *) dv_llist_iterate_next(VP->views, V)) {
-    V->S->vpw = event->width;
-    V->S->vph = event->height;
-  }
+  int i;
+  for (i=0; i<CS->nV; i++)
+    if (VP->I[i]) {
+      V = VP->I[i]->V;
+      V->S->vpw = event->width;
+      V->S->vph = event->height;
+    }
   return TRUE;
 }
 
@@ -757,17 +784,12 @@ void dv_view_status_init(dv_view_t *V, dv_view_status_t *S) {
   S->edge_affix = DV_EDGE_AFFIX_LENGTH;
   S->cm = DV_CLICK_MODE_INIT;
   S->ndh = 0;
+  S->focused = 0;
 }
 
 void dv_view_init(dv_view_t *V) {
   V->D = NULL;
   dv_view_status_init(V, V->S);
-  V->toolbar = NULL;
-  V->entry_radix = NULL;
-  V->combobox_lt = NULL;
-  V->darea = NULL;
-  V->togg_focused = NULL;
-  V->VP = NULL;
 }
 
 dv_view_t * dv_view_create_new_with_dag(dv_dag_t *D) {
@@ -779,32 +801,49 @@ dv_view_t * dv_view_create_new_with_dag(dv_dag_t *D) {
   // Set values
   V->D = D;
 
+  return V;
+}
+
+dv_view_interface_t * dv_view_interface_create_new(dv_view_t *V, dv_viewport_t *VP) {
+  // Create a new
+  dv_view_interface_t * I = (dv_view_interface_t *) dv_malloc(sizeof(dv_view_interface_t));
+  I->V = V;
+  I->VP = VP;
+  I->toolbar = gtk_toolbar_new();
+  I->togg_focused = gtk_toggle_button_new_with_label("Focused");
+  I->combobox_lt = gtk_combo_box_text_new();
+  I->entry_radix = gtk_entry_new();
+
+  dv_view_status_t *S = V->S;
+  
   // White color
   GdkRGBA white[1];
   gdk_rgba_parse(white, "white");
 
   // Toolbar
-  V->toolbar = gtk_toolbar_new();
-  GtkWidget *toolbar = V->toolbar;
+  GtkWidget *toolbar = I->toolbar;
   //gtk_widget_override_background_color(GTK_WIDGET(toolbar), GTK_STATE_FLAG_NORMAL, white);
 
   // Focused toggle
   GtkToolItem *btn_togg_focused = gtk_tool_item_new();
-  V->togg_focused = gtk_toggle_button_new_with_label("Focused");
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(V->togg_focused), FALSE);
-  g_signal_connect(G_OBJECT(V->togg_focused), "toggled", G_CALLBACK(on_togg_focused_toggled), (void *) V);
-  gtk_container_add(GTK_CONTAINER(btn_togg_focused), V->togg_focused);
+  GtkWidget *togg_focused = I->togg_focused;
+  if (S->focused)
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togg_focused), TRUE);
+  else
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togg_focused), FALSE);
+  g_signal_connect(G_OBJECT(togg_focused), "toggled", G_CALLBACK(on_togg_focused_toggled), (void *) V);
+  gtk_container_add(GTK_CONTAINER(btn_togg_focused), togg_focused);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_togg_focused, -1);
   
   // Layout type combobox
   GtkToolItem *btn_combo_lt = gtk_tool_item_new();
-  V->combobox_lt = gtk_combo_box_text_new();
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(V->combobox_lt), "grid", "Grid like");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(V->combobox_lt), "bounding", "Bounding box");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(V->combobox_lt), "timeline", "Timeline");
-  gtk_combo_box_set_active(GTK_COMBO_BOX(V->combobox_lt), DV_LAYOUT_TYPE_INIT);
-  g_signal_connect(G_OBJECT(V->combobox_lt), "changed", G_CALLBACK(on_combobox_lt_changed), (void *) V);
-  gtk_container_add(GTK_CONTAINER(btn_combo_lt), V->combobox_lt);
+  GtkWidget *combobox_lt = I->combobox_lt;
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "grid", "Grid like");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "bounding", "Bounding box");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "timeline", "Timeline");
+  gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_lt), S->lt);
+  g_signal_connect(G_OBJECT(combobox_lt), "changed", G_CALLBACK(on_combobox_lt_changed), (void *) V);
+  gtk_container_add(GTK_CONTAINER(btn_combo_lt), combobox_lt);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo_lt, -1);
 
   // Node color combobox
@@ -816,7 +855,7 @@ dv_view_t * dv_view_create_new_with_dag(dv_dag_t *D) {
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_nc), "code_start", "Code start");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_nc), "code_end", "Code end");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_nc), "code_start_end", "Code start-end");
-  gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_nc), DV_NODE_COLOR_INIT);
+  gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_nc), S->nc);
   g_signal_connect(G_OBJECT(combobox_nc), "changed", G_CALLBACK(on_combobox_nc_changed), (void *) V);
   gtk_container_add(GTK_CONTAINER(btn_combo_nc), combobox_nc);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo_nc, -1);
@@ -827,7 +866,7 @@ dv_view_t * dv_view_create_new_with_dag(dv_dag_t *D) {
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_sdt), "log", "Log");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_sdt), "power", "Power");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_sdt), "linear", "Linear");
-  gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_sdt), DV_SCALE_TYPE_INIT);
+  gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_sdt), S->sdt);
   g_signal_connect(G_OBJECT(combobox_sdt), "changed", G_CALLBACK(on_combobox_sdt_changed), (void *) V);
   gtk_container_add(GTK_CONTAINER(btn_combo_sdt), combobox_sdt);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo_sdt, -1);
@@ -835,11 +874,11 @@ dv_view_t * dv_view_create_new_with_dag(dv_dag_t *D) {
   /*
   // Radix value input
   GtkToolItem *btn_entry_radix = gtk_tool_item_new();
-  V->entry_radix = gtk_entry_new();
-  //gtk_entry_set_max_length(GTK_ENTRY(S->entry_radix), 10);
+  GtkWidget *entry_radix = I->entry_radix;
+  //gtk_entry_set_max_length(GTK_ENTRY(entry_radix), 10);
   dv_set_entry_radix_text(V);
-  g_signal_connect(G_OBJECT(V->entry_radix), "activate", G_CALLBACK(on_entry_radix_activate), (void *) V);
-  gtk_container_add(GTK_CONTAINER(btn_entry_radix), V->entry_radix);
+  g_signal_connect(G_OBJECT(entry_radix), "activate", G_CALLBACK(on_entry_radix_activate), (void *) V);
+  gtk_container_add(GTK_CONTAINER(btn_entry_radix), entry_radix);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_entry_radix, -1);
 
   // Frombt combobox
@@ -847,7 +886,7 @@ dv_view_t * dv_view_create_new_with_dag(dv_dag_t *D) {
   GtkWidget *combobox_frombt = gtk_combo_box_text_new();
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_frombt), "not", "Not frombt");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_frombt), "frombt", "From BT");
-  gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_frombt), DV_FROMBT_INIT);
+  gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_frombt), S->frombt);
   g_signal_connect(G_OBJECT(combobox_frombt), "changed", G_CALLBACK(on_combobox_frombt_changed), (void *) V);
   gtk_container_add(GTK_CONTAINER(btn_combo_frombt), combobox_frombt);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo_frombt, -1);
@@ -859,7 +898,7 @@ dv_view_t * dv_view_create_new_with_dag(dv_dag_t *D) {
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_et), "straight", "Straight");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_et), "down", "Down");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_et), "winding", "Winding");
-  gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_et), DV_EDGE_TYPE_INIT);
+  gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_et), S->et);
   g_signal_connect(G_OBJECT(combobox_et), "changed", G_CALLBACK(on_combobox_et_changed), (void *) V);
   gtk_container_add(GTK_CONTAINER(btn_combo_et), combobox_et);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo_et, -1);
@@ -868,7 +907,10 @@ dv_view_t * dv_view_create_new_with_dag(dv_dag_t *D) {
   // Edge affix toggle
   GtkToolItem *btn_togg_eaffix = gtk_tool_item_new();
   GtkWidget *togg_eaffix = gtk_toggle_button_new_with_label("Edge Affix");
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togg_eaffix), TRUE);
+  if (S->edge_affix == 0)
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togg_eaffix), FALSE);
+  else
+    gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(togg_eaffix), TRUE);
   g_signal_connect(G_OBJECT(togg_eaffix), "toggled", G_CALLBACK(on_togg_eaffix_toggled), (void *) V);
   gtk_container_add(GTK_CONTAINER(btn_togg_eaffix), togg_eaffix);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_togg_eaffix, -1);
@@ -878,7 +920,7 @@ dv_view_t * dv_view_create_new_with_dag(dv_dag_t *D) {
   GtkWidget *combobox_cm = gtk_combo_box_text_new();
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_cm), "info", "Infotag");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_cm), "expand", "Expand");
-  gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_cm), DV_CLICK_MODE_INIT);
+  gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_cm), S->cm);
   g_signal_connect(G_OBJECT(combobox_cm), "changed", G_CALLBACK(on_combobox_cm_changed), (void *) V);
   gtk_container_add(GTK_CONTAINER(btn_combo_cm), combobox_cm);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo_cm, -1);
@@ -905,19 +947,40 @@ dv_view_t * dv_view_create_new_with_dag(dv_dag_t *D) {
   g_signal_connect(G_OBJECT(btn_shrink), "clicked", G_CALLBACK(on_btn_shrink_clicked), (void *) V);
   g_signal_connect(G_OBJECT(btn_expand), "clicked", G_CALLBACK(on_btn_expand_clicked), (void *) V);
 
-  return V;  
+  return I;
 }
 
-void dv_view_set_viewport(dv_view_t *V, dv_viewport_t *VP) {
-  V->VP = VP;
-  V->darea = VP->darea;
+void dv_view_interface_destroy(dv_view_interface_t *I) {
+  gtk_widget_destroy(I->togg_focused);
+  gtk_widget_destroy(I->combobox_lt);
+  gtk_widget_destroy(I->entry_radix);
+  gtk_widget_destroy(I->toolbar);
+  dv_free(I, sizeof(dv_view_interface_t));
+}
+
+void dv_view_add_viewport(dv_view_t *V, dv_viewport_t *VP) {
+  int idx = VP - CS->VP;
+  if (V->I[idx] && V->I[idx]->VP == VP)
+    return;
+  dv_view_interface_t *I = dv_view_interface_create_new(V, VP);
+  V->I[idx] = I;
+  dv_viewport_add_interface(VP, I);
 }
 
 void dv_view_remove_viewport(dv_view_t *V, dv_viewport_t *VP) {
-  if (V->VP == VP) {
-    V->VP = NULL;
-    V->darea = NULL;
-  }
+  int idx = VP - CS->VP;
+  if (!V->I[idx])
+    return;
+  dv_view_interface_t *I = V->I[idx];
+  V->I[idx] = NULL;
+  dv_viewport_remove_interface(VP, I);
+  dv_view_interface_destroy(I);
+}
+
+dv_view_interface_t * dv_view_get_interface_to_viewport(dv_view_t *V, dv_viewport_t *VP) {
+  int idx = VP - CS->VP;
+  dv_view_interface_t *I = V->I[idx];
+  return I;
 }
 
 /*-----------------end of VIEW's functions-----------------*/
@@ -932,7 +995,6 @@ void dv_viewport_init(dv_viewport_t *VP, int orientation) {
     VP->box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
   else
     VP->box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-  dv_llist_init(VP->views);
   // White color
   GdkRGBA white[1];
   gdk_rgba_parse(white, "white");
@@ -948,32 +1010,33 @@ void dv_viewport_init(dv_viewport_t *VP, int orientation) {
   g_signal_connect(G_OBJECT(darea), "motion-notify-event", G_CALLBACK(on_motion_event), (void *) VP);
   g_signal_connect(G_OBJECT(darea), "configure-event", G_CALLBACK(on_darea_configure_event), (void *) VP);
   gtk_box_pack_end(GTK_BOX(VP->box), darea, TRUE, TRUE, 0);
+
+  // I
+  int i;
+  for (i=0; i<DV_MAX_VIEW; i++)
+    VP->I[i] = NULL;
 }
 
-void dv_viewport_add_view(dv_viewport_t *VP, dv_view_t *V) {
-  if (dv_llist_has(VP->views, V))
-    return;
-  dv_llist_add(VP->views, V);
-  dv_view_set_viewport(V, VP);
+void dv_viewport_add_interface(dv_viewport_t *VP, dv_view_interface_t *I) {
+  int idx = I->V - CS->V;
+  dv_check(!VP->I[idx]);
+  VP->I[idx] = I;
   // Reset box
-  gtk_box_pack_start(GTK_BOX(VP->box), GTK_WIDGET(V->toolbar), FALSE, FALSE, 0);
-  //gtk_container_remove(GTK_CONTAINER(VP->box), VP->darea);
-  //gtk_box_pack_end(GTK_BOX(VP->box), VP->darea, TRUE, TRUE, 0);
-  //gtk_widget_show(GTK_WIDGET(V->toolbar));
-  //gtk_widget_show(GTK_WIDGET(VP->darea));
-  //gtk_widget_queue_draw(GTK_WIDGET(VP->box));
-  //gtk_widget_show_all(CS->window);
+  gtk_box_pack_start(GTK_BOX(VP->box), GTK_WIDGET(I->toolbar), FALSE, FALSE, 0);
 }
 
-void dv_viewport_remove_view(dv_viewport_t *VP, dv_view_t *V) {
-  if (!dv_llist_has(VP->views, V))
-    return;
-  dv_llist_remove(VP->views, V);
-  dv_view_remove_viewport(V, VP);
+void dv_viewport_remove_interface(dv_viewport_t *VP, dv_view_interface_t *I) {
+  int idx = I->V - CS->V;
+  dv_check(VP->I[idx]);
+  VP->I[idx] = NULL;
   // Reset box
-  gtk_container_remove(GTK_CONTAINER(VP->box), GTK_WIDGET(V->toolbar));
-  //gtk_widget_queue_draw(GTK_WIDGET(VP->box));
-  //gtk_widget_show_all(CS->window);
+  gtk_container_remove(GTK_CONTAINER(VP->box), GTK_WIDGET(I->toolbar));
+}
+
+dv_view_interface_t * dv_viewport_get_interface_to_view(dv_viewport_t *VP, dv_view_t *V) {
+  int idx = V - CS->V;
+  dv_view_interface_t *I = VP->I[idx];
+  return I;
 }
 
 /*-----------------end of VIEWPORT's functions-----------------*/
@@ -1002,10 +1065,12 @@ static void on_viewport_select_view(GtkCheckMenuItem *checkmenuitem, gpointer us
   dv_check(i < CS->nV);
   dv_view_t *V = &CS->V[i];
   // Actions
-  if (active)
-    dv_viewport_add_view(VP, V);
-  else
-    dv_viewport_remove_view(VP, V);
+  if (active) {
+    dv_view_add_viewport(V, VP);
+  } else {
+    dv_view_remove_viewport(V, VP);
+  }
+  gtk_widget_show_all(VP->box);
   gtk_widget_queue_draw(GTK_WIDGET(VP->box));
 }
 
@@ -1170,15 +1235,15 @@ int main(int argc, char *argv[])
     dv_viewport_init(&CS->VP[i], 0);
   }
 
-  /* DAG&VIEW initialization */
+  /* DAG -> VIEW <- Viewport initialization */
   dv_dag_t *D;
   dv_view_t *V;
   for (i=0; i<CS->nP; i++) {
-    D = dv_dag_create_new_with_pidag(&CS->P[0]);
+    D = dv_dag_create_new_with_pidag(&CS->P[i]);
     //print_dvdag(D);
     V = dv_view_create_new_with_dag(D);
     if (i < DV_NUM_VIEWPORTS_DEFAULT)
-      dv_viewport_add_view(&CS->VP[i], V);
+      dv_view_add_viewport(V, &CS->VP[i]);
     dv_do_expanding_one(V);
     dv_view_layout(V); // must be called before first call to view_draw() for rt->vl
   }
