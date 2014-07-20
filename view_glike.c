@@ -1,243 +1,145 @@
 #include "dagviz.h"
 
-/*-----------------Grid-like Layout functions-----------*/
 
+/*-----------------Grid-like layout functions-----------*/
 
-/*-----------------Grid-related functions-----------*/
-
-static void dv_grid_line_init(dv_grid_line_t * l) {
-  l->l = 0;
-  l->r = 0;
-  dv_llist_init(l->L);
-  l->c = 0;
-}
-
-static dv_grid_line_t * dv_grid_line_create() {
-  dv_grid_line_t * l = (dv_grid_line_t *) dv_malloc( sizeof(dv_grid_line_t) );
-  dv_grid_line_init(l);
-  return l;
-}
-
-/*-----------------end of Grid-related functions-----------*/
-
-static void bind_node_1(dv_dag_node_t *u, dv_grid_line_t *l) {
-  u->vl = l;
-  dv_llist_add(l->L, u);
-}
-
-static void dv_layout_bind_node(dv_dag_node_t * u, dv_grid_line_t * l) {
-  // Bind itself
-  if (l != NULL)
-    bind_node_1(u, l);
-  // Bind child nodes
-  if (dv_is_union(u) && dv_is_inner_loaded(u)) {
-    dv_check(u->head);
-    if (!u->vl_in)
-      u->vl_in = dv_grid_line_create();
-    dv_layout_bind_node(u->head, u->vl_in);
+static void dv_view_layout_glike_node(dv_view_t *V, dv_dag_node_t *node) {
+  /* Calculate inward */
+  if (dv_is_inward_callable(node)) {
+    dv_check(node->head);
+    // node's head's outward
+    node->head->xpre = 0.0;
+    node->head->y = node->y;
+    // Recursive call
+    dv_view_layout_glike_node(V, node->head);
+    // node's inward
+    node->lw = node->head->link_lw;
+    node->rw = node->head->link_rw;
+    node->dw = node->head->link_dw;
+  } else {
+    // node's inward
+    node->lw = DV_RADIUS;
+    node->rw = DV_RADIUS;
+    node->dw = 2 * DV_RADIUS;
   }
+    
+  /* Calculate link-along */
+  int n_links = dv_llist_size(node->links);
+  dv_dag_node_t *u, *v; // linked nodes
+  double time_gap, gap, ugap, vgap;
+  switch (n_links) {
+  case 0:
+    // node's link-along
+    node->link_lw = node->lw;
+    node->link_rw = node->rw;
+    node->link_dw = node->dw;
+    break;
+  case 1:
+    u = (dv_dag_node_t *) node->links->top->item;
+    // node & u's gap
+    gap = dv_view_calculate_gap(V, node->parent);
+    // node's linked u's outward
+    u->xpre = 0.0;
+    u->y = node->y + (node->dw + DV_VDIS) * gap;
+    // Recursive call
+    dv_view_layout_glike_node(V, u);
+    // node's link-along
+    node->link_lw = dv_max(node->lw, u->link_lw);
+    node->link_rw = dv_max(node->rw, u->link_rw);
+    node->link_dw = (node->dw + DV_VDIS) * gap + u->link_dw;
+    break;
+  case 2:
+    u = (dv_dag_node_t *) node->links->top->item; // cont node
+    v = (dv_dag_node_t *) node->links->top->next->item; // task node
+    // node & u,v's gap
+    gap = dv_view_calculate_gap(V, node->parent);
+    // node's linked u,v's outward
+    u->y = node->y + (node->dw + DV_VDIS) * gap;
+    v->y = node->y + (node->dw + DV_VDIS) * gap;
+    // Recursive call
+    dv_view_layout_glike_node(V, u);
+    dv_view_layout_glike_node(V, v);
+    
+    // node's linked u,v's outward
+    double hgap = gap * DV_HDIS;
+    // u
+    u->xpre = (u->link_lw - DV_RADIUS) + hgap;
+    if (dv_llist_size(u->links) == 2)
+      u->xpre = - ((dv_dag_node_t *) dv_llist_get(u->links, 1))->xpre;
+    // v
+    v->xpre = (v->link_rw - DV_RADIUS) + hgap;
+    if (dv_llist_size(u->links) == 2)
+      v->xpre += (u->link_lw - DV_RADIUS) - u->xpre;
+    v->xpre = - v->xpre;
+    
+    // node's link-along
+    node->link_lw = - v->xpre + v->link_lw;
+    node->link_rw = u->xpre + u->link_rw;
+    node->link_dw = (node->dw + DV_VDIS) * gap + dv_max(u->link_dw, v->link_dw);
+    break;
+  default:
+    dv_check(0);
+    break;
+  }  
+}
 
-  // Call following links
-  if (l == NULL)
-    return;
-  int count = dv_llist_size(u->links);
-  dv_dag_node_t * v;
-  dv_dag_node_t * vv;
-  switch (count) {
+static void dv_view_layout_glike_node_2nd(dv_dag_node_t *node) {
+  /* Calculate inward */
+  if (dv_is_inward_callable(node)) {
+    dv_check(node->head);
+    // node's head's outward
+    node->head->xp = 0.0;
+    node->head->x = node->x;
+    // Recursive call
+    dv_view_layout_glike_node_2nd(node->head);
+  }
+    
+  /* Calculate link-along */
+  int n_links = dv_llist_size(node->links);
+  dv_dag_node_t *u, *v; // linked nodes
+  switch (n_links) {
   case 0:
     break;
   case 1:
-    v = (dv_dag_node_t *) u->links->top->item;
-    dv_layout_bind_node(v, l);
+    u = (dv_dag_node_t *) node->links->top->item;
+    // node's linked u's outward
+    u->xp = u->xpre + node->xp;
+    u->x = u->xp + u->parent->x;
+    // Recursive call
+    dv_view_layout_glike_node_2nd(u);
     break;
   case 2:
-    v = (dv_dag_node_t *) u->links->top->item;
-    vv = (dv_dag_node_t *) u->links->top->next->item;
-    if (!l->r) {
-      l->r = dv_grid_line_create();
-      l->r->l = l;
-    }
-    if (!l->l) {
-      l->l = dv_grid_line_create();
-      l->l->r = l;
-    }
-    dv_layout_bind_node(v, l->r);
-    dv_layout_bind_node(vv, l->l);
+    u = (dv_dag_node_t *) node->links->top->item; // cont node
+    v = (dv_dag_node_t *) node->links->top->next->item; // task node
+    // node's linked u,v's outward
+    u->xp = u->xpre + node->xp;
+    u->x = u->xp + u->parent->x;
+    v->xp = v->xpre + node->xp;
+    v->x = v->xp + v->parent->x;
+    // Recursive call
+    dv_view_layout_glike_node_2nd(u);
+    dv_view_layout_glike_node_2nd(v);
     break;
   default:
     dv_check(0);
     break;
   }
-
-}
-
-static double dv_layout_count_line_left(dv_view_t *V, dv_grid_line_t *);
-
-static double dv_layout_count_line_right(dv_view_t *V, dv_grid_line_t *l) {
-  dv_dag_node_t * node = NULL;
-  double max = 0.0;
-  while ( node = (dv_dag_node_t *) dv_llist_iterate_next(l->L, node) ) {
-    if (dv_is_inward_callable(node)) {
-      if (!node->vl_in || node->head->vl == NULL)
-        dv_layout_bind_node(node, NULL);
-      dv_grid_line_t * ll = node->vl_in;
-      double num = 0.0;
-      double gap = dv_view_calculate_gap(V, node);
-      while (ll->r) {
-        ll->rc = dv_layout_count_line_right(V, ll);
-        ll->r->lc = dv_layout_count_line_left(V, ll->r);
-        num += ll->rc + gap + ll->r->lc;
-        ll = ll->r;
-      }
-      ll->rc = dv_layout_count_line_right(V, ll);
-      num += ll->rc;
-      node->rc = num;
-      if (num > max) {
-        max = num;
-      }
-    }
-  }
-  return max;
-}
-
-static double dv_layout_count_line_left(dv_view_t *V, dv_grid_line_t *l) {
-  dv_dag_node_t * node = NULL;
-  double max = 0.0;
-  while ( node = (dv_dag_node_t *) dv_llist_iterate_next(l->L, node) ) {
-    if (dv_is_inward_callable(node)) {
-      if (!node->vl_in)
-        dv_layout_bind_node(node, NULL);
-      dv_grid_line_t * ll = node->vl_in;
-      double num = 0.0;
-      double gap = dv_view_calculate_gap(V, node);
-      while (ll->l) {
-        ll->lc = dv_layout_count_line_left(V, ll);
-        ll->l->rc = dv_layout_count_line_right(V, ll->l);
-        num += ll->lc + gap + ll->l->rc;
-        ll = ll->l;
-      }
-      ll->lc = dv_layout_count_line_left(V, ll);
-      num += ll->lc;
-      node->lc = num;
-      if (num > max)
-        max = num;
-    }
-  }
-  return max;
-}
-
-static double dv_layout_count_line_down(dv_view_t *V, dv_dag_node_t *node) {
-  double c = 0.0;
-  if (dv_is_inward_callable(node)) {
-    
-    // Call recursive head
-    dv_check(node->head);
-    dv_dag_node_t * hd = node->head;
-    hd->dc = dv_layout_count_line_down(V, hd);
-    c = hd->dc;
-    
-  }
-
-  // Calculate gap
-  double gap = 0.0;
-  if (node->links->top)
-    gap = dv_view_calculate_gap(V, node->parent);
-
-  // Call following links
-  dv_dag_node_t * n = NULL;
-  double max = 0L;
-  double num;
-  while (n = (dv_dag_node_t *) dv_llist_iterate_next(node->links, n)) {
-    n->dc = dv_layout_count_line_down(V, n);
-    if (n->dc > max)
-      max = n->dc;
-  }
   
-  return c + gap + max;
-}
-
-static void dv_layout_align_line_rightleft(dv_view_t *V, dv_dag_node_t *node) {
-  dv_grid_line_t * l = node->vl_in;
-  double gap = dv_view_calculate_gap(V, node);
-  dv_grid_line_t * ll;
-  dv_grid_line_t * lll;
-  // Set c right
-  ll = l;
-  while (ll->r) {
-    lll = ll->r;
-    lll->c = ll->c + gap * DV_HDIS + (ll->rc + lll->lc) * DV_HDIS;
-    ll = lll;
-  }
-  // Set c left
-  ll = l;
-  while (ll->l) {
-    lll = ll->l;
-    lll->c = ll->c - gap * DV_HDIS - (ll->lc + lll->rc) * DV_HDIS;
-    ll = lll;
-  }
-  // Call recursive right
-  ll = l;
-  while (ll) {
-    dv_dag_node_t * n = NULL;
-    while (n = (dv_dag_node_t *) dv_llist_iterate_next(ll->L, n))
-      if (dv_is_inward_callable(n)) {
-        n->vl_in->c = ll->c;
-        dv_layout_align_line_rightleft(V, n);
-      }
-    ll = ll->r;
-  }
-  // Call recursive left
-  ll = l->l;
-  while (ll) {
-    dv_dag_node_t * n = NULL;
-    while (n = (dv_dag_node_t *) dv_llist_iterate_next(ll->L, n))
-      if (dv_is_inward_callable(n)) {
-        n->vl_in->c = ll->c;
-        dv_layout_align_line_rightleft(V, n);
-      }
-    ll = ll->l;
-  }
-}
-
-static void dv_layout_align_line_down(dv_dag_node_t *node) {
-  dv_check(node);
-  dv_dag_node_t * n = NULL;
-  double max = 0.0;
-  while (n = (dv_dag_node_t *) dv_llist_iterate_next(node->links, n)) {
-    if (n->dc > max)
-      max = n->dc;
-  }
-  while (n = (dv_dag_node_t *) dv_llist_iterate_next(node->links, n)) {
-    n->c = node->c + (node->dc - max) * DV_VDIS;
-    dv_layout_align_line_down(n);
-  }
-  if (dv_is_inward_callable(node)) {
-    n = node->head;
-    n->c = node->c;
-    dv_layout_align_line_down(n);
-  }
 }
 
 void dv_view_layout_glike(dv_view_t *V) {
   dv_dag_t *D = V->D;
+
+  // Relative coord
+  D->rt->xpre = 0.0; // pre-based
+  D->rt->y = 0.0;
+  dv_view_layout_glike_node(V, D->rt);
+
+  // Absolute coord
+  D->rt->xp = 0.0; // parent-based
+  D->rt->x = 0.0;
+  dv_view_layout_glike_node_2nd(D->rt);
   
-  if (!D->rt->vl) {
-    // Bind nodes to lines
-    dv_grid_line_init(D->rvl);
-    dv_layout_bind_node(D->rt, D->rvl);
-  }
-
-  // Count lines
-  D->rvl->rc = dv_layout_count_line_right(V, D->rvl);
-  D->rvl->lc = dv_layout_count_line_left(V, D->rvl);
-  D->rt->dc = dv_layout_count_line_down(V, D->rt);
-
-  // Align lines
-  D->rvl->c = 0.0;
-  dv_layout_align_line_rightleft(V, D->rt);
-  D->rt->c = 0.0;
-  dv_layout_align_line_down(D->rt);
-
 }
 
 /*-----------------end of Grid-like layout functions-----------*/
@@ -258,8 +160,8 @@ static void dv_view_draw_glike_node_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *
       && node->d < D->cur_d_ex)
     D->cur_d_ex = node->d;
   // Node color
-  double x = node->vl->c;
-  double y = node->c;
+  double x = node->x;
+  double y = node->y;
   double c[4];
   dr_pi_dag_node *pi = dv_pidag_get_node(D->P, node);
   dv_lookup_color(pi, S->nc, c, c+1, c+2, c+3);
@@ -285,19 +187,18 @@ static void dv_view_draw_glike_node_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *
       }
       // Large-sized box
       margin *= DV_UNION_NODE_MARGIN;
-      xx = x - node->lc * DV_HDIS - DV_RADIUS - margin;
-      yy = y - DV_RADIUS - margin;
-      dv_dag_node_t * hd = node->head;
-      w = (node->lc + node->rc) * DV_HDIS + 2 * (DV_RADIUS + margin);
-      h = hd->dc * DV_VDIS + 2 * (DV_RADIUS + margin);
+      xx = x - node->lw - margin;
+      yy = y - margin;
+      w = node->lw + node->rw + 2 * margin;
+      h = node->dw + 2 * margin;
       
     } else {
       
       // Normal-sized box
-      xx = x - DV_RADIUS;
-      yy = y - DV_RADIUS;
-      w = 2 * DV_RADIUS;
-      h = 2 * DV_RADIUS;
+      xx = x - node->lw;//DV_RADIUS;
+      yy = y;
+      w = node->lw + node->rw;//2 * DV_RADIUS;
+      h = node->dw;//2 * DV_RADIUS;
       alpha = 1.0;
       if (dv_is_shrinking(node->parent)) {
         // Fading out
@@ -319,7 +220,7 @@ static void dv_view_draw_glike_node_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *
   } else {
     
     // Normal-sized circle
-    cairo_arc(cr, x, y, DV_RADIUS, 0.0, 2*M_PI);
+    cairo_arc(cr, x, y + DV_RADIUS, DV_RADIUS, 0.0, 2*M_PI);
     alpha = 1.0;
     if (dv_is_shrinking(node->parent)) {
       // Fading out
@@ -433,8 +334,6 @@ static void dv_view_draw_glike_edge_r(dv_view_t *V, cairo_t *cr, dv_dag_node_t *
 void dv_view_draw_glike(dv_view_t *V, cairo_t *cr) {
   cairo_set_line_width(cr, 2.0);
   int i;
-  // Layout
-  dv_view_layout_glike(V);
   // Draw nodes
   dv_view_draw_glike_node_r(V, cr, V->D->rt);
   // Draw edges

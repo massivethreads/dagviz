@@ -143,10 +143,10 @@ void dv_view_draw_edge_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *u, dv_dag_nod
   dr_pi_dag_node *pi;
   switch (S->lt) {
   case 0:
-    x1 = u->vl->c;
-    y1 = u->c + DV_RADIUS;
-    x2 = v->vl->c;
-    y2 = v->c - DV_RADIUS;
+    x1 = u->x;
+    y1 = u->y + u->dw;
+    x2 = v->x;
+    y2 = v->y;
     break;
   case 1:    
     x1 = u->x;
@@ -164,10 +164,12 @@ void dv_view_draw_edge_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *u, dv_dag_nod
     return;
   double alpha = 1.0;
   if ((!u->parent || dv_is_shrinking(u->parent))
-      && (!v->parent || dv_is_shrinking(v->parent)))
+      //&& (!v->parent || dv_is_shrinking(v->parent))
+      && (u->parent == v->parent))
     alpha = dv_view_get_alpha_fading_out(V, u->parent);
   else if ((!u->parent || dv_is_expanding(u->parent))
-           && (!v->parent || dv_is_expanding(v->parent)))            
+           //&& (!v->parent || dv_is_expanding(v->parent))
+           && (u->parent == v->parent))
     alpha = dv_view_get_alpha_fading_in(V, u->parent);
   cairo_save(cr);
   cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
@@ -281,8 +283,8 @@ static void dv_view_draw_infotag_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *nod
   // Split process based on layout type
   if (S->lt == 0) {
     // grid-like layout
-    xx = node->vl->c + DV_RADIUS + 2*padding;
-    yy = node->c - DV_RADIUS - 2*padding - line_height*(n-1);
+    xx = node->x + node->rw + 2 * padding;
+    yy = node->y - 2 * padding - line_height * (n - 1);
   } else if (S->lt == 1 || S->lt == 2) {
     // bbox/timeline layouts    
     xx = node->x + node->rw + 2 * padding;

@@ -128,7 +128,7 @@ dv_dag_node_t * dv_dag_node_pool_pop(dv_dag_t *D) {
 
 void dv_dag_node_pool_push(dv_dag_t *D, dv_dag_node_t *node) {
   int i = node - D->T;
-  dv_check(i < D->Tsz);
+  dv_check(i >=0 && i < D->Tsz);
   dv_check(D->To[i]);
   D->To[i] = 0;
   D->Tn--;
@@ -207,13 +207,6 @@ void dv_dag_node_init(dv_dag_node_t *node, dv_dag_node_t *parent, long pii) {
   node->link_rw = 0.0;
   node->link_dw = 0.0;
   node->avoid_inward = 0;
-
-  node->vl = 0;
-  node->vl_in = 0;
-  node->lc = 0L;
-  node->rc = 0L;
-  node->dc = 0L;
-  node->c = 0L;
 
   node->started = 0.0;
 }
@@ -318,14 +311,16 @@ int dv_dag_destroy_node_innner(dv_dag_t *D, dv_dag_node_t *node) {
     
     node_a = node->head;
     node_b = (dv_dag_node_t *) dv_llist_pop(node->tails);
-    dv_check(node_b > node_a);
+    dv_check(node_b >= node_a);
 
     // Unset node->head, node->tails
     for (node_x = node_a; node_x <= node_b; node_x++) {
+      dv_check(!dv_is_union(node_x) || !dv_is_inner_loaded(node_x));
       dv_dag_node_pool_push(D, node_x);
     }
     while (!dv_llist_is_empty(node->tails)) {
       node_t = (dv_dag_node_t *) dv_llist_pop(node->tails);
+      dv_check(!dv_is_union(node_t) || !dv_is_inner_loaded(node_t));
       dv_dag_node_pool_push(D, node_t);
     }
 

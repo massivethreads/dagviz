@@ -18,6 +18,8 @@
 
 #include <dag_recorder_impl.h>
 
+#include <execinfo.h>
+
 
 /*-----Utilities-----*/
 typedef struct dv_linked_list {
@@ -41,7 +43,7 @@ typedef struct dv_llist_cell {
 } dv_llist_cell_t;
 
 typedef struct dv_llist {
-  int i;
+  int sz;
   dv_llist_cell_t * top;
 } dv_llist_t;
 
@@ -50,7 +52,7 @@ typedef struct dv_llist {
 
 #define DV_ZOOM_INCREMENT 1.25
 #define DV_HDIS 70
-#define DV_VDIS 100
+#define DV_VDIS 70
 #define DV_RADIUS 20
 #define NUM_COLORS 34
 
@@ -90,27 +92,17 @@ typedef struct dv_llist {
 #define DV_TIMELINE_NODE_WITH_BORDER 1
 #define DV_ENTRY_RADIX_MAX_LENGTH 20
 
-#define DV_DAG_NODE_POOL_SIZE 1000
+#define DV_DAG_NODE_POOL_SIZE 100
 
-#define DV_MAX_DAG_FILE 2
-#define DV_MAX_DAG 2
-#define DV_MAX_VIEW 2
+#define DV_MAX_DAG_FILE 5
+#define DV_MAX_DAG 5
+#define DV_MAX_VIEW 5
+#define DV_MAX_VIEWPORT 4
+#define DV_NUM_VIEWPORTS_DEFAULT 2
+#define DV_MAX_INTERFACES_OF_A_VIEW 4
 
 #define DV_OK 0
 #define DV_ERROR_OONP 1 /* out of node pool */
-
-/*--Grid-like layout--*/
-
-typedef struct dv_grid_line {
-  struct dv_grid_line * l;  /* left next grid line */
-  struct dv_grid_line * r;  /* right next grid line */
-  dv_llist_t L[1]; /* list of assigned nodes */
-  double lc;    /* left count */
-  double rc;    /* right count */
-  double c;  /* coordinate */
-} dv_grid_line_t;
-
-/*--end of Grid-like layout--*/
 
 /*-----------------Data Structures-----------------*/
 
@@ -149,12 +141,6 @@ typedef struct dv_dag_node {
   double link_lw, link_rw, link_dw;
   int avoid_inward;
 
-  /* grid-like layout */
-  dv_grid_line_t * vl;  /* vertical line of outer grid */
-  dv_grid_line_t * vl_in;  /* vertical line of inner grid */
-  double lc, rc, dc; /* left/right/down counts */
-  double c; /* coordinate */
-
   /* animation */
   double started; /* started time of animation */
   
@@ -182,9 +168,6 @@ typedef struct dv_dag {
   double x, y;        /* current coordinates of the central point */
   double basex, basey;
   dv_llist_t itl[1]; /* list of nodes that have info tag */
-
-  /* grid-like layout */
-  dv_grid_line_t rvl[1]; /* root vl */
 
   /* layout status */
   int cur_d; /* current depth */
@@ -226,23 +209,48 @@ typedef struct dv_view_status {
   long ndh; /* number of nodes including hidden ones */
 } dv_view_status_t;
 
-typedef struct dv_view {
-  dv_dag_t * D;
-  dv_view_status_t S[1];
+typedef struct dv_viewport dv_viewport_t;
+
+/*
+typedef struct dv_view_interface {
+  dv_viewport_t * VP;
   GtkWidget * toolbar;
   GtkWidget * entry_radix;
   GtkWidget * combobox_lt;
   GtkWidget * darea;
-  GtkWidget * togg_focused;
+  GtkWidget * togg_focused;  
+} dv_view_interface_t;
+*/
+
+typedef struct dv_view {
+  dv_dag_t * D;
+  dv_view_status_t S[1];
+  //dv_view_interface_t * I[DV_MAX_INTERFACES_OF_A_VIEW];
+  
+  dv_viewport_t * VP;
+  GtkWidget * toolbar;
+  GtkWidget * entry_radix;
+  GtkWidget * combobox_lt;
+  GtkWidget * darea;
+  GtkWidget * togg_focused;  
 } dv_view_t;
+
+typedef struct dv_viewport {
+  GtkWidget * box; /* hbox or vbox */
+  GtkWidget * darea; /* drawing area */
+  dv_llist_t views[1]; /* list of views drawn in this viewport */
+  int orientation; /* box's orientation */
+} dv_viewport_t;
 
 typedef struct dv_global_state {
   dv_pidag_t P[DV_MAX_DAG_FILE];
   dv_dag_t  D[DV_MAX_DAG];
   dv_view_t V[DV_MAX_VIEW];
+  dv_viewport_t VP[DV_MAX_VIEWPORT];
   int nP;
   int nD;
   int nV;
+  int nVP;
   dv_llist_cell_t * FL;  
   GtkWidget * window;
   dv_view_t * activeV;
@@ -267,7 +275,17 @@ void dv_queue_draw(dv_view_t *);
 void dv_global_state_init(dv_global_state_t *);
 void dv_global_state_set_active_view(dv_view_t *);
 dv_view_t * dv_global_state_get_active_view();
+
+void dv_view_status_init(dv_view_t *, dv_view_status_t *);
+
+void dv_view_init(dv_view_t *);
 dv_view_t * dv_view_create_new_with_dag(dv_dag_t *);
+void dv_view_set_viewport(dv_view_t *, dv_viewport_t *);
+void dv_view_remove_viewport(dv_view_t *, dv_viewport_t *);
+
+void dv_viewport_init(dv_viewport_t *, int);
+void dv_viewport_add_view(dv_viewport_t *, dv_view_t *);
+void dv_viewport_remove_view(dv_viewport_t *, dv_view_t *);
 
 /* print.c */
 char * dv_get_node_kind_name(dr_dag_node_kind_t);
@@ -341,27 +359,28 @@ void dv_view_draw_timeline(dv_view_t *V, cairo_t *);
 
 
 /* utils.c */
-void dv_stack_init(dv_stack_t *);
-void dv_stack_fini(dv_stack_t *);
-void dv_stack_push(dv_stack_t *, void *);
-void * dv_stack_pop(dv_stack_t *);
-
 dv_linked_list_t * dv_linked_list_create();
 void dv_linked_list_destroy(dv_linked_list_t *);
 void dv_linked_list_init(dv_linked_list_t *);
 void * dv_linked_list_remove(dv_linked_list_t *, void *);
 void dv_linked_list_add(dv_linked_list_t *, void *);
   
+void dv_stack_init(dv_stack_t *);
+void dv_stack_fini(dv_stack_t *);
+void dv_stack_push(dv_stack_t *, void *);
+void * dv_stack_pop(dv_stack_t *);
+
 void dv_llist_init(dv_llist_t *);
 void dv_llist_fini(dv_llist_t *);
 dv_llist_t * dv_llist_create();
 void dv_llist_destroy(dv_llist_t *);
 int dv_llist_is_empty(dv_llist_t *);
-dv_llist_cell_t * dv_llist_ensure_freelist();
 void dv_llist_add(dv_llist_t *, void *);
 void * dv_llist_pop(dv_llist_t *);
-void * dv_llist_get(dv_llist_t *);
+void * dv_llist_get(dv_llist_t *, int);
+void * dv_llist_get_top(dv_llist_t *);
 void * dv_llist_remove(dv_llist_t *, void *);
+int dv_llist_has(dv_llist_t *, void *);
 void * dv_llist_iterate_next(dv_llist_t *, void *);
 int dv_llist_size(dv_llist_t *);
 
@@ -371,12 +390,22 @@ double dv_max(double, double);
 
 /*-----------------Inlines-----------------*/
 
+static void * dv_malloc(size_t);
+static void dv_free(void *, size_t);
+
 static int dv_check_(int condition, const char * condition_s, 
                      const char * __file__, int __line__, 
                      const char * func) {
   if (!condition) {
     fprintf(stderr, "%s:%d:%s: check failed : %s\n", 
             __file__, __line__, func, condition_s);
+    int size = 10;
+    void ** s = (void **) dv_malloc(sizeof(void *) * size);
+    int n, i;    
+    n = backtrace(s, size);
+    char ** ss = backtrace_symbols(s, n);
+    for (i=0; i<n; i++)
+      fprintf(stderr, "%d: %s\n", i, ss[i]);    
     exit(1);
   }
   return 1;

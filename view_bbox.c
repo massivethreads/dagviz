@@ -115,11 +115,12 @@ static double dv_layout_node_get_last_tail_xp_r(dv_view_t *V, dv_dag_node_t *nod
   dv_check(node);
   double ret = 0.0;
   dv_dag_node_t * last_tail = 0;
-  if (!dv_is_single(node))
+  if (!dv_is_single(node)) {
     last_tail = dv_layout_node_get_last_tail(V, node);
-  if (last_tail) {
-    ret += dv_layout_node_get_node_xp(last_tail);
-    ret += dv_layout_node_get_last_tail_xp_r(V, last_tail);
+    if (last_tail) {
+      ret += dv_layout_node_get_node_xp(last_tail);
+      ret += dv_layout_node_get_last_tail_xp_r(V, last_tail);
+    }
   }
   return ret;
 }
