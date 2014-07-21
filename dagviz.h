@@ -232,6 +232,7 @@ typedef struct dv_viewport {
   GtkWidget * darea; /* drawing area */
   int orientation; /* box's orientation */
   dv_view_interface_t * I[DV_MAX_VIEW]; /* interfaces to view */
+  double vpw, vph;  /* viewport's size */  
 } dv_viewport_t;
 
 typedef struct dv_global_state {
@@ -337,9 +338,10 @@ void dv_lookup_color(dr_pi_dag_node *, int, double *, double *, double *, double
 double dv_view_get_alpha_fading_out(dv_view_t *V, dv_dag_node_t *);
 double dv_view_get_alpha_fading_in(dv_view_t *V, dv_dag_node_t *);
 void dv_view_draw_edge_1(dv_view_t *, cairo_t *, dv_dag_node_t *, dv_dag_node_t *);
-void dv_view_draw_status(dv_view_t *, cairo_t *);
+void dv_view_draw_status(dv_view_t *, cairo_t *, int);
 void dv_view_draw_infotags(dv_view_t *, cairo_t *);
 void dv_view_draw(dv_view_t *, cairo_t *);
+void dv_viewport_draw_label(dv_viewport_t *, cairo_t *);
 
 /* view_glike.c */
 void dv_view_layout_glike(dv_view_t *);

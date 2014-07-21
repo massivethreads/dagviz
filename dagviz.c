@@ -203,9 +203,6 @@ static void dv_do_drawing(dv_view_t *V, cairo_t *cr)
   cairo_scale(cr, D->zoom_ratio, D->zoom_ratio);
   dv_view_draw(V, cr);
   cairo_restore(cr);
-
-  // Draw status line
-  dv_view_draw_status(V, cr);
 }
 
 
@@ -464,7 +461,9 @@ static gboolean on_draw_event(GtkWidget *widget, cairo_t *cr, gpointer user_data
   dv_view_t *V;
   dv_dag_t *D;
   dv_view_status_t *S;
+  int count = 0;
   int i;
+  dv_viewport_draw_label(VP, cr);
   for (i=0; i<CS->nV; i++)
     if (VP->I[i]) {
       V = VP->I[i]->V;
@@ -484,6 +483,8 @@ static gboolean on_draw_event(GtkWidget *widget, cairo_t *cr, gpointer user_data
         dv_check(0);
       // Draw
       dv_do_drawing(V, cr);
+      dv_view_draw_status(V, cr, count);
+      count++;
     }
   return FALSE;
 }
@@ -700,6 +701,8 @@ static gboolean on_combobox_cm_changed(GtkComboBox *widget, gpointer user_data) 
 
 static gboolean on_darea_configure_event(GtkWidget *widget, GdkEventConfigure *event, gpointer user_data) {
   dv_viewport_t *VP = (dv_viewport_t *) user_data;
+  VP->vpw = event->width;
+  VP->vph = event->height;
   dv_view_t *V = NULL;
   int i;
   for (i=0; i<CS->nV; i++)
@@ -813,7 +816,9 @@ dv_view_interface_t * dv_view_interface_create_new(dv_view_t *V, dv_viewport_t *
   I->V = V;
   I->VP = VP;
   I->toolbar = gtk_toolbar_new();
-  I->togg_focused = gtk_toggle_button_new_with_label("Focused");
+  char s[10];
+  sprintf(s, "VIEW %ld", V - CS->V);
+  I->togg_focused = gtk_toggle_button_new_with_label(s);
   I->combobox_lt = gtk_combo_box_text_new();
   I->entry_radix = gtk_entry_new();
 
@@ -954,10 +959,14 @@ dv_view_interface_t * dv_view_interface_create_new(dv_view_t *V, dv_viewport_t *
 }
 
 void dv_view_interface_destroy(dv_view_interface_t *I) {
-  gtk_widget_destroy(I->togg_focused);
-  gtk_widget_destroy(I->combobox_lt);
-  gtk_widget_destroy(I->entry_radix);
-  gtk_widget_destroy(I->toolbar);
+  if (GTK_IS_WIDGET(I->togg_focused))
+    gtk_widget_destroy(I->togg_focused);
+  if (GTK_IS_WIDGET(I->combobox_lt))
+    gtk_widget_destroy(I->combobox_lt);
+  if (GTK_IS_WIDGET(I->entry_radix))
+    gtk_widget_destroy(I->entry_radix);
+  if (GTK_IS_WIDGET(I->toolbar))
+    gtk_widget_destroy(I->toolbar);
   dv_free(I, sizeof(dv_view_interface_t));
 }
 
@@ -1022,6 +1031,8 @@ void dv_viewport_init(dv_viewport_t *VP, int orientation) {
   // Increase reference
   g_object_ref(VP->box);
   g_object_ref(VP->darea);
+
+  VP->vpw = VP->vph = 0.0;
 }
 
 void dv_viewport_add_interface(dv_viewport_t *VP, dv_view_interface_t *I) {
@@ -1122,7 +1133,7 @@ static int open_gui(int argc, char *argv[])
   GtkWidget *menubar = CS->menubar;
   gtk_box_pack_start(GTK_BOX(vbox0), menubar, FALSE, FALSE, 0);
   // submenu viewports
-  GtkWidget *viewports = gtk_menu_item_new_with_mnemonic("Viewp_orts");
+  GtkWidget *viewports = gtk_menu_item_new_with_mnemonic("VIEWP_ORTs");
   gtk_menu_shell_append(GTK_MENU_SHELL(menubar), viewports);
   GtkWidget *viewports_menu = gtk_menu_new();
   gtk_menu_item_set_submenu(GTK_MENU_ITEM(viewports), viewports_menu);
@@ -1134,10 +1145,7 @@ static int open_gui(int argc, char *argv[])
   char s[100];
   int i, j;
   for (i=0; i<2; i++) {
-    if (i == 0)
-      sprintf(s, "Left");
-    else
-      sprintf(s, "Right");
+    sprintf(s, "VIEWPORT %d", i);
     viewport = gtk_menu_item_new_with_label(s);
     gtk_menu_shell_append(GTK_MENU_SHELL(viewports_menu), viewport);
     viewport_menu = gtk_menu_new();

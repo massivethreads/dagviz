@@ -71,9 +71,11 @@ static gboolean dv_animation_tick(gpointer data) {
   double cur = dv_get_time();
   dv_dag_node_t *node = NULL;
   // iterate moving nodes
-  while (node = (dv_dag_node_t *) dv_llist_iterate_next(a->movings, node)) {
+  dv_llist_cell_t *c = a->movings->top;
+  while (c) {
+    node = (dv_dag_node_t *) c->item;
+    c = c->next;
     if (cur - node->started >= a->duration) {
-      // Stop this node from animation
       dv_llist_remove(a->movings, node);
       if (dv_is_shrinking(node)) {
         dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKING);
@@ -84,6 +86,20 @@ static gboolean dv_animation_tick(gpointer data) {
       }
     }
   }
+  /*
+  while (node = (dv_dag_node_t *) dv_llist_iterate_next(a->movings, node)) {
+    if (cur - node->started >= a->duration) {
+      dv_llist_remove(a->movings, node);
+      if (dv_is_shrinking(node)) {
+        dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKING);
+        dv_node_flag_set(node->f, DV_NODE_FLAG_SHRINKED);
+      } else if (dv_is_expanding(node)) {
+        dv_node_flag_remove(node->f, DV_NODE_FLAG_EXPANDING);
+        dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKED);
+      }
+    }
+  }
+  */
   dv_view_layout(a->V);
   dv_queue_draw(a->V);
   // stop timer when there is no moving node 

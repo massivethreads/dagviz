@@ -219,22 +219,23 @@ void dv_view_draw_edge_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *u, dv_dag_nod
 
 /*-----Main drawing functions-----*/
 
-void dv_view_draw_status(dv_view_t *V, cairo_t *cr) {
+void dv_view_draw_status(dv_view_t *V, cairo_t *cr, int count) {
   dv_dag_t *D = V->D;
   dv_view_status_t *S = V->S;
   cairo_save(cr);
   cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
   cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-  cairo_set_font_size(cr, 14);
+  cairo_set_font_size(cr, 12);
 
   char s[50];
-  const double char_width = 8;
+  const double char_width = 7;
+  const double line_height = 15;
   double x = S->vpw  - DV_STATUS_PADDING;
-  double y = S->vph - DV_STATUS_PADDING;
+  double y = S->vph - DV_STATUS_PADDING - count * line_height;
   cairo_new_path(cr);
 
   // Identifier
-  sprintf(s, "V%ld-D%ld-P%ld", V - CS->V, D - CS->D, D->P - CS->P);
+  sprintf(s, "P%ld-D%ld-V%ld", D->P - CS->P, D - CS->D, V - CS->V);
   x -= strlen(s) * char_width;
   cairo_move_to(cr, x, y);
   cairo_show_text(cr, s);
@@ -256,6 +257,14 @@ void dv_view_draw_status(dv_view_t *V, cairo_t *cr) {
   x -= strlen(s) * char_width;
   cairo_move_to(cr, x, y);
   cairo_show_text(cr, s);
+  
+  // Nodes animating
+  if (S->a->on) {
+    sprintf(s, "na=%d, ", dv_llist_size(S->a->movings));
+    x -= strlen(s) * char_width;
+    cairo_move_to(cr, x, y);
+    cairo_show_text(cr, s);
+  }
   
   // ratio
   /*
@@ -411,6 +420,27 @@ void dv_view_draw(dv_view_t *V, cairo_t *cr) {
     dv_check(0);
   // Draw infotags
   dv_view_draw_infotags(V, cr);  
+}
+
+void dv_viewport_draw_label(dv_viewport_t *VP, cairo_t *cr) {
+  cairo_save(cr);
+  cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
+  cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+  cairo_set_font_size(cr, 12);
+
+  char s[20];
+  //const double char_width = 8;
+  //const double line_height = 18;
+  double x = DV_STATUS_PADDING;
+  double y = VP->vph - DV_STATUS_PADDING;
+  cairo_new_path(cr);
+
+  // Identifier
+  sprintf(s, "VIEWPORT %ld", VP - CS->VP);
+  cairo_move_to(cr, x, y);
+  cairo_show_text(cr, s);  
+
+  cairo_restore(cr);
 }
 
 /*-----end of Main drawing functions-----*/
