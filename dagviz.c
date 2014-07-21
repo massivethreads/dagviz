@@ -741,7 +741,10 @@ static gboolean on_window_key_event(GtkWidget *widget, GdkEvent *event, gpointer
     dv_do_changing_lt(aV, 2);
     break;
   case 65289: /* tab */
-    i = (aV - CS->V + 1) % CS->nV;
+    if (!aV)
+      i = 0;
+    else
+      i = (aV - CS->V + 1) % CS->nV;
     dv_do_set_focused_view(CS->V + i, 1);
     break;
   case 65361: /* left */
@@ -1015,6 +1018,10 @@ void dv_viewport_init(dv_viewport_t *VP, int orientation) {
   int i;
   for (i=0; i<DV_MAX_VIEW; i++)
     VP->I[i] = NULL;
+
+  // Increase reference
+  g_object_ref(VP->box);
+  g_object_ref(VP->darea);
 }
 
 void dv_viewport_add_interface(dv_viewport_t *VP, dv_view_interface_t *I) {
@@ -1034,6 +1041,9 @@ void dv_viewport_remove_interface(dv_viewport_t *VP, dv_view_interface_t *I) {
 }
 
 dv_view_interface_t * dv_viewport_get_interface_to_view(dv_viewport_t *VP, dv_view_t *V) {
+  dv_check(VP);
+  if (!V)
+    return NULL;
   int idx = V - CS->V;
   dv_view_interface_t *I = VP->I[idx];
   return I;
@@ -1074,12 +1084,27 @@ static void on_viewport_select_view(GtkCheckMenuItem *checkmenuitem, gpointer us
   gtk_widget_queue_draw(GTK_WIDGET(VP->box));
 }
 
+static void on_viewport_hide(GtkCheckMenuItem *checkmenuitem, gpointer user_data) {
+  dv_viewport_t *VP = (dv_viewport_t *) user_data;
+  gboolean active = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(checkmenuitem));
+  if (active)
+    gtk_container_remove(GTK_CONTAINER(CS->hbox), VP->box);
+  else
+    gtk_container_add(GTK_CONTAINER(CS->hbox), VP->box);
+  gtk_widget_show_all(CS->hbox);
+  gtk_widget_queue_draw(GTK_WIDGET(CS->hbox));
+}
+
 /*-----------------Main begins-----------------*/
 
 static int open_gui(int argc, char *argv[])
 {
-  // Initialize window
+  // Initialize
   CS->window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+  CS->menubar = gtk_menu_bar_new();
+  CS->hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+
+  // Window
   GtkWidget *window = CS->window;
   //gtk_window_fullscreen(GTK_WINDOW(window));
   //gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
@@ -1094,7 +1119,7 @@ static int open_gui(int argc, char *argv[])
   gtk_container_add(GTK_CONTAINER(window), vbox0);
 
   // Menu Bar
-  GtkWidget *menubar = gtk_menu_bar_new();
+  GtkWidget *menubar = CS->menubar;
   gtk_box_pack_start(GTK_BOX(vbox0), menubar, FALSE, FALSE, 0);
   // submenu viewports
   GtkWidget *viewports = gtk_menu_item_new_with_mnemonic("Viewp_orts");
@@ -1123,6 +1148,7 @@ static int open_gui(int argc, char *argv[])
         item = gtk_check_menu_item_new_with_label(s);
         gtk_menu_shell_append(GTK_MENU_SHELL(viewport_menu), item);
         gtk_check_menu_item_set_draw_as_radio(GTK_CHECK_MENU_ITEM(item), 1);
+        g_signal_connect(G_OBJECT(item), "toggled", G_CALLBACK(on_viewport_hide), (void *) &CS->VP[i]);
       } else {
         sprintf(s, "VIEW %d", j-1);
         item = gtk_check_menu_item_new_with_label(s);
@@ -1197,7 +1223,7 @@ static int open_gui(int argc, char *argv[])
   
 
   // hbox
-  GtkWidget *hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+  GtkWidget *hbox = CS->hbox;
   gtk_box_pack_start(GTK_BOX(vbox0), hbox, TRUE, TRUE, 0);
   gtk_box_set_homogeneous(GTK_BOX(hbox), TRUE);
 

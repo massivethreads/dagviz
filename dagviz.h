@@ -92,7 +92,7 @@ typedef struct dv_llist {
 #define DV_TIMELINE_NODE_WITH_BORDER 1
 #define DV_ENTRY_RADIX_MAX_LENGTH 20
 
-#define DV_DAG_NODE_POOL_SIZE 100
+#define DV_DAG_NODE_POOL_SIZE 10000
 
 #define DV_MAX_DAG_FILE 5
 #define DV_MAX_DAG 5
@@ -250,6 +250,8 @@ typedef struct dv_global_state {
   // Color pool
   int CP[DV_NUM_COLOR_POOLS][DV_COLOR_POOL_SIZE][4]; // worker, cpu, nodekind, cp1, cp2, cp3
   int CP_sizes[DV_NUM_COLOR_POOLS];
+  GtkWidget * menubar;
+  GtkWidget * hbox;
 } dv_global_state_t;
 
 
