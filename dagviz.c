@@ -746,8 +746,19 @@ static gboolean on_window_key_event(GtkWidget *widget, GdkEvent *event, gpointer
   case 65289: /* tab */
     if (!aV)
       i = 0;
-    else
-      i = (aV - CS->V + 1) % CS->nV;
+    else {
+      i = aV - CS->V;
+      int boo = 0;
+      int count = 0;
+      while (boo == 0 && count < CS->nV) {
+        i = (i + 1) % CS->nV;
+        int j;
+        for (j=0; j<CS->nVP; j++)
+          if (CS->V[i].I[j])
+            boo = 1;
+        count++;
+      }
+    }
     dv_do_set_focused_view(CS->V + i, 1);
     break;
   case 65361: /* left */
@@ -1066,9 +1077,7 @@ dv_view_interface_t * dv_viewport_get_interface_to_view(dv_viewport_t *VP, dv_vi
 
 /*-----------------Menubar functions-----------------*/
 
-
-
-/*-----------------end of Menubar functions-----------------*/
+static GtkWidget * dv_create_menubar();
 
 // GtkCheckMenuItem's toggled
 static void on_viewport_select_view(GtkCheckMenuItem *checkmenuitem, gpointer user_data) {
@@ -1106,40 +1115,53 @@ static void on_viewport_hide(GtkCheckMenuItem *checkmenuitem, gpointer user_data
   gtk_widget_queue_draw(GTK_WIDGET(CS->hbox));
 }
 
+static void on_view_add_new(GtkMenuItem *menuitem, gpointer user_data) {
+  // Create new view
+  dv_dag_t *D = (dv_dag_t *) user_data;
+  dv_view_t *V = dv_view_create_new_with_dag(D);
+  if (V) {
+    dv_do_expanding_one(V);
+    dv_view_layout(V);  
+    // Alternate menubar
+    gtk_container_remove(GTK_CONTAINER(CS->vbox0), CS->menubar);
+    CS->menubar = dv_create_menubar();
+    gtk_box_pack_start(GTK_BOX(CS->vbox0), CS->menubar, FALSE, FALSE, 0);
+    gtk_widget_show_all(CS->menubar);
+    gtk_widget_queue_draw(GTK_WIDGET(CS->menubar));
+  }
+}
+
+static void on_dag_add_new(GtkMenuItem *menuitem, gpointer user_data) {
+  // Create new view
+  dv_pidag_t *P = (dv_pidag_t *) user_data;
+  dv_dag_t *D = dv_dag_create_new_with_pidag(P);
+  if (D) {
+    // Alternate menubar
+    gtk_container_remove(GTK_CONTAINER(CS->vbox0), CS->menubar);
+    CS->menubar = dv_create_menubar();
+    gtk_box_pack_start(GTK_BOX(CS->vbox0), CS->menubar, FALSE, FALSE, 0);
+    gtk_widget_show_all(CS->menubar);
+    gtk_widget_queue_draw(GTK_WIDGET(CS->menubar));
+  }
+}
+
+/*-----------------end of Menubar functions-----------------*/
+
+
+
 /*-----------------Main begins-----------------*/
 
-static int open_gui(int argc, char *argv[])
-{
-  // Initialize
-  CS->window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-  CS->menubar = gtk_menu_bar_new();
-  CS->hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-
-  // Window
-  GtkWidget *window = CS->window;
-  //gtk_window_fullscreen(GTK_WINDOW(window));
-  //gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
-  gtk_window_set_default_size(GTK_WINDOW(window), 1000, 700);
-  gtk_window_maximize(GTK_WINDOW(window));
-  gtk_window_set_title(GTK_WINDOW(window), "DAG Visualizer");
-  g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
-  g_signal_connect(G_OBJECT(CS->window), "key-press-event", G_CALLBACK(on_window_key_event), NULL);
-
-  // vbox0
-  GtkWidget *vbox0 = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-  gtk_container_add(GTK_CONTAINER(window), vbox0);
-
+static GtkWidget * dv_create_menubar() {
   // Menu Bar
-  GtkWidget *menubar = CS->menubar;
-  gtk_box_pack_start(GTK_BOX(vbox0), menubar, FALSE, FALSE, 0);
+  GtkWidget *menubar = gtk_menu_bar_new();
   // submenu viewports
   GtkWidget *viewports = gtk_menu_item_new_with_mnemonic("VIEWP_ORTs");
   gtk_menu_shell_append(GTK_MENU_SHELL(menubar), viewports);
   GtkWidget *viewports_menu = gtk_menu_new();
   gtk_menu_item_set_submenu(GTK_MENU_ITEM(viewports), viewports_menu);
   GtkWidget *viewport, *viewport_menu;
-  viewport = gtk_menu_item_new_with_label("Add new VIEWPORT");
-  gtk_menu_shell_append(GTK_MENU_SHELL(viewports_menu), viewport);
+  //viewport = gtk_menu_item_new_with_label("Add new VIEWPORT");
+  //gtk_menu_shell_append(GTK_MENU_SHELL(viewports_menu), viewport);
   GSList *group;
   GtkWidget *item;
   char s[100];
@@ -1175,6 +1197,14 @@ static int open_gui(int argc, char *argv[])
   GtkWidget *view, *view_menu;
   view = gtk_menu_item_new_with_label("Add new VIEW");
   gtk_menu_shell_append(GTK_MENU_SHELL(views_menu), view);
+  view_menu = gtk_menu_new();
+  gtk_menu_item_set_submenu(GTK_MENU_ITEM(view), view_menu);
+  for (j=0; j<CS->nD; j++) {
+    sprintf(s, "for DAG %d", j);
+    item = gtk_menu_item_new_with_label(s);
+    gtk_menu_shell_append(GTK_MENU_SHELL(view_menu), item);
+    g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_view_add_new), (void *) &CS->D[j]);
+  }    
   for (i=0; i<CS->nV; i++) {
     group = NULL;
     sprintf(s, "VIEW %d", i);
@@ -1199,6 +1229,14 @@ static int open_gui(int argc, char *argv[])
   GtkWidget *dag, *dag_menu;
   dag = gtk_menu_item_new_with_label("Add new DAG");
   gtk_menu_shell_append(GTK_MENU_SHELL(dags_menu), dag);
+  dag_menu = gtk_menu_new();
+  gtk_menu_item_set_submenu(GTK_MENU_ITEM(dag), dag_menu);
+  for (j=0; j<CS->nP; j++) {
+    sprintf(s, "for PIDAG %d", j);
+    item = gtk_menu_item_new_with_label(s);
+    gtk_menu_shell_append(GTK_MENU_SHELL(dag_menu), item);
+    g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_dag_add_new), (void *) &CS->P[j]);
+  }
   for (i=0; i<CS->nD; i++) {
     group = NULL;
     sprintf(s, "DAG %d", i);
@@ -1221,21 +1259,50 @@ static int open_gui(int argc, char *argv[])
   GtkWidget *pidags_menu = gtk_menu_new();
   gtk_menu_item_set_submenu(GTK_MENU_ITEM(pidags), pidags_menu);
   GtkWidget *pidag;
-  pidag = gtk_menu_item_new_with_label("Add new dag file");
-  gtk_menu_shell_append(GTK_MENU_SHELL(pidags_menu), pidag);
+  //pidag = gtk_menu_item_new_with_label("Add new dag file");
+  //gtk_menu_shell_append(GTK_MENU_SHELL(pidags_menu), pidag);
   for (i=0; i<CS->nP; i++) {
     sprintf(s, "PIDAG %d: [%0.0lfMB,%ld] %s", i, ((double) CS->P[i].stat->st_size) / (1024.0 * 1024.0), CS->P[i].n, CS->P[i].fn);
     pidag = gtk_menu_item_new_with_label(s);
     gtk_menu_shell_append(GTK_MENU_SHELL(pidags_menu), pidag);
   }
   
+  return menubar;
+}
+
+static int open_gui(int argc, char *argv[])
+{
+  // Initialize
+  CS->window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+  CS->vbox0 = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+  CS->menubar = dv_create_menubar();
+  CS->hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+
+  // Window
+  GtkWidget *window = CS->window;
+  //gtk_window_fullscreen(GTK_WINDOW(window));
+  //gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
+  gtk_window_set_default_size(GTK_WINDOW(window), 1000, 700);
+  gtk_window_maximize(GTK_WINDOW(window));
+  gtk_window_set_title(GTK_WINDOW(window), "DAG Visualizer");
+  g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
+  g_signal_connect(G_OBJECT(CS->window), "key-press-event", G_CALLBACK(on_window_key_event), NULL);
+
+  // vbox0
+  GtkWidget *vbox0 = CS->vbox0;
+  gtk_container_add(GTK_CONTAINER(window), vbox0);
+
+  // menubar
+  GtkWidget *menubar = CS->menubar;
+  gtk_box_pack_start(GTK_BOX(vbox0), menubar, FALSE, FALSE, 0);
 
   // hbox
   GtkWidget *hbox = CS->hbox;
-  gtk_box_pack_start(GTK_BOX(vbox0), hbox, TRUE, TRUE, 0);
+  gtk_box_pack_end(GTK_BOX(vbox0), hbox, TRUE, TRUE, 0);
   gtk_box_set_homogeneous(GTK_BOX(hbox), TRUE);
 
   // Viewport
+  int i;
   for (i=0; i<CS->nVP; i++) {
     dv_viewport_t *VP = &CS->VP[i];
     gtk_container_add(GTK_CONTAINER(hbox), VP->box);

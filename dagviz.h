@@ -253,6 +253,7 @@ typedef struct dv_global_state {
   int CP_sizes[DV_NUM_COLOR_POOLS];
   GtkWidget * menubar;
   GtkWidget * hbox;
+  GtkWidget * vbox0;
 } dv_global_state_t;
 
 
