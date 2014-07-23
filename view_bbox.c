@@ -58,7 +58,7 @@ double dv_view_calculate_vsize(dv_view_t *V, dv_dag_node_t *node) {
   dv_dag_t *D = V->D;
   dv_view_status_t *S = V->S;
   dr_pi_dag_node * pi = dv_pidag_get_node(D->P, node);
-  double gap = dv_view_calculate_gap(V, node->parent);
+  double gap = 1.0;//dv_view_calculate_gap(V, node->parent);
   double vsize;
   if (!S->frombt) {
     // begin - end
@@ -73,6 +73,7 @@ double dv_view_calculate_vsize(dv_view_t *V, dv_dag_node_t *node) {
   return vsize;
 }
 
+/*
 static double dv_view_calculate_vsize_pure(dv_view_t *V, dv_dag_node_t *node) {
   dv_dag_t *D = V->D;
   dv_view_status_t *S = V->S;
@@ -88,6 +89,7 @@ static double dv_view_calculate_vsize_pure(dv_view_t *V, dv_dag_node_t *node) {
   }
   return vsize;
 }
+*/
 
 static dv_dag_node_t * dv_layout_node_get_last_tail(dv_view_t *V, dv_dag_node_t *node) {
   dv_dag_node_t * ret = 0;
@@ -102,10 +104,11 @@ static dv_dag_node_t * dv_layout_node_get_last_tail(dv_view_t *V, dv_dag_node_t 
 }
 
 static double dv_layout_node_get_node_xp(dv_dag_node_t *node) {
+  int lt = 1;
   dv_dag_node_t * u = node;
   double dis = 0.0;
   while (u) {
-    dis += u->xpre;
+    dis += u->c[lt].xpre;
     u = u->pre;
   }
   return dis;
@@ -126,80 +129,96 @@ static double dv_layout_node_get_last_tail_xp_r(dv_view_t *V, dv_dag_node_t *nod
 }
 
 static void dv_view_layout_bbox_node(dv_view_t *V, dv_dag_node_t *node) {
+  int lt = 1;
+  dv_node_coordinate_t *nodeco = &node->c[lt];
   /* Calculate inward */
   if (dv_is_inward_callable(node)) {
     dv_check(node->head);
     // node's head's outward
-    node->head->xpre = 0.0;
-    node->head->y = node->y;
+    dv_node_coordinate_t *headco = &node->head->c[lt];
+    headco->xpre = 0.0;
+    headco->y = nodeco->y;
     // Recursive call
     dv_view_layout_bbox_node(V, node->head);
     // node's inward
-    node->lw = node->head->link_lw;
-    node->rw = node->head->link_rw;
-    node->dw = node->head->link_dw;
-    node->avoid_inward = 0;
-    // avoid shrinking too small
-    double comp = dv_view_calculate_vsize_pure(V, node);
-    if (node->lw < DV_RADIUS
-        && node->rw < DV_RADIUS
-        && node->dw < comp) {
-      node->lw = DV_RADIUS;
-      node->rw = DV_RADIUS;
-      node->dw = comp;
-      node->avoid_inward = 1;
-    }
+    nodeco->lw = headco->link_lw;
+    nodeco->rw = headco->link_rw;
+    nodeco->dw = headco->link_dw;
+    // for enhancing expand/collapse animation
+    if (nodeco->lw < DV_RADIUS)
+      nodeco->lw = DV_RADIUS;
+    if (nodeco->rw < DV_RADIUS)
+      nodeco->rw = DV_RADIUS;
+    double vsize = dv_view_calculate_vsize(V, node);
+    if (nodeco->dw < vsize)
+      nodeco->dw = vsize;
   } else {
     // node's inward
-    node->lw = dv_view_calculate_hsize(V, node);
-    node->rw = dv_view_calculate_hsize(V, node);
-    node->dw = dv_view_calculate_vsize(V, node);
+    nodeco->lw = DV_RADIUS;//dv_view_calculate_hsize(V, node);
+    nodeco->rw = DV_RADIUS;//dv_view_calculate_hsize(V, node);
+    nodeco->dw = dv_view_calculate_vsize(V, node);
   }
     
   /* Calculate link-along */
   int n_links = dv_llist_size(node->links);
   dv_dag_node_t *u, *v; // linked nodes
-  double time_gap, gap, ugap, vgap;
+  dv_node_coordinate_t *uco, *vco;
+  double g, gap, ugap, vgap, hgap;
   switch (n_links) {
   case 0:
     // node's link-along
-    node->link_lw = node->lw;
-    node->link_rw = node->rw;
-    node->link_dw = node->dw;
+    nodeco->link_lw = nodeco->lw;
+    nodeco->link_rw = nodeco->rw;
+    nodeco->link_dw = nodeco->dw;
     break;
   case 1:
     u = (dv_dag_node_t *) node->links->top->item;
+    uco = &u->c[lt];
     // node & u's gap
-    gap = dv_view_calculate_vgap(V, node->parent, node, u);
+    g = dv_view_calculate_gap(V, node->parent);
+    ugap = dv_view_calculate_vgap(V, node->parent, node, u);
     // node's linked u's outward    
-    u->xpre = dv_layout_node_get_last_tail_xp_r(V, node);
-    u->y = node->y + node->dw + gap;
+    uco->xpre = dv_layout_node_get_last_tail_xp_r(V, node);
+    uco->y = nodeco->y + nodeco->dw * g + ugap;
     // Recursive call
     dv_view_layout_bbox_node(V, u);
     // node's link-along
-    node->link_lw = dv_max(node->lw, u->link_lw - u->xpre);
-    node->link_rw = dv_max(node->rw, u->link_rw + u->xpre);
-    node->link_dw = node->dw + gap + u->link_dw;
+    nodeco->link_lw = dv_max(nodeco->lw, uco->link_lw - uco->xpre);
+    nodeco->link_rw = dv_max(nodeco->rw, uco->link_rw + uco->xpre);
+    nodeco->link_dw = nodeco->dw * g + ugap + uco->link_dw;
     break;
   case 2:
     u = (dv_dag_node_t *) node->links->top->item; // cont node
     v = (dv_dag_node_t *) node->links->top->next->item; // task node
+    uco = &u->c[lt];
+    vco = &v->c[lt];
     // node & u,v's gap
+    g = dv_view_calculate_gap(V, node->parent);
     ugap = dv_view_calculate_vgap(V, node->parent, node, u);
     vgap = dv_view_calculate_vgap(V, node->parent, node, v);
     // node's linked u,v's outward
-    u->y = node->y + node->dw + ugap;
-    v->y = node->y + node->dw + vgap;
+    uco->y = nodeco->y + nodeco->dw * g + ugap;
+    vco->y = nodeco->y + nodeco->dw * g + vgap;
     // Recursive call
     dv_view_layout_bbox_node(V, u);
     dv_view_layout_bbox_node(V, v);
+    
     // node's linked u,v's outward
-    u->xpre = dv_view_calculate_hgap(V, u->parent) + u->link_lw;
-    v->xpre = - dv_view_calculate_hgap(V, v->parent) - v->link_rw;
+    hgap = g * DV_HDIS;
+    // u
+    uco->xpre = (uco->link_lw - DV_RADIUS) + hgap;
+    if (dv_llist_size(u->links) == 2)
+      uco->xpre = - ((dv_dag_node_t *) dv_llist_get(u->links, 1))->c[lt].xpre;
+    // v
+    vco->xpre = (vco->link_rw - DV_RADIUS) + hgap;
+    if (dv_llist_size(u->links) == 2)
+      vco->xpre += (uco->link_lw - DV_RADIUS) - uco->xpre;
+    vco->xpre = - vco->xpre;
+    
     // node's link-along
-    node->link_lw = dv_max(node->lw, - v->xpre + v->link_lw);
-    node->link_rw = dv_max(node->rw, u->xpre + u->link_rw);
-    node->link_dw = node->dw + dv_max(ugap + u->link_dw, vgap + v->link_dw);
+    nodeco->link_lw = - vco->xpre + vco->link_lw;
+    nodeco->link_rw = uco->xpre + uco->link_rw;
+    nodeco->link_dw = nodeco->dw * g + dv_max(ugap + uco->link_dw, vgap + vco->link_dw);
     break;
   default:
     dv_check(0);
@@ -209,12 +228,15 @@ static void dv_view_layout_bbox_node(dv_view_t *V, dv_dag_node_t *node) {
 }
 
 static void dv_view_layout_bbox_node_2nd(dv_dag_node_t *node) {
+  int lt = 1;
+  dv_node_coordinate_t *nodeco = &node->c[lt];
   /* Calculate inward */
   if (dv_is_inward_callable(node)) {
     dv_check(node->head);
     // node's head's outward
-    node->head->xp = 0.0;
-    node->head->x = node->x;
+    dv_node_coordinate_t *headco = &node->head->c[lt];
+    headco->xp = 0.0;
+    headco->x = nodeco->x;
     // Recursive call
     dv_view_layout_bbox_node_2nd(node->head);
   }
@@ -222,25 +244,29 @@ static void dv_view_layout_bbox_node_2nd(dv_dag_node_t *node) {
   /* Calculate link-along */
   int n_links = dv_llist_size(node->links);
   dv_dag_node_t *u, *v; // linked nodes
+  dv_node_coordinate_t *uco, *vco;
   switch (n_links) {
   case 0:
     break;
   case 1:
     u = (dv_dag_node_t *) node->links->top->item;
+    uco = &u->c[lt];
     // node's linked u's outward
-    u->xp = u->xpre + node->xp;
-    u->x = u->xp + u->parent->x;
+    uco->xp = uco->xpre + nodeco->xp;
+    uco->x = uco->xp + u->parent->c[lt].x;
     // Recursive call
     dv_view_layout_bbox_node_2nd(u);
     break;
   case 2:
     u = (dv_dag_node_t *) node->links->top->item; // cont node
     v = (dv_dag_node_t *) node->links->top->next->item; // task node
+    uco = &u->c[lt];
+    vco = &v->c[lt];
     // node's linked u,v's outward
-    u->xp = u->xpre + node->xp;
-    u->x = u->xp + u->parent->x;
-    v->xp = v->xpre + node->xp;
-    v->x = v->xp + v->parent->x;
+    uco->xp = uco->xpre + nodeco->xp;
+    uco->x = uco->xp + u->parent->c[lt].x;
+    vco->xp = vco->xpre + nodeco->xp;
+    vco->x = vco->xp + v->parent->c[lt].x;
     // Recursive call
     dv_view_layout_bbox_node_2nd(u);
     dv_view_layout_bbox_node_2nd(v);
@@ -254,15 +280,17 @@ static void dv_view_layout_bbox_node_2nd(dv_dag_node_t *node) {
 
 void dv_view_layout_bbox(dv_view_t *V) {
   dv_dag_t *D = V->D;
+  int lt = 1;
+  dv_node_coordinate_t *rtco = &D->rt->c[lt];
 
   // Relative coord
-  D->rt->xpre = 0.0; // pre-based
-  D->rt->y = 0.0;
+  rtco->xpre = 0.0; // pre-based
+  rtco->y = 0.0;
   dv_view_layout_bbox_node(V, D->rt);
 
   // Absolute coord
-  D->rt->xp = 0.0; // parent-based
-  D->rt->x = 0.0;
+  rtco->xp = 0.0; // parent-based
+  rtco->x = 0.0;
   dv_view_layout_bbox_node_2nd(D->rt);
 
   // Check
@@ -278,6 +306,8 @@ void dv_view_layout_bbox(dv_view_t *V) {
 static void dv_view_draw_bbox_node_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *node) {
   dv_dag_t *D = V->D;
   dv_view_status_t *S = V->S;
+  int lt = 1;
+  dv_node_coordinate_t *nodeco = &node->c[lt];
   // Count node drawn
   S->nd++;
   if (node->d > D->cur_d)
@@ -287,8 +317,8 @@ static void dv_view_draw_bbox_node_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *n
       && node->d < D->cur_d_ex)
     D->cur_d_ex = node->d;
   // Node color
-  double x = node->x;
-  double y = node->y;
+  double x = nodeco->x;
+  double y = nodeco->y;
   double c[4];
   dr_pi_dag_node *pi = dv_pidag_get_node(D->P, node);
   dv_lookup_color(pi, S->nc, c, c+1, c+2, c+3);
@@ -314,18 +344,18 @@ static void dv_view_draw_bbox_node_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *n
       }
       // Large-sized box
       margin *= DV_UNION_NODE_MARGIN;
-      xx = x - node->lw - margin;
+      xx = x - nodeco->lw - margin;
       yy = y - margin;
-      w = node->lw + node->rw + 2 * margin;
-      h = node->dw + 2 * margin;
+      w = nodeco->lw + nodeco->rw + 2 * margin;
+      h = nodeco->dw + 2 * margin;
       
     } else {
       
       // Normal-sized box
-      xx = x - node->lw;
+      xx = x - nodeco->lw;
       yy = y;
-      w = node->lw + node->rw;
-      h = node->dw;
+      w = nodeco->lw + nodeco->rw;
+      h = nodeco->dw;
       alpha = 1.0;
       if (dv_is_shrinking(node->parent)) {
         // Fading out
@@ -340,10 +370,10 @@ static void dv_view_draw_bbox_node_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *n
   } else {
     
     // Normal-sized box (terminal node)
-    xx = x - node->lw;
+    xx = x - nodeco->lw;
     yy = y;
-    w = node->lw + node->rw;
-    h = node->dw;
+    w = nodeco->lw + nodeco->rw;
+    h = nodeco->dw;
     alpha = 1.0;
     if (dv_is_shrinking(node->parent)) {
       // Fading out
@@ -381,8 +411,7 @@ static void dv_view_draw_bbox_node_r(dv_view_t *V, cairo_t *cr, dv_dag_node_t *n
   }
   /* Call inward */
   if (!dv_is_single(node)) {
-    if (!node->avoid_inward)
-      dv_view_draw_bbox_node_r(V, cr, node->head);
+    dv_view_draw_bbox_node_r(V, cr, node->head);
   }
   /* Call link-along */
   dv_dag_node_t * u = NULL;
@@ -406,10 +435,6 @@ static dv_dag_node_t * dv_dag_node_get_first(dv_dag_node_t *u) {
 }
 
 static void dv_view_draw_bbox_edge_last_r(dv_view_t *V, cairo_t *cr, dv_dag_node_t *u, dv_dag_node_t *v) {
-  if (u->avoid_inward) {
-    dv_view_draw_bbox_edge_1(V, cr, u, v);
-    return;
-  }
   dv_dag_node_t *u_tail = NULL;
   while (u_tail = (dv_dag_node_t *) dv_llist_iterate_next(u->tails, u_tail)) {
     if (dv_is_single(u_tail))
@@ -424,8 +449,7 @@ static void dv_view_draw_bbox_edge_r(dv_view_t *V, cairo_t *cr, dv_dag_node_t *u
     return;
   // Call head
   if (!dv_is_single(u)) {
-    if (!u->avoid_inward)
-      dv_view_draw_bbox_edge_r(V, cr, u->head);
+    dv_view_draw_bbox_edge_r(V, cr, u->head);
   }
   // Iterate links
   dv_dag_node_t * v = NULL;

@@ -185,6 +185,19 @@ dv_dag_node_t * dv_dag_node_pool_pop_contiguous(dv_dag_t *D, long num) {
   return NULL;
 }
 
+void dv_node_coordinate_init(dv_node_coordinate_t *c) {
+  c->x = 0.0;
+  c->y = 0.0;
+  c->xp = 0.0;
+  c->xpre = 0.0;
+  c->lw = 0.0;
+  c->rw = 0.0;
+  c->dw = 0.0;
+  c->link_lw = 0.0;
+  c->link_rw = 0.0;
+  c->link_dw = 0.0;  
+}
+
 void dv_dag_node_init(dv_dag_node_t *node, dv_dag_node_t *parent, long pii) {
   node->pii = pii;
   dv_node_flag_init(node->f);
@@ -196,17 +209,9 @@ void dv_dag_node_init(dv_dag_node_t *node, dv_dag_node_t *parent, long pii) {
   node->head = 0;
   dv_llist_init(node->tails);
 
-  node->x = 0.0;
-  node->y = 0.0;
-  node->xp = 0.0;
-  node->xpre = 0.0;
-  node->lw = 0.0;
-  node->rw = 0.0;
-  node->dw = 0.0;
-  node->link_lw = 0.0;
-  node->link_rw = 0.0;
-  node->link_dw = 0.0;
-  node->avoid_inward = 0;
+  int i;
+  for (i=0; i<DV_NUM_LAYOUT_TYPES; i++)
+    dv_node_coordinate_init(&node->c[i]);
 
   node->started = 0.0;
 }
@@ -395,13 +400,7 @@ void dv_dag_init(dv_dag_t *D, dv_pidag_t *P) {
   D->dmax = 0;
   D->bt = 0.0;
   D->et = 0.0;
-  // Drawing parameters
-  D->init = 1;
-  D->zoom_ratio = 1.0;
-  D->x = D->y = 0.0;
-  D->basex = D->basey = 0.0;
   dv_llist_init(D->itl);
-  // Layout status
   D->cur_d = 0;
   D->cur_d_ex = 0;
 }

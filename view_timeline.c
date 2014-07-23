@@ -3,16 +3,18 @@
 /*-----------Timeline layout functions----------------------*/
 
 static void dv_view_layout_timeline_node(dv_view_t *V, dv_dag_node_t *node) {
+  int lt = 2;
+  dv_node_coordinate_t *nodeco = &node->c[lt];
   dv_dag_t *D = V->D;
   dr_pi_dag_node * pi = dv_pidag_get_node(D->P, node);
   /* Calculate inward */
-  node->lw = dv_view_calculate_hsize(V, node);
-  node->rw = dv_view_calculate_hsize(V, node);
-  node->dw = dv_view_calculate_vresize(V, pi->info.end.t - D->bt) - dv_view_calculate_vresize(V, pi->info.start.t - D->bt);
+  nodeco->lw = DV_RADIUS;//dv_view_calculate_hsize(V, node);
+  nodeco->rw = DV_RADIUS;//dv_view_calculate_hsize(V, node);
+  nodeco->dw = dv_view_calculate_vresize(V, pi->info.end.t - D->bt) - dv_view_calculate_vresize(V, pi->info.start.t - D->bt);
   // node's outward
   int worker = pi->info.worker;
-  node->x = DV_RADIUS + worker * (2 * DV_RADIUS + DV_HDIS);
-  node->y = dv_view_calculate_vresize(V, pi->info.start.t - D->bt);
+  nodeco->x = DV_RADIUS + worker * (2 * DV_RADIUS + DV_HDIS);
+  nodeco->y = dv_view_calculate_vresize(V, pi->info.start.t - D->bt);
   if (dv_is_union(node) && dv_is_inner_loaded(node)) {
     // Recursive call
     if (dv_is_expanded(node))
@@ -62,6 +64,8 @@ void dv_view_layout_timeline(dv_view_t *V) {
 static void dv_view_draw_timeline_node_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *node) {
   dv_dag_t *D = V->D;
   dv_view_status_t *S = V->S;
+  int lt = 2;
+  dv_node_coordinate_t *nodeco = &node->c[lt];
   // Count node drawn
   S->nd++;
   if (node->d > D->cur_d)
@@ -71,8 +75,8 @@ static void dv_view_draw_timeline_node_1(dv_view_t *V, cairo_t *cr, dv_dag_node_
       && node->d < D->cur_d_ex)
     D->cur_d_ex = node->d;
   // Node color
-  double x = node->x;
-  double y = node->y;
+  double x = nodeco->x;
+  double y = nodeco->y;
   double c[4];
   dr_pi_dag_node *pi = dv_pidag_get_node(D->P, node);
   dv_lookup_color(pi, S->nc, c, c+1, c+2, c+3);
@@ -83,10 +87,10 @@ static void dv_view_draw_timeline_node_1(dv_view_t *V, cairo_t *cr, dv_dag_node_
   cairo_new_path(cr);
   double xx, yy, w, h;
   // Normal-sized box (terminal node)
-  xx = x - node->lw;
+  xx = x - nodeco->lw;
   yy = y;
-  w = node->lw + node->rw;
-  h = node->dw;
+  w = nodeco->lw + nodeco->rw;
+  h = nodeco->dw;
   // Draw path
   cairo_move_to(cr, xx, yy);
   cairo_line_to(cr, xx + w, yy);

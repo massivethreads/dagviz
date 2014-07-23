@@ -4,78 +4,85 @@
 /*-----------------Grid-like layout functions-----------*/
 
 static void dv_view_layout_glike_node(dv_view_t *V, dv_dag_node_t *node) {
+  int lt = 0;
+  dv_node_coordinate_t *nodeco = &node->c[lt];
   /* Calculate inward */
   if (dv_is_inward_callable(node)) {
     dv_check(node->head);
     // node's head's outward
-    node->head->xpre = 0.0;
-    node->head->y = node->y;
+    dv_node_coordinate_t *headco = &node->head->c[lt];
+    headco->xpre = 0.0;
+    headco->y = nodeco->y;
     // Recursive call
     dv_view_layout_glike_node(V, node->head);
     // node's inward
-    node->lw = node->head->link_lw;
-    node->rw = node->head->link_rw;
-    node->dw = node->head->link_dw;
+    nodeco->lw = headco->link_lw;
+    nodeco->rw = headco->link_rw;
+    nodeco->dw = headco->link_dw;
   } else {
     // node's inward
-    node->lw = DV_RADIUS;
-    node->rw = DV_RADIUS;
-    node->dw = 2 * DV_RADIUS;
+    nodeco->lw = DV_RADIUS;
+    nodeco->rw = DV_RADIUS;
+    nodeco->dw = 2 * DV_RADIUS;
   }
     
   /* Calculate link-along */
   int n_links = dv_llist_size(node->links);
   dv_dag_node_t *u, *v; // linked nodes
-  double time_gap, gap, ugap, vgap;
+  dv_node_coordinate_t *uco, *vco;
+  double gap, hgap;
   switch (n_links) {
   case 0:
     // node's link-along
-    node->link_lw = node->lw;
-    node->link_rw = node->rw;
-    node->link_dw = node->dw;
+    nodeco->link_lw = nodeco->lw;
+    nodeco->link_rw = nodeco->rw;
+    nodeco->link_dw = nodeco->dw;
     break;
   case 1:
     u = (dv_dag_node_t *) node->links->top->item;
+    uco = &u->c[lt];
     // node & u's gap
     gap = dv_view_calculate_gap(V, node->parent);
     // node's linked u's outward
-    u->xpre = 0.0;
-    u->y = node->y + (node->dw + DV_VDIS) * gap;
+    uco->xpre = 0.0;
+    uco->y = nodeco->y + (nodeco->dw + DV_VDIS) * gap;
     // Recursive call
     dv_view_layout_glike_node(V, u);
     // node's link-along
-    node->link_lw = dv_max(node->lw, u->link_lw);
-    node->link_rw = dv_max(node->rw, u->link_rw);
-    node->link_dw = (node->dw + DV_VDIS) * gap + u->link_dw;
+    nodeco->link_lw = dv_max(nodeco->lw, uco->link_lw);
+    nodeco->link_rw = dv_max(nodeco->rw, uco->link_rw);
+    nodeco->link_dw = (nodeco->dw + DV_VDIS) * gap + uco->link_dw;
     break;
   case 2:
     u = (dv_dag_node_t *) node->links->top->item; // cont node
     v = (dv_dag_node_t *) node->links->top->next->item; // task node
+    uco = &u->c[lt];
+    vco = &v->c[lt];
     // node & u,v's gap
     gap = dv_view_calculate_gap(V, node->parent);
     // node's linked u,v's outward
-    u->y = node->y + (node->dw + DV_VDIS) * gap;
-    v->y = node->y + (node->dw + DV_VDIS) * gap;
+    uco->y = nodeco->y + (nodeco->dw + DV_VDIS) * gap;
+    vco->y = nodeco->y + (nodeco->dw + DV_VDIS) * gap;
     // Recursive call
     dv_view_layout_glike_node(V, u);
     dv_view_layout_glike_node(V, v);
     
     // node's linked u,v's outward
-    double hgap = gap * DV_HDIS;
+    hgap = gap * DV_HDIS;
     // u
-    u->xpre = (u->link_lw - DV_RADIUS) + hgap;
+    uco->xpre = (uco->link_lw - DV_RADIUS) + hgap;
     if (dv_llist_size(u->links) == 2)
-      u->xpre = - ((dv_dag_node_t *) dv_llist_get(u->links, 1))->xpre;
+      uco->xpre = - ((dv_dag_node_t *) dv_llist_get(u->links, 1))->c[lt].xpre;
     // v
-    v->xpre = (v->link_rw - DV_RADIUS) + hgap;
+    vco->xpre = (vco->link_rw - DV_RADIUS) + hgap;
     if (dv_llist_size(u->links) == 2)
-      v->xpre += (u->link_lw - DV_RADIUS) - u->xpre;
-    v->xpre = - v->xpre;
+      vco->xpre += (uco->link_lw - DV_RADIUS) - uco->xpre;
+    vco->xpre = - vco->xpre;
     
     // node's link-along
-    node->link_lw = - v->xpre + v->link_lw;
-    node->link_rw = u->xpre + u->link_rw;
-    node->link_dw = (node->dw + DV_VDIS) * gap + dv_max(u->link_dw, v->link_dw);
+    nodeco->link_lw = - vco->xpre + vco->link_lw;
+    nodeco->link_rw = uco->xpre + uco->link_rw;
+    nodeco->link_dw = (nodeco->dw + DV_VDIS) * gap + dv_max(uco->link_dw, vco->link_dw);
     break;
   default:
     dv_check(0);
@@ -84,12 +91,15 @@ static void dv_view_layout_glike_node(dv_view_t *V, dv_dag_node_t *node) {
 }
 
 static void dv_view_layout_glike_node_2nd(dv_dag_node_t *node) {
+  int lt = 0;
+  dv_node_coordinate_t *nodeco = &node->c[lt];
   /* Calculate inward */
   if (dv_is_inward_callable(node)) {
     dv_check(node->head);
     // node's head's outward
-    node->head->xp = 0.0;
-    node->head->x = node->x;
+    dv_node_coordinate_t *headco = &node->head->c[lt];
+    headco->xp = 0.0;
+    headco->x = nodeco->x;
     // Recursive call
     dv_view_layout_glike_node_2nd(node->head);
   }
@@ -97,25 +107,29 @@ static void dv_view_layout_glike_node_2nd(dv_dag_node_t *node) {
   /* Calculate link-along */
   int n_links = dv_llist_size(node->links);
   dv_dag_node_t *u, *v; // linked nodes
+  dv_node_coordinate_t *uco, *vco;
   switch (n_links) {
   case 0:
     break;
   case 1:
     u = (dv_dag_node_t *) node->links->top->item;
+    uco = &u->c[lt];
     // node's linked u's outward
-    u->xp = u->xpre + node->xp;
-    u->x = u->xp + u->parent->x;
+    uco->xp = uco->xpre + nodeco->xp;
+    uco->x = uco->xp + u->parent->c[lt].x;
     // Recursive call
     dv_view_layout_glike_node_2nd(u);
     break;
   case 2:
     u = (dv_dag_node_t *) node->links->top->item; // cont node
     v = (dv_dag_node_t *) node->links->top->next->item; // task node
+    uco = &u->c[lt];
+    vco = &v->c[lt];
     // node's linked u,v's outward
-    u->xp = u->xpre + node->xp;
-    u->x = u->xp + u->parent->x;
-    v->xp = v->xpre + node->xp;
-    v->x = v->xp + v->parent->x;
+    uco->xp = uco->xpre + nodeco->xp;
+    uco->x = uco->xp + u->parent->c[lt].x;
+    vco->xp = vco->xpre + nodeco->xp;
+    vco->x = vco->xp + v->parent->c[lt].x;
     // Recursive call
     dv_view_layout_glike_node_2nd(u);
     dv_view_layout_glike_node_2nd(v);
@@ -129,15 +143,17 @@ static void dv_view_layout_glike_node_2nd(dv_dag_node_t *node) {
 
 void dv_view_layout_glike(dv_view_t *V) {
   dv_dag_t *D = V->D;
+  int lt = 0;
+  dv_node_coordinate_t *rtco = &D->rt->c[lt];
 
   // Relative coord
-  D->rt->xpre = 0.0; // pre-based
-  D->rt->y = 0.0;
+  rtco->xpre = 0.0; // pre-based
+  rtco->y = 0.0;
   dv_view_layout_glike_node(V, D->rt);
 
   // Absolute coord
-  D->rt->xp = 0.0; // parent-based
-  D->rt->x = 0.0;
+  rtco->xp = 0.0; // parent-based
+  rtco->x = 0.0;
   dv_view_layout_glike_node_2nd(D->rt);
   
 }
@@ -151,6 +167,8 @@ void dv_view_layout_glike(dv_view_t *V) {
 static void dv_view_draw_glike_node_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *node) {
   dv_dag_t *D = V->D;
   dv_view_status_t *S = V->S;
+  int lt = 0;
+  dv_node_coordinate_t *nodeco = &node->c[lt];
   // Count node drawn
   S->nd++;
   if (node->d > D->cur_d)
@@ -160,8 +178,8 @@ static void dv_view_draw_glike_node_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *
       && node->d < D->cur_d_ex)
     D->cur_d_ex = node->d;
   // Node color
-  double x = node->x;
-  double y = node->y;
+  double x = nodeco->x;
+  double y = nodeco->y;
   double c[4];
   dr_pi_dag_node *pi = dv_pidag_get_node(D->P, node);
   dv_lookup_color(pi, S->nc, c, c+1, c+2, c+3);
@@ -187,18 +205,18 @@ static void dv_view_draw_glike_node_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *
       }
       // Large-sized box
       margin *= DV_UNION_NODE_MARGIN;
-      xx = x - node->lw - margin;
+      xx = x - nodeco->lw - margin;
       yy = y - margin;
-      w = node->lw + node->rw + 2 * margin;
-      h = node->dw + 2 * margin;
+      w = nodeco->lw + nodeco->rw + 2 * margin;
+      h = nodeco->dw + 2 * margin;
       
     } else {
       
       // Normal-sized box
-      xx = x - node->lw;//DV_RADIUS;
+      xx = x - nodeco->lw;//DV_RADIUS;
       yy = y;
-      w = node->lw + node->rw;//2 * DV_RADIUS;
-      h = node->dw;//2 * DV_RADIUS;
+      w = nodeco->lw + nodeco->rw;//2 * DV_RADIUS;
+      h = nodeco->dw;//2 * DV_RADIUS;
       alpha = 1.0;
       if (dv_is_shrinking(node->parent)) {
         // Fading out

@@ -4,13 +4,18 @@
 
 void dv_view_layout(dv_view_t *V) {
   dv_view_status_t *S = V->S;
-  
+
+  dv_view_layout_glike(V);
+  dv_view_layout_bbox(V);
+  dv_view_layout_timeline(V);
+  /*
   if (S->lt == 0)
     dv_view_layout_glike(V);
   else if (S->lt == 1)
     dv_view_layout_bbox(V);
   else if (S->lt == 2)
     dv_view_layout_timeline(V);
+  */
 
 }
 
@@ -101,7 +106,7 @@ static gboolean dv_animation_tick(gpointer data) {
   }
   */
   dv_view_layout(a->V);
-  dv_queue_draw(a->V);
+  dv_queue_draw_d(a->V);
   // stop timer when there is no moving node 
   if (dv_llist_size(a->movings) == 0) {
     dv_animation_stop(a);

@@ -158,6 +158,7 @@ void dv_print_dvdag(dv_dag_t *D) {
 }
 
 static void print_layout_node(dv_dag_t *D, dv_dag_node_t *node, int i) {
+  /*
   dr_pi_dag_node *pi = dv_pidag_get_node(D->P, node);
   int kind = pi->info.kind;
   printf(
@@ -177,6 +178,7 @@ static void print_layout_node(dv_dag_t *D, dv_dag_node_t *node, int i) {
          node->x, node->y,
          node->lw, node->rw, node->dw,
          node->link_lw, node->link_rw, node->link_dw);
+  */
 }
 
 void dv_print_layout(dv_dag_t *D) {

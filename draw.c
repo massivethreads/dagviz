@@ -139,8 +139,16 @@ void dv_view_draw_edge_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *u, dv_dag_nod
   dv_view_status_t *S = V->S;
   if (S->et == 0)
     return;
+  
+  /* Get coordinates */
   double x1, y1, x2, y2;
-  dr_pi_dag_node *pi;
+  dv_node_coordinate_t *uc = &u->c[S->lt];
+  dv_node_coordinate_t *vc = &v->c[S->lt];
+  x1 = uc->x;
+  y1 = uc->y + uc->dw;
+  x2 = vc->x;
+  y2 = vc->y;
+  /*
   switch (S->lt) {
   case 0:
     x1 = u->x;
@@ -160,8 +168,11 @@ void dv_view_draw_edge_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *u, dv_dag_nod
   default:
     dv_check(0);
   }
+  */
   if (y1 > y2)
     return;
+  
+  /* Get alpha */
   double alpha = 1.0;
   if ((!u->parent || dv_is_shrinking(u->parent))
       //&& (!v->parent || dv_is_shrinking(v->parent))
@@ -171,14 +182,20 @@ void dv_view_draw_edge_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *u, dv_dag_nod
            //&& (!v->parent || dv_is_expanding(v->parent))
            && (u->parent == v->parent))
     alpha = dv_view_get_alpha_fading_in(V, u->parent);
+
+  /* Draw edge */
+  dr_pi_dag_node *pi;
   cairo_save(cr);
   cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
   cairo_move_to(cr, x1, y1);
   // edge affix
-  if (S->edge_affix != 0) {
-    cairo_line_to(cr, x1, y1 + S->edge_affix);
-    y1 += S->edge_affix;
-    y2 -= S->edge_affix;
+  double a = S->edge_affix;
+  if (a > (y2 - y1) / 2)
+    a = (y2 - y1) / 2;
+  if (a != 0) {
+    cairo_line_to(cr, x1, y1 + a);
+    y1 += a;
+    y2 -= a;
   }
   /* edge type */
   switch (S->et) {
@@ -207,8 +224,8 @@ void dv_view_draw_edge_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *u, dv_dag_nod
     dv_check(0);
   }    
   // edge affix
-  if (S->edge_affix != 0) {
-    cairo_line_to(cr, x2, y2 + S->edge_affix);
+  if (a != 0) {
+    cairo_line_to(cr, x2, y2 + a);
   }    
   cairo_stroke(cr);
   cairo_restore(cr);
@@ -288,8 +305,13 @@ static void dv_view_draw_infotag_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *nod
   double line_height = 12;
   double padding = 4;
   int n = 6; /* number of lines */
+  
+  // Get coordinates
   double xx, yy;
-  // Split process based on layout type
+  dv_node_coordinate_t *c = &node->c[S->lt];
+  xx = c->x + c->rw + 2 * padding;
+  yy = c->y - 2 * padding - line_height * (n - 1);
+  /*
   if (S->lt == 0) {
     // grid-like layout
     xx = node->x + node->rw + 2 * padding;
@@ -300,6 +322,7 @@ static void dv_view_draw_infotag_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *nod
     yy = node->y - 2 * padding - line_height * (n - 1);
   } else
     dv_check(0);
+  */
 
   // Cover rectangle
   double width = 450.0;

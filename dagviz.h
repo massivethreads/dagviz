@@ -78,6 +78,7 @@ typedef struct dv_llist {
 #define DV_ANIMATION_DURATION 400 // milliseconds
 #define DV_ANIMATION_STEP 30 // milliseconds
 
+#define DV_NUM_LAYOUT_TYPES 3
 #define DV_LAYOUT_TYPE_INIT 0
 #define DV_NODE_COLOR_INIT 0
 #define DV_SCALE_TYPE_INIT 1
@@ -116,6 +117,13 @@ typedef struct dv_pidag {
   struct stat stat[1]; /* file stat structure */
 } dv_pidag_t;
 
+typedef struct dv_node_coordinate {
+  double x, y; /* coordinates */
+  double xp, xpre; /* coordinates based on parent, pre */
+  double lw, rw, dw; /* left/right/down widths */
+  double link_lw, link_rw, link_dw;
+} dv_node_coordinate_t;
+
 typedef struct dv_dag_node {
   
   /* task-parallel data */
@@ -133,12 +141,8 @@ typedef struct dv_dag_node {
   struct dv_dag_node * head; /* inner head node */
   dv_llist_t tails[1]; /* list of inner tail nodes */
 
-  /* bbox/timeline layouts */
-  double x, y; /* coordinates */
-  double xp, xpre; /* coordinates based on parent, pre */
-  double lw, rw, dw; /* left/right/down widths */
-  double link_lw, link_rw, link_dw;
-  int avoid_inward;
+  /* layout */
+  dv_node_coordinate_t c[DV_NUM_LAYOUT_TYPES]; /* 0:grid, 1:bbox, 2:timeline */
 
   /* animation */
   double started; /* started time of animation */
@@ -160,15 +164,9 @@ typedef struct dv_dag {
   int dmax; /* depth max */
   double bt; /* begin time */
   double et; /* end time */
-
-  /* drawing parameters */
-  char init;     /* to recognize initial drawing */
-  double zoom_ratio;  /* zoom ratio of the graph to draw */
-  double x, y;        /* current coordinates of the central point */
-  double basex, basey;
   dv_llist_t itl[1]; /* list of nodes that have info tag */
 
-  /* layout status */
+  /* expansion state */
   int cur_d; /* current depth */
   int cur_d_ex; /* current depth of extensible union nodes */
 
@@ -207,6 +205,12 @@ typedef struct dv_view_status {
   int cm; /* click mode */
   long ndh; /* number of nodes including hidden ones */
   int focused;
+
+  /* drawing parameters */
+  char init;     /* to recognize initial drawing */
+  double zoom_ratio;  /* zoom ratio of the graph to draw */
+  double x, y;        /* current coordinates of the central point */
+  double basex, basey;
 } dv_view_status_t;
 
 typedef struct dv_viewport dv_viewport_t;
@@ -232,7 +236,8 @@ typedef struct dv_viewport {
   GtkWidget * darea; /* drawing area */
   int orientation; /* box's orientation */
   dv_view_interface_t * I[DV_MAX_VIEW]; /* interfaces to view */
-  double vpw, vph;  /* viewport's size */  
+  double vpw, vph;  /* viewport's size */
+  int hide;
 } dv_viewport_t;
 
 typedef struct dv_global_state {
@@ -272,6 +277,7 @@ void dv_global_state_set_active_view(dv_view_t *);
 dv_view_t * dv_global_state_get_active_view();
 
 void dv_queue_draw(dv_view_t *);
+void dv_queue_draw_d(dv_view_t *);
 
 void dv_view_status_init(dv_view_t *, dv_view_status_t *);
 
