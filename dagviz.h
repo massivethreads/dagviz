@@ -220,9 +220,14 @@ typedef struct dv_view_interface {
   dv_view_t * V;
   dv_viewport_t * VP;
   GtkWidget * toolbar;
-  GtkWidget * entry_radix;
+  GtkWidget * togg_focused;
   GtkWidget * combobox_lt;
-  GtkWidget * togg_focused;  
+  GtkWidget * combobox_nc;
+  GtkWidget * combobox_sdt;
+  GtkWidget * entry_radix;
+  GtkWidget * combobox_frombt;
+  GtkWidget * combobox_et;
+  GtkWidget * togg_eaffix;
 } dv_view_interface_t;
 
 typedef struct dv_view {
