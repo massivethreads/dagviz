@@ -7,6 +7,7 @@ dv_pidag_t * dv_pidag_read_new_file(char * filename) {
   dv_check(CS->nP < DV_MAX_DAG_FILE);
   dv_pidag_t * P = &CS->P[CS->nP++];
   P->fn = filename;
+  dv_llist_init(P->itl);
   
   /* Read file */
   int err;
@@ -400,7 +401,6 @@ void dv_dag_init(dv_dag_t *D, dv_pidag_t *P) {
   D->dmax = 0;
   D->bt = 0.0;
   D->et = 0.0;
-  dv_llist_init(D->itl);
   D->cur_d = 0;
   D->cur_d_ex = 0;
 }

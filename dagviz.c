@@ -84,6 +84,14 @@ void dv_queue_draw_d(dv_view_t *V) {
       dv_queue_draw(&CS->V[i]);
 }
 
+void dv_queue_draw_d_p(dv_view_t *V) {
+  dv_pidag_t *P = V->D->P;
+  int i;
+  for (i=0; i<CS->nV; i++)
+    if (CS->V[i].D->P == P)
+      dv_queue_draw(&CS->V[i]);
+}
+
 static void dv_do_zooming(dv_view_t *V, double zoom_ratio, double posx, double posy)
 {
   dv_view_status_t *S = V->S;
@@ -569,6 +577,7 @@ static gboolean on_scroll_event(GtkWidget *widget, GdkEventScroll *event, gpoint
 static void dv_do_button_event(dv_view_t *V, GdkEventButton *event)
 {
   dv_dag_t *D = V->D;
+  dv_llist_t *itl = D->P->itl;
   dv_view_status_t *S = V->S;
   if (event->type == GDK_BUTTON_PRESS) {
     // Drag
@@ -590,10 +599,10 @@ static void dv_do_button_event(dv_view_t *V, GdkEventButton *event)
         switch (S->cm) {
         case 0:
           // Info tag        
-          if (!dv_llist_remove(D->itl, node)) {
-            dv_llist_add(D->itl, node);
+          if (!dv_llist_remove(itl, node)) {
+            dv_llist_add(itl, node);
           }
-          dv_queue_draw_d(V);
+          dv_queue_draw_d_p(V);
           break;
         case 1:
           // Expand/Collapse

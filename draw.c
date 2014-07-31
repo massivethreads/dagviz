@@ -415,9 +415,9 @@ static void dv_view_draw_infotag_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *nod
 }
 
 void dv_view_draw_infotags(dv_view_t *V, cairo_t *cr) {
-  dv_dag_t *D = V->D;
+  dv_llist_t *itl = V->D->P->itl;
   dv_dag_node_t * u = NULL;
-  while (u = (dv_dag_node_t *) dv_llist_iterate_next(D->itl, u)) {
+  while (u = (dv_dag_node_t *) dv_llist_iterate_next(itl, u)) {
     if (dv_is_visible(u) && !dv_is_expanding(u)
         && (!u->parent || !dv_is_shrinking(u->parent)))
       dv_view_draw_infotag_1(V, cr, u);
