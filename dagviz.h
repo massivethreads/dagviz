@@ -20,6 +20,13 @@
 
 #include <execinfo.h>
 
+#define UNW_LOCAL_ONLY
+#include <libunwind.h>
+
+#include <sys/time.h>
+#include <unistd.h>
+#include <signal.h>
+
 
 /*-----Utilities-----*/
 typedef struct dv_linked_list {
@@ -170,6 +177,12 @@ typedef struct dv_dag {
   int cur_d; /* current depth */
   int cur_d_ex; /* current depth of extensible union nodes */
 
+  /* layout parameters */
+  int sdt; /* scale down type */
+  double log_radix;
+  double power_radix;
+  double linear_radix;
+  int frombt;
 } dv_dag_t;
 
 typedef struct dv_view dv_view_t;
@@ -195,11 +208,6 @@ typedef struct dv_view_status {
   dv_animation_t a[1]; /* animation struct */
   long nd; /* number of nodes drawn */
   int lt; /* layout type */
-  int sdt; /* scale down type */
-  double log_radix;
-  double power_radix;
-  double linear_radix;
-  int frombt;
   int et; /* edge type */
   int edge_affix; /* edge affix length */
   int cm; /* click mode */
@@ -228,6 +236,7 @@ typedef struct dv_view_interface {
   GtkWidget * combobox_frombt;
   GtkWidget * combobox_et;
   GtkWidget * togg_eaffix;
+  GtkWidget * entry_search;
 } dv_view_interface_t;
 
 typedef struct dv_view {
@@ -289,6 +298,7 @@ void dv_view_status_init(dv_view_t *, dv_view_status_t *);
 
 void dv_view_init(dv_view_t *);
 dv_view_t * dv_view_create_new_with_dag(dv_dag_t *);
+void * dv_view_interface_set_values(dv_view_t *, dv_view_interface_t *);
 dv_view_interface_t * dv_view_interface_create_new(dv_view_t *, dv_viewport_t *);
 void dv_view_interface_destroy(dv_view_interface_t *);
 void dv_view_add_viewport(dv_view_t *V, dv_viewport_t *VP);
@@ -299,6 +309,8 @@ void dv_viewport_init(dv_viewport_t *, int);
 void dv_viewport_add_interface(dv_viewport_t *, dv_view_interface_t *);
 void dv_viewport_remove_interface(dv_viewport_t *, dv_view_interface_t *);
 dv_view_interface_t * dv_viewport_get_interface_to_view(dv_viewport_t *, dv_view_t *);
+
+void dv_signal_handler(int);
 
 /* print.c */
 char * dv_get_node_kind_name(dr_dag_node_kind_t);
@@ -352,7 +364,8 @@ double dv_view_get_alpha_fading_out(dv_view_t *V, dv_dag_node_t *);
 double dv_view_get_alpha_fading_in(dv_view_t *V, dv_dag_node_t *);
 void dv_view_draw_edge_1(dv_view_t *, cairo_t *, dv_dag_node_t *, dv_dag_node_t *);
 void dv_view_draw_status(dv_view_t *, cairo_t *, int);
-void dv_view_draw_infotags(dv_view_t *, cairo_t *);
+void dv_view_draw_infotag_1(dv_view_t *, cairo_t *, dv_dag_node_t *);
+//void dv_view_draw_infotags(dv_view_t *, cairo_t *);
 void dv_view_draw(dv_view_t *, cairo_t *);
 void dv_viewport_draw_label(dv_viewport_t *, cairo_t *);
 
@@ -407,19 +420,47 @@ double dv_max(double, double);
 static void * dv_malloc(size_t);
 static void dv_free(void *, size_t);
 
+static void dv_get_callpath_by_backtrace() {
+  fprintf(stderr, "Call path by backtrace:\n");
+  
+  int len = 15;
+  void * s[len];// = (void **) dv_malloc(sizeof(void *) * size);
+  int n, i;    
+  n = backtrace(s, len);
+  char ** ss = backtrace_symbols(s, n);
+  for (i=0; i<n; i++)
+    fprintf(stderr, " %d: %s\n", i, ss[i]);
+}
+
+static void dv_get_callpath_by_libunwind() {
+  fprintf(stderr, "Call path by libunwind:\n");
+  
+  unw_cursor_t cursor; unw_context_t uc;
+  unw_word_t ip, sp, offp;
+  int i = 0;
+  int len = 30;
+  char bufp[len];
+  int ret;
+    
+  unw_getcontext(&uc);
+  unw_init_local(&cursor, &uc);
+  while (ret = unw_step(&cursor) > 0) {
+    unw_get_proc_name(&cursor, bufp, len, &offp);
+    unw_get_reg(&cursor, UNW_REG_IP, &ip);
+    unw_get_reg(&cursor, UNW_REG_SP, &sp);
+    fprintf (stderr, " %d: %s, ip = %p, sp = %p\n", i++, bufp, (void *) ip, (void *) sp);
+    if (i == 15) break;
+  }
+}
+
 static int dv_check_(int condition, const char * condition_s, 
                      const char * __file__, int __line__, 
                      const char * func) {
   if (!condition) {
     fprintf(stderr, "%s:%d:%s: check failed : %s\n", 
             __file__, __line__, func, condition_s);
-    int size = 10;
-    void ** s = (void **) dv_malloc(sizeof(void *) * size);
-    int n, i;    
-    n = backtrace(s, size);
-    char ** ss = backtrace_symbols(s, n);
-    for (i=0; i<n; i++)
-      fprintf(stderr, "%d: %s\n", i, ss[i]);    
+    dv_get_callpath_by_backtrace();
+    dv_get_callpath_by_libunwind();
     exit(1);
   }
   return 1;

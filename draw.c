@@ -299,7 +299,7 @@ void dv_view_draw_status(dv_view_t *V, cairo_t *cr, int count) {
   cairo_restore(cr);
 }
 
-static void dv_view_draw_infotag_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *node) {
+void dv_view_draw_infotag_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *node) {
   dv_dag_t *D = V->D;
   dv_view_status_t *S = V->S;
   double line_height = 12;
@@ -342,7 +342,8 @@ static void dv_view_draw_infotag_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *nod
   /* TODO: adaptable string length */
   dr_pi_dag_node *pi = dv_pidag_get_node(D->P, node);
   char *s = (char *) dv_malloc( DV_STRING_LENGTH * sizeof(char) );
-  sprintf(s, "[%ld] %s d=%d f=%d%d%d%d%d%d",
+  sprintf(s, "[%ld][%ld] %s d=%d f=%d%d%d%d%d%d n=%ld/%ld/%ld",
+          pi - D->P->T,
           node - D->T,
           dv_get_node_kind_name(pi->info.kind),
           node->d,
@@ -351,7 +352,10 @@ static void dv_view_draw_infotag_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *nod
           dv_is_inner_loaded(node),
           dv_is_shrinked(node),
           dv_is_expanding(node),
-          dv_is_shrinking(node));
+          dv_is_shrinking(node),
+          pi->info.cur_node_count,
+          pi->info.min_node_count,
+          pi->info.n_child_create_tasks);
   cairo_move_to(cr, xx, yy);
   cairo_show_text(cr, s);
   yy += line_height;
@@ -367,16 +371,18 @@ static void dv_view_draw_infotag_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *nod
   yy += line_height;
 
   // Line 3
-  sprintf(s, "T=%llu/%llu,nodes=%ld/%ld/%ld,edges=%ld/%ld/%ld/%ld",
+  sprintf(s, "T=%llu/%llu,nodes=%ld/%ld/%ld/%ld,edges=%ld/%ld/%ld/%ld/%ld",
           pi->info.t_1, 
           pi->info.t_inf,
           pi->info.logical_node_counts[dr_dag_node_kind_create_task],
           pi->info.logical_node_counts[dr_dag_node_kind_wait_tasks],
+          pi->info.logical_node_counts[dr_dag_node_kind_other],
           pi->info.logical_node_counts[dr_dag_node_kind_end_task],
           pi->info.logical_edge_counts[dr_dag_edge_kind_end],
           pi->info.logical_edge_counts[dr_dag_edge_kind_create],
           pi->info.logical_edge_counts[dr_dag_edge_kind_create_cont],
-          pi->info.logical_edge_counts[dr_dag_edge_kind_wait_cont]);
+          pi->info.logical_edge_counts[dr_dag_edge_kind_wait_cont],
+          pi->info.logical_edge_counts[dr_dag_edge_kind_other_cont]);
   cairo_move_to(cr, xx, yy);
   cairo_show_text(cr, s);
   yy += line_height;
@@ -414,15 +420,17 @@ static void dv_view_draw_infotag_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *nod
   dv_free(s, strlen(ss) + 10);
 }
 
+/*
 void dv_view_draw_infotags(dv_view_t *V, cairo_t *cr) {
   dv_llist_t *itl = V->D->P->itl;
-  dv_dag_node_t * u = NULL;
-  while (u = (dv_dag_node_t *) dv_llist_iterate_next(itl, u)) {
+  dv_pi_dag_node * pi = NULL;
+  while (pi = (dv_dag_node_t *) dv_llist_iterate_next(itl, pi)) {
     if (dv_is_visible(u) && !dv_is_expanding(u)
         && (!u->parent || !dv_is_shrinking(u->parent)))
       dv_view_draw_infotag_1(V, cr, u);
   }
 }
+*/
 
 void dv_view_draw(dv_view_t *V, cairo_t *cr) {
   dv_dag_t *D = V->D;
@@ -442,7 +450,7 @@ void dv_view_draw(dv_view_t *V, cairo_t *cr) {
   else
     dv_check(0);
   // Draw infotags
-  dv_view_draw_infotags(V, cr);  
+  //dv_view_draw_infotags(V, cr);  
 }
 
 void dv_viewport_draw_label(dv_viewport_t *VP, cairo_t *cr) {

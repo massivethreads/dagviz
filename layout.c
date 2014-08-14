@@ -81,7 +81,7 @@ static gboolean dv_animation_tick(gpointer data) {
     node = (dv_dag_node_t *) c->item;
     c = c->next;
     if (cur - node->started >= a->duration) {
-      dv_llist_remove(a->movings, node);
+      dv_animation_remove(a, node);
       if (dv_is_shrinking(node)) {
         dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKING);
         dv_node_flag_set(node->f, DV_NODE_FLAG_SHRINKED);

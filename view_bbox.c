@@ -15,17 +15,16 @@ double dv_view_calculate_hsize(dv_view_t *V, dv_dag_node_t *node) {
 }
 
 double dv_view_calculate_vresize(dv_view_t *V, double val) {
-  dv_view_status_t *S = V->S;
   double ret;
-  switch (S->sdt) {
+  switch (V->D->sdt) {
   case 0:
-    ret = log(val) / log(S->log_radix);
+    ret = log(val) / log(V->D->log_radix);
     break;
   case 1:
-    ret = pow(val, S->power_radix);
+    ret = pow(val, V->D->power_radix);
     break;
   case 2:
-    ret = val / S->linear_radix;
+    ret = val / V->D->linear_radix;
     break;
   default:
     dv_check(0);
@@ -41,7 +40,7 @@ static double dv_view_calculate_vgap(dv_view_t *V, dv_dag_node_t *parent, dv_dag
   dr_pi_dag_node * pi2 = dv_pidag_get_node(D->P, node2);
   double gap = dv_view_calculate_gap(V, parent);
   double vgap;
-  if (!S->frombt) {
+  if (!D->frombt) {
     // begin - end
     double time_gap = dv_view_calculate_vresize(V, pi2->info.start.t - pi1->info.end.t);
     vgap = gap * time_gap;
@@ -60,7 +59,7 @@ double dv_view_calculate_vsize(dv_view_t *V, dv_dag_node_t *node) {
   dr_pi_dag_node * pi = dv_pidag_get_node(D->P, node);
   double gap = 1.0;//dv_view_calculate_gap(V, node->parent);
   double vsize;
-  if (!S->frombt) {
+  if (!D->frombt) {
     // begin - end
     double time_gap = dv_view_calculate_vresize(V, pi->info.end.t - pi->info.start.t);
     vsize = gap * time_gap;
@@ -397,6 +396,9 @@ static void dv_view_draw_bbox_node_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *n
   cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
   cairo_stroke(cr);
   cairo_restore(cr);
+  // Draw infotag
+  if (dv_llist_has(V->D->P->itl, (void *) node->pii))
+    dv_view_draw_infotag_1(V, cr, node);
 }
 
 static void dv_view_draw_bbox_node_r(dv_view_t *V, cairo_t *cr, dv_dag_node_t *node) {

@@ -106,6 +106,9 @@ static void dv_view_draw_timeline_node_1(dv_view_t *V, cairo_t *cr, dv_dag_node_
     cairo_stroke(cr);
   }
   cairo_restore(cr);
+  // Draw infotag
+  if (dv_llist_has(V->D->P->itl, (void *) node->pii))
+    dv_view_draw_infotag_1(V, cr, node);
 }
 
 static void dv_view_draw_timeline_node_r(dv_view_t *V, cairo_t *cr, dv_dag_node_t *node) {
