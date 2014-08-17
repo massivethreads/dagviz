@@ -699,10 +699,96 @@ static gboolean on_entry_radix_activate(GtkEntry *entry, gpointer user_data) {
   return TRUE;
 }
 
+static dv_dag_node_t * dv_find_node_with_pii_r(dv_view_t *V, long pii, dv_dag_node_t *node) {
+  fprintf(stderr, "node %ld, head %p\n", node->pii, node->head);
+  if (node->pii == pii)
+    return node;
+  dv_dag_node_t *ret;
+  /* Call inward */
+  if (dv_is_union(node) && dv_is_inner_loaded(node)
+      && !dv_is_shrinking(node)
+      && (dv_is_expanded(node) || dv_is_expanding(node))) {
+    ret = dv_find_node_with_pii_r(V, pii, node->head);
+    if (ret)
+      return ret;
+  }
+  /* Call link-along */
+  dv_dag_node_t *u = NULL;
+  while (u = (dv_dag_node_t *) dv_llist_iterate_next(node->links, u)) {
+    ret = dv_find_node_with_pii_r(V, pii, u);
+    if (ret)
+      return ret;
+  }
+  return 0;
+}
+
 static gboolean on_entry_search_activate(GtkEntry *entry, gpointer user_data) {
   dv_view_t *V = (dv_view_t *) user_data;
+  dv_dag_t *D = V->D;
+  dv_view_status_t *S = V->S;
+  // Get node
   long pii = atol(gtk_entry_get_text(GTK_ENTRY(entry)));
-  fprintf(stderr, "search for %ld\n", pii);
+  dv_dag_node_t *node = dv_find_node_with_pii_r(V, pii, D->rt);
+  fprintf(stderr, "search for %ld (%p)\n", pii, node);
+  if (!node)
+    return TRUE;
+  // Get target zoom ratio, x, y
+  dv_node_coordinate_t *co = &node->c[S->lt];
+  double zoom_ratio = 1.0;
+  double x = 0.0;
+  double y = 0.0;
+  double d1, d2;
+  if (S->lt == 0) {
+    // Grid-based
+    d1 = co->lw + co->rw;
+    d2 = S->vpw - 2 * (DV_ZOOM_TO_FIT_MARGIN + DV_RADIUS);
+    if (d1 > d2)
+      zoom_ratio = d2 / d1;
+    d1 = co->dw;
+    d2 = S->vph - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    if (d1 > d2)
+      zoom_ratio = dv_min(zoom_ratio, d2 / d1);
+    zoom_ratio = dv_min(zoom_ratio, S->zoom_ratio);
+    x -= (co->x + (co->rw - co->lw) * 0.5) * zoom_ratio;
+    y -= co->y * zoom_ratio - (S->vph - 2 * DV_ZOOM_TO_FIT_MARGIN - co->dw * zoom_ratio) * 0.5;
+  } else if (S->lt == 1) {
+    // Bounding box
+    d1 = co->lw + co->rw;
+    d2 = S->vpw - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    if (d1 > d2)
+      zoom_ratio = d2 / d1;
+    d1 = co->dw;
+    d2 = S->vph - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    if (d1 > d2)
+      zoom_ratio = dv_min(zoom_ratio, d2 / d1);
+    zoom_ratio = dv_min(zoom_ratio, S->zoom_ratio);
+    x -= (co->x + (co->rw - co->lw) * 0.5) * zoom_ratio;
+    y -= co->y * zoom_ratio - (S->vph - 2 * DV_ZOOM_TO_FIT_MARGIN - co->dw * zoom_ratio) * 0.5;
+  } else if (S->lt == 2) {
+    // Timeline
+    d1 = 2*DV_RADIUS + (D->P->num_workers - 1) * (2*DV_RADIUS + DV_HDIS);
+    d2 = S->vpw - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    if (d1 > d2)
+      zoom_ratio = d2 / d1;
+    d1 = co->dw;
+    d2 = S->vph - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    if (d1 > d2)
+      zoom_ratio = dv_min(zoom_ratio, d2 / d1);
+    zoom_ratio = dv_min(zoom_ratio, S->zoom_ratio);
+    x -= (co->x + (co->rw - co->lw) * 0.5) * zoom_ratio - S->vpw * 0.5;
+    y -= co->y * zoom_ratio - (S->vph - 2 * DV_ZOOM_TO_FIT_MARGIN - co->dw * zoom_ratio) * 0.5;
+  } else {
+    dv_check(0);
+  }
+  // Set info tag
+  if (!dv_llist_has(D->P->itl, (void *) pii)) {
+    dv_llist_add(D->P->itl, (void *) pii);
+  }  
+  // Set motion
+  if (!S->m->on)
+    dv_motion_start(S->m, pii, x, y, zoom_ratio);
+  else
+    dv_motion_reset_target(S->m, pii, x, y, zoom_ratio);
   return TRUE;
 }
 
@@ -894,6 +980,7 @@ void dv_view_status_init(dv_view_t *V, dv_view_status_t *S) {
   S->zoom_ratio = 1.0;
   S->x = S->y = 0.0;
   S->basex = S->basey = 0.0;
+  dv_motion_init(S->m, V);
 }
 
 void dv_view_init(dv_view_t *V) {

@@ -195,6 +195,17 @@ typedef struct dv_animation {
   dv_view_t *V; /* view that possesses this animation */
 } dv_animation_t;
 
+typedef struct dv_motion {
+  int on;
+  double duration;
+  double step;
+  dv_view_t *V;
+  long target_pii;
+  double xfrom, yfrom, zrfrom;
+  double xto, yto, zrto;
+  double start_t;
+} dv_motion_t;
+
 typedef struct dv_view_status {
   // Drag animation
   char drag_on; /* currently dragged or not */
@@ -219,6 +230,9 @@ typedef struct dv_view_status {
   double zoom_ratio;  /* zoom ratio of the graph to draw */
   double x, y;        /* current coordinates of the central point */
   double basex, basey;
+
+  /* moving animation */
+  dv_motion_t m[1];
 } dv_view_status_t;
 
 typedef struct dv_viewport dv_viewport_t;
@@ -356,6 +370,11 @@ void dv_animation_add(dv_animation_t *, dv_dag_node_t *);
 void dv_animation_remove(dv_animation_t *, dv_dag_node_t *);
 void dv_animation_reverse(dv_animation_t *, dv_dag_node_t *);
 
+void dv_motion_init(dv_motion_t *, dv_view_t *);
+void dv_motion_reset_target(dv_motion_t *, long, double, double, double);
+void dv_motion_start(dv_motion_t *, long, double, double, double);
+void dv_motion_stop(dv_motion_t *);
+
 /* draw.c */
 void dv_draw_text(cairo_t *);
 void dv_draw_rounded_rectangle(cairo_t *, double, double, double, double);
@@ -413,6 +432,7 @@ int dv_llist_size(dv_llist_t *);
 
 const char * dv_convert_char_to_binary(int );
 double dv_max(double, double);
+double dv_min(double, double);
 
 
 /*-----------------Inlines-----------------*/

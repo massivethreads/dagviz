@@ -307,3 +307,10 @@ double dv_max(double d1, double d2) {
     return d2;
 }
 
+double dv_min(double d1, double d2) {
+  if (d1 < d2)
+    return d1;
+  else
+    return d2;
+}
+
