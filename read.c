@@ -36,20 +36,24 @@ dv_pidag_t * dv_pidag_read_new_file(char * filename) {
     exit(1);
   }
 
-  long n, m, nw;
+  long n, m, sc, nw;
   long * ldp = (long *) dp;
   n = *ldp;
   ldp++;
   m = *ldp;
+  ldp++;
+  sc = *ldp;
   ldp++;
   nw = *ldp;
   ldp++;
   printf("PI DAG:\n"
          "  n = %ld\n"
          "  m = %ld\n"
-         "  nw = %ld\n", n, m, nw);
+         "  sc = %ld\n"
+         "  nw = %ld\n", n, m, sc, nw);
   P->n = n;
   P->m = m;
+  P->start_clock = sc;
   P->num_workers = nw;
 
   P->T = (dr_pi_dag_node *) ldp;
