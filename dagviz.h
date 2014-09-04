@@ -20,8 +20,12 @@
 
 #include <execinfo.h>
 
+//#define DV_USE_LIBUNWIND
+
+#ifdef DV_USE_LIBUNWIND
 #define UNW_LOCAL_ONLY
 #include <libunwind.h>
+#endif
 
 #include <sys/time.h>
 #include <unistd.h>
@@ -88,7 +92,7 @@ typedef struct dv_llist {
 #define DV_NUM_LAYOUT_TYPES 3
 #define DV_LAYOUT_TYPE_INIT 0
 #define DV_NODE_COLOR_INIT 0
-#define DV_SCALE_TYPE_INIT 1
+#define DV_SCALE_TYPE_INIT 2
 #define DV_FROMBT_INIT 0
 #define DV_EDGE_TYPE_INIT 3
 #define DV_EDGE_AFFIX_LENGTH 10
@@ -453,6 +457,7 @@ static void dv_get_callpath_by_backtrace() {
 }
 
 static void dv_get_callpath_by_libunwind() {
+#ifdef DV_USE_LIBUNWIND
   fprintf(stderr, "Call path by libunwind:\n");
   
   unw_cursor_t cursor; unw_context_t uc;
@@ -471,6 +476,7 @@ static void dv_get_callpath_by_libunwind() {
     fprintf (stderr, " %d: %s, ip = %p, sp = %p\n", i++, bufp, (void *) ip, (void *) sp);
     if (i == 15) break;
   }
+#endif  
 }
 
 static int dv_check_(int condition, const char * condition_s, 
