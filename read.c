@@ -36,8 +36,9 @@ dv_pidag_t * dv_pidag_read_new_file(char * filename) {
     exit(1);
   }
 
+  char * dr_header = (char *) dp;
   long n, m, sc, nw;
-  long * ldp = (long *) dp;
+  long * ldp = (long *) (dr_header + DAG_RECORDER_HEADER_LEN);
   n = *ldp;
   ldp++;
   m = *ldp;
@@ -46,11 +47,11 @@ dv_pidag_t * dv_pidag_read_new_file(char * filename) {
   ldp++;
   nw = *ldp;
   ldp++;
-  printf("PI DAG:\n"
+  printf("PI DAG: %s\n"
          "  n = %ld\n"
          "  m = %ld\n"
          "  sc = %ld\n"
-         "  nw = %ld\n", n, m, sc, nw);
+         "  nw = %ld\n", dr_header, n, m, sc, nw);
   P->n = n;
   P->m = m;
   P->start_clock = sc;

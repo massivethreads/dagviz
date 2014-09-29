@@ -1,5 +1,10 @@
+/*
+ * dagviz.h
+ */
+
 #ifndef DAGVIZ_HEADER_
 #define DAGVIZ_HEADER_
+#pragma once
 
 #include <stdio.h>
 #include <stdlib.h>

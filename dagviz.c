@@ -1563,7 +1563,6 @@ void dv_signal_handler(int signo) {
 }
 
 static void dv_alarm_init() {
-  return;
   if (signal(SIGALRM, dv_signal_handler) == SIG_ERR)
     fprintf(stderr, "cannot catch SIGALRM\n");
   else
@@ -1577,7 +1576,7 @@ int main(int argc, char *argv[])
   gtk_init(&argc, &argv);
   //dv_get_env();
   //if (argc > 1)  print_dag_file(argv[1]);
-  dv_alarm_init();
+  //dv_alarm_init();
   
   /* PIDAG initialization */
   int i;
