@@ -1,9 +1,19 @@
 platform?=g
-prefix?=$(realpath ../../..)/inst/$(platform)
+parallel2_dir?=$(realpath ../../../..)
+prefix?=$(parallel2_dir)/sys/inst/$(platform)
 
-#username?=huynh
-#username?=zanton
-parallel2_dir:=$(prefix)
+CC:=gcc
+
+cflags_w?=-g #-Wall
+
+CFLAGS+=$(cflags_w)
+CFLAGS+=-I$(prefix)/include
+CFLAGS+=-DDAG_RECORDER=2 -DDAG_RECORDER_INLINE_INSTRUMENTATION
+
+ldflags_uw?= #-lunwind
+LDFLAGS+=-L$(prefix)/lib -Wl,-R$(prefix)/lib
+LDFLAGS+=`pkg-config --cflags --libs gtk+-3.0`
+LDFLAGS+=-ldr -lm $(ldflags_uw)
 
 all: compile
 download :
@@ -15,9 +25,8 @@ exe:=dagviz
 compile_done : $(exe)
 	touch $@
 
-# /home/$(username)/parallel2/sys/inst/g
 $(exe) : dagviz.c
-	gcc -Wall -g -I$(parallel2_dir)/include dagviz.c read.c layout.c draw.c utils.c print.c view_glike.c view_bbox.c view_timeline.c -L$(parallel2_dir)/lib -Wl,-R$(parallel2_dir)/lib `pkg-config --cflags --libs gtk+-3.0` -o $(exe) -ldr -lm
+	$(CC) $(CFLAGS) dagviz.c read.c layout.c draw.c utils.c print.c view_glike.c view_bbox.c view_timeline.c $(LDFLAGS) -o $@
 
 install_done: compile_done
 	mkdir -p $(prefix)/bin
