@@ -53,6 +53,7 @@ void dv_global_state_init(dv_global_state_t *CS) {
   int i;
   for (i=0; i<DV_NUM_COLOR_POOLS; i++)
     CS->CP_sizes[i] = 0;
+  dv_btsample_viewer_init(CS->btviewer);
 }
 
 void dv_global_state_set_active_view(dv_view_t *V) {
@@ -960,6 +961,88 @@ static void on_btn_attrs_clicked(GtkToolButton *toolbtn, gpointer user_data)
   gtk_widget_destroy(dialog);
 }
 
+static void on_btn_choose_bt_file_clicked(GtkToolButton *toolbtn, gpointer user_data) {
+  dv_btsample_viewer_t * btviewer = (dv_btsample_viewer_t *) user_data;
+
+  // Build dialog
+  GtkFileChooserAction action = GTK_FILE_CHOOSER_ACTION_OPEN;
+  GtkWidget * dialog = gtk_file_chooser_dialog_new("Choose BT File",
+                                                   0,
+                                                   action,
+                                                   "_Cancel",
+                                                   GTK_RESPONSE_CANCEL,
+                                                   "Ch_oose",
+                                                   GTK_RESPONSE_ACCEPT,
+                                                   NULL);
+  gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(dialog), btviewer->P->fn);
+  gint res = gtk_dialog_run(GTK_DIALOG(dialog));
+  if (res == GTK_RESPONSE_ACCEPT) {
+    GtkFileChooser * chooser = GTK_FILE_CHOOSER(dialog);
+    char * filename = gtk_file_chooser_get_filename(chooser);
+    gtk_entry_set_text(GTK_ENTRY(btviewer->entry_bt_file_name), filename);
+    g_free(filename);
+  }
+  
+  gtk_widget_destroy(dialog);  
+}
+
+static void on_btn_choose_binary_file_clicked(GtkToolButton *toolbtn, gpointer user_data) {
+  dv_btsample_viewer_t * btviewer = (dv_btsample_viewer_t *) user_data;
+
+  // Build dialog
+  GtkFileChooserAction action = GTK_FILE_CHOOSER_ACTION_OPEN;
+  GtkWidget * dialog = gtk_file_chooser_dialog_new("Choose Binary File",
+                                                   0,
+                                                   action,
+                                                   "_Cancel",
+                                                   GTK_RESPONSE_CANCEL,
+                                                   "Ch_oose",
+                                                   GTK_RESPONSE_ACCEPT,
+                                                   NULL);
+  gtk_file_chooser_set_filename(GTK_FILE_CHOOSER(dialog), btviewer->P->fn);
+  gint res = gtk_dialog_run(GTK_DIALOG(dialog));
+  if (res == GTK_RESPONSE_ACCEPT) {
+    GtkFileChooser * chooser = GTK_FILE_CHOOSER(dialog);
+    char * filename = gtk_file_chooser_get_filename(chooser);
+    gtk_entry_set_text(GTK_ENTRY(btviewer->entry_binary_file_name), filename);
+    g_free(filename);
+  }
+  
+  gtk_widget_destroy(dialog);  
+}
+
+static void on_btn_find_node_clicked(GtkToolButton *toolbtn, gpointer user_data) {
+  dv_btsample_viewer_t * btviewer = (dv_btsample_viewer_t *) user_data;
+  long pii = atol(gtk_entry_get_text(GTK_ENTRY(btviewer->entry_node_id)));
+  //dv_dag_node_t *node = dv_find_node_with_pii_r(CS->activeV, pii, CS->activeV->D->rt);
+  dr_pi_dag_node *pi = dv_pidag_get_node_with_id(btviewer->P, pii);
+  if (pi) {
+    gtk_combo_box_set_active(GTK_COMBO_BOX(btviewer->combobox_worker), pi->info.worker);
+    char str[30];
+    sprintf(str, "%llu", (unsigned long long) pi->info.start.t);
+    gtk_entry_set_text(GTK_ENTRY(btviewer->entry_time_from), str);
+    sprintf(str, "%llu", (unsigned long long) pi->info.end.t);
+    gtk_entry_set_text(GTK_ENTRY(btviewer->entry_time_to), str);
+  } else {
+    gtk_combo_box_set_active(GTK_COMBO_BOX(btviewer->combobox_worker), -1);
+    gtk_entry_set_text(GTK_ENTRY(btviewer->entry_time_from), "");
+    gtk_entry_set_text(GTK_ENTRY(btviewer->entry_time_to), "");
+  }
+}
+
+static void on_btn_run_view_bt_samples_clicked(GtkToolButton *toolbtn, gpointer user_data) {
+  dv_btsample_viewer_t * btviewer = (dv_btsample_viewer_t *) user_data;
+
+  int worker = gtk_combo_box_get_active(GTK_COMBO_BOX(btviewer->combobox_worker));
+  unsigned long long from = atoll(gtk_entry_get_text(GTK_ENTRY(btviewer->entry_time_from)));
+  unsigned long long to = atoll(gtk_entry_get_text(GTK_ENTRY(btviewer->entry_time_to)));
+  if (from < btviewer->P->start_clock)
+    from += btviewer->P->start_clock;
+  if (to < btviewer->P->start_clock)
+    to += btviewer->P->start_clock;
+
+  dv_btsample_viewer_extract_interval(btviewer, worker, from, to);
+}
 
 void dv_view_status_init(dv_view_t *V, dv_view_status_t *S) {
   S->drag_on = 0;
@@ -1373,6 +1456,111 @@ static void on_dag_add_new(GtkMenuItem *menuitem, gpointer user_data) {
   }
 }
 
+static void on_menu_item_view_samples_clicked(GtkToolButton *toolbtn, gpointer user_data) {
+  dv_pidag_t * P = CS->activeV->D->P;
+  CS->btviewer->P = P;
+
+  // Build dialog
+  GtkWidget * dialog = gtk_dialog_new();
+  gtk_window_set_title(GTK_WINDOW(dialog), "View Backtrace Samples");
+  gtk_window_set_default_size(GTK_WINDOW(dialog), 800, 700);
+  GtkWidget * dialog_vbox = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+  gtk_box_set_spacing(GTK_BOX(dialog_vbox), 5);
+
+  // HBox 1: dag file
+  GtkWidget * hbox1 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+  gtk_box_pack_start(GTK_BOX(dialog_vbox), hbox1, FALSE, FALSE, 0);
+  GtkWidget * hbox1_label = gtk_label_new("DAG File:");
+  gtk_box_pack_start(GTK_BOX(hbox1), hbox1_label, FALSE, FALSE, 0);
+  GtkWidget * hbox1_filename = CS->btviewer->label_dag_file_name;
+  gtk_box_pack_start(GTK_BOX(hbox1), hbox1_filename, TRUE, TRUE, 0);
+  gtk_label_set_text(GTK_LABEL(hbox1_filename), P->fn);
+  
+  // HBox 2: bt file
+  GtkWidget * hbox2 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+  gtk_box_pack_start(GTK_BOX(dialog_vbox), hbox2, FALSE, FALSE, 0);
+  GtkWidget * hbox2_label = gtk_label_new("        BT File:");
+  gtk_box_pack_start(GTK_BOX(hbox2), hbox2_label, FALSE, FALSE, 0);
+  GtkWidget * hbox2_filename = CS->btviewer->entry_bt_file_name;
+  gtk_box_pack_start(GTK_BOX(hbox2), hbox2_filename, TRUE, TRUE, 0);
+  GtkWidget * hbox2_btn = gtk_button_new_with_label("Choose file");
+  gtk_box_pack_start(GTK_BOX(hbox2), hbox2_btn, FALSE, FALSE, 0);
+  g_signal_connect(G_OBJECT(hbox2_btn), "clicked", G_CALLBACK(on_btn_choose_bt_file_clicked), (void *) CS->btviewer);
+  
+  // HBox 3: binary file
+  GtkWidget * hbox3 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+  gtk_box_pack_start(GTK_BOX(dialog_vbox), hbox3, FALSE, FALSE, 0);
+  GtkWidget * hbox3_label = gtk_label_new("Binary File:");
+  gtk_box_pack_start(GTK_BOX(hbox3), hbox3_label, FALSE, FALSE, 0);
+  GtkWidget * hbox3_filename = CS->btviewer->entry_binary_file_name;
+  gtk_box_pack_start(GTK_BOX(hbox3), hbox3_filename, TRUE, TRUE, 0);
+  GtkWidget * hbox3_btn = gtk_button_new_with_label("Choose file");
+  gtk_box_pack_start(GTK_BOX(hbox3), hbox3_btn, FALSE, FALSE, 0);
+  g_signal_connect(G_OBJECT(hbox3_btn), "clicked", G_CALLBACK(on_btn_choose_binary_file_clicked), (void *) CS->btviewer);
+
+  // HBox 4: node ID
+  GtkWidget * hbox4 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+  gtk_box_pack_start(GTK_BOX(dialog_vbox), hbox4, FALSE, FALSE, 0);
+  GtkWidget * hbox4_label = gtk_label_new("Node ID:");
+  gtk_box_pack_start(GTK_BOX(hbox4), hbox4_label, FALSE, FALSE, 0);
+  GtkWidget * hbox4_nodeid = CS->btviewer->entry_node_id;
+  gtk_box_pack_start(GTK_BOX(hbox4), hbox4_nodeid, FALSE, FALSE, 0);
+  gtk_entry_set_max_length(GTK_ENTRY(hbox4_nodeid), 10);
+  GtkWidget * hbox4_btn = gtk_button_new_with_label("Find node");
+  gtk_box_pack_start(GTK_BOX(hbox4), hbox4_btn, FALSE, FALSE, 0);
+  g_signal_connect(G_OBJECT(hbox4_btn), "clicked", G_CALLBACK(on_btn_find_node_clicked), (void *) CS->btviewer);
+
+  // HBox 5: worker & time interval
+  GtkWidget * hbox5 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+  gtk_box_pack_start(GTK_BOX(dialog_vbox), hbox5, FALSE, FALSE, 0);
+  GtkWidget * hbox5_label = gtk_label_new("On worker");
+  gtk_box_pack_start(GTK_BOX(hbox5), hbox5_label, FALSE, FALSE, 0);
+  GtkWidget * hbox5_combo = CS->btviewer->combobox_worker;
+  gtk_box_pack_start(GTK_BOX(hbox5), hbox5_combo, FALSE, FALSE, 0);
+  gtk_combo_box_text_remove_all(GTK_COMBO_BOX_TEXT(hbox5_combo));
+  int i;
+  char str[10];
+  for (i=0; i<P->num_workers; i++) {
+    sprintf(str, "%d", i);
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(hbox5_combo), str, str);
+  }
+  GtkWidget * hbox5_label2 = gtk_label_new("from clock");
+  gtk_box_pack_start(GTK_BOX(hbox5), hbox5_label2, FALSE, FALSE, 0);
+  GtkWidget * hbox5_from = CS->btviewer->entry_time_from;
+  gtk_box_pack_start(GTK_BOX(hbox5), hbox5_from, TRUE, TRUE, 0);
+  GtkWidget * hbox5_label3 = gtk_label_new("to clock");
+  gtk_box_pack_start(GTK_BOX(hbox5), hbox5_label3, FALSE, FALSE, 0);
+  GtkWidget * hbox5_to = CS->btviewer->entry_time_to;
+  gtk_box_pack_start(GTK_BOX(hbox5), hbox5_to, TRUE, TRUE, 0);
+
+  // HBox 6: run button
+  GtkWidget * hbox6 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+  gtk_box_pack_start(GTK_BOX(dialog_vbox), hbox6, FALSE, FALSE, 0);
+  GtkWidget * hbox6_btn = gtk_button_new_with_label("Run");
+  gtk_box_pack_end(GTK_BOX(hbox6), hbox6_btn, FALSE, FALSE, 0);
+  g_signal_connect(G_OBJECT(hbox6_btn), "clicked", G_CALLBACK(on_btn_run_view_bt_samples_clicked), (void *) CS->btviewer);
+
+  // Text view
+  GtkWidget *scrolledwindow = gtk_scrolled_window_new(0, 0);
+  gtk_box_pack_end(GTK_BOX(dialog_vbox), scrolledwindow, TRUE, TRUE, 0);
+  gtk_container_add(GTK_CONTAINER(scrolledwindow), CS->btviewer->text_view);
+
+  // Run
+  gtk_widget_show_all(dialog_vbox);
+  gtk_dialog_run(GTK_DIALOG(dialog));
+
+  // Destroy
+  gtk_container_remove(GTK_CONTAINER(hbox1), CS->btviewer->label_dag_file_name);
+  gtk_container_remove(GTK_CONTAINER(hbox2), CS->btviewer->entry_bt_file_name);
+  gtk_container_remove(GTK_CONTAINER(hbox3), CS->btviewer->entry_binary_file_name);
+  gtk_container_remove(GTK_CONTAINER(hbox4), CS->btviewer->entry_node_id);
+  gtk_container_remove(GTK_CONTAINER(hbox5), CS->btviewer->combobox_worker);
+  gtk_container_remove(GTK_CONTAINER(hbox5), CS->btviewer->entry_time_from);
+  gtk_container_remove(GTK_CONTAINER(hbox5), CS->btviewer->entry_time_to);
+  gtk_container_remove(GTK_CONTAINER(scrolledwindow), CS->btviewer->text_view);
+  gtk_widget_destroy(dialog);
+}
+
 /*-----------------end of Menubar functions-----------------*/
 
 
@@ -1499,6 +1687,15 @@ static GtkWidget * dv_create_menubar() {
     gtk_menu_shell_append(GTK_MENU_SHELL(pidags_menu), pidag);
   }
   
+  // submenu Sample Backtrace
+  GtkWidget *samplebt = gtk_menu_item_new_with_mnemonic("_Samples");
+  gtk_menu_shell_append(GTK_MENU_SHELL(menubar), samplebt);
+  GtkWidget *samplebt_menu = gtk_menu_new();
+  gtk_menu_item_set_submenu(GTK_MENU_ITEM(samplebt), samplebt_menu);
+  GtkWidget *samplebt_open = gtk_menu_item_new_with_mnemonic("_View Backtrace Samples");
+  gtk_menu_shell_append(GTK_MENU_SHELL(samplebt_menu), samplebt_open);
+  g_signal_connect(G_OBJECT(samplebt_open), "activate", G_CALLBACK(on_menu_item_view_samples_clicked), (void *) 0);
+  
   return menubar;
 }
 
@@ -1572,8 +1769,8 @@ static void dv_alarm_init() {
 int main(int argc, char *argv[])
 {
   /* General initialization */
-  dv_global_state_init(CS);
   gtk_init(&argc, &argv);
+  dv_global_state_init(CS);
   //dv_get_env();
   //if (argc > 1)  print_dag_file(argv[1]);
   //dv_alarm_init();
@@ -1602,7 +1799,9 @@ int main(int argc, char *argv[])
       dv_view_add_viewport(V, &CS->VP[i]);
       CS->VP[i].hide = 0;
     }
-    dv_do_expanding_one(V);
+    int j;
+    for (j=0; j<15; j++)
+      dv_do_expanding_one(V);
     dv_view_layout(V); // must be called before first call to view_draw() for rt->vl
   }
   dv_do_set_focused_view(CS->V, 1);

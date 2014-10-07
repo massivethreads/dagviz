@@ -25,9 +25,9 @@
 
 #include <execinfo.h>
 
-//#define DV_USE_LIBUNWIND
+//#define ENABLE_LIBUNWIND
 
-#ifdef DV_USE_LIBUNWIND
+#ifdef ENABLE_LIBUNWIND
 #define UNW_LOCAL_ONLY
 #include <libunwind.h>
 #endif
@@ -35,6 +35,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <signal.h>
+#include <bfd.h>
 
 
 /*-----Utilities-----*/
@@ -95,7 +96,7 @@ typedef struct dv_llist {
 #define DV_ANIMATION_STEP 30 // milliseconds
 
 #define DV_NUM_LAYOUT_TYPES 3
-#define DV_LAYOUT_TYPE_INIT 0
+#define DV_LAYOUT_TYPE_INIT 2
 #define DV_NODE_COLOR_INIT 0
 #define DV_SCALE_TYPE_INIT 2
 #define DV_FROMBT_INIT 0
@@ -120,7 +121,17 @@ typedef struct dv_llist {
 #define DV_OK 0
 #define DV_ERROR_OONP 1 /* out of node pool */
 
+#define backtrace_sample_sz 15
+
 /*-----------------Data Structures-----------------*/
+
+/* a single record of backtrace */
+typedef struct {
+  unsigned long long tsc;
+  int worker;
+  int n;
+  void * frames[backtrace_sample_sz];
+} bt_sample_t;
 
 typedef struct dv_pidag {
   long n;			/* length of T */
@@ -278,6 +289,18 @@ typedef struct dv_viewport {
   int hide;
 } dv_viewport_t;
 
+typedef struct dv_btsample_viewer {
+  dv_pidag_t * P;
+  GtkWidget * label_dag_file_name;
+  GtkWidget * entry_bt_file_name;
+  GtkWidget * entry_binary_file_name;
+  GtkWidget * combobox_worker;
+  GtkWidget * entry_time_from;
+  GtkWidget * entry_time_to;
+  GtkWidget * text_view;
+  GtkWidget * entry_node_id;
+} dv_btsample_viewer_t;
+
 typedef struct dv_global_state {
   dv_pidag_t P[DV_MAX_DAG_FILE];
   dv_dag_t  D[DV_MAX_DAG];
@@ -297,6 +320,7 @@ typedef struct dv_global_state {
   GtkWidget * menubar;
   GtkWidget * hbox;
   GtkWidget * vbox0;
+  dv_btsample_viewer_t btviewer[1];
 } dv_global_state_t;
 
 
@@ -350,6 +374,7 @@ void dv_check_layout(dv_dag_t *);
 
 /* read.c */
 dv_pidag_t *     dv_pidag_read_new_file(char *);
+dr_pi_dag_node * dv_pidag_get_node_with_id(dv_pidag_t *, long);
 dr_pi_dag_node * dv_pidag_get_node(dv_pidag_t *, dv_dag_node_t *);
 
 void            dv_dag_node_pool_init(dv_dag_t *);
@@ -366,6 +391,9 @@ int dv_dag_destroy_node_innner(dv_dag_t *, dv_dag_node_t *);
 void dv_dag_clear_shrinked_nodes(dv_dag_t *);
 void dv_dag_init(dv_dag_t *, dv_pidag_t *);
 dv_dag_t * dv_dag_create_new_with_pidag(dv_pidag_t *);
+
+void dv_btsample_viewer_init(dv_btsample_viewer_t *);
+int dv_btsample_viewer_extract_interval(dv_btsample_viewer_t *, int, unsigned long long, unsigned long long);
 
 
 /* layout.c */
@@ -463,7 +491,7 @@ static void dv_get_callpath_by_backtrace() {
 }
 
 static void dv_get_callpath_by_libunwind() {
-#ifdef DV_USE_LIBUNWIND
+#ifdef ENABLE_LIBUNWIND
   fprintf(stderr, "Call path by libunwind:\n");
   
   unw_cursor_t cursor; unw_context_t uc;
