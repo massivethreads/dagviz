@@ -1713,9 +1713,20 @@ static int open_gui(int argc, char *argv[])
   //gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
   gtk_window_set_default_size(GTK_WINDOW(window), 1000, 700);
   gtk_window_maximize(GTK_WINDOW(window));
+  //gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
   gtk_window_set_title(GTK_WINDOW(window), "DAG Visualizer");
   g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
   g_signal_connect(G_OBJECT(CS->window), "key-press-event", G_CALLBACK(on_window_key_event), NULL);
+
+  // Set icon
+  char *icon_filename = "smile_icon.png";
+  GError *error = 0; 
+  GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file(icon_filename, &error);
+  if (!pixbuf) {
+    fprintf(stderr, "Cannot set icon %s: %s\n", icon_filename, error->message);
+  } else {
+    gtk_window_set_icon(GTK_WINDOW(window), pixbuf);
+  }
 
   // vbox0
   GtkWidget *vbox0 = CS->vbox0;
