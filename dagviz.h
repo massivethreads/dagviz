@@ -113,10 +113,9 @@ typedef struct dv_llist {
 #define DV_DAG_NODE_POOL_SIZE 30000
 
 #define DV_MAX_DAG_FILE 5
-#define DV_MAX_DAG 5
-#define DV_MAX_VIEW 5
-#define DV_MAX_VIEWPORT 4
-#define DV_NUM_VIEWPORTS_DEFAULT 2
+#define DV_MAX_DAG 10
+#define DV_MAX_VIEW 10
+#define DV_MAX_VIEWPORT 10
 
 #define DV_OK 0
 #define DV_ERROR_OONP 1 /* out of node pool */
@@ -281,12 +280,18 @@ typedef struct dv_view {
 } dv_view_t;
 
 typedef struct dv_viewport {
-  GtkWidget * box; /* hbox or vbox */
+  int split; /* split into two nested paned viewports or not */
+  GtkWidget * frame; /* contains [paned | box]*/
+  /* Split */
+  GtkWidget * paned; /* GtkPaned */
+  GtkOrientation orientation; /* split orientation */
+  struct dv_viewport * vp1; /* first child viewport */
+  struct dv_viewport * vp2; /* second child viewport */
+  /* No split */
+  GtkWidget * box; /* contains toolbars and darea */
   GtkWidget * darea; /* drawing area */
-  int orientation; /* box's orientation */
   dv_view_interface_t * I[DV_MAX_VIEW]; /* interfaces to view */
   double vpw, vph;  /* viewport's size */
-  int hide;
 } dv_viewport_t;
 
 typedef struct dv_btsample_viewer {
@@ -302,25 +307,31 @@ typedef struct dv_btsample_viewer {
 } dv_btsample_viewer_t;
 
 typedef struct dv_global_state {
+  /* DAG */
   dv_pidag_t P[DV_MAX_DAG_FILE];
   dv_dag_t  D[DV_MAX_DAG];
   dv_view_t V[DV_MAX_VIEW];
-  dv_viewport_t VP[DV_MAX_VIEWPORT];
   int nP;
   int nD;
   int nV;
-  int nVP;
   dv_llist_cell_t * FL;  
-  GtkWidget * window;
   dv_view_t * activeV;
   int err;
-  // Color pool
+  
+  /* Color pools */
   int CP[DV_NUM_COLOR_POOLS][DV_COLOR_POOL_SIZE][4]; // worker, cpu, nodekind, cp1, cp2, cp3
   int CP_sizes[DV_NUM_COLOR_POOLS];
-  GtkWidget * menubar;
-  GtkWidget * hbox;
+  
+  /* GUI */
+  GtkWidget * window;
   GtkWidget * vbox0;
+  GtkWidget * menubar;
+  dv_viewport_t VP[DV_MAX_VIEWPORT];
+  int nVP;
+
+  /* Dialogs */
   dv_btsample_viewer_t btviewer[1];
+  GtkWidget * box_viewport_configure;
 } dv_global_state_t;
 
 
@@ -353,7 +364,7 @@ void dv_view_add_viewport(dv_view_t *V, dv_viewport_t *VP);
 void dv_view_remove_viewport(dv_view_t *, dv_viewport_t *);
 dv_view_interface_t * dv_view_get_interface_to_viewport(dv_view_t *, dv_viewport_t *);
 
-void dv_viewport_init(dv_viewport_t *, int);
+void dv_viewport_init(dv_viewport_t *);
 void dv_viewport_add_interface(dv_viewport_t *, dv_view_interface_t *);
 void dv_viewport_remove_interface(dv_viewport_t *, dv_view_interface_t *);
 dv_view_interface_t * dv_viewport_get_interface_to_view(dv_viewport_t *, dv_view_t *);
@@ -519,7 +530,7 @@ static int dv_check_(int condition, const char * condition_s,
   if (!condition) {
     fprintf(stderr, "%s:%d:%s: check failed : %s\n", 
             __file__, __line__, func, condition_s);
-    dv_get_callpath_by_backtrace();
+    //dv_get_callpath_by_backtrace();
     dv_get_callpath_by_libunwind();
     exit(1);
   }
