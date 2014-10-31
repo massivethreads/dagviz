@@ -1753,6 +1753,35 @@ static void on_menu_item_view_samples_clicked(GtkToolButton *toolbtn, gpointer u
 }
 
 static void
+on_help_hotkeys_clicked(GtkToolButton *toolbtn, gpointer user_data) {
+  // Build dialog
+  GtkWidget * dialog = gtk_dialog_new();
+  gtk_window_set_title(GTK_WINDOW(dialog), "Hotkeys");
+  gtk_window_set_default_size(GTK_WINDOW(dialog), 300, 170);
+  GtkWidget * dialog_vbox = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+
+  // Label
+  GtkWidget * label = gtk_label_new("\n"
+                                    "tab : switch control between VIEWs\n"
+                                    "Ctrl + 1 : glike view\n"
+                                    "Ctrl + 2 : bbox view\n"
+                                    "Ctrl + 3 : timeline view\n"
+                                    "x : expand\n"
+                                    "c : collapse\n"
+                                    "h : horizontal fit\n"
+                                    "v : vertical fit\n"
+                                    "Alt + key : access menu\n");
+  gtk_box_pack_start(GTK_BOX(dialog_vbox), label, TRUE, FALSE, 0);
+
+  // Run
+  gtk_widget_show_all(dialog_vbox);
+  gtk_dialog_run(GTK_DIALOG(dialog));
+
+  // Destroy
+  gtk_widget_destroy(dialog);  
+}
+
+static void
 on_viewport_select_view(GtkCheckMenuItem * checkmenuitem, gpointer user_data) {
   dv_viewport_t * vp = (dv_viewport_t *) user_data;
   const gchar * label = gtk_menu_item_get_label(GTK_MENU_ITEM(checkmenuitem));
@@ -1935,6 +1964,15 @@ dv_create_menubar() {
   GtkWidget *samplebt_open = gtk_menu_item_new_with_mnemonic("_View Backtrace Samples");
   gtk_menu_shell_append(GTK_MENU_SHELL(samplebt_menu), samplebt_open);
   g_signal_connect(G_OBJECT(samplebt_open), "activate", G_CALLBACK(on_menu_item_view_samples_clicked), (void *) 0);
+
+  // submenu help
+  GtkWidget * help = gtk_menu_item_new_with_mnemonic("_Help");
+  gtk_menu_shell_append(GTK_MENU_SHELL(menubar), help);
+  GtkWidget * help_menu = gtk_menu_new();
+  gtk_menu_item_set_submenu(GTK_MENU_ITEM(help), help_menu);  
+  GtkWidget * hotkeys = gtk_menu_item_new_with_mnemonic("Hot_keys");
+  gtk_menu_shell_append(GTK_MENU_SHELL(help_menu), hotkeys);
+  g_signal_connect(G_OBJECT(hotkeys), "activate", G_CALLBACK(on_help_hotkeys_clicked), NULL);
   
   return menubar;
 }
