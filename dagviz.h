@@ -95,8 +95,8 @@ typedef struct dv_llist {
 #define DV_ANIMATION_DURATION 400 // milliseconds
 #define DV_ANIMATION_STEP 30 // milliseconds
 
-#define DV_NUM_LAYOUT_TYPES 3
-#define DV_LAYOUT_TYPE_INIT 2
+#define DV_NUM_LAYOUT_TYPES 4
+#define DV_LAYOUT_TYPE_INIT 3
 #define DV_NODE_COLOR_INIT 0
 #define DV_SCALE_TYPE_INIT 2
 #define DV_FROMBT_INIT 0
@@ -107,7 +107,7 @@ typedef struct dv_llist {
 #define DV_COLOR_POOL_SIZE 100
 #define DV_NUM_COLOR_POOLS 6
 
-#define DV_TIMELINE_NODE_WITH_BORDER 1
+#define DV_TIMELINE_NODE_WITH_BORDER 0
 #define DV_ENTRY_RADIX_MAX_LENGTH 20
 
 #define DV_DAG_NODE_POOL_SIZE 30000
@@ -170,11 +170,11 @@ typedef struct dv_dag_node {
   dv_llist_t tails[1]; /* list of inner tail nodes */
 
   /* layout */
-  dv_node_coordinate_t c[DV_NUM_LAYOUT_TYPES]; /* 0:grid, 1:bbox, 2:timeline */
+  dv_node_coordinate_t c[DV_NUM_LAYOUT_TYPES]; /* 0:grid, 1:bbox, 2:timeline, 3:timeline2 */
 
   /* animation */
   double started; /* started time of animation */
-  
+
 } dv_dag_node_t;
 
 typedef struct dv_dag {
@@ -451,6 +451,10 @@ void dv_view_draw_bbox(dv_view_t *, cairo_t *);
 /* view_timeline.c */
 void dv_view_layout_timeline(dv_view_t *);
 void dv_view_draw_timeline(dv_view_t *V, cairo_t *);
+
+/* view_timeline2.c */
+void dv_view_layout_timeline2(dv_view_t *);
+void dv_view_draw_timeline2(dv_view_t *V, cairo_t *);
 
 
 /* utils.c */

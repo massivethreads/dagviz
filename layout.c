@@ -8,15 +8,26 @@ void dv_view_layout(dv_view_t *V) {
   dv_view_layout_glike(V);
   dv_view_layout_bbox(V);
   dv_view_layout_timeline(V);
+  dv_view_layout_timeline2(V);
+  
   /*
-  if (S->lt == 0)
+  switch (S->lt) {
+  case 0:
     dv_view_layout_glike(V);
-  else if (S->lt == 1)
+    break;
+  case 1:
     dv_view_layout_bbox(V);
-  else if (S->lt == 2)
+    break;
+  case 2:
     dv_view_layout_timeline(V);
+    break;
+  case 3:
+    dv_view_layout_timeline2(V);
+    break;
+  default:
+    dv_check(0);
+  }
   */
-
 }
 
 /*-----------end of Main layout functions-------------------------*/

@@ -148,27 +148,6 @@ void dv_view_draw_edge_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *u, dv_dag_nod
   y1 = uc->y + uc->dw;
   x2 = vc->x;
   y2 = vc->y;
-  /*
-  switch (S->lt) {
-  case 0:
-    x1 = u->x;
-    y1 = u->y + u->dw;
-    x2 = v->x;
-    y2 = v->y;
-    break;
-  case 1:    
-    x1 = u->x;
-    y1 = u->y + u->dw;
-    x2 = v->x;
-    y2 = v->y;
-    break;
-  case 2:
-    dv_check(0);
-    break;
-  default:
-    dv_check(0);
-  }
-  */
   if (y1 > y2)
     return;
   
@@ -311,18 +290,6 @@ void dv_view_draw_infotag_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *node) {
   dv_node_coordinate_t *c = &node->c[S->lt];
   xx = c->x + c->rw + 2 * padding;
   yy = c->y - 2 * padding - line_height * (n - 1);
-  /*
-  if (S->lt == 0) {
-    // grid-like layout
-    xx = node->x + node->rw + 2 * padding;
-    yy = node->y - 2 * padding - line_height * (n - 1);
-  } else if (S->lt == 1 || S->lt == 2) {
-    // bbox/timeline layouts    
-    xx = node->x + node->rw + 2 * padding;
-    yy = node->y - 2 * padding - line_height * (n - 1);
-  } else
-    dv_check(0);
-  */
 
   // Cover rectangle
   double width = 450.0;
@@ -441,14 +408,22 @@ void dv_view_draw(dv_view_t *V, cairo_t *cr) {
   S->ndh = 0;
   D->cur_d = 0;
   D->cur_d_ex = D->dmax;
-  if (S->lt == 0)
+  switch (S->lt) {
+  case 0:
     dv_view_draw_glike(V, cr);
-  else if (S->lt == 1)
+    break;
+  case 1:
     dv_view_draw_bbox(V, cr);
-  else if (S->lt == 2)
+    break;
+  case 2:
     dv_view_draw_timeline(V, cr);
-  else
+    break;
+  case 3:
+    dv_view_draw_timeline2(V, cr);
+    break;
+  default:
     dv_check(0);
+  }
   // Draw infotags
   //dv_view_draw_infotags(V, cr);  
 }

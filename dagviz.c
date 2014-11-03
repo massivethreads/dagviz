@@ -115,28 +115,42 @@ static void dv_get_zoomfit_hoz_ratio(dv_view_t *V, double w, double h, double *p
   double y = 0.0;
   double d1, d2;
   dv_node_coordinate_t *rtco = &D->rt->c[S->lt];
-  if (S->lt == 0) {
+  switch (S->lt) {
+  case 0:
     // Grid-based
     d1 = rtco->lw + rtco->rw;
     d2 = w - 2 * (DV_ZOOM_TO_FIT_MARGIN + DV_RADIUS);
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     x -= (rtco->rw - rtco->lw) * 0.5 * zoom_ratio;
-  } else if (S->lt == 1) {
+    break;
+  case 1:
     // Bounding box
     d1 = rtco->lw + rtco->rw;
     d2 = w - 2 * DV_ZOOM_TO_FIT_MARGIN;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     x -= (rtco->rw - rtco->lw) * 0.5 * zoom_ratio;
-  } else if (S->lt == 2) {
-    // Timeline
+    break;
+  case 2:
+    // Vertical Timeline
     d1 = 2*DV_RADIUS + (D->P->num_workers - 1) * (2*DV_RADIUS + DV_HDIS);
     d2 = w - 2 * DV_ZOOM_TO_FIT_MARGIN;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
-  } else
+    break;
+  case 3:
+    // Horizontal Timeline
+    d1 = 10 + rtco->rw;
+    d2 = w - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    if (d1 > d2)
+      zoom_ratio = d2 / d1;
+    double dw = D->P->num_workers * (DV_RADIUS * 2);
+    y += (h - dw * zoom_ratio) * 0.4;
+    break;
+  default:
     dv_check(0);
+  }
   *pz = zoom_ratio;
   *px = x;
   *py = y;
@@ -150,30 +164,40 @@ static void dv_get_zoomfit_ver_ratio(dv_view_t *V, double w, double h, double *p
   double y = 0.0;
   double d1, d2;
   dv_node_coordinate_t *rtco = &D->rt->c[S->lt];
-  if (S->lt == 0) {
-    // Grid-based
+  switch (S->lt) {
+  case 0:
     d1 = rtco->dw;
     d2 = h - 2 * DV_ZOOM_TO_FIT_MARGIN;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     x -= (rtco->rw - rtco->lw) * 0.5 * zoom_ratio;
-  } else if (S->lt == 1) {
-    // Bounding box
+    break;
+  case 1:
     d1 = rtco->dw;
     d2 = h - 2 * DV_ZOOM_TO_FIT_MARGIN;
     if (d1 > d2)
       zoom_ratio = d2 / d1;    
     x -= (rtco->rw - rtco->lw) * 0.5 * zoom_ratio;
-  } else if (S->lt == 2) {
-    // Timeline
+    break;
+  case 2:
+    // Vertical Timeline
     d1 = 10 + rtco->dw;
     d2 = h - 2 * DV_ZOOM_TO_FIT_MARGIN;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     double lrw = 2*DV_RADIUS + (D->P->num_workers - 1) * (2*DV_RADIUS + DV_HDIS);
     x += (w - lrw * zoom_ratio) * 0.5;
-  } else
+    break;
+  case 3:
+    // Horizontal Timeline
+    d1 = D->P->num_workers * (DV_RADIUS * 2);
+    d2 = h - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    if (d1 > d2)
+      zoom_ratio = d2 / d1;
+    break;
+  default:
     dv_check(0);
+  }
   *pz = zoom_ratio;
   *px = x;
   *py = y;
@@ -231,19 +255,9 @@ static void dv_do_expanding_one_1(dv_view_t *V, dv_dag_node_t *node) {
   dv_view_status_t *S = V->S;
   switch (S->lt) {
   case 0:
-    // add to animation
-    if (dv_is_shrinking(node)) {
-      dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKING);
-      dv_node_flag_set(node->f, DV_NODE_FLAG_SHRINKED);
-      dv_node_flag_set(node->f, DV_NODE_FLAG_EXPANDING);
-      dv_animation_reverse(S->a, node);
-    } else {
-      dv_node_flag_set(node->f, DV_NODE_FLAG_EXPANDING);
-      dv_animation_add(S->a, node);
-    }
-    break;
   case 1:
   case 2:
+  case 3:
     // add to animation
     if (dv_is_shrinking(node)) {
       dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKING);
@@ -254,8 +268,6 @@ static void dv_do_expanding_one_1(dv_view_t *V, dv_dag_node_t *node) {
       dv_node_flag_set(node->f, DV_NODE_FLAG_EXPANDING);
       dv_animation_add(S->a, node);
     }
-    // set expanded
-    //dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKED);
     break;
   default:
     dv_check(0);
@@ -298,19 +310,9 @@ static void dv_do_collapsing_one_1(dv_view_t *V, dv_dag_node_t *node) {
   dv_view_status_t *S = V->S;
   switch (S->lt) {
   case 0:
-    // add to animation
-    if (dv_is_expanding(node)) {
-      dv_node_flag_remove(node->f, DV_NODE_FLAG_EXPANDING);
-      dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKED);
-      dv_node_flag_set(node->f, DV_NODE_FLAG_SHRINKING);
-      dv_animation_reverse(S->a, node);
-    } else {
-      dv_node_flag_set(node->f, DV_NODE_FLAG_SHRINKING);
-      dv_animation_add(S->a, node);
-    }
-    break;
   case 1:
   case 2:
+  case 3:
     // add to animation
     if (dv_is_expanding(node)) {
       dv_node_flag_remove(node->f, DV_NODE_FLAG_EXPANDING);
@@ -321,8 +323,6 @@ static void dv_do_collapsing_one_1(dv_view_t *V, dv_dag_node_t *node) {
       dv_node_flag_set(node->f, DV_NODE_FLAG_SHRINKING);
       dv_animation_add(S->a, node);
     }
-    // set shrinked
-    //dv_node_flag_set(node->f, DV_NODE_FLAG_SHRINKED);
     break;
   default:
     dv_check(0);
@@ -394,7 +394,8 @@ static dv_dag_node_t *dv_do_finding_clicked_node_1(dv_view_t *V, double x, doubl
     break;
   case 1:
   case 2:
-    // bbox/timeline layouts
+  case 3:
+    // bbox/timeline/timeline2 layouts
     if (c->x - c->lw < x && x < c->x + c->rw
         && c->y < y && y < c->y + c->dw) {
       ret = node;
@@ -501,29 +502,35 @@ static gboolean on_draw_event(GtkWidget *widget, cairo_t *cr, gpointer user_data
   dv_view_status_t *S;
   int count = 0;
   int i;
-  dv_viewport_draw_label(VP, cr);
   for (i=0; i<CS->nV; i++)
     if (VP->I[i]) {
       V = VP->I[i]->V;
       D = V->D;
       S = V->S;
-      if (S->lt == 0) {
+      switch (S->lt) {
+      case 0:
         S->basex = 0.5 * S->vpw;
         S->basey = DV_ZOOM_TO_FIT_MARGIN;
-      } else if (S->lt == 1) {
+        break;
+      case 1:
         //G->basex = 0.5 * S->vpw - 0.5 * (G->rt->rw - G->rt->lw);
         S->basex = 0.5 * S->vpw;
         S->basey = DV_ZOOM_TO_FIT_MARGIN;
-      } else if (S->lt == 2) {
+        break;
+      case 2:
+      case 3:
         S->basex = DV_ZOOM_TO_FIT_MARGIN;
         S->basey = DV_ZOOM_TO_FIT_MARGIN;
-      } else
+        break;
+      default:
         dv_check(0);
+      }
       // Draw
       dv_do_drawing(V, cr);
       dv_view_draw_status(V, cr, count);
       count++;
     }
+  dv_viewport_draw_label(VP, cr);
   return FALSE;
 }
 
@@ -738,7 +745,8 @@ static gboolean on_entry_search_activate(GtkEntry *entry, gpointer user_data) {
   double x = 0.0;
   double y = 0.0;
   double d1, d2;
-  if (S->lt == 0) {
+  switch (S->lt) {
+  case 0:
     // Grid-based
     d1 = co->lw + co->rw;
     d2 = S->vpw - 2 * (DV_ZOOM_TO_FIT_MARGIN + DV_RADIUS);
@@ -751,7 +759,8 @@ static gboolean on_entry_search_activate(GtkEntry *entry, gpointer user_data) {
     zoom_ratio = dv_min(zoom_ratio, S->zoom_ratio);
     x -= (co->x + (co->rw - co->lw) * 0.5) * zoom_ratio;
     y -= co->y * zoom_ratio - (S->vph - 2 * DV_ZOOM_TO_FIT_MARGIN - co->dw * zoom_ratio) * 0.5;
-  } else if (S->lt == 1) {
+    break;
+  case 1:
     // Bounding box
     d1 = co->lw + co->rw;
     d2 = S->vpw - 2 * DV_ZOOM_TO_FIT_MARGIN;
@@ -764,8 +773,9 @@ static gboolean on_entry_search_activate(GtkEntry *entry, gpointer user_data) {
     zoom_ratio = dv_min(zoom_ratio, S->zoom_ratio);
     x -= (co->x + (co->rw - co->lw) * 0.5) * zoom_ratio;
     y -= co->y * zoom_ratio - (S->vph - 2 * DV_ZOOM_TO_FIT_MARGIN - co->dw * zoom_ratio) * 0.5;
-  } else if (S->lt == 2) {
-    // Timeline
+    break;
+  case 2:
+    // Vertical Timeline
     d1 = 2*DV_RADIUS + (D->P->num_workers - 1) * (2*DV_RADIUS + DV_HDIS);
     d2 = S->vpw - 2 * DV_ZOOM_TO_FIT_MARGIN;
     if (d1 > d2)
@@ -777,7 +787,21 @@ static gboolean on_entry_search_activate(GtkEntry *entry, gpointer user_data) {
     zoom_ratio = dv_min(zoom_ratio, S->zoom_ratio);
     x -= (co->x + (co->rw - co->lw) * 0.5) * zoom_ratio - S->vpw * 0.5;
     y -= co->y * zoom_ratio - (S->vph - 2 * DV_ZOOM_TO_FIT_MARGIN - co->dw * zoom_ratio) * 0.5;
-  } else {
+    break;
+  case 3:
+    // Horizontal Timeline
+    d1 = D->P->num_workers * (DV_RADIUS * 2);
+    d2 = S->vph - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    if (d1 > d2)
+      zoom_ratio = d2 / d1;
+    d1 = co->rw;
+    d2 = S->vpw - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    if (d1 > d2)
+      zoom_ratio = dv_min(zoom_ratio, d2 / d1);
+    x -= (co->x + co->rw * 0.5) * zoom_ratio - S->vpw * 0.5;
+    y -= co->y * zoom_ratio - (S->vph - 2 * DV_ZOOM_TO_FIT_MARGIN - co->dw * zoom_ratio) * 0.5;
+    break;
+  default:
     dv_check(0);
   }
   // Set info tag
@@ -867,21 +891,27 @@ static gboolean on_window_key_event(GtkWidget *widget, GdkEvent *event, gpointer
   case 118: /* v */
     dv_do_zoomfit_ver(aV);
     return TRUE;
-  case 49: /* 1 */
+  case 49: /* Ctrl + 1 */
     if ((e->state & modifiers) == GDK_CONTROL_MASK) {
       dv_do_changing_lt(aV, 0);
       return TRUE;
     }
     break;
-  case 50: /* 2 */
+  case 50: /* Ctrl + 2 */
     if ((e->state & modifiers) == GDK_CONTROL_MASK) {
       dv_do_changing_lt(aV, 1);
       return TRUE;
     }
     break;
-  case 51: /* 3 */
+  case 51: /* Ctrl + 3 */
     if ((e->state & modifiers) == GDK_CONTROL_MASK) {
       dv_do_changing_lt(aV, 2);
+      return TRUE;
+    }
+    break;
+  case 52: /* Ctrl + 4 */
+    if ((e->state & modifiers) == GDK_CONTROL_MASK) {
+      dv_do_changing_lt(aV, 3);
       return TRUE;
     }
     break;
@@ -1162,6 +1192,7 @@ dv_view_interface_t * dv_view_interface_create_new(dv_view_t *V, dv_viewport_t *
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "grid", "Grid like");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "bounding", "Bounding box");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "timeline", "Timeline");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "timeline2", "Timeline2");
   g_signal_connect(G_OBJECT(combobox_lt), "changed", G_CALLBACK(on_combobox_lt_changed), (void *) V);
 
   // Node color combobox
@@ -1766,6 +1797,7 @@ on_help_hotkeys_clicked(GtkToolButton *toolbtn, gpointer user_data) {
                                     "Ctrl + 1 : glike view\n"
                                     "Ctrl + 2 : bbox view\n"
                                     "Ctrl + 3 : timeline view\n"
+                                    "Ctrl + 4 : timeline2 (horizontal) view\n"
                                     "x : expand\n"
                                     "c : collapse\n"
                                     "h : horizontal fit\n"
