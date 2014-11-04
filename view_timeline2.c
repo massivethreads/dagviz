@@ -106,12 +106,15 @@ dv_view_draw_timeline2_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node)
   cairo_fill_preserve(cr);
   if (DV_TIMELINE_NODE_WITH_BORDER) {
     cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
-    cairo_stroke(cr);
+    cairo_stroke_preserve(cr);
+  }
+  // Draw infotag
+  if (dv_llist_has(V->D->P->itl, (void *) node->pii)) {
+    cairo_set_source_rgba(cr, 0.1, 0.1, 0.1, 0.6);
+    cairo_fill(cr);
+    dv_view_draw_infotag_1(V, cr, node);
   }
   cairo_restore(cr);
-  // Draw infotag
-  if (dv_llist_has(V->D->P->itl, (void *) node->pii))
-    dv_view_draw_infotag_1(V, cr, node);
 }
 
 static void
@@ -134,9 +137,50 @@ dv_view_draw_timeline2_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node)
   }
 }
 
+static void
+dv_view_draw_paraprof(dv_view_t * V, cairo_t * cr) {
+  // Transform
+  cairo_save(cr);
+  cairo_matrix_t mat;
+  cairo_matrix_init(&mat, 1.0, 0.0, 0.0, -1.0, 0.0, 0.0);
+  // Prepare for text drawing
+  cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
+  cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+  cairo_set_font_size(cr, 12);
+  char s[DV_STRING_LENGTH];
+  double x = 0.0;
+  double y = 0.0;
+  double xx, yy;
+  int i;
+  // Draw axes
+  for (i=0; i<5; i++) {
+    sprintf(s, "x = %d", i);
+    xx = x;
+    yy = y;
+    cairo_matrix_transform_point(&mat, &xx, &yy);
+    cairo_move_to(cr, xx, yy);
+    cairo_show_text(cr, s);
+    x += 50;
+  }
+  x = 0.0;
+  for (i=0; i<5; i++) {
+    sprintf(s, "y = %d", i);
+    xx = x;
+    yy = y;
+    cairo_matrix_transform_point(&mat, &xx, &yy);
+    cairo_move_to(cr, xx, yy);
+    cairo_show_text(cr, s);
+    y += 50;
+  }
+  // Un-transform
+  cairo_restore(cr);
+}
+
 void
 dv_view_draw_timeline2(dv_view_t * V, cairo_t * cr) {
-  cairo_set_line_width(cr, DV_NODE_LINE_WIDTH);
+  double line_width = dv_min(DV_NODE_LINE_WIDTH, DV_NODE_LINE_WIDTH / V->S->zoom_ratio);
+  cairo_set_line_width(cr, line_width);
+  fprintf(stderr, "line width = %lf, zoom_ratio = %lf\n", line_width, V->S->zoom_ratio);
   int i;
   // Draw nodes
   dv_view_draw_timeline2_node_r(V, cr, V->D->rt);
@@ -154,6 +198,8 @@ dv_view_draw_timeline2(dv_view_t * V, cairo_t * cr) {
     cairo_show_text(cr, s);
     yy += 2 * DV_RADIUS;
   }
+  // Draw parallelism profile
+  dv_view_draw_paraprof(V, cr);
 }
 
 /*-----------------end of TIMELINE2 drawing functions-----------*/

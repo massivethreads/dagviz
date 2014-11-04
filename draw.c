@@ -24,6 +24,7 @@ void dv_draw_text(cairo_t *cr) {
 
 void dv_draw_rounded_rectangle(cairo_t *cr, double x, double y, double width, double height)
 {
+  cairo_save(cr);
   double aspect = 1.0;
   double corner_radius = height / 10.0;
 
@@ -40,8 +41,9 @@ void dv_draw_rounded_rectangle(cairo_t *cr, double x, double y, double width, do
   cairo_set_source_rgba(cr, 0.1, 0.1, 0.1, 0.6);
   cairo_fill_preserve(cr);
   cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
-  cairo_set_line_width(cr, 1.0);
+  cairo_set_line_width(cr, 0.5);
   cairo_stroke(cr);
+  cairo_restore(cr);
 }
 
 static int dv_get_color_pool_index(int t, int v0, int v1, int v2, int v3) {
@@ -279,6 +281,7 @@ void dv_view_draw_status(dv_view_t *V, cairo_t *cr, int count) {
 }
 
 void dv_view_draw_infotag_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *node) {
+  cairo_save(cr);
   dv_dag_t *D = V->D;
   dv_view_status_t *S = V->S;
   double line_height = 12;
@@ -385,19 +388,8 @@ void dv_view_draw_infotag_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *node) {
   yy += line_height;
   
   dv_free(s, strlen(ss) + 10);
+  cairo_restore(cr);
 }
-
-/*
-void dv_view_draw_infotags(dv_view_t *V, cairo_t *cr) {
-  dv_llist_t *itl = V->D->P->itl;
-  dv_pi_dag_node * pi = NULL;
-  while (pi = (dv_dag_node_t *) dv_llist_iterate_next(itl, pi)) {
-    if (dv_is_visible(u) && !dv_is_expanding(u)
-        && (!u->parent || !dv_is_shrinking(u->parent)))
-      dv_view_draw_infotag_1(V, cr, u);
-  }
-}
-*/
 
 void dv_view_draw(dv_view_t *V, cairo_t *cr) {
   dv_dag_t *D = V->D;
