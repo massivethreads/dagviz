@@ -419,6 +419,7 @@ void dv_dag_init(dv_dag_t *D, dv_pidag_t *P) {
   D->power_radix = DV_RADIX_POWER;
   D->linear_radix = DV_RADIX_LINEAR;
   D->frombt = DV_FROMBT_INIT;
+  dv_llist_init(D->itl);
 }
 
 dv_dag_t * dv_dag_create_new_with_pidag(dv_pidag_t *P) {

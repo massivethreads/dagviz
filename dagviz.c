@@ -1255,45 +1255,52 @@ dv_view_interface_t * dv_view_interface_create_new(dv_view_t *V, dv_viewport_t *
 
   // Click mode combobox
   GtkToolItem *btn_combo_cm = gtk_tool_item_new();
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo_cm, -1);
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_combo_cm), "Clicking Mode");
   GtkWidget *combobox_cm = gtk_combo_box_text_new();
+  gtk_container_add(GTK_CONTAINER(btn_combo_cm), combobox_cm);
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_cm), "info", "Infotag");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_cm), "expand", "Expand");
   gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_cm), S->cm);
   g_signal_connect(G_OBJECT(combobox_cm), "changed", G_CALLBACK(on_combobox_cm_changed), (void *) V);
-  gtk_container_add(GTK_CONTAINER(btn_combo_cm), combobox_cm);
-  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo_cm, -1);
 
   // View-attribute dialog button
   GtkToolItem *btn_attrs = gtk_tool_button_new(NULL, NULL);
-  gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_attrs), "preferences-system");
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_attrs, -1);
+  gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_attrs), "preferences-system");
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_attrs), "Open attribute dialog");
   g_signal_connect(G_OBJECT(btn_attrs), "clicked", G_CALLBACK(on_btn_attrs_clicked), (void *) I);
 
   // Zoomfit-horizontally button
-  GtkToolItem *btn_zoomfit_hoz = gtk_tool_button_new(NULL, "Best _Fit");
-  gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_zoomfit_hoz), "zoom-fit-best");
+  GtkToolItem *btn_zoomfit_hoz = gtk_tool_button_new(NULL, NULL);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_zoomfit_hoz, -1);
+  gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_zoomfit_hoz), "zoom-fit-best");
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_zoomfit_hoz), "Fit Horizontal (h)");
   g_signal_connect(G_OBJECT(btn_zoomfit_hoz), "clicked", G_CALLBACK(on_btn_zoomfit_hoz_clicked), (void *) V);
 
   // Zoomfit-vertically button
-  GtkToolItem *btn_zoomfit_ver = gtk_tool_button_new(NULL, "Best _Fit");
-  gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_zoomfit_ver), "zoom-fit-best");
+  GtkToolItem *btn_zoomfit_ver = gtk_tool_button_new(NULL, NULL);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_zoomfit_ver, -1);
+  gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_zoomfit_ver), "zoom-fit-best");
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_zoomfit_ver), "Fit Vertical (v)");
   g_signal_connect(G_OBJECT(btn_zoomfit_ver), "clicked", G_CALLBACK(on_btn_zoomfit_ver_clicked), (void *) V);
 
   // Shrink/Expand buttons
-  GtkToolItem *btn_shrink = gtk_tool_button_new(NULL, "Zoom _Out");
-  gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_shrink), "zoom-out");
-  GtkToolItem *btn_expand = gtk_tool_button_new(NULL, "Zoom _In");
-  gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_expand), "zoom-in");
+  GtkToolItem *btn_shrink = gtk_tool_button_new(NULL, NULL);
+  GtkToolItem *btn_expand = gtk_tool_button_new(NULL, NULL);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_shrink, -1);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_expand, -1);
-  g_signal_connect(G_OBJECT(btn_shrink), "clicked", G_CALLBACK(on_btn_shrink_clicked), (void *) V);
+  gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_shrink), "zoom-out");
+  gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_expand), "zoom-in");
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_shrink), "Collapse (c)"); 
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_expand), "Expand (x)");
+  g_signal_connect(G_OBJECT(btn_shrink), "clicked", G_CALLBACK(on_btn_shrink_clicked), (void *) V);  
   g_signal_connect(G_OBJECT(btn_expand), "clicked", G_CALLBACK(on_btn_expand_clicked), (void *) V);
 
   // Search Entry
   GtkToolItem *btn_entry_search = gtk_tool_item_new();
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_entry_search, -1);
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_entry_search), "Search by pii index");
   GtkWidget *entry_search = I->entry_search;
   gtk_container_add(GTK_CONTAINER(btn_entry_search), entry_search);
   gtk_entry_set_placeholder_text(GTK_ENTRY(entry_search), "Search");

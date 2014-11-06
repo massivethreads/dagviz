@@ -142,7 +142,7 @@ typedef struct dv_pidag {
   dr_pi_string_table S[1];
   char * fn; /* dag file name */
   struct stat stat[1]; /* file stat structure */
-  dv_llist_t itl[1]; /* list of nodes that have info tag */
+  dv_llist_t itl[1]; /* list of pii's of nodes that have info tag */
 } dv_pidag_t;
 
 typedef struct dv_node_coordinate {
@@ -203,6 +203,9 @@ typedef struct dv_dag {
   double power_radix;
   double linear_radix;
   int frombt;
+
+  /* other */
+  dv_llist_t itl[1]; /* list of nodes that have info tag */
 } dv_dag_t;
 
 typedef struct dv_view dv_view_t;

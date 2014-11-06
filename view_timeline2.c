@@ -112,7 +112,7 @@ dv_view_draw_timeline2_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node)
   if (dv_llist_has(V->D->P->itl, (void *) node->pii)) {
     cairo_set_source_rgba(cr, 0.1, 0.1, 0.1, 0.6);
     cairo_fill(cr);
-    dv_view_draw_infotag_1(V, cr, node);
+    dv_llist_add(V->D->itl, (void *) node);
   }
   cairo_restore(cr);
 }
@@ -178,12 +178,32 @@ dv_view_draw_paraprof(dv_view_t * V, cairo_t * cr) {
 
 void
 dv_view_draw_timeline2(dv_view_t * V, cairo_t * cr) {
+  // Set adaptive line width
   double line_width = dv_min(DV_NODE_LINE_WIDTH, DV_NODE_LINE_WIDTH / V->S->zoom_ratio);
   cairo_set_line_width(cr, line_width);
   fprintf(stderr, "line width = %lf, zoom_ratio = %lf\n", line_width, V->S->zoom_ratio);
-  int i;
+  // White & grey colors
+  GdkRGBA white[1];
+  gdk_rgba_parse(white, "white");
+  GdkRGBA grey[1];
+  gdk_rgba_parse(grey, "light grey");
+  // Draw background
+  cairo_new_path(cr);
+  cairo_set_source_rgb(cr, grey->red, grey->green, grey->blue);
+  cairo_paint(cr);
+  cairo_set_source_rgb(cr, white->red, white->green, white->blue);
+  double width = V->D->rt->c[V->S->lt].rw;
+  double height = V->D->P->num_workers * (2 * DV_RADIUS);
+  cairo_rectangle(cr, 0.0, 0.0, width, height);
+  cairo_fill(cr);
   // Draw nodes
+  dv_llist_init(V->D->itl);
   dv_view_draw_timeline2_node_r(V, cr, V->D->rt);
+  // Draw infotags
+  dv_dag_node_t * node = NULL;
+  while (node = (dv_dag_node_t *) dv_llist_pop(V->D->itl)) {
+    dv_view_draw_infotag_1(V, cr, node);
+  }            
   // Draw worker numbers
   cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
   cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
@@ -192,6 +212,7 @@ dv_view_draw_timeline2(dv_view_t * V, cairo_t * cr) {
   double xx, yy;
   xx = -75;
   yy = DV_RADIUS * 1.2;
+  int i;
   for (i=0; i<V->D->P->num_workers; i++) {
     sprintf(s, "Worker %d", i);            
     cairo_move_to(cr, xx, yy);
