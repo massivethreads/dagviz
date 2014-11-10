@@ -217,9 +217,10 @@ void dv_view_draw_edge_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *u, dv_dag_nod
 
 /*-----Main drawing functions-----*/
 
-void dv_view_draw_status(dv_view_t *V, cairo_t *cr, int count) {
-  dv_dag_t *D = V->D;
-  dv_view_status_t *S = V->S;
+void
+dv_view_draw_status(dv_view_t * V, cairo_t * cr, int count) {
+  dv_dag_t * D = V->D;
+  dv_view_status_t * S = V->S;
   cairo_save(cr);
   cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
   cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
@@ -256,6 +257,19 @@ void dv_view_draw_status(dv_view_t *V, cairo_t *cr, int count) {
   cairo_move_to(cr, x, y);
   cairo_show_text(cr, s);
   
+  // Zoom ratios
+  sprintf(s, "zr=(%lf,%lf), ", S->zoom_ratio_x, S->zoom_ratio_y);
+  x -= strlen(s) * char_width;
+  cairo_move_to(cr, x, y);
+  cairo_show_text(cr, s);
+  
+  // Radix, radius
+  double radix = dv_dag_get_radix(D);
+  sprintf(s, "r=(%lf,%lf), ", radix, D->radius);
+  x -= strlen(s) * char_width;
+  cairo_move_to(cr, x, y);
+  cairo_show_text(cr, s);
+  
   // Nodes animating
   if (S->a->on) {
     sprintf(s, "na=%d, ", dv_llist_size(S->a->movings));
@@ -280,19 +294,22 @@ void dv_view_draw_status(dv_view_t *V, cairo_t *cr, int count) {
   cairo_restore(cr);
 }
 
-void dv_view_draw_infotag_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *node) {
+void
+dv_view_draw_infotag_1(dv_view_t * V, cairo_t * cr, cairo_matrix_t * mt, dv_dag_node_t * node) {
   cairo_save(cr);
-  dv_dag_t *D = V->D;
-  dv_view_status_t *S = V->S;
+  dv_dag_t * D = V->D;
+  dv_view_status_t * S = V->S;
   double line_height = 12;
   double padding = 4;
   int n = 6; /* number of lines */
   
   // Get coordinates
   double xx, yy;
-  dv_node_coordinate_t *c = &node->c[S->lt];
+  dv_node_coordinate_t * c = &node->c[S->lt];
   xx = c->x + c->rw + 2 * padding;
-  yy = c->y - 2 * padding - line_height * (n - 1);
+  yy = c->y - 2 * padding;
+  //cairo_matrix_transform_point(mt, &xx, &yy);
+  yy -= line_height * (n - 1);
 
   // Cover rectangle
   double width = 450.0;
@@ -310,8 +327,8 @@ void dv_view_draw_infotag_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *node) {
 
   // Line 1
   /* TODO: adaptable string length */
-  dr_pi_dag_node *pi = dv_pidag_get_node(D->P, node);
-  char *s = (char *) dv_malloc( DV_STRING_LENGTH * sizeof(char) );
+  dr_pi_dag_node * pi = dv_pidag_get_node(D->P, node);
+  char * s = (char *) dv_malloc( DV_STRING_LENGTH * sizeof(char) );
   sprintf(s, "[%ld][%ld] %s d=%d f=%d%d%d%d%d%d n=%ld/%ld/%ld",
           pi - D->P->T,
           node - D->T,
@@ -367,7 +384,7 @@ void dv_view_draw_infotag_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *node) {
 
   // Line 5
   dv_free(s, DV_STRING_LENGTH * sizeof(char));
-  const char *ss = D->P->S->C + D->P->S->I[pi->info.start.pos.file_idx];
+  const char * ss = D->P->S->C + D->P->S->I[pi->info.start.pos.file_idx];
   s = (char *) dv_malloc( strlen(ss) + 10 );
   sprintf(s, "%s:%ld",
           ss,
@@ -391,9 +408,18 @@ void dv_view_draw_infotag_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *node) {
   cairo_restore(cr);
 }
 
-void dv_view_draw(dv_view_t *V, cairo_t *cr) {
-  dv_dag_t *D = V->D;
-  dv_view_status_t *S = V->S;
+void
+dv_view_draw_infotags(dv_view_t * V, cairo_t * cr, cairo_matrix_t * mt) {
+  dv_dag_node_t * node = NULL;
+  while (node = (dv_dag_node_t *) dv_llist_pop(V->D->itl)) {
+    dv_view_draw_infotag_1(V, cr, mt, node);
+  }  
+}
+
+void
+dv_view_draw(dv_view_t * V, cairo_t * cr) {
+  dv_dag_t * D = V->D;
+  dv_view_status_t * S = V->S;
   
   // Draw DAG
   S->nd = 0;
@@ -420,7 +446,8 @@ void dv_view_draw(dv_view_t *V, cairo_t *cr) {
   //dv_view_draw_infotags(V, cr);  
 }
 
-void dv_viewport_draw_label(dv_viewport_t *VP, cairo_t *cr) {
+void
+dv_viewport_draw_label(dv_viewport_t * VP, cairo_t * cr) {
   cairo_save(cr);
   cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
   cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);

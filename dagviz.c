@@ -71,45 +71,72 @@ dv_view_t * dv_global_state_get_active_view() {
 
 /*--------Interactive processing functions------------*/
 
-void dv_queue_draw(dv_view_t *V) {
+void
+dv_queue_draw(dv_view_t * V) {
   int i;
   for (i=0; i<CS->nVP; i++)
     if (V->I[i])
       gtk_widget_queue_draw(V->I[i]->VP->darea);
 }
 
-void dv_queue_draw_d(dv_view_t *V) {
-  dv_dag_t *D = V->D;
+void
+dv_queue_draw_d(dv_view_t * V) {
+  dv_dag_t * D = V->D;
   int i;
   for (i=0; i<CS->nV; i++)
     if (CS->V[i].D == D)
       dv_queue_draw(&CS->V[i]);
 }
 
-void dv_queue_draw_d_p(dv_view_t *V) {
-  dv_pidag_t *P = V->D->P;
+void
+dv_queue_draw_d_p(dv_view_t * V) {
+  dv_pidag_t * P = V->D->P;
   int i;
   for (i=0; i<CS->nV; i++)
     if (CS->V[i].D->P == P)
       dv_queue_draw(&CS->V[i]);
 }
 
-static void dv_do_zooming(dv_view_t *V, double zoom_ratio, double posx, double posy)
-{
-  dv_view_status_t *S = V->S;
+static void
+dv_do_zooming_x(dv_view_t * V, double new_zrx, double posx) {
+  dv_view_status_t * S = V->S;
   posx -= S->basex + S->x;
-  posy -= S->basey + S->y;
-  double deltax = posx / S->zoom_ratio * zoom_ratio - posx;
-  double deltay = posy / S->zoom_ratio * zoom_ratio - posy;
+  double deltax = posx / S->zoom_ratio_x * new_zrx - posx;
   S->x -= deltax;
-  S->y -= deltay;
-  S->zoom_ratio = zoom_ratio;
+  S->zoom_ratio_x = new_zrx;
   dv_queue_draw(V);
 }
 
-static void dv_get_zoomfit_hoz_ratio(dv_view_t *V, double w, double h, double *pz, double *px, double *py) {
-  dv_dag_t *D = V->D;
-  dv_view_status_t *S = V->S;
+static void
+dv_do_zooming_y(dv_view_t * V, double new_zry, double posy) {
+  dv_view_status_t * S = V->S;
+  posy -= S->basey + S->y;
+  double deltay = posy / S->zoom_ratio_y * new_zry - posy;
+  S->y -= deltay;
+  S->zoom_ratio_y = new_zry;
+  dv_queue_draw(V);
+}
+
+static void
+dv_do_zooming(dv_view_t * V, double new_zrx, double new_zry, double posx, double posy) {
+  dv_view_status_t * S = V->S;
+  posx -= S->basex + S->x;
+  posy -= S->basey + S->y;
+  double deltax = posx / S->zoom_ratio_x * new_zrx - posx;
+  double deltay = posy / S->zoom_ratio_y * new_zry - posy;
+  S->x -= deltax;
+  S->y -= deltay;
+  S->zoom_ratio_x = new_zrx;
+  S->zoom_ratio_y = new_zry;
+  dv_queue_draw(V);
+}
+
+static void
+dv_do_zoomfit_hor_(dv_view_t * V) {
+  dv_dag_t * D = V->D;
+  dv_view_status_t * S = V->S;
+  double w = S->vpw;
+  double h = S->vph;
   double zoom_ratio = 1.0;
   double x = 0.0;
   double y = 0.0;
@@ -119,7 +146,7 @@ static void dv_get_zoomfit_hoz_ratio(dv_view_t *V, double w, double h, double *p
   case 0:
     // Grid-based
     d1 = rtco->lw + rtco->rw;
-    d2 = w - 2 * (DV_ZOOM_TO_FIT_MARGIN + DV_RADIUS);
+    d2 = w - 2 * (DV_ZOOM_TO_FIT_MARGIN + D->radius);
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     x -= (rtco->rw - rtco->lw) * 0.5 * zoom_ratio;
@@ -134,7 +161,7 @@ static void dv_get_zoomfit_hoz_ratio(dv_view_t *V, double w, double h, double *p
     break;
   case 2:
     // Vertical Timeline
-    d1 = 2*DV_RADIUS + (D->P->num_workers - 1) * (2*DV_RADIUS + DV_HDIS);
+    d1 = 2 * D->radius + (D->P->num_workers - 1) * (2 * D->radius + DV_HDIS);
     d2 = w - 2 * DV_ZOOM_TO_FIT_MARGIN;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
@@ -145,25 +172,34 @@ static void dv_get_zoomfit_hoz_ratio(dv_view_t *V, double w, double h, double *p
     d2 = w - 2 * DV_ZOOM_TO_FIT_MARGIN;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
-    double dw = D->P->num_workers * (DV_RADIUS * 2);
+    double dw = D->P->num_workers * (D->radius * 2);
     y += (h - dw * zoom_ratio) * 0.4;
     break;
   default:
     dv_check(0);
   }
-  *pz = zoom_ratio;
-  *px = x;
-  *py = y;
+  S->zoom_ratio_x = S->zoom_ratio_y  = zoom_ratio;
+  S->x += x;
+  S->y += y;
 }
 
-static void dv_get_zoomfit_ver_ratio(dv_view_t *V, double w, double h, double *pz, double *px, double *py) {
-  dv_dag_t *D = V->D;
-  dv_view_status_t *S = V->S;
+static void
+dv_do_zoomfit_hor(dv_view_t * V) {
+  dv_do_zoomfit_hor_(V);
+  dv_queue_draw(V);
+}
+
+static void
+dv_do_zoomfit_ver_(dv_view_t * V) {
+  dv_dag_t * D = V->D;
+  dv_view_status_t * S = V->S;
+  double w = S->vpw;
+  double h = S->vph;
   double zoom_ratio = 1.0;
   double x = 0.0;
   double y = 0.0;
   double d1, d2;
-  dv_node_coordinate_t *rtco = &D->rt->c[S->lt];
+  dv_node_coordinate_t * rtco = &D->rt->c[S->lt];
   switch (S->lt) {
   case 0:
     d1 = rtco->dw;
@@ -185,12 +221,12 @@ static void dv_get_zoomfit_ver_ratio(dv_view_t *V, double w, double h, double *p
     d2 = h - 2 * DV_ZOOM_TO_FIT_MARGIN;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
-    double lrw = 2*DV_RADIUS + (D->P->num_workers - 1) * (2*DV_RADIUS + DV_HDIS);
+    double lrw = 2 * D->radius + (D->P->num_workers - 1) * (2 * D->radius + DV_HDIS);
     x += (w - lrw * zoom_ratio) * 0.5;
     break;
   case 3:
     // Horizontal Timeline
-    d1 = D->P->num_workers * (DV_RADIUS * 2);
+    d1 = D->P->num_workers * (D->radius * 2);
     d2 = h - 2 * DV_ZOOM_TO_FIT_MARGIN;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
@@ -198,28 +234,20 @@ static void dv_get_zoomfit_ver_ratio(dv_view_t *V, double w, double h, double *p
   default:
     dv_check(0);
   }
-  *pz = zoom_ratio;
-  *px = x;
-  *py = y;
+  S->zoom_ratio_x = S->zoom_ratio_y = zoom_ratio;
+  S->x = x;
+  S->y = y;
 }
 
-static void dv_do_zoomfit_hoz(dv_view_t *V) {
-  //dv_dag_t *D = V->D;
-  dv_view_status_t *S = V->S;
-  S->x = S->y = 0.0;
-  dv_get_zoomfit_hoz_ratio(V, S->vpw, S->vph, &S->zoom_ratio, &S->x, &S->y);
+static void
+dv_do_zoomfit_ver(dv_view_t * V) {
+  dv_do_zoomfit_ver_(V);
   dv_queue_draw(V);
 }
 
-static void dv_do_zoomfit_ver(dv_view_t *V) {
-  //dv_dag_t *D = V->D;
-  dv_view_status_t *S = V->S;
-  dv_get_zoomfit_ver_ratio(V, S->vpw, S->vph, &S->zoom_ratio, &S->x, &S->y);
-  dv_queue_draw(V);
-}
-
-static void dv_do_changing_lt(dv_view_t *V, int new_lt) {
-  dv_view_status_t *S = V->S;
+static void
+dv_do_changing_lt(dv_view_t * V, int new_lt) {
+  dv_view_status_t * S = V->S;
   int old_lt = S->lt;
   S->lt = new_lt;
   int i;
@@ -231,20 +259,30 @@ static void dv_do_changing_lt(dv_view_t *V, int new_lt) {
     dv_do_zoomfit_ver(V);
 }
 
-static void dv_do_drawing(dv_view_t *V, cairo_t *cr)
-{
+static void
+dv_do_drawing(dv_view_t * V, cairo_t * cr) {
   // First time only
-  dv_dag_t *D = V->D;
-  dv_view_status_t *S = V->S;
+  dv_view_status_t * S = V->S;
   if (S->init) {
-    dv_get_zoomfit_hoz_ratio(V, S->vpw, S->vph, &S->zoom_ratio, &S->x, &S->y);
+    dv_do_zoomfit_hor_(V);
     S->init = 0;
   }
+  
   // Draw graph
   cairo_save(cr);
+  /*
+  cairo_matrix_t mt[1];
+  cairo_matrix_init_translate(mt, S->basex + S->x, S->basey + S->y);
+  cairo_matrix_scale(mt, S->zoom_ratio_x, S->zoom_ratio_y);
+  cairo_set_matrix(cr, mt);
+  */
   cairo_translate(cr, S->basex + S->x, S->basey + S->y);
-  cairo_scale(cr, S->zoom_ratio, S->zoom_ratio);
+  cairo_scale(cr, S->zoom_ratio_x, S->zoom_ratio_y);
   dv_view_draw(V, cr);
+  
+  // Draw infotags
+  /* TODO: to make it not scale unequally infotags */
+  dv_view_draw_infotags(V, cr, NULL);
   cairo_restore(cr);
 }
 
@@ -387,8 +425,8 @@ static dv_dag_node_t *dv_do_finding_clicked_node_1(dv_view_t *V, double x, doubl
     // grid-like layout
     vc = c->x;
     hc = c->y;
-    if (vc - DV_RADIUS < x && x < vc + DV_RADIUS
-        && hc < y && y < hc + 2 * DV_RADIUS) {
+    if (vc - V->D->radius < x && x < vc + V->D->radius
+        && hc < y && y < hc + 2 * V->D->radius) {
       ret = node;
     }
     break;
@@ -435,15 +473,7 @@ static dv_dag_node_t *dv_do_finding_clicked_node(dv_view_t *V, double x, double 
 
 static void dv_set_entry_radix_text(dv_view_t *V) {
   char str[DV_ENTRY_RADIX_MAX_LENGTH];
-  double radix;
-  if (V->D->sdt == 0)
-    radix = V->D->log_radix;
-  else if (V->D->sdt == 1)
-    radix = V->D->power_radix;
-  else if (V->D->sdt == 2)
-    radix = V->D->linear_radix;
-  else
-    dv_check(0);
+  double radix = dv_dag_get_radix(V->D);
   sprintf(str, "%0.3lf", radix);
   int i;
   for (i=0; i<CS->nVP; i++)
@@ -453,15 +483,8 @@ static void dv_set_entry_radix_text(dv_view_t *V) {
     }
 }
 
-static void dv_get_entry_radix_text(dv_view_t *V, double radix) {
-  if (V->D->sdt == 0)
-    V->D->log_radix = radix;
-  else if (V->D->sdt == 1)
-    V->D->power_radix = radix;
-  else if (V->D->sdt == 2)
-    V->D->linear_radix = radix;
-  else
-    dv_check(0);
+static void dv_change_entry_radix_text(dv_view_t *V, double radix) {
+  dv_dag_set_radix(V->D, radix);
   dv_set_entry_radix_text(V);
   dv_view_layout(V);
   dv_queue_draw_d(V);
@@ -494,12 +517,13 @@ static void dv_do_set_focused_view(dv_view_t *V, int focused) {
 
 /*-----------------VIEW's functions-----------------*/
 
-static gboolean on_draw_event(GtkWidget *widget, cairo_t *cr, gpointer user_data)
+static gboolean
+on_draw_event(GtkWidget * widget, cairo_t * cr, gpointer user_data)
 {
-  dv_viewport_t *VP = (dv_viewport_t *) user_data;
-  dv_view_t *V;
-  dv_dag_t *D;
-  dv_view_status_t *S;
+  dv_viewport_t * VP = (dv_viewport_t *) user_data;
+  dv_view_t * V;
+  dv_dag_t * D;
+  dv_view_status_t * S;
   int count = 0;
   int i;
   for (i=0; i<CS->nV; i++)
@@ -534,10 +558,10 @@ static gboolean on_draw_event(GtkWidget *widget, cairo_t *cr, gpointer user_data
   return FALSE;
 }
 
-static void on_btn_zoomfit_hoz_clicked(GtkToolButton *toolbtn, gpointer user_data)
+static void on_btn_zoomfit_hor_clicked(GtkToolButton *toolbtn, gpointer user_data)
 {
   dv_view_t *V = (dv_view_t *) user_data;
-  dv_do_zoomfit_hoz(V);
+  dv_do_zoomfit_hor(V);
 }
 
 static void on_btn_zoomfit_ver_clicked(GtkToolButton *toolbtn, gpointer user_data)
@@ -558,18 +582,42 @@ static void on_btn_expand_clicked(GtkToolButton *toolbtn, gpointer user_data)
   dv_do_expanding_one(V);
 }
 
-static void dv_do_scrolling(dv_view_t *V, GdkEventScroll *event) {
-  //dv_dag_t *D = V->D;
-  if (event->direction == GDK_SCROLL_UP) {
-    dv_do_zooming(V, V->S->zoom_ratio * DV_ZOOM_INCREMENT, event->x, event->y);
-  } else if (event->direction == GDK_SCROLL_DOWN) {
-    dv_do_zooming(V, V->S->zoom_ratio / DV_ZOOM_INCREMENT, event->x, event->y);
+static void
+dv_do_scrolling(dv_view_t * V, GdkEventScroll * event) {
+  // Cal factor
+  double factor = 1.0;
+  if (event->direction == GDK_SCROLL_UP)
+    factor *= DV_ZOOM_INCREMENT;
+  else if (event->direction == GDK_SCROLL_DOWN)
+    factor /= DV_ZOOM_INCREMENT;
+  
+  // Apply factor
+  if (V->S->do_scale_radix || V->S->do_scale_radius) {
+    if (V->S->do_scale_radix) {
+      double radix = dv_dag_get_radix(V->D);
+      radix *= factor;
+      dv_change_entry_radix_text(V, radix);
+    }
+    if (V->S->do_scale_radius) {
+      V->D->radius *= factor;
+      dv_view_layout(V);
+      dv_queue_draw_d(V);
+    }
+  } else {
+    double zoomx = V->S->zoom_ratio_x;
+    double zoomy = V->S->zoom_ratio_y;
+    if (V->S->do_zoom_x)
+      zoomx *= factor;
+    if (V->S->do_zoom_y)
+      zoomy *= factor;
+    dv_do_zooming(V, zoomx, zoomy, event->x, event->y);
   }
 }
 
-static gboolean on_scroll_event(GtkWidget *widget, GdkEventScroll *event, gpointer user_data) {
-  dv_viewport_t *VP = (dv_viewport_t *) user_data;
-  dv_view_interface_t *I = dv_viewport_get_interface_to_view(VP, CS->activeV);
+static gboolean
+on_scroll_event(GtkWidget * widget, GdkEventScroll * event, gpointer user_data) {
+  dv_viewport_t * VP = (dv_viewport_t *) user_data;
+  dv_view_interface_t * I = dv_viewport_get_interface_to_view(VP, CS->activeV);
   if (I) {
     dv_do_scrolling(CS->activeV, event);
   } else {
@@ -599,8 +647,8 @@ static void dv_do_button_event(dv_view_t *V, GdkEventButton *event)
     // Node clicked
     if (S->accdisx < DV_SAFE_CLICK_RANGE
         && S->accdisy < DV_SAFE_CLICK_RANGE) {
-      double ox = (event->x - S->basex - S->x) / S->zoom_ratio;
-      double oy = (event->y - S->basey - S->y) / S->zoom_ratio;
+      double ox = (event->x - S->basex - S->x) / S->zoom_ratio_x;
+      double oy = (event->y - S->basey - S->y) / S->zoom_ratio_y;
       dv_dag_node_t *node = dv_do_finding_clicked_node(V, ox, oy);
       if (node) {
         switch (S->cm) {
@@ -704,7 +752,7 @@ static gboolean on_combobox_sdt_changed(GtkComboBox *widget, gpointer user_data)
 static gboolean on_entry_radix_activate(GtkEntry *entry, gpointer user_data) {
   dv_view_t *V = (dv_view_t *) user_data;
   double radix = atof(gtk_entry_get_text(GTK_ENTRY(entry)));
-  dv_get_entry_radix_text(V, radix);
+  dv_change_entry_radix_text(V, radix);
   return TRUE;
 }
 
@@ -749,14 +797,14 @@ static gboolean on_entry_search_activate(GtkEntry *entry, gpointer user_data) {
   case 0:
     // Grid-based
     d1 = co->lw + co->rw;
-    d2 = S->vpw - 2 * (DV_ZOOM_TO_FIT_MARGIN + DV_RADIUS);
+    d2 = S->vpw - 2 * (DV_ZOOM_TO_FIT_MARGIN + D->radius);
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     d1 = co->dw;
     d2 = S->vph - 2 * DV_ZOOM_TO_FIT_MARGIN;
     if (d1 > d2)
       zoom_ratio = dv_min(zoom_ratio, d2 / d1);
-    zoom_ratio = dv_min(zoom_ratio, S->zoom_ratio);
+    zoom_ratio = dv_min(zoom_ratio, dv_min(S->zoom_ratio_x, S->zoom_ratio_y));
     x -= (co->x + (co->rw - co->lw) * 0.5) * zoom_ratio;
     y -= co->y * zoom_ratio - (S->vph - 2 * DV_ZOOM_TO_FIT_MARGIN - co->dw * zoom_ratio) * 0.5;
     break;
@@ -770,13 +818,13 @@ static gboolean on_entry_search_activate(GtkEntry *entry, gpointer user_data) {
     d2 = S->vph - 2 * DV_ZOOM_TO_FIT_MARGIN;
     if (d1 > d2)
       zoom_ratio = dv_min(zoom_ratio, d2 / d1);
-    zoom_ratio = dv_min(zoom_ratio, S->zoom_ratio);
+    zoom_ratio = dv_min(zoom_ratio, dv_min(S->zoom_ratio_x, S->zoom_ratio_y));
     x -= (co->x + (co->rw - co->lw) * 0.5) * zoom_ratio;
     y -= co->y * zoom_ratio - (S->vph - 2 * DV_ZOOM_TO_FIT_MARGIN - co->dw * zoom_ratio) * 0.5;
     break;
   case 2:
     // Vertical Timeline
-    d1 = 2*DV_RADIUS + (D->P->num_workers - 1) * (2*DV_RADIUS + DV_HDIS);
+    d1 = 2*D->radius + (D->P->num_workers - 1) * (2*D->radius + DV_HDIS);
     d2 = S->vpw - 2 * DV_ZOOM_TO_FIT_MARGIN;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
@@ -784,13 +832,13 @@ static gboolean on_entry_search_activate(GtkEntry *entry, gpointer user_data) {
     d2 = S->vph - 2 * DV_ZOOM_TO_FIT_MARGIN;
     if (d1 > d2)
       zoom_ratio = dv_min(zoom_ratio, d2 / d1);
-    zoom_ratio = dv_min(zoom_ratio, S->zoom_ratio);
+    zoom_ratio = dv_min(zoom_ratio, dv_min(S->zoom_ratio_x, S->zoom_ratio_y));
     x -= (co->x + (co->rw - co->lw) * 0.5) * zoom_ratio - S->vpw * 0.5;
     y -= co->y * zoom_ratio - (S->vph - 2 * DV_ZOOM_TO_FIT_MARGIN - co->dw * zoom_ratio) * 0.5;
     break;
   case 3:
     // Horizontal Timeline
-    d1 = D->P->num_workers * (DV_RADIUS * 2);
+    d1 = D->P->num_workers * (D->radius * 2);
     d2 = S->vph - 2 * DV_ZOOM_TO_FIT_MARGIN;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
@@ -810,9 +858,9 @@ static gboolean on_entry_search_activate(GtkEntry *entry, gpointer user_data) {
   }  
   // Set motion
   if (!S->m->on)
-    dv_motion_start(S->m, pii, x, y, zoom_ratio);
+    dv_motion_start(S->m, pii, x, y, zoom_ratio, zoom_ratio);
   else
-    dv_motion_reset_target(S->m, pii, x, y, zoom_ratio);
+    dv_motion_reset_target(S->m, pii, x, y, zoom_ratio, zoom_ratio);
   return TRUE;
 }
 
@@ -853,17 +901,20 @@ static gboolean on_combobox_cm_changed(GtkComboBox *widget, gpointer user_data) 
   return TRUE;
 }
 
-static gboolean on_darea_configure_event(GtkWidget *widget, GdkEventConfigure *event, gpointer user_data) {
-  dv_viewport_t *VP = (dv_viewport_t *) user_data;
+static gboolean
+on_darea_configure_event(GtkWidget * widget, GdkEventConfigure * event, gpointer user_data) {
+  dv_viewport_t * VP = (dv_viewport_t *) user_data;
   VP->vpw = event->width;
   VP->vph = event->height;
-  dv_view_t *V = NULL;
+  dv_view_t * V = NULL;
   int i;
   for (i=0; i<CS->nV; i++)
     if (VP->I[i]) {
       V = VP->I[i]->V;
-      V->S->vpw = event->width;
-      V->S->vph = event->height;
+      if (V->mainVP == VP) {
+        V->S->vpw = event->width;
+        V->S->vph = event->height;
+      }
     }
   return TRUE;
 }
@@ -886,7 +937,7 @@ static gboolean on_window_key_event(GtkWidget *widget, GdkEvent *event, gpointer
     dv_do_collapsing_one(aV);
     return TRUE;
   case 104: /* h */
-    dv_do_zoomfit_hoz(aV);
+    dv_do_zoomfit_hor(aV);
     return TRUE;
   case 118: /* v */
     dv_do_zoomfit_ver(aV);
@@ -966,6 +1017,7 @@ static void on_btn_attrs_clicked(GtkToolButton *toolbtn, gpointer user_data)
   GtkWidget *dialog = gtk_dialog_new();
   gtk_window_set_title(GTK_WINDOW(dialog), "View Attributes");
   gtk_window_set_default_size(GTK_WINDOW(dialog), 200, -1);
+  gtk_window_set_position(GTK_WINDOW(dialog), GTK_WIN_POS_MOUSE);
   GtkWidget *dialog_vbox = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
   gtk_box_pack_start(GTK_BOX(dialog_vbox), I->combobox_lt, FALSE, FALSE, 0);
   gtk_box_pack_start(GTK_BOX(dialog_vbox), I->combobox_nc, FALSE, FALSE, 0);
@@ -1073,6 +1125,31 @@ static void on_btn_run_view_bt_samples_clicked(GtkToolButton *toolbtn, gpointer 
   dv_btsample_viewer_extract_interval(btviewer, worker, from, to);
 }
 
+static void
+on_checkbox_xzoom_toggled(GtkWidget * widget, gpointer user_data) {
+  dv_view_t * V = (dv_view_t *) user_data;
+  V->S->do_zoom_x = 1 - V->S->do_zoom_x;
+}
+
+static void
+on_checkbox_yzoom_toggled(GtkWidget * widget, gpointer user_data) {
+  dv_view_t * V = (dv_view_t *) user_data;
+  V->S->do_zoom_y = 1 - V->S->do_zoom_y;
+}
+
+static void
+on_checkbox_scale_radix_toggled(GtkWidget * widget, gpointer user_data) {
+  dv_view_t * V = (dv_view_t *) user_data;
+  V->S->do_scale_radix = 1 - V->S->do_scale_radix;
+}
+
+static void
+on_checkbox_scale_radius_toggled(GtkWidget * widget, gpointer user_data) {
+  dv_view_t * V = (dv_view_t *) user_data;
+  V->S->do_scale_radius = 1 - V->S->do_scale_radius;
+}
+
+
 void dv_view_status_init(dv_view_t *V, dv_view_status_t *S) {
   S->drag_on = 0;
   S->pressx = S->pressy = 0.0;
@@ -1089,9 +1166,14 @@ void dv_view_status_init(dv_view_t *V, dv_view_status_t *S) {
   S->focused = 0;
   // Drawing parameters
   S->init = 1;
-  S->zoom_ratio = 1.0;
   S->x = S->y = 0.0;
   S->basex = S->basey = 0.0;
+  S->zoom_ratio_x = 1.0;
+  S->zoom_ratio_y = 1.0;
+  S->do_zoom_x = 1;
+  S->do_zoom_y = 1;
+  S->do_scale_radix = 0;
+  S->do_scale_radius = 0;
   dv_motion_init(S->m, V);
 }
 
@@ -1101,6 +1183,7 @@ void dv_view_init(dv_view_t *V) {
   int i;
   for (i=0; i<CS->nVP; i++)
     V->I[i] = NULL;
+  V->mainVP = NULL;
 }
 
 dv_view_t * dv_view_create_new_with_dag(dv_dag_t *D) {
@@ -1141,7 +1224,8 @@ void * dv_view_interface_set_values(dv_view_t *V, dv_view_interface_t *I) {
   dv_set_entry_radix_text(I->V);
 }
 
-dv_view_interface_t * dv_view_interface_create_new(dv_view_t *V, dv_viewport_t *VP) {
+dv_view_interface_t *
+dv_view_interface_create_new(dv_view_t * V, dv_viewport_t * VP) {
   // Create a new
   dv_view_interface_t * I = (dv_view_interface_t *) dv_malloc(sizeof(dv_view_interface_t));
   I->V = V;
@@ -1158,6 +1242,14 @@ dv_view_interface_t * dv_view_interface_create_new(dv_view_t *V, dv_viewport_t *
   I->combobox_et = gtk_combo_box_text_new();
   I->togg_eaffix = gtk_toggle_button_new_with_label("Edge Affix");
   I->entry_search = gtk_entry_new();
+  I->checkbox_xzoom = gtk_check_button_new_with_label("X Zoom");
+  I->checkbox_yzoom = gtk_check_button_new_with_label("Y Zoom");
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(I->checkbox_xzoom), V->S->do_zoom_x);
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(I->checkbox_yzoom), V->S->do_zoom_y);
+  I->checkbox_scale_radix = gtk_check_button_new_with_label("Scale Radix");
+  I->checkbox_scale_radius = gtk_check_button_new_with_label("Scale Radius");
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(I->checkbox_scale_radix), V->S->do_scale_radix);
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(I->checkbox_scale_radius), V->S->do_scale_radius);
 
   g_object_ref(I->combobox_lt);
   g_object_ref(I->combobox_nc);
@@ -1183,6 +1275,16 @@ dv_view_interface_t * dv_view_interface_create_new(dv_view_t *V, dv_viewport_t *
   GtkWidget *togg_focused = I->togg_focused;
   gtk_container_add(GTK_CONTAINER(btn_togg_focused), togg_focused);
   g_signal_connect(G_OBJECT(togg_focused), "toggled", G_CALLBACK(on_togg_focused_toggled), (void *) V);
+
+  // Separator
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), gtk_separator_tool_item_new(), -1);
+
+  // View-attribute dialog button
+  GtkToolItem *btn_attrs = gtk_tool_button_new(NULL, NULL);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_attrs, -1);
+  gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_attrs), "preferences-system");
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_attrs), "Open attribute dialog");
+  g_signal_connect(G_OBJECT(btn_attrs), "clicked", G_CALLBACK(on_btn_attrs_clicked), (void *) I);
 
   // Layout type combobox
   //GtkToolItem *btn_combo_lt = gtk_tool_item_new();
@@ -1264,19 +1366,12 @@ dv_view_interface_t * dv_view_interface_create_new(dv_view_t *V, dv_viewport_t *
   gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_cm), S->cm);
   g_signal_connect(G_OBJECT(combobox_cm), "changed", G_CALLBACK(on_combobox_cm_changed), (void *) V);
 
-  // View-attribute dialog button
-  GtkToolItem *btn_attrs = gtk_tool_button_new(NULL, NULL);
-  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_attrs, -1);
-  gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_attrs), "preferences-system");
-  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_attrs), "Open attribute dialog");
-  g_signal_connect(G_OBJECT(btn_attrs), "clicked", G_CALLBACK(on_btn_attrs_clicked), (void *) I);
-
   // Zoomfit-horizontally button
-  GtkToolItem *btn_zoomfit_hoz = gtk_tool_button_new(NULL, NULL);
-  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_zoomfit_hoz, -1);
-  gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_zoomfit_hoz), "zoom-fit-best");
-  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_zoomfit_hoz), "Fit Horizontal (h)");
-  g_signal_connect(G_OBJECT(btn_zoomfit_hoz), "clicked", G_CALLBACK(on_btn_zoomfit_hoz_clicked), (void *) V);
+  GtkToolItem *btn_zoomfit_hor = gtk_tool_button_new(NULL, NULL);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_zoomfit_hor, -1);
+  gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_zoomfit_hor), "zoom-fit-best");
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_zoomfit_hor), "Fit Horizontal (h)");
+  g_signal_connect(G_OBJECT(btn_zoomfit_hor), "clicked", G_CALLBACK(on_btn_zoomfit_hor_clicked), (void *) V);
 
   // Zoomfit-vertically button
   GtkToolItem *btn_zoomfit_ver = gtk_tool_button_new(NULL, NULL);
@@ -1296,6 +1391,39 @@ dv_view_interface_t * dv_view_interface_create_new(dv_view_t *V, dv_viewport_t *
   gtk_widget_set_tooltip_text(GTK_WIDGET(btn_expand), "Expand (x)");
   g_signal_connect(G_OBJECT(btn_shrink), "clicked", G_CALLBACK(on_btn_shrink_clicked), (void *) V);  
   g_signal_connect(G_OBJECT(btn_expand), "clicked", G_CALLBACK(on_btn_expand_clicked), (void *) V);
+
+  // Separator
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), gtk_separator_tool_item_new(), -1);
+
+  // X, Y zoom check boxes
+  GtkToolItem * btn_xzoom = gtk_tool_item_new();
+  GtkToolItem * btn_yzoom = gtk_tool_item_new();
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_xzoom, -1);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_yzoom, -1);
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_xzoom), "Zoom X when scrolling");
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_yzoom), "Zoom Y when scrolling");
+  gtk_container_add(GTK_CONTAINER(btn_xzoom), I->checkbox_xzoom);
+  gtk_container_add(GTK_CONTAINER(btn_yzoom), I->checkbox_yzoom);
+  g_signal_connect(G_OBJECT(I->checkbox_xzoom), "toggled", G_CALLBACK(on_checkbox_xzoom_toggled), (void *) V);
+  g_signal_connect(G_OBJECT(I->checkbox_yzoom), "toggled", G_CALLBACK(on_checkbox_yzoom_toggled), (void *) V);
+
+  // Separator
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), gtk_separator_tool_item_new(), -1);
+
+  // Scale radix, radius
+  GtkToolItem * btn_scale_radix = gtk_tool_item_new();
+  GtkToolItem * btn_scale_radius = gtk_tool_item_new();
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_scale_radix, -1);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_scale_radius, -1);
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_scale_radix), "Scale radix when scrolling");
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_scale_radius), "Scale radius when scrolling");
+  gtk_container_add(GTK_CONTAINER(btn_scale_radix), I->checkbox_scale_radix);
+  gtk_container_add(GTK_CONTAINER(btn_scale_radius), I->checkbox_scale_radius);
+  g_signal_connect(G_OBJECT(I->checkbox_scale_radix), "toggled", G_CALLBACK(on_checkbox_scale_radix_toggled), (void *) V);
+  g_signal_connect(G_OBJECT(I->checkbox_scale_radius), "toggled", G_CALLBACK(on_checkbox_scale_radius_toggled), (void *) V);
+
+  // Separator
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), gtk_separator_tool_item_new(), -1);
 
   // Search Entry
   GtkToolItem *btn_entry_search = gtk_tool_item_new();
@@ -1330,20 +1458,32 @@ dv_view_add_viewport(dv_view_t * V, dv_viewport_t * VP) {
   int idx = VP - CS->VP;
   if (V->I[idx] && V->I[idx]->VP == VP)
     return;
+  if (!V->mainVP)
+    V->mainVP = VP;
   dv_view_interface_t * itf = dv_view_interface_create_new(V, VP);
   V->I[idx] = itf;
   dv_viewport_add_interface(VP, itf);
 }
 
 void
-dv_view_remove_viewport(dv_view_t * v, dv_viewport_t * VP) {
+dv_view_remove_viewport(dv_view_t * V, dv_viewport_t * VP) {
   int idx = VP - CS->VP;
-  if (!v->I[idx])
+  if (!V->I[idx])
     return;
-  dv_view_interface_t * itf = v->I[idx];
-  v->I[idx] = NULL;
+  dv_view_interface_t * itf = V->I[idx];
+  V->I[idx] = NULL;
   dv_viewport_remove_interface(VP, itf);
   dv_view_interface_destroy(itf);
+  if (V->mainVP == VP) {
+    dv_viewport_t * new_vp = NULL;
+    int i;
+    for (i=0; i<CS->nVP; i++)
+      if (V->I[i]) {
+        new_vp = V->I[i]->VP;
+        break;
+      }
+    V->mainVP = new_vp;
+  }
 }
 
 dv_view_interface_t * dv_view_get_interface_to_viewport(dv_view_t *V, dv_viewport_t *VP) {
@@ -1809,7 +1949,8 @@ on_help_hotkeys_clicked(GtkToolButton *toolbtn, gpointer user_data) {
                                     "c : collapse\n"
                                     "h : horizontal fit\n"
                                     "v : vertical fit\n"
-                                    "Alt + key : access menu\n");
+                                    "Alt + key : access menu\n"
+                                    "Arrow keys : move around\n");
   gtk_box_pack_start(GTK_BOX(dialog_vbox), label, TRUE, FALSE, 0);
 
   // Run

@@ -67,7 +67,7 @@ typedef struct dv_llist {
 
 /*-----------------Constants-----------------*/
 
-#define DV_ZOOM_INCREMENT 1.10
+#define DV_ZOOM_INCREMENT 1.20
 #define DV_HDIS 70
 #define DV_VDIS 70
 #define DV_RADIUS 20
@@ -198,11 +198,12 @@ typedef struct dv_dag {
   int cur_d_ex; /* current depth of extensible union nodes */
 
   /* layout parameters */
-  int sdt; /* scale down type */
+  int sdt; /* scale down type: 0 (log), 1 (power), 2 (linear) */
   double log_radix;
   double power_radix;
   double linear_radix;
   int frombt;
+  double radius;
 
   /* other */
   dv_llist_t itl[1]; /* list of nodes that have info tag */
@@ -224,8 +225,10 @@ typedef struct dv_motion {
   double step;
   dv_view_t *V;
   long target_pii;
-  double xfrom, yfrom, zrfrom;
-  double xto, yto, zrto;
+  double xfrom, yfrom;
+  double zrxfrom, zryfrom;
+  double xto, yto;
+  double zrxto, zryto;
   double start_t;
 } dv_motion_t;
 
@@ -250,9 +253,14 @@ typedef struct dv_view_status {
 
   /* drawing parameters */
   char init;     /* to recognize initial drawing */
-  double zoom_ratio;  /* zoom ratio of the graph to draw */
   double x, y;        /* current coordinates of the central point */
   double basex, basey;
+  double zoom_ratio_x; /* horizontal zoom ratio */
+  double zoom_ratio_y; /* vertical zoom ratio */
+  int do_zoom_x;
+  int do_zoom_y;
+  int do_scale_radix;
+  int do_scale_radius;
 
   /* moving animation */
   dv_motion_t m[1];
@@ -274,12 +282,17 @@ typedef struct dv_view_interface {
   GtkWidget * combobox_et;
   GtkWidget * togg_eaffix;
   GtkWidget * entry_search;
+  GtkWidget * checkbox_xzoom;
+  GtkWidget * checkbox_yzoom;
+  GtkWidget * checkbox_scale_radix;
+  GtkWidget * checkbox_scale_radius;
 } dv_view_interface_t;
 
 typedef struct dv_view {
   dv_dag_t * D; /* DV DAG */
   dv_view_status_t S[1]; /* layout/drawing attributes */
   dv_view_interface_t * I[DV_MAX_VIEWPORT]; /* interfaces to viewports */
+  dv_viewport_t * mainVP; /* main VP that this V is assosiated with */
 } dv_view_t;
 
 typedef struct dv_viewport {
@@ -405,6 +418,8 @@ int dv_dag_destroy_node_innner(dv_dag_t *, dv_dag_node_t *);
 void dv_dag_clear_shrinked_nodes(dv_dag_t *);
 void dv_dag_init(dv_dag_t *, dv_pidag_t *);
 dv_dag_t * dv_dag_create_new_with_pidag(dv_pidag_t *);
+double dv_dag_get_radix(dv_dag_t *);
+void dv_dag_set_radix(dv_dag_t *, double);
 
 void dv_btsample_viewer_init(dv_btsample_viewer_t *);
 int dv_btsample_viewer_extract_interval(dv_btsample_viewer_t *, int, unsigned long long, unsigned long long);
@@ -423,8 +438,8 @@ void dv_animation_remove(dv_animation_t *, dv_dag_node_t *);
 void dv_animation_reverse(dv_animation_t *, dv_dag_node_t *);
 
 void dv_motion_init(dv_motion_t *, dv_view_t *);
-void dv_motion_reset_target(dv_motion_t *, long, double, double, double);
-void dv_motion_start(dv_motion_t *, long, double, double, double);
+void dv_motion_reset_target(dv_motion_t *, long, double, double, double, double);
+void dv_motion_start(dv_motion_t *, long, double, double, double, double);
 void dv_motion_stop(dv_motion_t *);
 
 /* draw.c */
@@ -435,8 +450,8 @@ double dv_view_get_alpha_fading_out(dv_view_t *V, dv_dag_node_t *);
 double dv_view_get_alpha_fading_in(dv_view_t *V, dv_dag_node_t *);
 void dv_view_draw_edge_1(dv_view_t *, cairo_t *, dv_dag_node_t *, dv_dag_node_t *);
 void dv_view_draw_status(dv_view_t *, cairo_t *, int);
-void dv_view_draw_infotag_1(dv_view_t *, cairo_t *, dv_dag_node_t *);
-//void dv_view_draw_infotags(dv_view_t *, cairo_t *);
+void dv_view_draw_infotag_1(dv_view_t *, cairo_t *, cairo_matrix_t *, dv_dag_node_t *);
+void dv_view_draw_infotags(dv_view_t *, cairo_t *, cairo_matrix_t *);
 void dv_view_draw(dv_view_t *, cairo_t *);
 void dv_viewport_draw_label(dv_viewport_t *, cairo_t *);
 

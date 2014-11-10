@@ -21,9 +21,9 @@ static void dv_view_layout_glike_node(dv_view_t *V, dv_dag_node_t *node) {
     nodeco->dw = headco->link_dw;
   } else {
     // node's inward
-    nodeco->lw = DV_RADIUS;
-    nodeco->rw = DV_RADIUS;
-    nodeco->dw = 2 * DV_RADIUS;
+    nodeco->lw = V->D->radius;
+    nodeco->rw = V->D->radius;
+    nodeco->dw = 2 * V->D->radius;
   }
     
   /* Calculate link-along */
@@ -70,13 +70,13 @@ static void dv_view_layout_glike_node(dv_view_t *V, dv_dag_node_t *node) {
     // node's linked u,v's outward
     hgap = gap * DV_HDIS;
     // u
-    uco->xpre = (uco->link_lw - DV_RADIUS) + hgap;
+    uco->xpre = (uco->link_lw - V->D->radius) + hgap;
     if (dv_llist_size(u->links) == 2)
       uco->xpre = - ((dv_dag_node_t *) dv_llist_get(u->links, 1))->c[lt].xpre;
     // v
-    vco->xpre = (vco->link_rw - DV_RADIUS) + hgap;
+    vco->xpre = (vco->link_rw - V->D->radius) + hgap;
     if (dv_llist_size(u->links) == 2)
-      vco->xpre += (uco->link_lw - DV_RADIUS) - uco->xpre;
+      vco->xpre += (uco->link_lw - V->D->radius) - uco->xpre;
     vco->xpre = - vco->xpre;
     
     // node's link-along
@@ -213,10 +213,10 @@ static void dv_view_draw_glike_node_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *
     } else {
       
       // Normal-sized box
-      xx = x - nodeco->lw;//DV_RADIUS;
+      xx = x - nodeco->lw;//V->D->radius;
       yy = y;
-      w = nodeco->lw + nodeco->rw;//2 * DV_RADIUS;
-      h = nodeco->dw;//2 * DV_RADIUS;
+      w = nodeco->lw + nodeco->rw;//2 * V->D->radius;
+      h = nodeco->dw;//2 * V->D->radius;
       alpha = 1.0;
       if (dv_is_shrinking(node->parent)) {
         // Fading out
@@ -238,7 +238,7 @@ static void dv_view_draw_glike_node_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *
   } else {
     
     // Normal-sized circle
-    cairo_arc(cr, x, y + DV_RADIUS, DV_RADIUS, 0.0, 2*M_PI);
+    cairo_arc(cr, x, y + V->D->radius, V->D->radius, 0.0, 2*M_PI);
     alpha = 1.0;
     if (dv_is_shrinking(node->parent)) {
       // Fading out
@@ -254,11 +254,14 @@ static void dv_view_draw_glike_node_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *
   cairo_set_source_rgba(cr, c[0], c[1], c[2], c[3] * alpha);
   cairo_fill_preserve(cr);
   cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
-  cairo_stroke(cr);
-  cairo_restore(cr);
+  cairo_stroke_preserve(cr);
   // Draw infotag
-  if (dv_llist_has(V->D->P->itl, (void *) node->pii))
-    dv_view_draw_infotag_1(V, cr, node);
+  if (dv_llist_has(V->D->P->itl, (void *) node->pii)) {
+    cairo_set_source_rgba(cr, 0.1, 0.1, 0.1, 0.6);
+    cairo_fill(cr);
+    dv_llist_add(V->D->itl, (void *) node);
+  }
+  cairo_restore(cr);
 }
 
 static void dv_view_draw_glike_node_r(dv_view_t *V, cairo_t *cr, dv_dag_node_t *u) {
@@ -356,6 +359,7 @@ void dv_view_draw_glike(dv_view_t *V, cairo_t *cr) {
   cairo_set_line_width(cr, 2.0);
   int i;
   // Draw nodes
+  dv_llist_init(V->D->itl);
   dv_view_draw_glike_node_r(V, cr, V->D->rt);
   // Draw edges
   dv_view_draw_glike_edge_r(V, cr, V->D->rt);

@@ -10,7 +10,7 @@ static double dv_view_calculate_hgap(dv_view_t *V, dv_dag_node_t *node) {
 
 double dv_view_calculate_hsize(dv_view_t *V, dv_dag_node_t *node) {
   double gap = dv_view_calculate_gap(V, node->parent);
-  double hsize = gap * DV_RADIUS;
+  double hsize = gap * V->D->radius;
   return hsize;
 }
 
@@ -144,17 +144,17 @@ static void dv_view_layout_bbox_node(dv_view_t *V, dv_dag_node_t *node) {
     nodeco->rw = headco->link_rw;
     nodeco->dw = headco->link_dw;
     // for enhancing expand/collapse animation
-    if (nodeco->lw < DV_RADIUS)
-      nodeco->lw = DV_RADIUS;
-    if (nodeco->rw < DV_RADIUS)
-      nodeco->rw = DV_RADIUS;
+    if (nodeco->lw < V->D->radius)
+      nodeco->lw = V->D->radius;
+    if (nodeco->rw < V->D->radius)
+      nodeco->rw = V->D->radius;
     double vsize = dv_view_calculate_vsize(V, node);
     if (nodeco->dw < vsize)
       nodeco->dw = vsize;
   } else {
     // node's inward
-    nodeco->lw = DV_RADIUS;//dv_view_calculate_hsize(V, node);
-    nodeco->rw = DV_RADIUS;//dv_view_calculate_hsize(V, node);
+    nodeco->lw = V->D->radius;//dv_view_calculate_hsize(V, node);
+    nodeco->rw = V->D->radius;//dv_view_calculate_hsize(V, node);
     nodeco->dw = dv_view_calculate_vsize(V, node);
   }
     
@@ -205,13 +205,13 @@ static void dv_view_layout_bbox_node(dv_view_t *V, dv_dag_node_t *node) {
     // node's linked u,v's outward
     hgap = g * DV_HDIS;
     // u
-    uco->xpre = (uco->link_lw - DV_RADIUS) + hgap;
+    uco->xpre = (uco->link_lw - V->D->radius) + hgap;
     if (dv_llist_size(u->links) == 2)
       uco->xpre = - ((dv_dag_node_t *) dv_llist_get(u->links, 1))->c[lt].xpre;
     // v
-    vco->xpre = (vco->link_rw - DV_RADIUS) + hgap;
+    vco->xpre = (vco->link_rw - V->D->radius) + hgap;
     if (dv_llist_size(u->links) == 2)
-      vco->xpre += (uco->link_lw - DV_RADIUS) - uco->xpre;
+      vco->xpre += (uco->link_lw - V->D->radius) - uco->xpre;
     vco->xpre = - vco->xpre;
     
     // node's link-along
@@ -394,11 +394,14 @@ static void dv_view_draw_bbox_node_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *n
   cairo_set_source_rgba(cr, c[0], c[1], c[2], c[3] * alpha);
   cairo_fill_preserve(cr);
   cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
-  cairo_stroke(cr);
-  cairo_restore(cr);
+  cairo_stroke_preserve(cr);
   // Draw infotag
-  if (dv_llist_has(V->D->P->itl, (void *) node->pii))
-    dv_view_draw_infotag_1(V, cr, node);
+  if (dv_llist_has(V->D->P->itl, (void *) node->pii)) {
+    cairo_set_source_rgba(cr, 0.1, 0.1, 0.1, 0.6);
+    cairo_fill(cr);
+    dv_llist_add(V->D->itl, (void *) node);
+  }
+  cairo_restore(cr);
 }
 
 static void dv_view_draw_bbox_node_r(dv_view_t *V, cairo_t *cr, dv_dag_node_t *node) {
@@ -481,6 +484,7 @@ void dv_view_draw_bbox(dv_view_t *V, cairo_t *cr) {
   cairo_set_line_width(cr, DV_NODE_LINE_WIDTH);
   int i;
   // Draw nodes
+  dv_llist_init(V->D->itl);
   dv_view_draw_bbox_node_r(V, cr, V->D->rt);
   // Draw edges
   dv_view_draw_bbox_edge_r(V, cr, V->D->rt);

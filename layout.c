@@ -162,15 +162,18 @@ void dv_animation_reverse(dv_animation_t *a, dv_dag_node_t *node) {
 
 /*-----------Motion functions----------------------*/
 
-static void dv_motion_reset(dv_motion_t *m) {
+static void
+dv_motion_reset(dv_motion_t * m) {
   m->target_pii = -1;
   m->xfrom = m->yfrom = 0.0;
   m->xto = m->yto = 0.0;
-  m->zrfrom = m->zrto = 0.0;
+  m->zrxfrom = m->zrxto = 0.0;
+  m->zryfrom = m->zryto = 0.0;
   m->start_t = 0.0;
 }
 
-void dv_motion_init(dv_motion_t *m, dv_view_t *V) {
+void
+dv_motion_init(dv_motion_t * m, dv_view_t * V) {
   m->on = 0;
   m->duration = DV_ANIMATION_DURATION;
   m->step = DV_ANIMATION_STEP;
@@ -178,8 +181,9 @@ void dv_motion_init(dv_motion_t *m, dv_view_t *V) {
   dv_motion_reset(m);
 }
 
-static gboolean dv_motion_tick(gpointer data) {
-  dv_motion_t *m = (dv_motion_t *) data;
+static gboolean
+dv_motion_tick(gpointer data) {
+  dv_motion_t * m = (dv_motion_t *) data;
   dv_check(m->on);
   double cur = dv_get_time();
   dv_check(cur > m->start_t);
@@ -187,7 +191,8 @@ static gboolean dv_motion_tick(gpointer data) {
     double ratio = (cur - m->start_t) / m->duration;
     m->V->S->x = m->xfrom + ratio * (m->xto - m->xfrom);
     m->V->S->y = m->yfrom + ratio * (m->yto - m->yfrom);
-    m->V->S->zoom_ratio = m->zrfrom + ratio * (m->zrto - m->zrfrom);
+    m->V->S->zoom_ratio_x = m->zrxfrom + ratio * (m->zrxto - m->zrxfrom);
+    m->V->S->zoom_ratio_y = m->zryfrom + ratio * (m->zryto - m->zryfrom);
     dv_queue_draw(m->V);
     return 1;
   } else {
@@ -196,24 +201,29 @@ static gboolean dv_motion_tick(gpointer data) {
   }
 }
 
-void dv_motion_reset_target(dv_motion_t *m, long pii, double xto, double yto, double zrto) {
+void
+dv_motion_reset_target(dv_motion_t * m, long pii, double xto, double yto, double zrxto, double zryto) {
   m->target_pii = pii;
   m->xfrom = m->V->S->x;
   m->yfrom = m->V->S->y;
-  m->zrfrom = m->V->S->zoom_ratio;
+  m->zrxfrom = m->V->S->zoom_ratio_x;
+  m->zryfrom = m->V->S->zoom_ratio_y;
   m->xto = xto;
   m->yto = yto;
-  m->zrto = zrto;
+  m->zrxto = zrxto;
+  m->zryto = zryto;
   m->start_t = dv_get_time();
 }
 
-void dv_motion_start(dv_motion_t *m, long pii, double xto, double yto, double zrto) {
+void
+dv_motion_start(dv_motion_t * m, long pii, double xto, double yto, double zrxto, double zryto) {
   m->on = 1;
-  dv_motion_reset_target(m, pii, xto, yto, zrto);
+  dv_motion_reset_target(m, pii, xto, yto, zrxto, zryto);
   g_timeout_add(m->step, dv_motion_tick, m);
 }
 
-void dv_motion_stop(dv_motion_t *m) {
+void
+dv_motion_stop(dv_motion_t * m) {
   m->on = 0;
   dv_motion_reset(m);
 }

@@ -419,6 +419,7 @@ void dv_dag_init(dv_dag_t *D, dv_pidag_t *P) {
   D->power_radix = DV_RADIX_POWER;
   D->linear_radix = DV_RADIX_LINEAR;
   D->frombt = DV_FROMBT_INIT;
+  D->radius = DV_RADIUS;
   dv_llist_init(D->itl);
 }
 
@@ -446,6 +447,42 @@ dv_dag_t * dv_dag_create_new_with_pidag(dv_pidag_t *P) {
   */
 
   return D;
+}
+
+double
+dv_dag_get_radix(dv_dag_t * D) {
+  double radix = 0.0;
+  switch (D->sdt) {
+  case 0:
+    radix = D->log_radix;
+    break;
+  case 1:
+    radix = D->power_radix;
+    break;
+  case 2:
+    radix = D->linear_radix;
+    break;
+  default:
+    dv_check(0);
+  }
+  return radix;
+}
+
+void
+dv_dag_set_radix(dv_dag_t * D, double radix) {
+  switch (D->sdt) {
+  case 0:
+    D->log_radix = radix;
+    break;
+  case 1:
+    D->power_radix = radix;
+    break;
+  case 2:
+    D->linear_radix = radix;
+    break;
+  default:
+    dv_check(0);
+  }
 }
 
 /*-----------------end of DAG's functions-----------*/

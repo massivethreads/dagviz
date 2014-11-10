@@ -8,12 +8,12 @@ static void dv_view_layout_timeline_node(dv_view_t *V, dv_dag_node_t *node) {
   dv_dag_t *D = V->D;
   dr_pi_dag_node * pi = dv_pidag_get_node(D->P, node);
   /* Calculate inward */
-  nodeco->lw = DV_RADIUS;//dv_view_calculate_hsize(V, node);
-  nodeco->rw = DV_RADIUS;//dv_view_calculate_hsize(V, node);
+  nodeco->lw = V->D->radius;//dv_view_calculate_hsize(V, node);
+  nodeco->rw = V->D->radius;//dv_view_calculate_hsize(V, node);
   nodeco->dw = dv_view_calculate_vresize(V, pi->info.end.t - D->bt) - dv_view_calculate_vresize(V, pi->info.start.t - D->bt);
   // node's outward
   int worker = pi->info.worker;
-  nodeco->x = DV_RADIUS + worker * (2 * DV_RADIUS + DV_HDIS);
+  nodeco->x = V->D->radius + worker * (2 * V->D->radius + DV_HDIS);
   nodeco->y = dv_view_calculate_vresize(V, pi->info.start.t - D->bt);
   if (dv_is_union(node) && dv_is_inner_loaded(node)) {
     // Recursive call
@@ -103,12 +103,15 @@ static void dv_view_draw_timeline_node_1(dv_view_t *V, cairo_t *cr, dv_dag_node_
   cairo_fill_preserve(cr);
   if (DV_TIMELINE_NODE_WITH_BORDER) {
     cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
-    cairo_stroke(cr);
+    cairo_stroke_preserve(cr);
+  }
+  // Draw infotag
+  if (dv_llist_has(V->D->P->itl, (void *) node->pii)) {
+    cairo_set_source_rgba(cr, 0.1, 0.1, 0.1, 0.6);
+    cairo_fill(cr);
+    dv_llist_add(V->D->itl, (void *) node);
   }
   cairo_restore(cr);
-  // Draw infotag
-  if (dv_llist_has(V->D->P->itl, (void *) node->pii))
-    dv_view_draw_infotag_1(V, cr, node);
 }
 
 static void dv_view_draw_timeline_node_r(dv_view_t *V, cairo_t *cr, dv_dag_node_t *node) {
@@ -134,6 +137,7 @@ void dv_view_draw_timeline(dv_view_t *V, cairo_t *cr) {
   cairo_set_line_width(cr, DV_NODE_LINE_WIDTH);
   int i;
   // Draw nodes
+  dv_llist_init(V->D->itl);
   dv_view_draw_timeline_node_r(V, cr, V->D->rt);
   // Draw worker numbers
   cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
@@ -141,13 +145,13 @@ void dv_view_draw_timeline(dv_view_t *V, cairo_t *cr) {
   cairo_set_font_size(cr, 12);
   char *s = (char *) dv_malloc( DV_STRING_LENGTH * sizeof(char) );
   double xx, yy;
-  xx = DV_RADIUS;
+  xx = V->D->radius;
   yy = -4;
   for (i=0; i<V->D->P->num_workers; i++) {
     sprintf(s, "Worker %d", i);            
     cairo_move_to(cr, xx - 30, yy);
     cairo_show_text(cr, s);
-    xx += 2 * DV_RADIUS + DV_HDIS;
+    xx += 2 * V->D->radius + DV_HDIS;
   }
 }
 

@@ -9,13 +9,13 @@ dv_view_layout_timeline2_node(dv_view_t * V, dv_dag_node_t * node) {
   dv_dag_t * D = V->D;
   dr_pi_dag_node * pi = dv_pidag_get_node(D->P, node);
   /* Calculate inward */
-  nodeco->dw = DV_RADIUS * 2;
+  nodeco->dw = V->D->radius * 2;
   nodeco->lw = 0.0;
   nodeco->rw = dv_view_calculate_vresize(V, pi->info.end.t - D->bt) - dv_view_calculate_vresize(V, pi->info.start.t - D->bt);
   // node's outward
   int worker = pi->info.worker;
   nodeco->x = dv_view_calculate_vresize(V, pi->info.start.t - D->bt);
-  nodeco->y = worker * (2 * DV_RADIUS);
+  nodeco->y = worker * (2 * V->D->radius);
   if (dv_is_union(node) && dv_is_inner_loaded(node)) {
     // Recursive call
     if (dv_is_expanded(node))
@@ -179,31 +179,27 @@ dv_view_draw_paraprof(dv_view_t * V, cairo_t * cr) {
 void
 dv_view_draw_timeline2(dv_view_t * V, cairo_t * cr) {
   // Set adaptive line width
-  double line_width = dv_min(DV_NODE_LINE_WIDTH, DV_NODE_LINE_WIDTH / V->S->zoom_ratio);
+  double line_width = dv_min(DV_NODE_LINE_WIDTH, DV_NODE_LINE_WIDTH / dv_min(V->S->zoom_ratio_x, V->S->zoom_ratio_y));
   cairo_set_line_width(cr, line_width);
-  fprintf(stderr, "line width = %lf, zoom_ratio = %lf\n", line_width, V->S->zoom_ratio);
   // White & grey colors
   GdkRGBA white[1];
   gdk_rgba_parse(white, "white");
   GdkRGBA grey[1];
   gdk_rgba_parse(grey, "light grey");
   // Draw background
+  /*
   cairo_new_path(cr);
   cairo_set_source_rgb(cr, grey->red, grey->green, grey->blue);
   cairo_paint(cr);
   cairo_set_source_rgb(cr, white->red, white->green, white->blue);
   double width = V->D->rt->c[V->S->lt].rw;
-  double height = V->D->P->num_workers * (2 * DV_RADIUS);
+  double height = V->D->P->num_workers * (2 * V->D->radius);
   cairo_rectangle(cr, 0.0, 0.0, width, height);
   cairo_fill(cr);
+  */
   // Draw nodes
   dv_llist_init(V->D->itl);
   dv_view_draw_timeline2_node_r(V, cr, V->D->rt);
-  // Draw infotags
-  dv_dag_node_t * node = NULL;
-  while (node = (dv_dag_node_t *) dv_llist_pop(V->D->itl)) {
-    dv_view_draw_infotag_1(V, cr, node);
-  }            
   // Draw worker numbers
   cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
   cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
@@ -211,13 +207,13 @@ dv_view_draw_timeline2(dv_view_t * V, cairo_t * cr) {
   char s[DV_STRING_LENGTH];
   double xx, yy;
   xx = -75;
-  yy = DV_RADIUS * 1.2;
+  yy = V->D->radius * 1.2;
   int i;
   for (i=0; i<V->D->P->num_workers; i++) {
     sprintf(s, "Worker %d", i);            
     cairo_move_to(cr, xx, yy);
     cairo_show_text(cr, s);
-    yy += 2 * DV_RADIUS;
+    yy += 2 * V->D->radius;
   }
   // Draw parallelism profile
   dv_view_draw_paraprof(V, cr);
