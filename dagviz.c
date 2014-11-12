@@ -276,6 +276,10 @@ dv_do_drawing(dv_view_t * V, cairo_t * cr) {
   cairo_matrix_scale(mt, S->zoom_ratio_x, S->zoom_ratio_y);
   cairo_set_matrix(cr, mt);
   */
+  // Clipping
+  cairo_rectangle(cr, 20, 20, V->S->vpw - 40, V->S->vph - 40);
+  cairo_clip(cr);
+  
   cairo_translate(cr, S->basex + S->x, S->basey + S->y);
   cairo_scale(cr, S->zoom_ratio_x, S->zoom_ratio_y);
   dv_view_draw(V, cr);
@@ -584,26 +588,47 @@ static void on_btn_expand_clicked(GtkToolButton *toolbtn, gpointer user_data)
 
 static void
 dv_do_scrolling(dv_view_t * V, GdkEventScroll * event) {
-  // Cal factor
   double factor = 1.0;
-  if (event->direction == GDK_SCROLL_UP)
-    factor *= DV_ZOOM_INCREMENT;
-  else if (event->direction == GDK_SCROLL_DOWN)
-    factor /= DV_ZOOM_INCREMENT;
   
-  // Apply factor
   if (V->S->do_scale_radix || V->S->do_scale_radius) {
+    
     if (V->S->do_scale_radix) {
+      
+      // Cal factor    
+      if (event->direction == GDK_SCROLL_UP)
+        factor /= DV_SCALE_INCREMENT;
+      else if (event->direction == GDK_SCROLL_DOWN)
+        factor *= DV_SCALE_INCREMENT;
+      // Apply factor    
       double radix = dv_dag_get_radix(V->D);
       radix *= factor;
       dv_change_entry_radix_text(V, radix);
+      
     }
+    
     if (V->S->do_scale_radius) {
+      
+      // Cal factor
+      factor = 1.0;
+      if (event->direction == GDK_SCROLL_UP)
+        factor *= DV_SCALE_INCREMENT;
+      else if (event->direction == GDK_SCROLL_DOWN)
+        factor /= DV_SCALE_INCREMENT;
+      // Apply factor    
       V->D->radius *= factor;
       dv_view_layout(V);
       dv_queue_draw_d(V);
+      
     }
+    
   } else {
+    
+    // Cal factor    
+    if (event->direction == GDK_SCROLL_UP)
+      factor *= DV_ZOOM_INCREMENT;
+    else if (event->direction == GDK_SCROLL_DOWN)
+      factor /= DV_ZOOM_INCREMENT;
+    // Apply factor    
     double zoomx = V->S->zoom_ratio_x;
     double zoomy = V->S->zoom_ratio_y;
     if (V->S->do_zoom_x)
@@ -611,6 +636,7 @@ dv_do_scrolling(dv_view_t * V, GdkEventScroll * event) {
     if (V->S->do_zoom_y)
       zoomy *= factor;
     dv_do_zooming(V, zoomx, zoomy, event->x, event->y);
+    
   }
 }
 

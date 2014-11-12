@@ -63,6 +63,11 @@ dv_view_layout_timeline2(dv_view_t * V) {
 
 /*-----------------TIMELINE2 Drawing functions-----------*/
 
+static double min_x;
+static double max_x;
+static double min_w;
+static double max_w;
+
 static void
 dv_view_draw_timeline2_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
   dv_dag_t * D = V->D;
@@ -94,25 +99,52 @@ dv_view_draw_timeline2_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node)
   yy = y;
   w = nodeco->rw;
   h = nodeco->dw;
-  // Draw path
-  cairo_move_to(cr, xx, yy);
-  cairo_line_to(cr, xx + w, yy);
-  cairo_line_to(cr, xx + w, yy + h);
-  cairo_line_to(cr, xx, yy + h);
-  cairo_close_path(cr);
+  
+  if (xx < min_x) min_x = xx;
+  if (xx + w > max_x) max_x = xx + w;
+  if (w < min_w) min_w = w;
+  if (w > max_w) max_w = w;
 
-  // Draw node
-  cairo_set_source_rgba(cr, c[0], c[1], c[2], c[3] * alpha);
-  cairo_fill_preserve(cr);
-  if (DV_TIMELINE_NODE_WITH_BORDER) {
-    cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
-    cairo_stroke_preserve(cr);
-  }
-  // Draw infotag
-  if (dv_llist_has(V->D->P->itl, (void *) node->pii)) {
-    cairo_set_source_rgba(cr, 0.1, 0.1, 0.1, 0.6);
-    cairo_fill(cr);
-    dv_llist_add(V->D->itl, (void *) node);
+  double bound_left = (20 - V->S->basex - V->S->x) / V->S->zoom_ratio_x;
+  double bound_right = ((V->S->vpw - 20) - V->S->basex - V->S->x) / V->S->zoom_ratio_x;
+  double bound_up = (20 - V->S->basey - V->S->y) / V->S->zoom_ratio_y;
+  double bound_down = ((V->S->vph - 20) - V->S->basey - V->S->y) / V->S->zoom_ratio_y;
+  if (xx < bound_right && xx + w > bound_left &&
+      yy < bound_down && yy + h > bound_up) {
+    if (xx < bound_left) {
+      w -= (bound_left - xx);
+      xx = bound_left;
+    }
+    if (xx + w > bound_right)
+      w = bound_right - xx;
+    if (yy < bound_up) {
+      h -= (bound_up - yy);
+      yy = bound_up;
+    }
+    if (yy + h > bound_down)
+      h = bound_down - yy;
+    
+    // Draw path
+    cairo_move_to(cr, xx, yy);
+    cairo_line_to(cr, xx + w, yy);
+    cairo_line_to(cr, xx + w, yy + h);
+    cairo_line_to(cr, xx, yy + h);
+    cairo_close_path(cr);
+    
+    // Draw node
+    cairo_set_source_rgba(cr, c[0], c[1], c[2], c[3] * alpha);
+    cairo_fill_preserve(cr);
+    if (DV_TIMELINE_NODE_WITH_BORDER) {
+      cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
+      cairo_stroke_preserve(cr);
+    }
+    // Draw infotag
+    if (dv_llist_has(V->D->P->itl, (void *) node->pii)) {
+      cairo_set_source_rgba(cr, 0.1, 0.1, 0.1, 0.6);
+      cairo_fill(cr);
+      dv_llist_add(V->D->itl, (void *) node);
+    }
+    
   }
   cairo_restore(cr);
 }
@@ -199,7 +231,12 @@ dv_view_draw_timeline2(dv_view_t * V, cairo_t * cr) {
   */
   // Draw nodes
   dv_llist_init(V->D->itl);
+  min_x = 1000;
+  max_x = 0.0;
+  min_w = 1000;
+  max_w = 0.0;
   dv_view_draw_timeline2_node_r(V, cr, V->D->rt);
+  //fprintf(stderr, "min_x = %lf, max_x = %lf, min_w = %lf, max_w = %lf, max_x*zrx = %lf, max_w*zrx = %lf\n", min_x, max_x, min_w, max_w, max_x * V->S->zoom_ratio_x, max_w * V->S->zoom_ratio_x);
   // Draw worker numbers
   cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
   cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
