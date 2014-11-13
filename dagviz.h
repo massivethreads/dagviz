@@ -96,8 +96,8 @@ typedef struct dv_llist {
 #define DV_ANIMATION_DURATION 400 // milliseconds
 #define DV_ANIMATION_STEP 30 // milliseconds
 
-#define DV_NUM_LAYOUT_TYPES 4
-#define DV_LAYOUT_TYPE_INIT 3
+#define DV_NUM_LAYOUT_TYPES 5
+#define DV_LAYOUT_TYPE_INIT 4
 #define DV_NODE_COLOR_INIT 0
 #define DV_SCALE_TYPE_INIT 2
 #define DV_FROMBT_INIT 0
@@ -111,7 +111,7 @@ typedef struct dv_llist {
 #define DV_TIMELINE_NODE_WITH_BORDER 0
 #define DV_ENTRY_RADIX_MAX_LENGTH 20
 
-#define DV_DAG_NODE_POOL_SIZE 30000
+#define DV_DAG_NODE_POOL_SIZE 50000
 
 #define DV_MAX_DAG_FILE 5
 #define DV_MAX_DAG 10
@@ -474,6 +474,10 @@ void dv_view_draw_timeline(dv_view_t *V, cairo_t *);
 /* view_timeline2.c */
 void dv_view_layout_timeline2(dv_view_t *);
 void dv_view_draw_timeline2(dv_view_t *V, cairo_t *);
+
+/* view_paraprof.c */
+void dv_view_layout_paraprof(dv_view_t *);
+void dv_view_draw_paraprof(dv_view_t *V, cairo_t *);
 
 
 /* utils.c */

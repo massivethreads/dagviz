@@ -439,6 +439,9 @@ dv_view_draw(dv_view_t * V, cairo_t * cr) {
   case 3:
     dv_view_draw_timeline2(V, cr);
     break;
+  case 4:
+    dv_view_draw_paraprof(V, cr);
+    break;
   default:
     dv_check(0);
   }

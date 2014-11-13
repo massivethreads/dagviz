@@ -1,9 +1,9 @@
 #include "dagviz.h"
 
-/*-----------Timeline2 layout functions----------------------*/
+/*-----------Paraprof layout functions----------------------*/
 
 static void
-dv_view_layout_timeline2_node(dv_view_t * V, dv_dag_node_t * node) {
+dv_view_layout_paraprof_node(dv_view_t * V, dv_dag_node_t * node) {
   int lt = 3;
   dv_node_coordinate_t * nodeco = &node->c[lt];
   dv_dag_t * D = V->D;
@@ -19,7 +19,7 @@ dv_view_layout_timeline2_node(dv_view_t * V, dv_dag_node_t * node) {
   if (dv_is_union(node) && dv_is_inner_loaded(node)) {
     // Recursive call
     if (dv_is_expanded(node))
-      dv_view_layout_timeline2_node(V, node->head);
+      dv_view_layout_paraprof_node(V, node->head);
   }
     
   /* Calculate link-along */
@@ -31,14 +31,14 @@ dv_view_layout_timeline2_node(dv_view_t * V, dv_dag_node_t * node) {
   case 1:
     u = (dv_dag_node_t *) node->links->top->item;
     // Recursive call
-    dv_view_layout_timeline2_node(V, u);
+    dv_view_layout_paraprof_node(V, u);
     break;
   case 2:
     u = (dv_dag_node_t *) node->links->top->item; // cont node
     v = (dv_dag_node_t *) node->links->top->next->item; // task node
     // Recursive call
-    dv_view_layout_timeline2_node(V, u);
-    dv_view_layout_timeline2_node(V, v);
+    dv_view_layout_paraprof_node(V, u);
+    dv_view_layout_paraprof_node(V, v);
     break;
   default:
     dv_check(0);
@@ -48,20 +48,20 @@ dv_view_layout_timeline2_node(dv_view_t * V, dv_dag_node_t * node) {
 }
 
 void
-dv_view_layout_timeline2(dv_view_t * V) {
+dv_view_layout_paraprof(dv_view_t * V) {
 
   // Absolute coord
-  dv_view_layout_timeline2_node(V, V->D->rt);
+  dv_view_layout_paraprof_node(V, V->D->rt);
 
   // Check
   //print_layout(G);  
 
 }
 
-/*-----------end of Timeline2 layout functions----------------------*/
+/*-----------end of Paraprof layout functions----------------------*/
 
 
-/*-----------------TIMELINE2 Drawing functions-----------*/
+/*-----------------PARAPROF Drawing functions-----------*/
 
 static double min_x;
 static double max_x;
@@ -69,7 +69,7 @@ static double min_w;
 static double max_w;
 
 static void
-dv_view_draw_timeline2_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
+dv_view_draw_paraprof_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
   dv_dag_t * D = V->D;
   dv_view_status_t * S = V->S;
   int lt = 3;
@@ -96,7 +96,7 @@ dv_view_draw_timeline2_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node)
   double xx, yy, w, h;
   // Normal-sized box (terminal node)
   xx = x;
-  yy = y;
+  yy = -y;
   w = nodeco->rw;
   h = nodeco->dw;
   
@@ -150,7 +150,7 @@ dv_view_draw_timeline2_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node)
 }
 
 static void
-dv_view_draw_timeline2_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
+dv_view_draw_paraprof_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
   // Count node
   V->S->ndh++;
   if (!node || !dv_is_set(node))
@@ -158,19 +158,58 @@ dv_view_draw_timeline2_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node)
   /* Call inward */
   if (dv_is_union(node)) {
     if (dv_is_inner_loaded(node) && !dv_is_shrinked(node))
-      dv_view_draw_timeline2_node_r(V, cr, node->head);
+      dv_view_draw_paraprof_node_r(V, cr, node->head);
   } else {
-    dv_view_draw_timeline2_node_1(V, cr, node);
+    dv_view_draw_paraprof_node_1(V, cr, node);
   }
   /* Call link-along */
   dv_dag_node_t * u = NULL;
   while (u = (dv_dag_node_t *) dv_llist_iterate_next(node->links, u)) {
-    dv_view_draw_timeline2_node_r(V, cr, u);
+    dv_view_draw_paraprof_node_r(V, cr, u);
   }
 }
 
+static void
+dv_view_draw_test(dv_view_t * V, cairo_t * cr) {
+  // Transform
+  cairo_save(cr);
+  cairo_matrix_t mat;
+  cairo_matrix_init(&mat, 1.0, 0.0, 0.0, -1.0, 0.0, 0.0);
+  // Prepare for text drawing
+  cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
+  cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+  cairo_set_font_size(cr, 12);
+  char s[DV_STRING_LENGTH];
+  double x = 0.0;
+  double y = 0.0;
+  double xx, yy;
+  int i;
+  // Draw axes
+  for (i=0; i<5; i++) {
+    sprintf(s, "x = %d", i);
+    xx = x;
+    yy = y;
+    cairo_matrix_transform_point(&mat, &xx, &yy);
+    cairo_move_to(cr, xx, yy);
+    cairo_show_text(cr, s);
+    x += 50;
+  }
+  x = 0.0;
+  for (i=0; i<5; i++) {
+    sprintf(s, "y = %d", i);
+    xx = x;
+    yy = y;
+    cairo_matrix_transform_point(&mat, &xx, &yy);
+    cairo_move_to(cr, xx, yy);
+    cairo_show_text(cr, s);
+    y += 50;
+  }
+  // Un-transform
+  cairo_restore(cr);
+}
+
 void
-dv_view_draw_timeline2(dv_view_t * V, cairo_t * cr) {
+dv_view_draw_paraprof(dv_view_t * V, cairo_t * cr) {
   // Set adaptive line width
   double line_width = dv_min(DV_NODE_LINE_WIDTH, DV_NODE_LINE_WIDTH / dv_min(V->S->zoom_ratio_x, V->S->zoom_ratio_y));
   cairo_set_line_width(cr, line_width);
@@ -196,8 +235,7 @@ dv_view_draw_timeline2(dv_view_t * V, cairo_t * cr) {
   max_x = 0.0;
   min_w = 1000;
   max_w = 0.0;
-  dv_view_draw_timeline2_node_r(V, cr, V->D->rt);
-  //fprintf(stderr, "min_x = %lf, max_x = %lf, min_w = %lf, max_w = %lf, max_x*zrx = %lf, max_w*zrx = %lf\n", min_x, max_x, min_w, max_w, max_x * V->S->zoom_ratio_x, max_w * V->S->zoom_ratio_x);
+  dv_view_draw_paraprof_node_r(V, cr, V->D->rt);
   // Draw worker numbers
   cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
   cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
@@ -213,6 +251,8 @@ dv_view_draw_timeline2(dv_view_t * V, cairo_t * cr) {
     cairo_show_text(cr, s);
     yy += 2 * V->D->radius;
   }
+  // Draw parallelism profile
+  dv_view_draw_test(V, cr);
 }
 
-/*-----------------end of TIMELINE2 drawing functions-----------*/
+/*-----------------end of PARAPROF drawing functions-----------*/

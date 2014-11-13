@@ -9,6 +9,7 @@ void dv_view_layout(dv_view_t *V) {
   dv_view_layout_bbox(V);
   dv_view_layout_timeline(V);
   dv_view_layout_timeline2(V);
+  dv_view_layout_paraprof(V);
   
   /*
   switch (S->lt) {
@@ -23,6 +24,9 @@ void dv_view_layout(dv_view_t *V) {
     break;
   case 3:
     dv_view_layout_timeline2(V);
+    break;
+  case 4:
+    dv_view_layout_paraprof(V);
     break;
   default:
     dv_check(0);

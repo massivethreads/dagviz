@@ -140,7 +140,7 @@ dv_do_zoomfit_hor_(dv_view_t * V) {
   double zoom_ratio = 1.0;
   double x = 0.0;
   double y = 0.0;
-  double d1, d2;
+  double d1, d2, dw;
   dv_node_coordinate_t *rtco = &D->rt->c[S->lt];
   switch (S->lt) {
   case 0:
@@ -172,7 +172,16 @@ dv_do_zoomfit_hor_(dv_view_t * V) {
     d2 = w - 2 * DV_ZOOM_TO_FIT_MARGIN;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
-    double dw = D->P->num_workers * (D->radius * 2);
+    dw = D->P->num_workers * (D->radius * 2);
+    y += (h - dw * zoom_ratio) * 0.4;
+    break;
+  case 4:
+    // Parallelism profile
+    d1 = 10 + rtco->rw;
+    d2 = w - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    if (d1 > d2)
+      zoom_ratio = d2 / d1;
+    dw = D->P->num_workers * (D->radius * 2);
     y += (h - dw * zoom_ratio) * 0.4;
     break;
   default:
@@ -231,6 +240,13 @@ dv_do_zoomfit_ver_(dv_view_t * V) {
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     break;
+  case 4:
+    // Parallelism profile
+    d1 = D->P->num_workers * (D->radius * 2);
+    d2 = h - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    if (d1 > d2)
+      zoom_ratio = d2 / d1;
+    break;
   default:
     dv_check(0);
   }
@@ -268,25 +284,33 @@ dv_do_drawing(dv_view_t * V, cairo_t * cr) {
     S->init = 0;
   }
   
-  // Draw graph
   cairo_save(cr);
-  /*
-  cairo_matrix_t mt[1];
-  cairo_matrix_init_translate(mt, S->basex + S->x, S->basey + S->y);
-  cairo_matrix_scale(mt, S->zoom_ratio_x, S->zoom_ratio_y);
-  cairo_set_matrix(cr, mt);
-  */
+  
+  /* Draw graph */
   // Clipping
   cairo_rectangle(cr, 20, 20, V->S->vpw - 40, V->S->vph - 40);
   cairo_clip(cr);
-  
+  // Transforming
+  cairo_matrix_t mt[1];
+  cairo_matrix_init_translate(mt, S->basex + S->x, S->basey + S->y);
+  cairo_matrix_scale(mt, S->zoom_ratio_x, S->zoom_ratio_y);
+  cairo_transform(cr, mt);
+  // Transforming
+  /*
   cairo_translate(cr, S->basex + S->x, S->basey + S->y);
   cairo_scale(cr, S->zoom_ratio_x, S->zoom_ratio_y);
+  cairo_matrix_t mt_[1];
+  cairo_get_matrix(cr, mt_);
+  fprintf(stderr, "matrix:\n%lf %lf %lf\n%lf %lf %lf\n", mt_->xx, mt_->xy, mt_->x0, mt_->yx, mt_->yy, mt_->y0);
+  fprintf(stderr, "to compare with:\n%lf %lf %lf\n%lf %lf %lf\n", mt->xx, mt->xy, mt->x0, mt->yx, mt->yy, mt->y0);
+  */
+  
   dv_view_draw(V, cr);
   
-  // Draw infotags
+  /* Draw infotags */
   /* TODO: to make it not scale unequally infotags */
   dv_view_draw_infotags(V, cr, NULL);
+  
   cairo_restore(cr);
 }
 
@@ -300,6 +324,7 @@ static void dv_do_expanding_one_1(dv_view_t *V, dv_dag_node_t *node) {
   case 1:
   case 2:
   case 3:
+  case 4:
     // add to animation
     if (dv_is_shrinking(node)) {
       dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKING);
@@ -355,6 +380,7 @@ static void dv_do_collapsing_one_1(dv_view_t *V, dv_dag_node_t *node) {
   case 1:
   case 2:
   case 3:
+  case 4:
     // add to animation
     if (dv_is_expanding(node)) {
       dv_node_flag_remove(node->f, DV_NODE_FLAG_EXPANDING);
@@ -437,7 +463,8 @@ static dv_dag_node_t *dv_do_finding_clicked_node_1(dv_view_t *V, double x, doubl
   case 1:
   case 2:
   case 3:
-    // bbox/timeline/timeline2 layouts
+  case 4:
+    // bbox/timeline/timeline2/paraprof layouts
     if (c->x - c->lw < x && x < c->x + c->rw
         && c->y < y && y < c->y + c->dw) {
       ret = node;
@@ -547,6 +574,10 @@ on_draw_event(GtkWidget * widget, cairo_t * cr, gpointer user_data)
         break;
       case 2:
       case 3:
+        S->basex = DV_ZOOM_TO_FIT_MARGIN;
+        S->basey = DV_ZOOM_TO_FIT_MARGIN;
+        break;
+      case 4:
         S->basex = DV_ZOOM_TO_FIT_MARGIN;
         S->basey = DV_ZOOM_TO_FIT_MARGIN;
         break;
@@ -875,6 +906,19 @@ static gboolean on_entry_search_activate(GtkEntry *entry, gpointer user_data) {
     x -= (co->x + co->rw * 0.5) * zoom_ratio - S->vpw * 0.5;
     y -= co->y * zoom_ratio - (S->vph - 2 * DV_ZOOM_TO_FIT_MARGIN - co->dw * zoom_ratio) * 0.5;
     break;
+  case 4:
+    // Parallelism profile
+    d1 = D->P->num_workers * (D->radius * 2);
+    d2 = S->vph - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    if (d1 > d2)
+      zoom_ratio = d2 / d1;
+    d1 = co->rw;
+    d2 = S->vpw - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    if (d1 > d2)
+      zoom_ratio = dv_min(zoom_ratio, d2 / d1);
+    x -= (co->x + co->rw * 0.5) * zoom_ratio - S->vpw * 0.5;
+    y -= co->y * zoom_ratio - (S->vph - 2 * DV_ZOOM_TO_FIT_MARGIN - co->dw * zoom_ratio) * 0.5;
+    break;
   default:
     dv_check(0);
   }
@@ -989,6 +1033,12 @@ static gboolean on_window_key_event(GtkWidget *widget, GdkEvent *event, gpointer
   case 52: /* Ctrl + 4 */
     if ((e->state & modifiers) == GDK_CONTROL_MASK) {
       dv_do_changing_lt(aV, 3);
+      return TRUE;
+    }
+    break;
+  case 53: /* Ctrl + 5 */
+    if ((e->state & modifiers) == GDK_CONTROL_MASK) {
+      dv_do_changing_lt(aV, 4);
       return TRUE;
     }
     break;
@@ -1321,6 +1371,7 @@ dv_view_interface_create_new(dv_view_t * V, dv_viewport_t * VP) {
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "bounding", "Bounding box");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "timeline", "Timeline");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "timeline2", "Timeline2");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "timeline2", "Parallelism profile");
   g_signal_connect(G_OBJECT(combobox_lt), "changed", G_CALLBACK(on_combobox_lt_changed), (void *) V);
 
   // Node color combobox
