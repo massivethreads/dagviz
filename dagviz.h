@@ -111,7 +111,7 @@ typedef struct dv_llist {
 #define DV_TIMELINE_NODE_WITH_BORDER 0
 #define DV_ENTRY_RADIX_MAX_LENGTH 20
 
-#define DV_DAG_NODE_POOL_SIZE 50000
+#define DV_DAG_NODE_POOL_SIZE 40000
 
 #define DV_MAX_DAG_FILE 5
 #define DV_MAX_DAG 10
@@ -122,6 +122,9 @@ typedef struct dv_llist {
 #define DV_ERROR_OONP 1 /* out of node pool */
 
 #define backtrace_sample_sz 15
+
+#define DV_HISTOGRAM_PIECE_POOL_SIZE 10000000
+#define DV_HISTOGRAM_ENTRY_POOL_SIZE 40000
 
 /*-----------------Data Structures-----------------*/
 
@@ -323,6 +326,57 @@ typedef struct dv_btsample_viewer {
   GtkWidget * entry_node_id;
 } dv_btsample_viewer_t;
 
+
+typedef enum {
+  dv_histogram_layer_running,
+  dv_histogram_layer_ready_end,
+  dv_histogram_layer_ready_create,
+  dv_histogram_layer_ready_create_cont,
+  dv_histogram_layer_ready_wait_cont,
+  dv_histogram_layer_ready_other_cont,
+  dv_histogram_layer_max,
+} dv_histogram_layer_t;
+
+typedef struct dv_histogram_entry dv_histogram_entry_t;
+
+typedef struct dv_histogram_piece {
+  dv_histogram_entry_t * e;
+  double h;
+  struct dv_histogram_piece * next;
+  dv_dag_node_t * node;
+} dv_histogram_piece_t;
+
+typedef struct {
+  dv_histogram_piece_t T[DV_HISTOGRAM_PIECE_POOL_SIZE];
+  char avail[DV_HISTOGRAM_PIECE_POOL_SIZE];
+  long sz;
+  long n;
+} dv_histogram_piece_pool_t;
+
+typedef struct dv_histogram_entry {
+  double t;
+  dv_histogram_piece_t * pieces[dv_histogram_layer_max];
+  struct dv_histogram_entry * next;
+} dv_histogram_entry_t;
+
+typedef struct {
+  dv_histogram_entry_t T[DV_HISTOGRAM_ENTRY_POOL_SIZE];
+  char avail[DV_HISTOGRAM_ENTRY_POOL_SIZE];
+  long sz;
+  long n;
+} dv_histogram_entry_pool_t;
+
+typedef struct {
+  dv_histogram_entry_pool_t epool[1];
+  dv_histogram_piece_pool_t ppool[1];
+  dv_histogram_entry_t * head_e;
+  dv_histogram_entry_t * tail_e;
+  long n_e;
+  char added[DV_DAG_NODE_POOL_SIZE];
+  dv_view_t * V;
+} dv_histogram_t;
+
+
 typedef struct dv_global_state {
   /* DAG */
   dv_pidag_t P[DV_MAX_DAG_FILE];
@@ -349,12 +403,12 @@ typedef struct dv_global_state {
   /* Dialogs */
   dv_btsample_viewer_t btviewer[1];
   GtkWidget * box_viewport_configure;
+
+  dv_histogram_t H[1];
 } dv_global_state_t;
 
-
-/*------Global variables-----*/
-
 extern const char * const DV_COLORS[];
+extern const char * const DV_HISTOGRAM_COLORS[];
 
 extern dv_global_state_t  CS[]; /* global common state */
 
@@ -446,9 +500,10 @@ void dv_motion_stop(dv_motion_t *);
 /* draw.c */
 void dv_draw_text(cairo_t *);
 void dv_draw_rounded_rectangle(cairo_t *, double, double, double, double);
+void dv_lookup_color_value(int, double *, double *, double *, double *);
 void dv_lookup_color(dr_pi_dag_node *, int, double *, double *, double *, double *);
-double dv_view_get_alpha_fading_out(dv_view_t *V, dv_dag_node_t *);
-double dv_view_get_alpha_fading_in(dv_view_t *V, dv_dag_node_t *);
+double dv_view_get_alpha_fading_out(dv_view_t *, dv_dag_node_t *);
+double dv_view_get_alpha_fading_in(dv_view_t *, dv_dag_node_t *);
 void dv_view_draw_edge_1(dv_view_t *, cairo_t *, dv_dag_node_t *, dv_dag_node_t *);
 void dv_view_draw_status(dv_view_t *, cairo_t *, int);
 void dv_view_draw_infotag_1(dv_view_t *, cairo_t *, cairo_matrix_t *, dv_dag_node_t *);
@@ -464,20 +519,25 @@ void dv_view_draw_glike(dv_view_t *, cairo_t *);
 double dv_view_calculate_hsize(dv_view_t *, dv_dag_node_t *);
 double dv_view_calculate_vresize(dv_view_t *, double);
 double dv_view_calculate_vsize(dv_view_t *, dv_dag_node_t *);
-void dv_view_layout_bbox(dv_view_t *V);
+void dv_view_layout_bbox(dv_view_t *);
 void dv_view_draw_bbox(dv_view_t *, cairo_t *);
 
 /* view_timeline.c */
 void dv_view_layout_timeline(dv_view_t *);
-void dv_view_draw_timeline(dv_view_t *V, cairo_t *);
+void dv_view_draw_timeline(dv_view_t *, cairo_t *);
 
 /* view_timeline2.c */
 void dv_view_layout_timeline2(dv_view_t *);
-void dv_view_draw_timeline2(dv_view_t *V, cairo_t *);
+void dv_view_draw_timeline2(dv_view_t *, cairo_t *);
 
 /* view_paraprof.c */
-void dv_view_layout_paraprof(dv_view_t *);
-void dv_view_draw_paraprof(dv_view_t *V, cairo_t *);
+void dv_histogram_init(dv_histogram_t *);
+void dv_histogram_add_node(dv_histogram_t *, dv_dag_node_t *);
+void dv_histogram_draw(dv_histogram_t *, cairo_t *);
+void dv_histogram_reset(dv_histogram_t *);
+
+void dv_view_layout_paraprof(dv_view_t *, dv_histogram_t *);
+void dv_view_draw_paraprof(dv_view_t *, dv_histogram_t *, cairo_t *);
 
 
 /* utils.c */

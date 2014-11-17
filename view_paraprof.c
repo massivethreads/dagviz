@@ -1,9 +1,359 @@
 #include "dagviz.h"
 
-/*-----------Paraprof layout functions----------------------*/
+/*-----------Histogram Piece Pool----------------------*/
 
 static void
-dv_view_layout_paraprof_node(dv_view_t * V, dv_dag_node_t * node) {
+dv_histogram_piece_pool_init(dv_histogram_piece_pool_t * ppool) {
+  ppool->sz = DV_HISTOGRAM_PIECE_POOL_SIZE;
+  ppool->n = 0;
+  int i;
+  for (i=0; i<ppool->sz; i++)
+    ppool->avail[i] = 1;
+}
+
+static int
+dv_histogram_piece_pool_is_empty(dv_histogram_piece_pool_t * ppool) {
+  return (ppool->n == ppool->sz);
+}
+
+static dv_histogram_piece_t *
+dv_histogram_piece_pool_pop(dv_histogram_piece_pool_t * ppool) {
+  int i = 0;
+  while (i < ppool->sz && !ppool->avail[i]) i++;
+  if (i < ppool->sz && ppool->avail[i]) {
+    ppool->avail[i] = 0;
+    ppool->n++;
+    return &ppool->T[i];
+  } else {
+    return NULL;
+  }
+}
+
+static void
+dv_histogram_piece_pool_push(dv_histogram_piece_pool_t * ppool, dv_histogram_piece_t * p) {
+  int i = p - ppool->T;
+  dv_check(i < ppool->sz && !ppool->avail[i]);
+  ppool->avail[i] = 1;
+  ppool->n--;
+}
+
+static long
+dv_histogram_piece_pool_avail(dv_histogram_piece_pool_t * ppool) {
+  return (ppool->sz - ppool->n);
+}
+
+/*-----------end of Histogram Piece Pool----------------------*/
+
+
+/*-----------Histogram Entry Pool----------------------*/
+
+static void
+dv_histogram_entry_pool_init(dv_histogram_entry_pool_t * epool) {
+  epool->sz = DV_HISTOGRAM_ENTRY_POOL_SIZE;
+  epool->n = 0;
+  int i;
+  for (i=0; i<epool->sz; i++)
+    epool->avail[i]= 1;
+}
+
+static int
+dv_histogram_entry_pool_is_empty(dv_histogram_entry_pool_t * epool) {
+  return (epool->n == epool->sz);
+}
+
+static dv_histogram_entry_t *
+dv_histogram_entry_pool_pop(dv_histogram_entry_pool_t * epool) {
+  int i = 0;
+  while (i < epool->sz && !epool->avail[i]) i++;
+  if (i < epool->sz && epool->avail[i]) {
+    epool->avail[i] = 0;
+    epool->n++;
+    return &epool->T[i];
+  } else {
+    return NULL;
+  }
+}
+
+static void
+dv_histogram_entry_pool_push(dv_histogram_entry_pool_t * epool, dv_histogram_entry_t * e) {
+  int i = e - epool->T;
+  dv_check(i < epool->sz && !epool->avail[i]);
+  epool->avail[i] = 1;
+  epool->n--;
+}
+
+static long
+dv_histogram_entry_pool_avail(dv_histogram_entry_pool_t * epool) {
+  return (epool->sz - epool->n);
+}
+
+/*-----------end of Histogram Entry Pool----------------------*/
+
+
+/*-----------HISTOGRAM----------------------*/
+
+void
+dv_histogram_init(dv_histogram_t * H) {
+  dv_histogram_entry_pool_init(H->epool);
+  dv_histogram_piece_pool_init(H->ppool);
+  H->head_e = NULL;
+  H->tail_e = NULL;
+  H->n_e = 0;
+  int i;
+  for (i=0; i<DV_DAG_NODE_POOL_SIZE; i++)
+    H->added[i] = 0;
+  H->V = NULL;
+}
+
+static void
+dv_histogram_piece_init(dv_histogram_piece_t * p) {
+  p->e = NULL;
+  p->h = 0.0;
+  p->next = NULL;
+  p->node = NULL;
+}
+
+static void
+dv_histogram_entry_init(dv_histogram_entry_t * e) {
+  e->t = 0.0;
+  int i;
+  for (i=0; i<dv_histogram_layer_max; i++)
+    e->pieces[i] = NULL;
+  e->next = NULL;
+}
+
+static dv_histogram_entry_t *
+dv_histogram_insert_entry(dv_histogram_t * H, double t) {
+  dv_histogram_entry_t * e = NULL;
+  dv_histogram_entry_t * ee = H->head_e;
+  while (ee != NULL && ee->t < t) {
+    e = ee;
+    ee = ee->next;
+  }
+  if (ee && ee->t == t)
+    return ee;
+  dv_histogram_entry_t * new_e = dv_histogram_entry_pool_pop(H->epool);
+  if (!new_e) {
+    fprintf(stderr, "Error: cannot pop a new entry structure!\n");
+    dv_check(0);
+  }
+  dv_histogram_entry_init(new_e);
+  new_e->t = t;
+  new_e->next = ee;
+  if (e) {
+    e->next = new_e;
+    // Copy pieces from e to new_e
+    int i;
+    for (i=0; i<dv_histogram_layer_max; i++) {
+      dv_histogram_piece_t * pre_p = NULL;
+      dv_histogram_piece_t * new_p = NULL;
+      dv_histogram_piece_t * p = e->pieces[i];
+      while (p) {
+        new_p = dv_histogram_piece_pool_pop(H->ppool);
+        if (!new_p) {
+          fprintf(stderr, "Error: cannot pop a new piece structure!\n");
+          return; //dv_check(0);
+        }
+        dv_histogram_piece_init(new_p);
+        new_p->e = new_e;
+        new_p->h = p->h;
+        new_p->node = p->node;
+        if (pre_p)
+          pre_p->next = new_p;
+        else
+          new_e->pieces[i] = new_p;
+        pre_p = new_p;
+        p = p->next;
+      }
+    }
+  } else {
+    H->head_e = new_e;
+  }
+  if (ee) {
+    new_e->next = ee;
+  } else {
+    H->tail_e = new_e;
+  }
+  H->n_e++;
+  return new_e;
+}
+
+static void
+dv_histogram_pile_entry(dv_histogram_t * H, dv_histogram_entry_t * e, dv_histogram_layer_t layer, double parallelism, dv_dag_node_t * node) {
+  dv_histogram_piece_t * p = e->pieces[layer];
+  while (p && p->next !=NULL)
+    p = p->next;
+  dv_histogram_piece_t * new_p = dv_histogram_piece_pool_pop(H->ppool);
+  if (!new_p) {
+    fprintf(stderr, "Error: cannot pop a new piece structure!\n");
+    return; //dv_check(0);
+  }
+  dv_histogram_piece_init(new_p);
+  new_p->e = e;
+  new_p->h = parallelism * H->V->D->radius;
+  new_p->node = node;
+  if (p)
+    p->next = new_p;
+  else
+    e->pieces[layer] = new_p;
+}
+
+static void
+dv_histogram_pile(dv_histogram_t * H, dv_dag_node_t * node, dv_histogram_layer_t layer, double from_t, double to_t, double parallelism) {
+  dv_histogram_entry_t * e_from = dv_histogram_insert_entry(H, from_t);
+  dv_histogram_entry_t * e_to = dv_histogram_insert_entry(H, to_t);
+  if (!e_from || !e_to)
+    return;
+  dv_histogram_entry_t * e = e_from;
+  while (e != e_to) {
+    dv_histogram_pile_entry(H, e, layer, parallelism, node);
+    e = e->next;
+  }
+  fprintf(stderr, "used pieces: %ld\n", H->ppool->n);
+}
+
+void
+dv_histogram_add_node(dv_histogram_t * H, dv_dag_node_t * node) {
+  if (!H)
+    return;
+  dr_pi_dag_node * pi = dv_pidag_get_node(H->V->D->P, node);
+  double first_ready_t = pi->info.first_ready_t;
+  double start_t = pi->info.start.t;
+  double last_start_t = pi->info.last_start_t;
+  double end_t = pi->info.end.t;
+  double dt = last_start_t - first_ready_t;
+  dv_histogram_pile(H, node,
+                    dv_histogram_layer_ready_end,
+                    first_ready_t, last_start_t,
+                    pi->info.t_ready[dr_dag_edge_kind_end] / dt);
+  dv_histogram_pile(H, node,
+                    dv_histogram_layer_ready_create,
+                    first_ready_t, last_start_t,
+                    pi->info.t_ready[dr_dag_edge_kind_create] / dt);
+  dv_histogram_pile(H, node,
+                    dv_histogram_layer_ready_create_cont,
+                    first_ready_t, last_start_t,
+                    pi->info.t_ready[dr_dag_edge_kind_create_cont] / dt);
+  dv_histogram_pile(H, node,
+                    dv_histogram_layer_ready_wait_cont,
+                    first_ready_t, last_start_t,
+                    pi->info.t_ready[dr_dag_edge_kind_wait_cont] / dt);
+  dv_histogram_pile(H, node,
+                    dv_histogram_layer_ready_other_cont,
+                    first_ready_t, last_start_t,
+                    pi->info.t_ready[dr_dag_edge_kind_other_cont] / dt);
+  dt = end_t - start_t;
+  dv_histogram_pile(H, node,
+                    dv_histogram_layer_running,
+                    start_t, end_t,
+                    pi->info.t_1 / dt);
+  H->added[node - H->V->D->T] = 1;
+  fprintf(stderr, "used entries: %ld\n", H->epool->n);
+}
+
+static void
+dv_histogram_draw_test(dv_view_t * V, cairo_t * cr) {
+  // Transform
+  cairo_save(cr);
+  cairo_matrix_t mat;
+  cairo_matrix_init(&mat, 1.0, 0.0, 0.0, -1.0, 0.0, 0.0);
+  // Prepare for text drawing
+  cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
+  cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+  cairo_set_font_size(cr, 12);
+  char s[DV_STRING_LENGTH];
+  double x = 0.0;
+  double y = 0.0;
+  double xx, yy;
+  int i;
+  // Draw axes
+  for (i=0; i<5; i++) {
+    sprintf(s, "x = %d", i);
+    xx = x;
+    yy = y;
+    cairo_matrix_transform_point(&mat, &xx, &yy);
+    cairo_move_to(cr, xx, yy);
+    cairo_show_text(cr, s);
+    x += 50;
+  }
+  x = 0.0;
+  for (i=0; i<5; i++) {
+    sprintf(s, "y = %d", i);
+    xx = x;
+    yy = y;
+    cairo_matrix_transform_point(&mat, &xx, &yy);
+    cairo_move_to(cr, xx, yy);
+    cairo_show_text(cr, s);
+    y += 50;
+  }
+  // Un-transform
+  cairo_restore(cr);
+}
+
+static double
+dv_histogram_draw_piece(dv_histogram_t * H, dv_histogram_piece_t * p, cairo_t * cr, double x, double w, double y, int layer) {
+  cairo_save(cr);
+  double h = p->h * H->V->D->radius;
+  // Color
+  //dr_pi_dag_node * pi = dv_pidag_get_node(H->V->D->P, p->node);
+  GdkRGBA color;
+  gdk_rgba_parse(&color, DV_HISTOGRAM_COLORS[(layer + 6) % 6]);
+  // Draw
+  cairo_rectangle(cr, x, y - h, w, h);
+  cairo_set_source_rgba(cr, color.red, color.green, color.blue, color.alpha);
+  cairo_fill_preserve(cr);
+  if (dv_llist_has(H->V->D->P->itl, (void *) p->node->pii)) {
+    cairo_set_source_rgba(cr, 0.1, 0.1, 0.1, 0.6);
+    cairo_fill(cr);
+  } else {
+    cairo_new_path(cr);
+  }  
+  cairo_restore(cr);
+  return y - h;
+}
+
+static void
+dv_histogram_draw_entry(dv_histogram_t * H, dv_histogram_entry_t * e, cairo_t * cr) {
+  if (!e->next) {
+    fprintf(stderr, "Warning: not draw entry at t=%lf due to no next\n", e->t);
+    return;
+  }
+  double y = 0.0;
+  double x = dv_view_calculate_vresize(H->V, e->t - H->V->D->bt);
+  double w = dv_view_calculate_vresize(H->V, e->next->t - H->V->D->bt) - x;
+  int i;
+  for (i=0; i<dv_histogram_layer_max; i++) {
+    dv_histogram_piece_t * p = e->pieces[i];
+    while (p) {
+      y = dv_histogram_draw_piece(H, p, cr, x, w, y, i);
+      p = p->next;
+    }
+  }
+}
+
+void
+dv_histogram_draw(dv_histogram_t * H, cairo_t * cr) {
+  dv_histogram_entry_t * e = H->head_e;
+  while (e != NULL && e->next) {
+    dv_histogram_draw_entry(H, e, cr);
+    e = e->next;
+  }
+}
+
+void
+dv_histogram_reset(dv_histogram_t * H) {
+  dv_view_t * V = H->V;
+  dv_histogram_init(H);
+  H->V = V;
+}
+
+/*-----------end of HISTOGRAM----------------------*/
+
+
+/*-----------PARAPROF layout functions----------------------*/
+
+static void
+dv_view_layout_paraprof_node(dv_view_t * V, dv_histogram_t * H, dv_dag_node_t * node) {
   int lt = 3;
   dv_node_coordinate_t * nodeco = &node->c[lt];
   dv_dag_t * D = V->D;
@@ -19,7 +369,11 @@ dv_view_layout_paraprof_node(dv_view_t * V, dv_dag_node_t * node) {
   if (dv_is_union(node) && dv_is_inner_loaded(node)) {
     // Recursive call
     if (dv_is_expanded(node))
-      dv_view_layout_paraprof_node(V, node->head);
+      dv_view_layout_paraprof_node(V, H, node->head);
+    else
+      dv_histogram_add_node(H, node);
+  } else {
+    dv_histogram_add_node(H, node);
   }
     
   /* Calculate link-along */
@@ -31,14 +385,14 @@ dv_view_layout_paraprof_node(dv_view_t * V, dv_dag_node_t * node) {
   case 1:
     u = (dv_dag_node_t *) node->links->top->item;
     // Recursive call
-    dv_view_layout_paraprof_node(V, u);
+    dv_view_layout_paraprof_node(V, H, u);
     break;
   case 2:
     u = (dv_dag_node_t *) node->links->top->item; // cont node
     v = (dv_dag_node_t *) node->links->top->next->item; // task node
     // Recursive call
-    dv_view_layout_paraprof_node(V, u);
-    dv_view_layout_paraprof_node(V, v);
+    dv_view_layout_paraprof_node(V, H, u);
+    dv_view_layout_paraprof_node(V, H, v);
     break;
   default:
     dv_check(0);
@@ -48,25 +402,14 @@ dv_view_layout_paraprof_node(dv_view_t * V, dv_dag_node_t * node) {
 }
 
 void
-dv_view_layout_paraprof(dv_view_t * V) {
-
-  // Absolute coord
-  dv_view_layout_paraprof_node(V, V->D->rt);
-
-  // Check
-  //print_layout(G);  
-
+dv_view_layout_paraprof(dv_view_t * V, dv_histogram_t * H) {
+  dv_view_layout_paraprof_node(V, H, V->D->rt);
 }
 
-/*-----------end of Paraprof layout functions----------------------*/
+/*-----------end of PARAPROF layout functions----------------------*/
 
 
 /*-----------------PARAPROF Drawing functions-----------*/
-
-static double min_x;
-static double max_x;
-static double min_w;
-static double max_w;
 
 static void
 dv_view_draw_paraprof_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
@@ -100,11 +443,6 @@ dv_view_draw_paraprof_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) 
   w = nodeco->rw;
   h = nodeco->dw;
   
-  if (xx < min_x) min_x = xx;
-  if (xx + w > max_x) max_x = xx + w;
-  if (w < min_w) min_w = w;
-  if (w > max_w) max_w = w;
-
   double bound_left = (20 - V->S->basex - V->S->x) / V->S->zoom_ratio_x;
   double bound_right = ((V->S->vpw - 20) - V->S->basex - V->S->x) / V->S->zoom_ratio_x;
   double bound_up = (20 - V->S->basey - V->S->y) / V->S->zoom_ratio_y;
@@ -157,7 +495,7 @@ dv_view_draw_paraprof_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) 
     return;
   /* Call inward */
   if (dv_is_union(node)) {
-    if (dv_is_inner_loaded(node) && !dv_is_shrinked(node))
+    if (dv_is_inner_loaded(node) && dv_is_expanded(node))
       dv_view_draw_paraprof_node_r(V, cr, node->head);
   } else {
     dv_view_draw_paraprof_node_1(V, cr, node);
@@ -169,47 +507,8 @@ dv_view_draw_paraprof_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) 
   }
 }
 
-static void
-dv_view_draw_test(dv_view_t * V, cairo_t * cr) {
-  // Transform
-  cairo_save(cr);
-  cairo_matrix_t mat;
-  cairo_matrix_init(&mat, 1.0, 0.0, 0.0, -1.0, 0.0, 0.0);
-  // Prepare for text drawing
-  cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
-  cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-  cairo_set_font_size(cr, 12);
-  char s[DV_STRING_LENGTH];
-  double x = 0.0;
-  double y = 0.0;
-  double xx, yy;
-  int i;
-  // Draw axes
-  for (i=0; i<5; i++) {
-    sprintf(s, "x = %d", i);
-    xx = x;
-    yy = y;
-    cairo_matrix_transform_point(&mat, &xx, &yy);
-    cairo_move_to(cr, xx, yy);
-    cairo_show_text(cr, s);
-    x += 50;
-  }
-  x = 0.0;
-  for (i=0; i<5; i++) {
-    sprintf(s, "y = %d", i);
-    xx = x;
-    yy = y;
-    cairo_matrix_transform_point(&mat, &xx, &yy);
-    cairo_move_to(cr, xx, yy);
-    cairo_show_text(cr, s);
-    y += 50;
-  }
-  // Un-transform
-  cairo_restore(cr);
-}
-
 void
-dv_view_draw_paraprof(dv_view_t * V, cairo_t * cr) {
+dv_view_draw_paraprof(dv_view_t * V, dv_histogram_t * H, cairo_t * cr) {
   // Set adaptive line width
   double line_width = dv_min(DV_NODE_LINE_WIDTH, DV_NODE_LINE_WIDTH / dv_min(V->S->zoom_ratio_x, V->S->zoom_ratio_y));
   cairo_set_line_width(cr, line_width);
@@ -231,10 +530,6 @@ dv_view_draw_paraprof(dv_view_t * V, cairo_t * cr) {
   */
   // Draw nodes
   dv_llist_init(V->D->itl);
-  min_x = 1000;
-  max_x = 0.0;
-  min_w = 1000;
-  max_w = 0.0;
   dv_view_draw_paraprof_node_r(V, cr, V->D->rt);
   // Draw worker numbers
   cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
@@ -252,7 +547,8 @@ dv_view_draw_paraprof(dv_view_t * V, cairo_t * cr) {
     yy += 2 * V->D->radius;
   }
   // Draw parallelism profile
-  dv_view_draw_test(V, cr);
+  if (H)
+    dv_histogram_draw(H, cr);
 }
 
 /*-----------------end of PARAPROF drawing functions-----------*/

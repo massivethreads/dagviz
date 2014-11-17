@@ -63,7 +63,7 @@ static int dv_get_color_pool_index(int t, int v0, int v1, int v2, int v3) {
   return n;
 }
 
-static void dv_lookup_color_value(int v, double *r, double *g, double *b, double *a) {
+void dv_lookup_color_value(int v, double *r, double *g, double *b, double *a) {
   GdkRGBA color;
   gdk_rgba_parse(&color, DV_COLORS[(v + NUM_COLORS) % NUM_COLORS]);
   *r = color.red;
@@ -440,7 +440,11 @@ dv_view_draw(dv_view_t * V, cairo_t * cr) {
     dv_view_draw_timeline2(V, cr);
     break;
   case 4:
-    dv_view_draw_paraprof(V, cr);
+    if (V - CS->V == 0) {
+      dv_view_draw_paraprof(V, CS->H, cr);
+    } else {
+      dv_view_draw_paraprof(V, NULL, cr);
+    }
     break;
   default:
     dv_check(0);

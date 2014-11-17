@@ -9,7 +9,13 @@ void dv_view_layout(dv_view_t *V) {
   dv_view_layout_bbox(V);
   dv_view_layout_timeline(V);
   dv_view_layout_timeline2(V);
-  dv_view_layout_paraprof(V);
+  if (V - CS->V == 0) {
+    dv_histogram_init(CS->H);
+    CS->H->V = V;
+    dv_view_layout_paraprof(V, CS->H);
+  } else {
+    dv_view_layout_paraprof(V, NULL);
+  }
   
   /*
   switch (S->lt) {

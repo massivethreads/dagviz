@@ -55,6 +55,7 @@ void dv_global_state_init(dv_global_state_t *CS) {
     CS->CP_sizes[i] = 0;
   dv_btsample_viewer_init(CS->btviewer);
   CS->box_viewport_configure = NULL;
+  dv_histogram_init(CS->H);
 }
 
 void dv_global_state_set_active_view(dv_view_t *V) {
@@ -2342,7 +2343,7 @@ int main(int argc, char *argv[])
     //print_dvdag(D);
     V = dv_view_create_new_with_dag(D);
     int j;
-    for (j=0; j<15; j++)
+    for (j=0; j<1; j++)
       dv_do_expanding_one(V);
   }
   dv_view_add_viewport(CS->V, VP);
