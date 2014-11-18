@@ -421,6 +421,9 @@ void dv_dag_init(dv_dag_t *D, dv_pidag_t *P) {
   D->frombt = DV_FROMBT_INIT;
   D->radius = DV_RADIUS;
   dv_llist_init(D->itl);
+  int i;
+  for (i=0; i<DV_NUM_LAYOUT_TYPES; i++)
+    D->tolayout[i] = 0;
 }
 
 dv_dag_t * dv_dag_create_new_with_pidag(dv_pidag_t *P) {

@@ -71,7 +71,7 @@ typedef struct dv_llist {
 #define DV_SCALE_INCREMENT 1.07
 #define DV_HDIS 70
 #define DV_VDIS 70
-#define DV_RADIUS 20
+#define DV_RADIUS 15
 #define NUM_COLORS 34
 
 #define DV_NODE_FLAG_NONE         0        /* none */
@@ -87,8 +87,8 @@ typedef struct dv_llist {
 #define DV_STATUS_PADDING 7
 #define DV_SAFE_CLICK_RANGE 1
 #define DV_UNION_NODE_MARGIN 4
-#define DV_NODE_LINE_WIDTH 1.0
-#define DV_EDGE_LINE_WIDTH 1.0
+#define DV_NODE_LINE_WIDTH 0.5
+#define DV_EDGE_LINE_WIDTH 0.5
 #define DV_RADIX_LOG 1.8
 #define DV_RADIX_POWER 0.42
 #define DV_RADIX_LINEAR 100000
@@ -97,7 +97,7 @@ typedef struct dv_llist {
 #define DV_ANIMATION_STEP 30 // milliseconds
 
 #define DV_NUM_LAYOUT_TYPES 5
-#define DV_LAYOUT_TYPE_INIT 4
+#define DV_LAYOUT_TYPE_INIT 3 // not paraprof coz need to check H of D
 #define DV_NODE_COLOR_INIT 0
 #define DV_SCALE_TYPE_INIT 2
 #define DV_FROMBT_INIT 0
@@ -117,6 +117,7 @@ typedef struct dv_llist {
 #define DV_MAX_DAG 10
 #define DV_MAX_VIEW 10
 #define DV_MAX_VIEWPORT 10
+#define DV_MAX_HISTOGRAM 1
 
 #define DV_OK 0
 #define DV_ERROR_OONP 1 /* out of node pool */
@@ -125,6 +126,12 @@ typedef struct dv_llist {
 
 #define DV_HISTOGRAM_PIECE_POOL_SIZE 10000000
 #define DV_HISTOGRAM_ENTRY_POOL_SIZE 40000
+
+#define DV_CLIPPING_FRAME_MARGIN 3
+#define DV_HISTOGRAM_MARGIN_DOWN 80
+#define DV_HISTOGRAM_MARGIN_SIDE 120
+
+#define DV_HISTOGRAM_DIVIDE_TO_PIECES 0
 
 /*-----------------Data Structures-----------------*/
 
@@ -181,6 +188,8 @@ typedef struct dv_dag_node {
 
 } dv_dag_node_t;
 
+typedef struct dv_histogram dv_histogram_t;
+
 typedef struct dv_dag {
   /* PIDAG */
   dv_pidag_t * P;
@@ -211,6 +220,8 @@ typedef struct dv_dag {
 
   /* other */
   dv_llist_t itl[1]; /* list of nodes that have info tag */
+  dv_histogram_t * H; /* structure for the paraprof view (5th) */
+  char tolayout[DV_NUM_LAYOUT_TYPES];
 } dv_dag_t;
 
 typedef struct dv_view dv_view_t;
@@ -346,7 +357,7 @@ typedef struct dv_histogram_piece {
   dv_dag_node_t * node;
 } dv_histogram_piece_t;
 
-typedef struct {
+typedef struct dv_histogram_piece_pool {
   dv_histogram_piece_t T[DV_HISTOGRAM_PIECE_POOL_SIZE];
   char avail[DV_HISTOGRAM_PIECE_POOL_SIZE];
   long sz;
@@ -357,23 +368,24 @@ typedef struct dv_histogram_entry {
   double t;
   dv_histogram_piece_t * pieces[dv_histogram_layer_max];
   struct dv_histogram_entry * next;
+  double h[dv_histogram_layer_max];
 } dv_histogram_entry_t;
 
-typedef struct {
+typedef struct dv_histogram_entry_pool {
   dv_histogram_entry_t T[DV_HISTOGRAM_ENTRY_POOL_SIZE];
   char avail[DV_HISTOGRAM_ENTRY_POOL_SIZE];
   long sz;
   long n;
 } dv_histogram_entry_pool_t;
 
-typedef struct {
+typedef struct dv_histogram {
   dv_histogram_entry_pool_t epool[1];
   dv_histogram_piece_pool_t ppool[1];
   dv_histogram_entry_t * head_e;
   dv_histogram_entry_t * tail_e;
   long n_e;
   char added[DV_DAG_NODE_POOL_SIZE];
-  dv_view_t * V;
+  dv_dag_t * D;
 } dv_histogram_t;
 
 
@@ -404,7 +416,9 @@ typedef struct dv_global_state {
   dv_btsample_viewer_t btviewer[1];
   GtkWidget * box_viewport_configure;
 
-  dv_histogram_t H[1];
+  /* Histograms */
+  dv_histogram_t H[DV_MAX_HISTOGRAM];
+  int nH;
 } dv_global_state_t;
 
 extern const char * const DV_COLORS[];
@@ -518,6 +532,7 @@ void dv_view_draw_glike(dv_view_t *, cairo_t *);
 /* view_bbox.c */
 double dv_view_calculate_hsize(dv_view_t *, dv_dag_node_t *);
 double dv_view_calculate_vresize(dv_view_t *, double);
+double dv_dag_calculate_vresize(dv_dag_t *, double);
 double dv_view_calculate_vsize(dv_view_t *, dv_dag_node_t *);
 void dv_view_layout_bbox(dv_view_t *);
 void dv_view_draw_bbox(dv_view_t *, cairo_t *);
@@ -536,8 +551,8 @@ void dv_histogram_add_node(dv_histogram_t *, dv_dag_node_t *);
 void dv_histogram_draw(dv_histogram_t *, cairo_t *);
 void dv_histogram_reset(dv_histogram_t *);
 
-void dv_view_layout_paraprof(dv_view_t *, dv_histogram_t *);
-void dv_view_draw_paraprof(dv_view_t *, dv_histogram_t *, cairo_t *);
+void dv_view_layout_paraprof(dv_view_t *);
+void dv_view_draw_paraprof(dv_view_t *, cairo_t *);
 
 
 /* utils.c */

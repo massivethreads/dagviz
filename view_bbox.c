@@ -14,23 +14,29 @@ double dv_view_calculate_hsize(dv_view_t *V, dv_dag_node_t *node) {
   return hsize;
 }
 
-double dv_view_calculate_vresize(dv_view_t *V, double val) {
+double
+dv_dag_calculate_vresize(dv_dag_t * D, double val) {
   double ret;
-  switch (V->D->sdt) {
+  switch (D->sdt) {
   case 0:
-    ret = log(val) / log(V->D->log_radix);
+    ret = log(val) / log(D->log_radix);
     break;
   case 1:
-    ret = pow(val, V->D->power_radix);
+    ret = pow(val, D->power_radix);
     break;
   case 2:
-    ret = val / V->D->linear_radix;
+    ret = val / D->linear_radix;
     break;
   default:
     dv_check(0);
     break;
   }
   return ret;
+}
+
+double
+dv_view_calculate_vresize(dv_view_t * V, double val) {
+  return dv_dag_calculate_vresize(V->D, val);
 }
 
 static double dv_view_calculate_vgap(dv_view_t *V, dv_dag_node_t *parent, dv_dag_node_t *node1, dv_dag_node_t *node2) {

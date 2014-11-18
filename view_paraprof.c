@@ -102,7 +102,7 @@ dv_histogram_init(dv_histogram_t * H) {
   int i;
   for (i=0; i<DV_DAG_NODE_POOL_SIZE; i++)
     H->added[i] = 0;
-  H->V = NULL;
+  H->D = NULL;
 }
 
 static void
@@ -117,9 +117,12 @@ static void
 dv_histogram_entry_init(dv_histogram_entry_t * e) {
   e->t = 0.0;
   int i;
-  for (i=0; i<dv_histogram_layer_max; i++)
+  for (i=0; i<dv_histogram_layer_max; i++) {
     e->pieces[i] = NULL;
+    e->h[i] = 0.0;
+  }
   e->next = NULL;
+  
 }
 
 static dv_histogram_entry_t *
@@ -142,8 +145,13 @@ dv_histogram_insert_entry(dv_histogram_t * H, double t) {
   new_e->next = ee;
   if (e) {
     e->next = new_e;
-    // Copy pieces from e to new_e
+    // Copy h
     int i;
+    for (i=0; i<dv_histogram_layer_max; i++) {
+      new_e->h[i] = e->h[i];
+    }
+#if DV_HISTOGRAM_DIVIDE_TO_PIECES    
+    // Copy pieces from e to new_e
     for (i=0; i<dv_histogram_layer_max; i++) {
       dv_histogram_piece_t * pre_p = NULL;
       dv_histogram_piece_t * new_p = NULL;
@@ -166,6 +174,7 @@ dv_histogram_insert_entry(dv_histogram_t * H, double t) {
         p = p->next;
       }
     }
+#endif /* DV_HISTOGRAM_DIVIDE_TO_PIECES */
   } else {
     H->head_e = new_e;
   }
@@ -180,6 +189,7 @@ dv_histogram_insert_entry(dv_histogram_t * H, double t) {
 
 static void
 dv_histogram_pile_entry(dv_histogram_t * H, dv_histogram_entry_t * e, dv_histogram_layer_t layer, double parallelism, dv_dag_node_t * node) {
+#if DV_HISTOGRAM_DIVIDE_TO_PIECES    
   dv_histogram_piece_t * p = e->pieces[layer];
   while (p && p->next !=NULL)
     p = p->next;
@@ -190,12 +200,14 @@ dv_histogram_pile_entry(dv_histogram_t * H, dv_histogram_entry_t * e, dv_histogr
   }
   dv_histogram_piece_init(new_p);
   new_p->e = e;
-  new_p->h = parallelism * H->V->D->radius;
+  new_p->h = parallelism * H->D->radius;
   new_p->node = node;
   if (p)
     p->next = new_p;
   else
     e->pieces[layer] = new_p;
+#endif /* DV_HISTOGRAM_DIVIDE_TO_PIECES */
+  e->h[layer] += parallelism * H->D->radius;
 }
 
 static void
@@ -209,14 +221,14 @@ dv_histogram_pile(dv_histogram_t * H, dv_dag_node_t * node, dv_histogram_layer_t
     dv_histogram_pile_entry(H, e, layer, parallelism, node);
     e = e->next;
   }
-  fprintf(stderr, "used pieces: %ld\n", H->ppool->n);
+  //fprintf(stderr, "used pieces: %ld\n", H->ppool->n);
 }
 
 void
 dv_histogram_add_node(dv_histogram_t * H, dv_dag_node_t * node) {
   if (!H)
     return;
-  dr_pi_dag_node * pi = dv_pidag_get_node(H->V->D->P, node);
+  dr_pi_dag_node * pi = dv_pidag_get_node(H->D->P, node);
   double first_ready_t = pi->info.first_ready_t;
   double start_t = pi->info.start.t;
   double last_start_t = pi->info.last_start_t;
@@ -247,7 +259,7 @@ dv_histogram_add_node(dv_histogram_t * H, dv_dag_node_t * node) {
                     dv_histogram_layer_running,
                     start_t, end_t,
                     pi->info.t_1 / dt);
-  H->added[node - H->V->D->T] = 1;
+  H->added[node - H->D->T] = 1;
   fprintf(stderr, "used entries: %ld\n", H->epool->n);
 }
 
@@ -293,21 +305,35 @@ dv_histogram_draw_test(dv_view_t * V, cairo_t * cr) {
 static double
 dv_histogram_draw_piece(dv_histogram_t * H, dv_histogram_piece_t * p, cairo_t * cr, double x, double w, double y, int layer) {
   cairo_save(cr);
-  double h = p->h * H->V->D->radius;
+  double h = p->h * H->D->radius;
   // Color
-  //dr_pi_dag_node * pi = dv_pidag_get_node(H->V->D->P, p->node);
   GdkRGBA color;
   gdk_rgba_parse(&color, DV_HISTOGRAM_COLORS[(layer + 6) % 6]);
   // Draw
   cairo_rectangle(cr, x, y - h, w, h);
   cairo_set_source_rgba(cr, color.red, color.green, color.blue, color.alpha);
   cairo_fill_preserve(cr);
-  if (dv_llist_has(H->V->D->P->itl, (void *) p->node->pii)) {
+  if (dv_llist_has(H->D->P->itl, (void *) p->node->pii)) {
     cairo_set_source_rgba(cr, 0.1, 0.1, 0.1, 0.6);
     cairo_fill(cr);
   } else {
     cairo_new_path(cr);
   }  
+  cairo_restore(cr);
+  return y - h;
+}
+
+static double
+dv_histogram_draw_piece2(dv_histogram_t * H, cairo_t * cr, double x, double w, double y, double h, int layer) {
+  cairo_save(cr);
+  h *= H->D->radius;
+  // Color
+  GdkRGBA color;
+  gdk_rgba_parse(&color, DV_HISTOGRAM_COLORS[(layer + 6) % 6]);
+  // Draw
+  cairo_rectangle(cr, x, y - h, w, h);
+  cairo_set_source_rgba(cr, color.red, color.green, color.blue, color.alpha);
+  cairo_fill(cr);
   cairo_restore(cr);
   return y - h;
 }
@@ -318,16 +344,23 @@ dv_histogram_draw_entry(dv_histogram_t * H, dv_histogram_entry_t * e, cairo_t * 
     fprintf(stderr, "Warning: not draw entry at t=%lf due to no next\n", e->t);
     return;
   }
+  double x = dv_dag_calculate_vresize(H->D, e->t - H->D->bt);
+  double w = dv_dag_calculate_vresize(H->D, e->next->t - H->D->bt) - x;
   double y = 0.0;
-  double x = dv_view_calculate_vresize(H->V, e->t - H->V->D->bt);
-  double w = dv_view_calculate_vresize(H->V, e->next->t - H->V->D->bt) - x;
+  double h;
   int i;
   for (i=0; i<dv_histogram_layer_max; i++) {
+#if DV_HISTOGRAM_DIVIDE_TO_PIECES
+    h = 0.0;
     dv_histogram_piece_t * p = e->pieces[i];
     while (p) {
-      y = dv_histogram_draw_piece(H, p, cr, x, w, y, i);
+      h += p->h;
       p = p->next;
     }
+#else
+    h = e->h[i];
+#endif /* DV_HISTOGRAM_DIVIDE_TO_PIECES */
+    y = dv_histogram_draw_piece2(H, cr, x, w, y, h, i);
   }
 }
 
@@ -342,9 +375,9 @@ dv_histogram_draw(dv_histogram_t * H, cairo_t * cr) {
 
 void
 dv_histogram_reset(dv_histogram_t * H) {
-  dv_view_t * V = H->V;
+  dv_dag_t * D = H->D;
   dv_histogram_init(H);
-  H->V = V;
+  H->D = D;
 }
 
 /*-----------end of HISTOGRAM----------------------*/
@@ -353,7 +386,8 @@ dv_histogram_reset(dv_histogram_t * H) {
 /*-----------PARAPROF layout functions----------------------*/
 
 static void
-dv_view_layout_paraprof_node(dv_view_t * V, dv_histogram_t * H, dv_dag_node_t * node) {
+dv_view_layout_paraprof_node(dv_view_t * V, dv_dag_node_t * node) {
+  V->S->ndh++;
   int lt = 3;
   dv_node_coordinate_t * nodeco = &node->c[lt];
   dv_dag_t * D = V->D;
@@ -368,12 +402,27 @@ dv_view_layout_paraprof_node(dv_view_t * V, dv_histogram_t * H, dv_dag_node_t * 
   nodeco->y = worker * (2 * V->D->radius);
   if (dv_is_union(node) && dv_is_inner_loaded(node)) {
     // Recursive call
-    if (dv_is_expanded(node))
-      dv_view_layout_paraprof_node(V, H, node->head);
-    else
-      dv_histogram_add_node(H, node);
+    if (dv_is_expanded(node) || dv_is_expanding(node)) {
+      dv_view_layout_paraprof_node(V, node->head);
+    } else {
+      V->S->nd++;
+      if (node->d > D->cur_d)
+        D->cur_d = node->d;
+      if (dv_is_union(node) && dv_is_inner_loaded(node)
+          && dv_is_shrinked(node)
+          && node->d < D->cur_d_ex)
+        D->cur_d_ex = node->d;
+      dv_histogram_add_node(V->D->H, node);
+    }
   } else {
-    dv_histogram_add_node(H, node);
+    V->S->nd++;
+    if (node->d > D->cur_d)
+      D->cur_d = node->d;
+    if (dv_is_union(node) && dv_is_inner_loaded(node)
+        && dv_is_shrinked(node)
+        && node->d < D->cur_d_ex)
+      D->cur_d_ex = node->d;
+    dv_histogram_add_node(V->D->H, node);
   }
     
   /* Calculate link-along */
@@ -385,14 +434,14 @@ dv_view_layout_paraprof_node(dv_view_t * V, dv_histogram_t * H, dv_dag_node_t * 
   case 1:
     u = (dv_dag_node_t *) node->links->top->item;
     // Recursive call
-    dv_view_layout_paraprof_node(V, H, u);
+    dv_view_layout_paraprof_node(V, u);
     break;
   case 2:
     u = (dv_dag_node_t *) node->links->top->item; // cont node
     v = (dv_dag_node_t *) node->links->top->next->item; // task node
     // Recursive call
-    dv_view_layout_paraprof_node(V, H, u);
-    dv_view_layout_paraprof_node(V, H, v);
+    dv_view_layout_paraprof_node(V, u);
+    dv_view_layout_paraprof_node(V, v);
     break;
   default:
     dv_check(0);
@@ -402,8 +451,13 @@ dv_view_layout_paraprof_node(dv_view_t * V, dv_histogram_t * H, dv_dag_node_t * 
 }
 
 void
-dv_view_layout_paraprof(dv_view_t * V, dv_histogram_t * H) {
-  dv_view_layout_paraprof_node(V, H, V->D->rt);
+dv_view_layout_paraprof(dv_view_t * V) {
+  V->S->nd = 0;
+  V->S->ndh = 0;
+  V->D->cur_d = 0;
+  V->D->cur_d_ex = V->D->dmax;
+  dv_check(V->D->H);
+  dv_view_layout_paraprof_node(V, V->D->rt);
 }
 
 /*-----------end of PARAPROF layout functions----------------------*/
@@ -508,7 +562,7 @@ dv_view_draw_paraprof_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) 
 }
 
 void
-dv_view_draw_paraprof(dv_view_t * V, dv_histogram_t * H, cairo_t * cr) {
+dv_view_draw_paraprof(dv_view_t * V, cairo_t * cr) {
   // Set adaptive line width
   double line_width = dv_min(DV_NODE_LINE_WIDTH, DV_NODE_LINE_WIDTH / dv_min(V->S->zoom_ratio_x, V->S->zoom_ratio_y));
   cairo_set_line_width(cr, line_width);
@@ -529,9 +583,10 @@ dv_view_draw_paraprof(dv_view_t * V, dv_histogram_t * H, cairo_t * cr) {
   cairo_fill(cr);
   */
   // Draw nodes
-  dv_llist_init(V->D->itl);
-  dv_view_draw_paraprof_node_r(V, cr, V->D->rt);
+  //dv_llist_init(V->D->itl);
+  //dv_view_draw_paraprof_node_r(V, cr, V->D->rt);
   // Draw worker numbers
+  /*
   cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
   cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
   cairo_set_font_size(cr, 12);
@@ -546,9 +601,10 @@ dv_view_draw_paraprof(dv_view_t * V, dv_histogram_t * H, cairo_t * cr) {
     cairo_show_text(cr, s);
     yy += 2 * V->D->radius;
   }
+  */
   // Draw parallelism profile
-  if (H)
-    dv_histogram_draw(H, cr);
+  if (V->D->H)
+    dv_histogram_draw(V->D->H, cr);
 }
 
 /*-----------------end of PARAPROF drawing functions-----------*/

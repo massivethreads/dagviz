@@ -55,7 +55,7 @@ void dv_global_state_init(dv_global_state_t *CS) {
     CS->CP_sizes[i] = 0;
   dv_btsample_viewer_init(CS->btviewer);
   CS->box_viewport_configure = NULL;
-  dv_histogram_init(CS->H);
+  CS->nH = 0;
 }
 
 void dv_global_state_set_active_view(dv_view_t *V) {
@@ -178,12 +178,10 @@ dv_do_zoomfit_hor_(dv_view_t * V) {
     break;
   case 4:
     // Parallelism profile
-    d1 = 10 + rtco->rw;
-    d2 = w - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    d1 = dv_dag_calculate_vresize(V->D, V->D->et - V->D->bt);
+    d2 = w - 2 * DV_HISTOGRAM_MARGIN_SIDE;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
-    dw = D->P->num_workers * (D->radius * 2);
-    y += (h - dw * zoom_ratio) * 0.4;
     break;
   default:
     dv_check(0);
@@ -264,16 +262,29 @@ dv_do_zoomfit_ver(dv_view_t * V) {
 
 static void
 dv_do_changing_lt(dv_view_t * V, int new_lt) {
-  dv_view_status_t * S = V->S;
-  int old_lt = S->lt;
-  S->lt = new_lt;
-  int i;
-  for (i=0; i<CS->nVP; i++)
-    if (V->I[i])
-      gtk_combo_box_set_active(GTK_COMBO_BOX(V->I[i]->combobox_lt), new_lt);
-  dv_view_layout(V);
-  if (S->lt != old_lt)
+  int old_lt = V->S->lt;
+  if (new_lt != old_lt) {
+    if (new_lt == 4) { // paraprof
+      if (!V->D->H && CS->nH < DV_MAX_HISTOGRAM) {
+        V->D->H = &CS->H[CS->nH];
+        dv_histogram_init(V->D->H);
+        V->D->H->D = V->D;
+        CS->nH++;
+      } else if (!V->D->H) {
+        fprintf(stderr, "Error: run out of CS->H to allocate.\n");
+        return;
+      }      
+    }
+    V->D->tolayout[old_lt]--;
+    V->S->lt = new_lt;
+    V->D->tolayout[new_lt]++;
+    int i;
+    for (i=0; i<CS->nVP; i++)
+      if (V->I[i])
+        gtk_combo_box_set_active(GTK_COMBO_BOX(V->I[i]->combobox_lt), new_lt);
+    dv_view_layout(V);
     dv_do_zoomfit_ver(V);
+  }
 }
 
 static void
@@ -289,7 +300,7 @@ dv_do_drawing(dv_view_t * V, cairo_t * cr) {
   
   /* Draw graph */
   // Clipping
-  cairo_rectangle(cr, 20, 20, V->S->vpw - 40, V->S->vph - 40);
+  cairo_rectangle(cr, DV_CLIPPING_FRAME_MARGIN, DV_CLIPPING_FRAME_MARGIN, V->S->vpw - DV_CLIPPING_FRAME_MARGIN * 2, V->S->vph - DV_CLIPPING_FRAME_MARGIN * 2);
   cairo_clip(cr);
   // Transforming
   cairo_matrix_t mt[1];
@@ -316,16 +327,16 @@ dv_do_drawing(dv_view_t * V, cairo_t * cr) {
 }
 
 
-static void dv_do_expanding_one_1(dv_view_t *V, dv_dag_node_t *node) {
+static void
+dv_do_expanding_one_1(dv_view_t * V, dv_dag_node_t * node) {
   if (!dv_is_inner_loaded(node))
     if (dv_dag_build_node_inner(V->D, node) != DV_OK) return;
-  dv_view_status_t *S = V->S;
+  dv_view_status_t * S = V->S;
   switch (S->lt) {
   case 0:
   case 1:
   case 2:
   case 3:
-  case 4:
     // add to animation
     if (dv_is_shrinking(node)) {
       dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKING);
@@ -337,16 +348,27 @@ static void dv_do_expanding_one_1(dv_view_t *V, dv_dag_node_t *node) {
       dv_animation_add(S->a, node);
     }
     break;
+  case 4:
+    if (dv_is_shrinking(node)) {
+      dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKING);
+    } else if (dv_is_expanding(node)) {
+      dv_node_flag_remove(node->f, DV_NODE_FLAG_EXPANDING);
+    }
+    dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKED);
+    break;
   default:
     dv_check(0);
   }
 }
 
-static void dv_do_expanding_one_r(dv_view_t *V, dv_dag_node_t *node) {
+static void
+dv_do_expanding_one_r(dv_view_t * V, dv_dag_node_t * node) {
   if (!dv_is_set(node))
     dv_dag_node_set(V->D, node);
   if (dv_is_union(node)) {
-    if ((!dv_is_inner_loaded(node) || dv_is_shrinked(node) || dv_is_shrinking(node))
+    if ((!dv_is_inner_loaded(node)
+         || dv_is_shrinked(node)
+         || dv_is_shrinking(node))
         && !dv_is_expanding(node)) {
       // expand node
       dv_do_expanding_one_1(V, node);
@@ -364,24 +386,23 @@ static void dv_do_expanding_one_r(dv_view_t *V, dv_dag_node_t *node) {
   }
 }
 
-static void dv_do_expanding_one(dv_view_t *V) {
-  dv_dag_t *D = V->D;
-  dv_view_status_t *S = V->S;
-  dv_do_expanding_one_r(V, D->rt);
-  if (!S->a->on) {
+static void
+dv_do_expanding_one(dv_view_t * V) {
+  dv_do_expanding_one_r(V, V->D->rt);
+  if (!V->S->a->on) {
     dv_view_layout(V);
     dv_queue_draw_d(V);
   }
 }
 
-static void dv_do_collapsing_one_1(dv_view_t *V, dv_dag_node_t *node) {
-  dv_view_status_t *S = V->S;
+static void
+dv_do_collapsing_one_1(dv_view_t * V, dv_dag_node_t * node) {
+  dv_view_status_t * S = V->S;
   switch (S->lt) {
   case 0:
   case 1:
   case 2:
   case 3:
-  case 4:
     // add to animation
     if (dv_is_expanding(node)) {
       dv_node_flag_remove(node->f, DV_NODE_FLAG_EXPANDING);
@@ -393,12 +414,21 @@ static void dv_do_collapsing_one_1(dv_view_t *V, dv_dag_node_t *node) {
       dv_animation_add(S->a, node);
     }
     break;
+  case 4:
+    if (dv_is_expanding(node)) {
+      dv_node_flag_remove(node->f, DV_NODE_FLAG_EXPANDING);
+    } else if (dv_is_shrinking(node)) {
+      dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKING);
+    }
+    dv_node_flag_set(node->f, DV_NODE_FLAG_SHRINKED);
+    break;
   default:
     dv_check(0);
   }
 }
 
-static void dv_do_collapsing_one_r(dv_view_t *V, dv_dag_node_t *node) {
+static void
+dv_do_collapsing_one_r(dv_view_t * V, dv_dag_node_t * node) {
   if (!dv_is_set(node))
     return;
   if (dv_is_union(node) && dv_is_inner_loaded(node)
@@ -416,7 +446,7 @@ static void dv_do_collapsing_one_r(dv_view_t *V, dv_dag_node_t *node) {
           && (dv_is_expanded(x) || dv_is_expanding(x))
           && !dv_is_shrinking(x))
         has_expanded_node = 1;
-      dv_dag_node_t *xx = NULL;
+      dv_dag_node_t * xx = NULL;
       while (xx = (dv_dag_node_t *) dv_llist_iterate_next(x->links, xx)) {
         dv_stack_push(s, (void *) xx);
       }      
@@ -437,11 +467,10 @@ static void dv_do_collapsing_one_r(dv_view_t *V, dv_dag_node_t *node) {
   }
 }
 
-static void dv_do_collapsing_one(dv_view_t *V) {
-  dv_dag_t *D = V->D;
-  dv_view_status_t *S = V->S;
-  dv_do_collapsing_one_r(V, D->rt);
-  if (!S->a->on) {
+static void
+dv_do_collapsing_one(dv_view_t * V) {
+  dv_do_collapsing_one_r(V, V->D->rt);
+  if (!V->S->a->on) {
     dv_view_layout(V);
     dv_queue_draw_d(V);
   }
@@ -579,8 +608,8 @@ on_draw_event(GtkWidget * widget, cairo_t * cr, gpointer user_data)
         S->basey = DV_ZOOM_TO_FIT_MARGIN;
         break;
       case 4:
-        S->basex = DV_ZOOM_TO_FIT_MARGIN;
-        S->basey = DV_ZOOM_TO_FIT_MARGIN;
+        S->basex = DV_HISTOGRAM_MARGIN_SIDE;
+        S->basey = S->vph - DV_HISTOGRAM_MARGIN_DOWN;
         break;
       default:
         dv_check(0);
@@ -1271,6 +1300,7 @@ dv_view_t * dv_view_create_new_with_dag(dv_dag_t *D) {
 
   // Set values
   V->D = D;
+  D->tolayout[V->S->lt]++;
 
   return V;
 }
@@ -2315,8 +2345,8 @@ static void dv_alarm_init() {
     dv_alarm_set();
 }
 
-int main(int argc, char *argv[])
-{
+int
+main(int argc, char * argv[]) {
   /* General initialization */
   gtk_init(&argc, &argv);
   dv_global_state_init(CS);
@@ -2336,12 +2366,13 @@ int main(int argc, char *argv[])
   dv_viewport_init(VP);
 
   /* DAG -> VIEW <- Viewport initialization */
-  dv_dag_t *D;
-  dv_view_t *V;
+  dv_dag_t * D;
+  dv_view_t * V;
   for (i=0; i<CS->nP; i++) {
     D = dv_dag_create_new_with_pidag(&CS->P[i]);
     //print_dvdag(D);
     V = dv_view_create_new_with_dag(D);
+    dv_do_changing_lt(V, 4);
     int j;
     for (j=0; j<1; j++)
       dv_do_expanding_one(V);

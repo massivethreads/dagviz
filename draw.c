@@ -240,7 +240,7 @@ dv_view_draw_status(dv_view_t * V, cairo_t * cr, int count) {
   cairo_show_text(cr, s);
   
   // Depth
-  sprintf(s, "d=%d-%d/%d, ", D->cur_d_ex, D->cur_d, D->dmax);
+  sprintf(s, "d=%d/%d/%d, ", D->cur_d_ex, D->cur_d, D->dmax);
   x -= strlen(s) * char_width;
   cairo_move_to(cr, x, y);
   cairo_show_text(cr, s);
@@ -422,29 +422,37 @@ dv_view_draw(dv_view_t * V, cairo_t * cr) {
   dv_view_status_t * S = V->S;
   
   // Draw DAG
-  S->nd = 0;
-  S->ndh = 0;
-  D->cur_d = 0;
-  D->cur_d_ex = D->dmax;
   switch (S->lt) {
   case 0:
+    S->nd = 0;
+    S->ndh = 0;
+    D->cur_d = 0;
+    D->cur_d_ex = D->dmax;
     dv_view_draw_glike(V, cr);
     break;
   case 1:
+    S->nd = 0;
+    S->ndh = 0;
+    D->cur_d = 0;
+    D->cur_d_ex = D->dmax;
     dv_view_draw_bbox(V, cr);
     break;
   case 2:
+    S->nd = 0;
+    S->ndh = 0;
+    D->cur_d = 0;
+    D->cur_d_ex = D->dmax;
     dv_view_draw_timeline(V, cr);
     break;
   case 3:
+    S->nd = 0;
+    S->ndh = 0;
+    D->cur_d = 0;
+    D->cur_d_ex = D->dmax;
     dv_view_draw_timeline2(V, cr);
     break;
   case 4:
-    if (V - CS->V == 0) {
-      dv_view_draw_paraprof(V, CS->H, cr);
-    } else {
-      dv_view_draw_paraprof(V, NULL, cr);
-    }
+    dv_view_draw_paraprof(V, cr);
     break;
   default:
     dv_check(0);

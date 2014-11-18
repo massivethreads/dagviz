@@ -2,23 +2,9 @@
 
 /*-----------Main layout functions-------------------------*/
 
-void dv_view_layout(dv_view_t *V) {
-  dv_view_status_t *S = V->S;
-
-  dv_view_layout_glike(V);
-  dv_view_layout_bbox(V);
-  dv_view_layout_timeline(V);
-  dv_view_layout_timeline2(V);
-  if (V - CS->V == 0) {
-    dv_histogram_init(CS->H);
-    CS->H->V = V;
-    dv_view_layout_paraprof(V, CS->H);
-  } else {
-    dv_view_layout_paraprof(V, NULL);
-  }
-  
-  /*
-  switch (S->lt) {
+static void
+dv_view_layout_with_type(dv_view_t * V, int lt) {
+  switch (lt) {
   case 0:
     dv_view_layout_glike(V);
     break;
@@ -32,12 +18,39 @@ void dv_view_layout(dv_view_t *V) {
     dv_view_layout_timeline2(V);
     break;
   case 4:
-    dv_view_layout_paraprof(V);
+    if (V->D->H) {
+      dv_histogram_reset(V->D->H);
+      dv_view_layout_paraprof(V);
+    } else {
+      fprintf(stderr, "Warning: trying to lay out type 4 without H.\n");
+    }
     break;
   default:
     dv_check(0);
+  }  
+}
+
+void
+dv_view_layout(dv_view_t * V) {
+  /*
+  dv_view_layout_glike(V);
+  dv_view_layout_bbox(V);
+  dv_view_layout_timeline(V);
+  dv_view_layout_timeline2(V);
+  if (V - CS->V == 0) {
+    dv_histogram_init(CS->H);
+    CS->H->V = V;
+    dv_view_layout_paraprof(V, CS->H);
+  } else {
+    dv_view_layout_paraprof(V, NULL);
   }
   */
+
+  dv_view_layout_with_type(V, V->S->lt);
+  int i;
+  for (i=0; i<DV_NUM_LAYOUT_TYPES; i++)
+    if (V->D->tolayout[i])
+      dv_view_layout_with_type(V, i);
 }
 
 /*-----------end of Main layout functions-------------------------*/
