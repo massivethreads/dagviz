@@ -20,7 +20,10 @@ dv_view_layout_with_type(dv_view_t * V, int lt) {
   case 4:
     if (V->D->H) {
       dv_histogram_reset(V->D->H);
+      double start = dv_get_time();
       dv_view_layout_paraprof(V);
+      double end = dv_get_time();
+      fprintf(stderr, "layout time: %lf\n", end - start);
     } else {
       fprintf(stderr, "Warning: trying to lay out type 4 without H.\n");
     }
@@ -47,10 +50,10 @@ dv_view_layout(dv_view_t * V) {
   */
 
   dv_view_layout_with_type(V, V->S->lt);
-  int i;
-  for (i=0; i<DV_NUM_LAYOUT_TYPES; i++)
-    if (V->D->tolayout[i])
-      dv_view_layout_with_type(V, i);
+  int lt;
+  for (lt=0; lt<DV_NUM_LAYOUT_TYPES; lt++)
+    if (lt != V->S->lt && V->D->tolayout[lt])
+      dv_view_layout_with_type(V, lt);
 }
 
 /*-----------end of Main layout functions-------------------------*/

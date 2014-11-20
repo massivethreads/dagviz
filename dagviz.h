@@ -97,7 +97,7 @@ typedef struct dv_llist {
 #define DV_ANIMATION_STEP 30 // milliseconds
 
 #define DV_NUM_LAYOUT_TYPES 5
-#define DV_LAYOUT_TYPE_INIT 3 // not paraprof coz need to check H of D
+#define DV_LAYOUT_TYPE_INIT 0 // not paraprof coz need to check H of D
 #define DV_NODE_COLOR_INIT 0
 #define DV_SCALE_TYPE_INIT 2
 #define DV_FROMBT_INIT 0

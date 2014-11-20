@@ -451,9 +451,13 @@ dv_view_draw(dv_view_t * V, cairo_t * cr) {
     D->cur_d_ex = D->dmax;
     dv_view_draw_timeline2(V, cr);
     break;
-  case 4:
+  case 4: {
+    double start = dv_get_time();
     dv_view_draw_paraprof(V, cr);
+    double end = dv_get_time();
+    //fprintf(stderr, "draw time: %lf\n", end - start);
     break;
+  }
   default:
     dv_check(0);
   }

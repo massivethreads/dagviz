@@ -125,8 +125,14 @@ dv_histogram_entry_init(dv_histogram_entry_t * e) {
   
 }
 
+static long int count_insert_entry;
+static long int count_pile_entry;
+static long int count_pile;
+static long int count_add_node;
+
 static dv_histogram_entry_t *
 dv_histogram_insert_entry(dv_histogram_t * H, double t) {
+  count_insert_entry++;
   dv_histogram_entry_t * e = NULL;
   dv_histogram_entry_t * ee = H->head_e;
   while (ee != NULL && ee->t < t) {
@@ -189,6 +195,7 @@ dv_histogram_insert_entry(dv_histogram_t * H, double t) {
 
 static void
 dv_histogram_pile_entry(dv_histogram_t * H, dv_histogram_entry_t * e, dv_histogram_layer_t layer, double parallelism, dv_dag_node_t * node) {
+  count_pile_entry++;
 #if DV_HISTOGRAM_DIVIDE_TO_PIECES    
   dv_histogram_piece_t * p = e->pieces[layer];
   while (p && p->next !=NULL)
@@ -212,6 +219,7 @@ dv_histogram_pile_entry(dv_histogram_t * H, dv_histogram_entry_t * e, dv_histogr
 
 static void
 dv_histogram_pile(dv_histogram_t * H, dv_dag_node_t * node, dv_histogram_layer_t layer, double from_t, double to_t, double parallelism) {
+  count_pile++;
   dv_histogram_entry_t * e_from = dv_histogram_insert_entry(H, from_t);
   dv_histogram_entry_t * e_to = dv_histogram_insert_entry(H, to_t);
   if (!e_from || !e_to)
@@ -221,11 +229,12 @@ dv_histogram_pile(dv_histogram_t * H, dv_dag_node_t * node, dv_histogram_layer_t
     dv_histogram_pile_entry(H, e, layer, parallelism, node);
     e = e->next;
   }
-  //fprintf(stderr, "used pieces: %ld\n", H->ppool->n);
+  //fprintf(stderr, "used #pieces: %ld\n", H->ppool->n);
 }
 
 void
 dv_histogram_add_node(dv_histogram_t * H, dv_dag_node_t * node) {
+  count_add_node++;
   if (!H)
     return;
   dr_pi_dag_node * pi = dv_pidag_get_node(H->D->P, node);
@@ -260,7 +269,7 @@ dv_histogram_add_node(dv_histogram_t * H, dv_dag_node_t * node) {
                     start_t, end_t,
                     pi->info.t_1 / dt);
   H->added[node - H->D->T] = 1;
-  fprintf(stderr, "used entries: %ld\n", H->epool->n);
+  //fprintf(stderr, "used #entries: %ld\n", H->epool->n);
 }
 
 static void
@@ -457,7 +466,20 @@ dv_view_layout_paraprof(dv_view_t * V) {
   V->D->cur_d = 0;
   V->D->cur_d_ex = V->D->dmax;
   dv_check(V->D->H);
+  count_insert_entry = 0;
+  count_pile_entry = 0;
+  count_pile = 0;
+  count_add_node = 0;
   dv_view_layout_paraprof_node(V, V->D->rt);
+  fprintf(stderr,
+          "count_insert_entry = %ld\n"
+          "  count_pile_entry = %ld\n"
+          "        count_pile = %ld\n"
+          "    count_add_node = %ld\n",
+          count_insert_entry,
+          count_pile_entry,
+          count_pile,
+          count_add_node);
 }
 
 /*-----------end of PARAPROF layout functions----------------------*/

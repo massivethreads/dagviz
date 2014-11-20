@@ -187,8 +187,8 @@ dv_do_zoomfit_hor_(dv_view_t * V) {
     dv_check(0);
   }
   S->zoom_ratio_x = S->zoom_ratio_y  = zoom_ratio;
-  S->x += x;
-  S->y += y;
+  S->x = x;
+  S->y = y;
 }
 
 static void
@@ -2372,14 +2372,14 @@ main(int argc, char * argv[]) {
     D = dv_dag_create_new_with_pidag(&CS->P[i]);
     //print_dvdag(D);
     V = dv_view_create_new_with_dag(D);
-    dv_do_changing_lt(V, 4);
-    int j;
-    for (j=0; j<1; j++)
-      dv_do_expanding_one(V);
   }
-  dv_view_add_viewport(CS->V, VP);
+  V = CS->V;
+  dv_view_add_viewport(V, VP);
+  dv_do_changing_lt(V, 4);
+  for (i=0; i<1; i++)
+    dv_do_expanding_one(V);
   dv_do_set_focused_view(CS->V, 1);
-
+  
   /* Open GUI */
   return open_gui(argc, argv);
 }
