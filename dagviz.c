@@ -2284,6 +2284,7 @@ open_gui(int argc, char * argv[]) {
   g_signal_connect(G_OBJECT(CS->window), "key-press-event", G_CALLBACK(on_window_key_event), NULL);
 
   // Set icon
+  /*
   char * icon_filename = "smile_icon.png";
   GError * error = 0; 
   GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file(icon_filename, &error);
@@ -2292,6 +2293,7 @@ open_gui(int argc, char * argv[]) {
   } else {
     gtk_window_set_icon(GTK_WINDOW(window), pixbuf);
   }
+  */
 
   // vbox0
   GtkWidget * vbox0 = CS->vbox0;
