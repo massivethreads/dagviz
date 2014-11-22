@@ -240,13 +240,14 @@ dv_view_draw_status(dv_view_t * V, cairo_t * cr, int count) {
   cairo_show_text(cr, s);
   
   // Depth
-  sprintf(s, "d=%d/%d/%d, ", D->cur_d_ex, D->cur_d, D->dmax);
+  //sprintf(s, "d=%d/%d/%d, ", D->cur_d_ex, D->cur_d, D->dmax);
+  sprintf(s, "d=%d/%d, ", D->cur_d, D->dmax);
   x -= strlen(s) * char_width;
   cairo_move_to(cr, x, y);
   cairo_show_text(cr, s);
 
   // Node pool
-  sprintf(s, "np=%d/%d, ", D->Tn, D->Tsz);
+  sprintf(s, "np=%ld/%ld-%ld, ", D->Tn, D->P->n, D->Tsz);
   x -= strlen(s) * char_width;
   cairo_move_to(cr, x, y);
   cairo_show_text(cr, s);
@@ -258,25 +259,31 @@ dv_view_draw_status(dv_view_t * V, cairo_t * cr, int count) {
   cairo_show_text(cr, s);
   
   // Zoom ratios
+  /*
   sprintf(s, "zr=(%lf,%lf), ", S->zoom_ratio_x, S->zoom_ratio_y);
   x -= strlen(s) * char_width;
   cairo_move_to(cr, x, y);
   cairo_show_text(cr, s);
+  */
   
   // Radix, radius
+  /*
   double radix = dv_dag_get_radix(D);
   sprintf(s, "r=(%lf,%lf), ", radix, D->radius);
   x -= strlen(s) * char_width;
   cairo_move_to(cr, x, y);
   cairo_show_text(cr, s);
+  */
   
   // Nodes animating
+  /*
   if (S->a->on) {
     sprintf(s, "na=%d, ", dv_llist_size(S->a->movings));
     x -= strlen(s) * char_width;
     cairo_move_to(cr, x, y);
     cairo_show_text(cr, s);
   }
+  */
   
   // ratio
   /*

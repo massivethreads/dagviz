@@ -14,6 +14,7 @@
 #include <errno.h>
 #include <gtk/gtk.h>
 #include <cairo.h>
+#include <cairo-ps.h>
 
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -111,7 +112,7 @@ typedef struct dv_llist {
 #define DV_TIMELINE_NODE_WITH_BORDER 0
 #define DV_ENTRY_RADIX_MAX_LENGTH 20
 
-#define DV_DAG_NODE_POOL_SIZE 40000
+#define DV_DAG_NODE_POOL_SIZE 50000
 
 #define DV_MAX_DAG_FILE 5
 #define DV_MAX_DAG 10
@@ -197,8 +198,8 @@ typedef struct dv_dag {
   /* DAG's skeleton */
   dv_dag_node_t * T;  /* array of all nodes */
   char * To;
-  int Tsz;
-  int Tn;
+  long Tsz;
+  long Tn;
 
   /* DAG's content */
   dv_dag_node_t * rt;  /* root task */
