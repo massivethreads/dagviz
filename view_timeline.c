@@ -91,24 +91,49 @@ static void dv_view_draw_timeline_node_1(dv_view_t *V, cairo_t *cr, dv_dag_node_
   yy = y;
   w = nodeco->lw + nodeco->rw;
   h = nodeco->dw;
-  // Draw path
-  cairo_move_to(cr, xx, yy);
-  cairo_line_to(cr, xx + w, yy);
-  cairo_line_to(cr, xx + w, yy + h);
-  cairo_line_to(cr, xx, yy + h);
-  cairo_close_path(cr);
+  
+  double bound_left = dv_view_clip_get_bound_left(V);
+  double bound_right = dv_view_clip_get_bound_right(V);
+  double bound_up = dv_view_clip_get_bound_up(V);
+  double bound_down = dv_view_clip_get_bound_down(V);
+  if (xx < bound_right && xx + w > bound_left &&
+      yy < bound_down && yy + h > bound_up) {
+    if (xx < bound_left) {
+      w -= (bound_left - xx);
+      xx = bound_left;
+    }
+    if (xx + w > bound_right)
+      w = bound_right - xx;
+    if (yy < bound_up) {
+      h -= (bound_up - yy);
+      yy = bound_up;
+    }
+    if (yy + h > bound_down)
+      h = bound_down - yy;
+    
+    // Draw path
+    cairo_move_to(cr, xx, yy);
+    cairo_line_to(cr, xx + w, yy);
+    cairo_line_to(cr, xx + w, yy + h);
+    cairo_line_to(cr, xx, yy + h);
+    cairo_close_path(cr);
 
-  // Draw node
-  cairo_set_source_rgba(cr, c[0], c[1], c[2], c[3] * alpha);
-  cairo_fill_preserve(cr);
-  if (DV_TIMELINE_NODE_WITH_BORDER) {
-    cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
-    cairo_stroke_preserve(cr);
+    // Draw node
+    cairo_set_source_rgba(cr, c[0], c[1], c[2], c[3] * alpha);
+    cairo_fill_preserve(cr);
+    if (DV_TIMELINE_NODE_WITH_BORDER) {
+      cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
+      cairo_stroke_preserve(cr);
+    }
+    // Draw opaque
+    if (dv_llist_has(V->D->P->itl, (void *) node->pii)) {
+      cairo_set_source_rgba(cr, 0.1, 0.1, 0.1, 0.6);
+      cairo_fill(cr);
+    }
+    
   }
-  // Draw infotag
+  // Flag to draw infotag
   if (dv_llist_has(V->D->P->itl, (void *) node->pii)) {
-    cairo_set_source_rgba(cr, 0.1, 0.1, 0.1, 0.6);
-    cairo_fill(cr);
     dv_llist_add(V->D->itl, (void *) node);
   }
   cairo_restore(cr);

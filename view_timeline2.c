@@ -105,10 +105,10 @@ dv_view_draw_timeline2_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node)
   if (w < min_w) min_w = w;
   if (w > max_w) max_w = w;
 
-  double bound_left = (20 - V->S->basex - V->S->x) / V->S->zoom_ratio_x;
-  double bound_right = ((V->S->vpw - 20) - V->S->basex - V->S->x) / V->S->zoom_ratio_x;
-  double bound_up = (20 - V->S->basey - V->S->y) / V->S->zoom_ratio_y;
-  double bound_down = ((V->S->vph - 20) - V->S->basey - V->S->y) / V->S->zoom_ratio_y;
+  double bound_left = dv_view_clip_get_bound_left(V);
+  double bound_right = dv_view_clip_get_bound_right(V);
+  double bound_up = dv_view_clip_get_bound_up(V);
+  double bound_down = dv_view_clip_get_bound_down(V);
   if (xx < bound_right && xx + w > bound_left &&
       yy < bound_down && yy + h > bound_up) {
     if (xx < bound_left) {
@@ -138,13 +138,16 @@ dv_view_draw_timeline2_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node)
       cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
       cairo_stroke_preserve(cr);
     }
-    // Draw infotag
+    // Draw opaque
     if (dv_llist_has(V->D->P->itl, (void *) node->pii)) {
       cairo_set_source_rgba(cr, 0.1, 0.1, 0.1, 0.6);
       cairo_fill(cr);
-      dv_llist_add(V->D->itl, (void *) node);
     }
     
+  }
+  // Flag to draw infotag
+  if (dv_llist_has(V->D->P->itl, (void *) node->pii)) {
+    dv_llist_add(V->D->itl, (void *) node);
   }
   cairo_restore(cr);
 }

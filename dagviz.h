@@ -128,11 +128,14 @@ typedef struct dv_llist {
 #define DV_HISTOGRAM_PIECE_POOL_SIZE 10000000
 #define DV_HISTOGRAM_ENTRY_POOL_SIZE 40000
 
-#define DV_CLIPPING_FRAME_MARGIN 3
-#define DV_HISTOGRAM_MARGIN_DOWN 80
-#define DV_HISTOGRAM_MARGIN_SIDE 120
+#define DV_CLIPPING_FRAME_MARGIN 0
+#define DV_HISTOGRAM_MARGIN_DOWN 200
+#define DV_HISTOGRAM_MARGIN_SIDE 80
 
 #define DV_HISTOGRAM_DIVIDE_TO_PIECES 0
+
+#define DV_CAIRO_BOUND_MIN -8e6 //-(1<<23)
+#define DV_CAIRO_BOUND_MAX 8e6 //(1<<23)
 
 /*-----------------Data Structures-----------------*/
 
@@ -438,6 +441,17 @@ dv_view_t * dv_global_state_get_active_view();
 void dv_queue_draw(dv_view_t *);
 void dv_queue_draw_d(dv_view_t *);
 void dv_queue_draw_d_p(dv_view_t *);
+
+void dv_view_clip(dv_view_t *, cairo_t *);
+double dv_view_clip_get_bound_left(dv_view_t *);
+double dv_view_clip_get_bound_right(dv_view_t *);
+double dv_view_clip_get_bound_up(dv_view_t *);
+double dv_view_clip_get_bound_down(dv_view_t *);
+  
+double dv_view_cairo_coordinate_bound_left(dv_view_t *);
+double dv_view_cairo_coordinate_bound_right(dv_view_t *);
+double dv_view_cairo_coordinate_bound_up(dv_view_t *);
+double dv_view_cairo_coordinate_bound_down(dv_view_t *);
 
 void dv_view_status_init(dv_view_t *, dv_view_status_t *);
 

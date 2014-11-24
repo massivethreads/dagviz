@@ -281,8 +281,10 @@ dv_view_change_radix(dv_view_t * V, double radix) {
 
 static void
 dv_view_change_sdt(dv_view_t * V, int new_sdt) {
-  V->D->sdt = new_sdt;
-  dv_view_set_entry_radix_text(V);
+  if (new_sdt != V->D->sdt) {
+    V->D->sdt = new_sdt;
+    dv_view_set_entry_radix_text(V);
+  }
 }
 
 static void
@@ -302,15 +304,29 @@ dv_view_change_eaffix(dv_view_t * V, int active) {
 }
 
 static void
+dv_view_change_nc(dv_view_t * V, int new_nc) {
+  int old_nc = V->S->nc;
+  if (new_nc != old_nc) {
+    V->S->nc = new_nc;
+    int i;
+    for (i=0; i<CS->nVP; i++)
+      if (V->I[i])
+        gtk_combo_box_set_active(GTK_COMBO_BOX(V->I[i]->combobox_nc), new_nc);
+  }
+}
+
+static void
 dv_view_change_lt(dv_view_t * V, int new_lt) {
   int old_lt = V->S->lt;
   if (new_lt != old_lt) {
     // edge affix, sdt
     switch (new_lt) {
     case 0:
+      dv_view_change_nc(V, 0);
       dv_view_change_eaffix(V, 1);
       break;
     case 1:
+      dv_view_change_nc(V, 0);
       dv_view_change_eaffix(V, 0);
       dv_view_change_sdt(V, 0);
       break;
@@ -318,6 +334,7 @@ dv_view_change_lt(dv_view_t * V, int new_lt) {
     case 3:
     case 4:
       dv_view_change_sdt(V, 2);
+      dv_view_change_nc(V, 2); // node kind
       break;
     default:
       break;
@@ -345,9 +362,72 @@ dv_view_change_lt(dv_view_t * V, int new_lt) {
         gtk_combo_box_set_active(GTK_COMBO_BOX(V->I[i]->combobox_lt), new_lt);
     // Re-layout
     dv_view_layout(V);
-    dv_do_zoomfit_ver(V);
+    // zoomfit
+    switch (new_lt) {
+    case 0:
+    case 1:
+    case 2:
+      dv_do_zoomfit_ver(V);
+      break;
+    case 3:
+      dv_do_zoomfit_hor(V);
+      break;
+    case 4:
+      dv_do_zoomfit_hor(V);
+      break;
+    default:
+      dv_do_zoomfit_ver(V);
+      break;
+    }
   }
 }
+
+void
+dv_view_clip(dv_view_t * V, cairo_t * cr) {
+  cairo_rectangle(cr, DV_CLIPPING_FRAME_MARGIN, DV_CLIPPING_FRAME_MARGIN, V->S->vpw - DV_CLIPPING_FRAME_MARGIN * 2, V->S->vph - DV_CLIPPING_FRAME_MARGIN * 2);
+  cairo_clip(cr);
+}
+
+double
+dv_view_clip_get_bound_left(dv_view_t * V) {
+  return (DV_CLIPPING_FRAME_MARGIN - V->S->basex - V->S->x) / V->S->zoom_ratio_x;
+}
+
+double
+dv_view_clip_get_bound_right(dv_view_t * V) {
+  return ((V->S->vpw - DV_CLIPPING_FRAME_MARGIN) - V->S->basex - V->S->x) / V->S->zoom_ratio_x;
+}
+
+double
+dv_view_clip_get_bound_up(dv_view_t * V) {
+  return (DV_CLIPPING_FRAME_MARGIN - V->S->basey - V->S->y) / V->S->zoom_ratio_y;
+}
+
+double
+dv_view_clip_get_bound_down(dv_view_t * V) {
+  return ((V->S->vph - DV_CLIPPING_FRAME_MARGIN) - V->S->basey - V->S->y) / V->S->zoom_ratio_y;
+}
+
+double
+dv_view_cairo_coordinate_bound_left(dv_view_t * V) {
+  return (DV_CAIRO_BOUND_MIN - V->S->basex - V->S->x) / V->S->zoom_ratio_x;
+}
+
+double
+dv_view_cairo_coordinate_bound_right(dv_view_t * V) {
+  return (DV_CAIRO_BOUND_MAX - V->S->basex - V->S->x) / V->S->zoom_ratio_x;
+}
+
+double
+dv_view_cairo_coordinate_bound_up(dv_view_t * V) {
+  return (DV_CAIRO_BOUND_MIN - V->S->basey - V->S->y) / V->S->zoom_ratio_y;
+}
+
+double
+dv_view_cairo_coordinate_bound_down(dv_view_t * V) {
+  return (DV_CAIRO_BOUND_MAX - V->S->basey - V->S->y) / V->S->zoom_ratio_y;
+}
+
 
 static void
 dv_view_prepare_drawing(dv_view_t * V, cairo_t * cr) {
@@ -362,13 +442,14 @@ dv_view_prepare_drawing(dv_view_t * V, cairo_t * cr) {
   
   /* Draw graph */
   // Clipping
-  cairo_rectangle(cr, DV_CLIPPING_FRAME_MARGIN, DV_CLIPPING_FRAME_MARGIN, V->S->vpw - DV_CLIPPING_FRAME_MARGIN * 2, V->S->vph - DV_CLIPPING_FRAME_MARGIN * 2);
-  cairo_clip(cr);
+  dv_view_clip(V, cr);
   // Transforming
   cairo_matrix_t mt[1];
   cairo_matrix_init_translate(mt, S->basex + S->x, S->basey + S->y);
   cairo_matrix_scale(mt, S->zoom_ratio_x, S->zoom_ratio_y);
   cairo_transform(cr, mt);
+  //fprintf(stderr, "matrix:\n%lf %lf %lf\n%lf %lf %lf\n", mt->xx, mt->xy, mt->x0, mt->yx, mt->yy, mt->y0);
+  //fprintf(stderr, "to compare with:\n%lf %lf %lf\n%lf %lf %lf\n", S->zoom_ratio_x, 0.0, S->basex + S->x, 0.0, S->zoom_ratio_y, S->basey + S->y);
   // Transforming
   /*
   cairo_translate(cr, S->basex + S->x, S->basey + S->y);
@@ -861,17 +942,19 @@ static gboolean on_motion_event(GtkWidget *widget, GdkEventMotion *event, gpoint
   return TRUE;
 }
 
-static gboolean on_combobox_lt_changed(GtkComboBox *widget, gpointer user_data) {
-  dv_view_t *V = (dv_view_t *) user_data;
+static gboolean
+on_combobox_lt_changed(GtkComboBox * widget, gpointer user_data) {
+  dv_view_t * V = (dv_view_t *) user_data;
   int new_lt = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
   dv_check(0 <= new_lt && new_lt < DV_NUM_LAYOUT_TYPES);
   dv_view_change_lt(V, new_lt);
   return TRUE;  
 }
 
-static gboolean on_combobox_nc_changed(GtkComboBox *widget, gpointer user_data) {
-  dv_view_t *V = (dv_view_t *) user_data;
-  V->S->nc = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+static gboolean
+on_combobox_nc_changed(GtkComboBox * widget, gpointer user_data) {
+  dv_view_t * V = (dv_view_t *) user_data;
+  dv_view_change_nc(V, gtk_combo_box_get_active(GTK_COMBO_BOX(widget)));
   dv_queue_draw(V);
   return TRUE;
 }
@@ -2163,7 +2246,7 @@ on_help_export_clicked(GtkToolButton *toolbtn, gpointer user_data) {
     fprintf(stderr, "Warning: there is no active V to export.\n");
     return;
   }
-  dv_viewport_export_to_png(V->mainVP);
+  //dv_viewport_export_to_png(V->mainVP);
   dv_viewport_export_to_eps(V->mainVP);
   return;  
 }
@@ -2479,7 +2562,7 @@ main(int argc, char * argv[]) {
   }
   V = CS->V;
   dv_view_add_viewport(V, VP);
-  //dv_view_change_lt(V, 4);
+  dv_view_change_lt(V, 4);
   for (i=0; i<1; i++)
     dv_do_expanding_one(V);
   dv_do_set_focused_view(CS->V, 1);

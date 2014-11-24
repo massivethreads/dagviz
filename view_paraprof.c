@@ -207,14 +207,14 @@ dv_histogram_pile_entry(dv_histogram_t * H, dv_histogram_entry_t * e, dv_histogr
   }
   dv_histogram_piece_init(new_p);
   new_p->e = e;
-  new_p->h = parallelism * H->D->radius;
+  new_p->h = parallelism * 2 * H->D->radius;
   new_p->node = node;
   if (p)
     p->next = new_p;
   else
     e->pieces[layer] = new_p;
 #endif /* DV_HISTOGRAM_DIVIDE_TO_PIECES */
-  e->h[layer] += parallelism * H->D->radius;
+  e->h[layer] += parallelism * 2 * H->D->radius;
 }
 
 static void
@@ -228,6 +228,9 @@ dv_histogram_pile(dv_histogram_t * H, dv_dag_node_t * node, dv_histogram_layer_t
   while (e != e_to) {
     dv_histogram_pile_entry(H, e, layer, parallelism, node);
     e = e->next;
+  }
+  if (layer == dv_histogram_layer_running) {
+    dr_pi_dag_node * pi = dv_pidag_get_node(H->D->P, node);
   }
   //fprintf(stderr, "used #pieces: %ld\n", H->ppool->n);
 }
@@ -314,7 +317,7 @@ dv_histogram_draw_test(dv_view_t * V, cairo_t * cr) {
 static double
 dv_histogram_draw_piece(dv_histogram_t * H, dv_histogram_piece_t * p, cairo_t * cr, double x, double w, double y, int layer) {
   cairo_save(cr);
-  double h = p->h * H->D->radius;
+  double h = p->h;
   // Color
   GdkRGBA color;
   gdk_rgba_parse(&color, DV_HISTOGRAM_COLORS[(layer + 6) % 6]);
@@ -335,7 +338,6 @@ dv_histogram_draw_piece(dv_histogram_t * H, dv_histogram_piece_t * p, cairo_t * 
 static double
 dv_histogram_draw_piece2(dv_histogram_t * H, cairo_t * cr, double x, double w, double y, double h, int layer) {
   cairo_save(cr);
-  h *= H->D->radius;
   // Color
   GdkRGBA color;
   gdk_rgba_parse(&color, DV_HISTOGRAM_COLORS[(layer + 6) % 6]);
@@ -515,14 +517,14 @@ dv_view_draw_paraprof_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) 
   double xx, yy, w, h;
   // Normal-sized box (terminal node)
   xx = x;
-  yy = -y;
+  yy = y;
   w = nodeco->rw;
   h = nodeco->dw;
   
-  double bound_left = (20 - V->S->basex - V->S->x) / V->S->zoom_ratio_x;
-  double bound_right = ((V->S->vpw - 20) - V->S->basex - V->S->x) / V->S->zoom_ratio_x;
-  double bound_up = (20 - V->S->basey - V->S->y) / V->S->zoom_ratio_y;
-  double bound_down = ((V->S->vph - 20) - V->S->basey - V->S->y) / V->S->zoom_ratio_y;
+  double bound_left = dv_view_clip_get_bound_left(V);
+  double bound_right = dv_view_clip_get_bound_right(V);
+  double bound_up = dv_view_clip_get_bound_up(V);
+  double bound_down = dv_view_clip_get_bound_down(V);
   if (xx < bound_right && xx + w > bound_left &&
       yy < bound_down && yy + h > bound_up) {
     if (xx < bound_left) {
@@ -552,13 +554,16 @@ dv_view_draw_paraprof_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) 
       cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
       cairo_stroke_preserve(cr);
     }
-    // Draw infotag
+    // Draw opaque
     if (dv_llist_has(V->D->P->itl, (void *) node->pii)) {
       cairo_set_source_rgba(cr, 0.1, 0.1, 0.1, 0.6);
       cairo_fill(cr);
-      dv_llist_add(V->D->itl, (void *) node);
     }
     
+  }
+  // Flag to draw infotag
+  if (dv_llist_has(V->D->P->itl, (void *) node->pii)) {
+    dv_llist_add(V->D->itl, (void *) node);
   }
   cairo_restore(cr);
 }
@@ -605,10 +610,9 @@ dv_view_draw_paraprof(dv_view_t * V, cairo_t * cr) {
   cairo_fill(cr);
   */
   // Draw nodes
-  //dv_llist_init(V->D->itl);
-  //dv_view_draw_paraprof_node_r(V, cr, V->D->rt);
+  dv_llist_init(V->D->itl);
+  dv_view_draw_paraprof_node_r(V, cr, V->D->rt);
   // Draw worker numbers
-  /*
   cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
   cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
   cairo_set_font_size(cr, 12);
@@ -623,7 +627,10 @@ dv_view_draw_paraprof(dv_view_t * V, cairo_t * cr) {
     cairo_show_text(cr, s);
     yy += 2 * V->D->radius;
   }
-  */
+  cairo_move_to(cr, 20, - 64 * V->D->radius);
+  cairo_line_to(cr, V->S->vpw - 20, -64 * V->D->radius);
+  cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
+  cairo_stroke(cr);
   // Draw parallelism profile
   if (V->D->H)
     dv_histogram_draw(V->D->H, cr);
