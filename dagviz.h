@@ -129,8 +129,8 @@ typedef struct dv_llist {
 #define DV_HISTOGRAM_ENTRY_POOL_SIZE 40000
 
 #define DV_CLIPPING_FRAME_MARGIN 0
-#define DV_HISTOGRAM_MARGIN_DOWN 200
-#define DV_HISTOGRAM_MARGIN_SIDE 80
+#define DV_HISTOGRAM_MARGIN_DOWN 20
+#define DV_HISTOGRAM_MARGIN_SIDE 50
 
 #define DV_HISTOGRAM_DIVIDE_TO_PIECES 0
 
@@ -373,6 +373,7 @@ typedef struct dv_histogram_entry {
   dv_histogram_piece_t * pieces[dv_histogram_layer_max];
   struct dv_histogram_entry * next;
   double h[dv_histogram_layer_max];
+  double sum_h;
 } dv_histogram_entry_t;
 
 typedef struct dv_histogram_entry_pool {
@@ -390,6 +391,7 @@ typedef struct dv_histogram {
   long n_e;
   char added[DV_DAG_NODE_POOL_SIZE];
   dv_dag_t * D;
+  dv_histogram_entry_t * max_e;
 } dv_histogram_t;
 
 

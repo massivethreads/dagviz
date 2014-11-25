@@ -103,6 +103,7 @@ dv_histogram_init(dv_histogram_t * H) {
   for (i=0; i<DV_DAG_NODE_POOL_SIZE; i++)
     H->added[i] = 0;
   H->D = NULL;
+  H->max_e = NULL;
 }
 
 static void
@@ -122,7 +123,7 @@ dv_histogram_entry_init(dv_histogram_entry_t * e) {
     e->h[i] = 0.0;
   }
   e->next = NULL;
-  
+  e->sum_h = 0.0;
 }
 
 static long int count_insert_entry;
@@ -194,7 +195,7 @@ dv_histogram_insert_entry(dv_histogram_t * H, double t) {
 }
 
 static void
-dv_histogram_pile_entry(dv_histogram_t * H, dv_histogram_entry_t * e, dv_histogram_layer_t layer, double parallelism, dv_dag_node_t * node) {
+dv_histogram_pile_entry(dv_histogram_t * H, dv_histogram_entry_t * e, dv_histogram_layer_t layer, double thick, dv_dag_node_t * node) {
   count_pile_entry++;
 #if DV_HISTOGRAM_DIVIDE_TO_PIECES    
   dv_histogram_piece_t * p = e->pieces[layer];
@@ -207,14 +208,15 @@ dv_histogram_pile_entry(dv_histogram_t * H, dv_histogram_entry_t * e, dv_histogr
   }
   dv_histogram_piece_init(new_p);
   new_p->e = e;
-  new_p->h = parallelism * 2 * H->D->radius;
+  new_p->h = thick;
   new_p->node = node;
   if (p)
     p->next = new_p;
   else
     e->pieces[layer] = new_p;
 #endif /* DV_HISTOGRAM_DIVIDE_TO_PIECES */
-  e->h[layer] += parallelism * 2 * H->D->radius;
+  e->h[layer] += thick;
+  e->sum_h += thick;
 }
 
 static void
@@ -226,11 +228,10 @@ dv_histogram_pile(dv_histogram_t * H, dv_dag_node_t * node, dv_histogram_layer_t
     return;
   dv_histogram_entry_t * e = e_from;
   while (e != e_to) {
-    dv_histogram_pile_entry(H, e, layer, parallelism, node);
+    dv_histogram_pile_entry(H, e, layer, parallelism * 2 * H->D->radius, node);
+    if (!H->max_e || e->sum_h > H->max_e->sum_h)
+      H->max_e = e;
     e = e->next;
-  }
-  if (layer == dv_histogram_layer_running) {
-    dr_pi_dag_node * pi = dv_pidag_get_node(H->D->P, node);
   }
   //fprintf(stderr, "used #pieces: %ld\n", H->ppool->n);
 }
@@ -399,7 +400,7 @@ dv_histogram_reset(dv_histogram_t * H) {
 static void
 dv_view_layout_paraprof_node(dv_view_t * V, dv_dag_node_t * node) {
   V->S->ndh++;
-  int lt = 3;
+  int lt = 4;
   dv_node_coordinate_t * nodeco = &node->c[lt];
   dv_dag_t * D = V->D;
   dr_pi_dag_node * pi = dv_pidag_get_node(D->P, node);
@@ -467,6 +468,7 @@ dv_view_layout_paraprof(dv_view_t * V) {
   V->S->ndh = 0;
   V->D->cur_d = 0;
   V->D->cur_d_ex = V->D->dmax;
+  V->D->H->max_e = NULL;
   dv_check(V->D->H);
   count_insert_entry = 0;
   count_pile_entry = 0;
@@ -493,7 +495,7 @@ static void
 dv_view_draw_paraprof_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
   dv_dag_t * D = V->D;
   dv_view_status_t * S = V->S;
-  int lt = 3;
+  int lt = 4;
   dv_node_coordinate_t * nodeco = &node->c[lt];
   // Count node drawn
   S->nd++;

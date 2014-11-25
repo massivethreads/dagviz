@@ -452,33 +452,21 @@ dv_view_draw(dv_view_t * V, cairo_t * cr) {
   dv_view_status_t * S = V->S;
   
   // Draw DAG
+  S->nd = 0;
+  S->ndh = 0;
+  D->cur_d = 0;
+  D->cur_d_ex = D->dmax;
   switch (S->lt) {
   case 0:
-    S->nd = 0;
-    S->ndh = 0;
-    D->cur_d = 0;
-    D->cur_d_ex = D->dmax;
     dv_view_draw_glike(V, cr);
     break;
   case 1:
-    S->nd = 0;
-    S->ndh = 0;
-    D->cur_d = 0;
-    D->cur_d_ex = D->dmax;
     dv_view_draw_bbox(V, cr);
     break;
   case 2:
-    S->nd = 0;
-    S->ndh = 0;
-    D->cur_d = 0;
-    D->cur_d_ex = D->dmax;
     dv_view_draw_timeline(V, cr);
     break;
   case 3:
-    S->nd = 0;
-    S->ndh = 0;
-    D->cur_d = 0;
-    D->cur_d_ex = D->dmax;
     dv_view_draw_timeline2(V, cr);
     break;
   case 4: {
@@ -492,7 +480,7 @@ dv_view_draw(dv_view_t * V, cairo_t * cr) {
     dv_check(0);
   }
   // Draw infotags
-  //dv_view_draw_infotags(V, cr);  
+  dv_view_draw_infotags(V, cr, NULL);
 }
 
 void

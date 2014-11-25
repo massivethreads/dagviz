@@ -182,6 +182,7 @@ dv_do_zoomfit_hor_(dv_view_t * V) {
     d2 = w - 2 * DV_HISTOGRAM_MARGIN_SIDE;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
+    y -= V->D->P->num_workers * 2 * V->D->radius * zoom_ratio;
     break;
   default:
     dv_check(0);
@@ -241,10 +242,14 @@ dv_do_zoomfit_ver_(dv_view_t * V) {
     break;
   case 4:
     // Parallelism profile
-    d1 = D->P->num_workers * (D->radius * 2);
-    d2 = h - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    d1 = D->P->num_workers * (2 * D->radius) + D->H->max_e->sum_h;
+    d2 = h - DV_ZOOM_TO_FIT_MARGIN - DV_HISTOGRAM_MARGIN_DOWN;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
+    y -= D->P->num_workers * (2 * D->radius) * zoom_ratio;
+    double dx = (w - 2 * DV_HISTOGRAM_MARGIN_SIDE - zoom_ratio * dv_dag_calculate_vresize(V->D, V->D->et - V->D->bt)) / 2.0;
+    if (dx > 0)
+      x += dx;
     break;
   default:
     dv_check(0);
@@ -464,7 +469,7 @@ dv_view_prepare_drawing(dv_view_t * V, cairo_t * cr) {
   
   /* Draw infotags */
   /* TODO: to make it not scale unequally infotags */
-  dv_view_draw_infotags(V, cr, NULL);
+  //dv_view_draw_infotags(V, cr, NULL);
   
   cairo_restore(cr);
 }
@@ -660,9 +665,10 @@ dv_do_collapsing_one(dv_view_t * V) {
   }
 }
 
-static dv_dag_node_t *dv_do_finding_clicked_node_1(dv_view_t *V, double x, double y, dv_dag_node_t *node) {
+static dv_dag_node_t *
+dv_do_finding_clicked_node_1(dv_view_t * V, double x, double y, dv_dag_node_t * node) {
   dv_dag_node_t * ret = NULL;
-  dv_node_coordinate_t *c = &node->c[V->S->lt];
+  dv_node_coordinate_t * c = &node->c[V->S->lt];
   double vc, hc;
   switch (V->S->lt) {
   case 0:
@@ -690,8 +696,9 @@ static dv_dag_node_t *dv_do_finding_clicked_node_1(dv_view_t *V, double x, doubl
   return ret;
 }
 
-static dv_dag_node_t *dv_do_finding_clicked_node_r(dv_view_t *V, double x, double y, dv_dag_node_t *node) {
-  dv_dag_node_t *ret;
+static dv_dag_node_t *
+dv_do_finding_clicked_node_r(dv_view_t * V, double x, double y, dv_dag_node_t * node) {
+  dv_dag_node_t * ret;
   /* Call inward */
   if (dv_is_union(node) && dv_is_inner_loaded(node)
       && !dv_is_shrinking(node)
@@ -703,7 +710,7 @@ static dv_dag_node_t *dv_do_finding_clicked_node_r(dv_view_t *V, double x, doubl
       return node;
   }
   /* Call link-along */
-  dv_dag_node_t *u = NULL;
+  dv_dag_node_t * u = NULL;
   while (u = (dv_dag_node_t *) dv_llist_iterate_next(node->links, u)) {
     ret = dv_do_finding_clicked_node_r(V, x, y, u);
     if (ret)
@@ -712,7 +719,8 @@ static dv_dag_node_t *dv_do_finding_clicked_node_r(dv_view_t *V, double x, doubl
   return 0;
 }
 
-static dv_dag_node_t *dv_do_finding_clicked_node(dv_view_t *V, double x, double y) {
+static dv_dag_node_t *
+dv_do_finding_clicked_node(dv_view_t * V, double x, double y) {
   return dv_do_finding_clicked_node_r(V, x, y, V->D->rt);
 }
 
@@ -846,11 +854,11 @@ on_scroll_event(GtkWidget * widget, GdkEventScroll * event, gpointer user_data) 
   return TRUE;
 }
 
-static void dv_do_button_event(dv_view_t *V, GdkEventButton *event)
-{
-  dv_dag_t *D = V->D;
-  dv_llist_t *itl = D->P->itl;
-  dv_view_status_t *S = V->S;
+static void
+dv_do_button_event(dv_view_t * V, GdkEventButton * event) {
+  dv_dag_t * D = V->D;
+  dv_llist_t * itl = D->P->itl;
+  dv_view_status_t * S = V->S;
   if (event->type == GDK_BUTTON_PRESS) {
     // Drag
     S->drag_on = 1;
@@ -866,7 +874,7 @@ static void dv_do_button_event(dv_view_t *V, GdkEventButton *event)
         && S->accdisy < DV_SAFE_CLICK_RANGE) {
       double ox = (event->x - S->basex - S->x) / S->zoom_ratio_x;
       double oy = (event->y - S->basey - S->y) / S->zoom_ratio_y;
-      dv_dag_node_t *node = dv_do_finding_clicked_node(V, ox, oy);
+      dv_dag_node_t * node = dv_do_finding_clicked_node(V, ox, oy);
       if (node) {
         switch (S->cm) {
         case 0:
