@@ -183,6 +183,14 @@ dv_do_zoomfit_hor_(dv_view_t * V) {
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     y -= V->D->P->num_workers * 2 * V->D->radius * zoom_ratio;
+    double dy = (h - DV_HISTOGRAM_MARGIN_DOWN
+                 - DV_ZOOM_TO_FIT_MARGIN
+                 - zoom_ratio
+                 * (D->P->num_workers * 2 * D->radius
+                    + D->H->max_e->sum_h)
+                 ) / 2.0;
+    if (dy > 0)
+      y -= dy;
     break;
   default:
     dv_check(0);
