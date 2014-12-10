@@ -329,6 +329,26 @@ dv_view_change_nc(dv_view_t * V, int new_nc) {
 }
 
 static void
+dv_view_do_zoomfit_based_on_lt(dv_view_t * V) {
+  switch (V->S->lt) {
+  case 0:
+  case 1:
+  case 2:
+    dv_do_zoomfit_ver(V);
+    break;
+  case 3:
+    dv_do_zoomfit_hor(V);
+    break;
+  case 4:
+    dv_do_zoomfit_hor(V);
+    break;
+  default:
+    dv_do_zoomfit_ver(V);
+    break;
+  }
+}
+
+static void
 dv_view_change_lt(dv_view_t * V, int new_lt) {
   int old_lt = V->S->lt;
   if (new_lt != old_lt) {
@@ -376,22 +396,7 @@ dv_view_change_lt(dv_view_t * V, int new_lt) {
     // Re-layout
     dv_view_layout(V);
     // zoomfit
-    switch (new_lt) {
-    case 0:
-    case 1:
-    case 2:
-      dv_do_zoomfit_ver(V);
-      break;
-    case 3:
-      dv_do_zoomfit_hor(V);
-      break;
-    case 4:
-      dv_do_zoomfit_hor(V);
-      break;
-    default:
-      dv_do_zoomfit_ver(V);
-      break;
-    }
+    dv_view_do_zoomfit_based_on_lt(V);
   }
 }
 
@@ -441,14 +446,12 @@ dv_view_cairo_coordinate_bound_down(dv_view_t * V) {
   return (DV_CAIRO_BOUND_MAX - V->S->basey - V->S->y) / V->S->zoom_ratio_y;
 }
 
-
 static void
 dv_view_prepare_drawing(dv_view_t * V, cairo_t * cr) {
-  // First time only
   dv_view_status_t * S = V->S;
-  if (S->init) {
-    dv_do_zoomfit_hor_(V);
-    S->init = 0;
+  if (S->do_zoomfit) {
+    dv_view_do_zoomfit_based_on_lt(V);
+    S->do_zoomfit = 0;
   }
   
   cairo_save(cr);
@@ -1421,7 +1424,7 @@ void dv_view_status_init(dv_view_t *V, dv_view_status_t *S) {
   S->ndh = 0;
   S->focused = 0;
   // Drawing parameters
-  S->init = 1;
+  S->do_zoomfit = 1;
   S->x = S->y = 0.0;
   S->basex = S->basey = 0.0;
   S->zoom_ratio_x = 1.0;
@@ -1712,15 +1715,28 @@ void dv_view_interface_destroy(dv_view_interface_t *I) {
 }
 
 void
+dv_view_change_mainvp(dv_view_t * V, dv_viewport_t * VP) {
+  if (V->mainVP == VP)
+    return;
+  V->mainVP = VP;
+  if (!VP)
+    return;
+  int i = VP - CS->VP;
+  if (!V->I[i])
+    return;
+  V->S->do_zoomfit = 1;
+} 
+
+void
 dv_view_add_viewport(dv_view_t * V, dv_viewport_t * VP) {
   int idx = VP - CS->VP;
   if (V->I[idx] && V->I[idx]->VP == VP)
     return;
-  if (!V->mainVP)
-    V->mainVP = VP;
   dv_view_interface_t * itf = dv_view_interface_create_new(V, VP);
   V->I[idx] = itf;
   dv_viewport_add_interface(VP, itf);
+  if (!V->mainVP)
+    dv_view_change_mainvp(V, VP);
 }
 
 void
@@ -1740,8 +1756,20 @@ dv_view_remove_viewport(dv_view_t * V, dv_viewport_t * VP) {
         new_vp = V->I[i]->VP;
         break;
       }
-    V->mainVP = new_vp;
+    dv_view_change_mainvp(V, new_vp);
   }
+}
+
+void
+dv_view_switch_viewport(dv_view_t * V, dv_viewport_t * VP1, dv_viewport_t * VP2) {
+  int sw = 0;
+  fprintf(stderr, "mainvp:%ld, vp1:%ld\n", V->mainVP - CS->VP, VP1 - CS->VP);
+  if (V->mainVP == VP1)
+    sw = 1;
+  dv_view_remove_viewport(V, VP1);
+  dv_view_add_viewport(V, VP2);
+  if (sw)
+    dv_view_change_mainvp(V, VP2);
 }
 
 dv_view_interface_t * dv_view_get_interface_to_viewport(dv_view_t *V, dv_viewport_t *VP) {
@@ -1827,39 +1855,52 @@ dv_viewport_show_children(dv_viewport_t * vp) {
 }
 
 void
-dv_viewport_show(dv_viewport_t * vp) {
-  GtkWidget * child = gtk_bin_get_child(GTK_BIN(vp->frame));
-  if (vp->split) {
-    if (child != vp->paned) {
-      if (child) gtk_container_remove(GTK_CONTAINER(vp->frame), child);
-      dv_check(vp->paned);
-      gtk_container_add(GTK_CONTAINER(vp->frame), vp->paned);
-      dv_viewport_show_children(vp);
+dv_viewport_show(dv_viewport_t * VP) {
+  GtkWidget * child = gtk_bin_get_child(GTK_BIN(VP->frame));
+  if (VP->split) {
+    if (child != VP->paned) {
+      if (child) gtk_container_remove(GTK_CONTAINER(VP->frame), child);
+      dv_check(VP->paned);
+      gtk_container_add(GTK_CONTAINER(VP->frame), VP->paned);
+      dv_viewport_show_children(VP);
     }
   } else {
-    if (child != vp->box) {
-      if (child) gtk_container_remove(GTK_CONTAINER(vp->frame), child);
-      gtk_container_add(GTK_CONTAINER(vp->frame), vp->box);
+    if (child != VP->box) {
+      if (child) gtk_container_remove(GTK_CONTAINER(VP->frame), child);
+      gtk_container_add(GTK_CONTAINER(VP->frame), VP->box);
     }
   }
 }
 
 void
-dv_viewport_change_split(dv_viewport_t * VP, int split) {
-  VP->split = split;
-  if (VP->split) {
+dv_viewport_change_split(dv_viewport_t * VP, int new_split) {
+  int old_split = VP->split;
+  if (new_split == old_split) return;
+  if (new_split) {
     // Check children's existence
     if (!VP->vp1) {
       VP->vp1 = dv_viewport_create_new();
       if (VP->vp1)
         dv_viewport_init(VP->vp1);
     }
+    int i;
+    for (i=0; i<CS->nV; i++)
+      if (VP->I[i]) {
+        dv_view_switch_viewport(&CS->V[i], VP, VP->vp1);
+      }
     if (!VP->vp2) {
       VP->vp2 = dv_viewport_create_new();
       if (VP->vp2)
         dv_viewport_init(VP->vp2);
     }        
+  } else {
+    int i;
+    for (i=0; i<CS->nV; i++)
+      if (VP->vp1->I[i]) {
+        dv_view_switch_viewport(&CS->V[i], VP->vp1, VP);
+      }
   }
+  VP->split = new_split;
   dv_viewport_show(VP);
 }
 
@@ -2006,32 +2047,29 @@ dv_viewport_update_configure_box() {
     sprintf(s, "Viewport %d: ", i);
     GtkWidget * vp_frame = gtk_frame_new(NULL);
     gtk_box_pack_start(GTK_BOX(right_box), vp_frame, FALSE, FALSE, 3);
-    GtkWidget * vp_vbox = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-    gtk_container_add(GTK_CONTAINER(vp_frame), vp_vbox);
+    GtkWidget * vp_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+    gtk_container_add(GTK_CONTAINER(vp_frame), vp_hbox);
 
-    // HBox 1: split
-    GtkWidget * hbox1 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-    gtk_box_pack_start(GTK_BOX(vp_vbox), hbox1, FALSE, FALSE, 3);
-    GtkWidget * hbox1_label = gtk_label_new(s);
-    gtk_box_pack_start(GTK_BOX(hbox1), hbox1_label, TRUE, FALSE, 3);
-    GtkWidget * hbox1_combobox = gtk_combo_box_text_new();
-    gtk_box_pack_start(GTK_BOX(hbox1), hbox1_combobox, TRUE, FALSE, 0);
-    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(hbox1_combobox), "nosplit", "No split");
-    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(hbox1_combobox), "split", "Split");
-    gtk_combo_box_set_active(GTK_COMBO_BOX(hbox1_combobox), CS->VP[i].split);
-    g_signal_connect(G_OBJECT(hbox1_combobox), "changed", G_CALLBACK(on_viewport_options_split_changed), (void *) &CS->VP[i]);
+    // Label
+    GtkWidget * label = gtk_label_new(s);
+    gtk_box_pack_start(GTK_BOX(vp_hbox), label, FALSE, FALSE, 3);
 
-    // HBox 2: orientation
-    //GtkWidget * hbox2 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-    //gtk_box_pack_start(GTK_BOX(vp_vbox), hbox2, TRUE, TRUE, 0);
-    //GtkWidget * hbox2_label = gtk_label_new("Orientation : ");
-    //gtk_box_pack_start(GTK_BOX(hbox2), hbox2_label, TRUE, TRUE, 0);
-    GtkWidget * hbox2_combobox = gtk_combo_box_text_new();
-    gtk_box_pack_start(GTK_BOX(hbox1), hbox2_combobox, TRUE, FALSE, 0);
-    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(hbox2_combobox), "horizontal", "Horizontally");
-    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(hbox2_combobox), "vertical", "Vertically");
-    gtk_combo_box_set_active(GTK_COMBO_BOX(hbox2_combobox), CS->VP[i].orientation);
-    g_signal_connect(G_OBJECT(hbox2_combobox), "changed", G_CALLBACK(on_viewport_options_orientation_changed), (void *) &CS->VP[i]);
+    // Split
+    GtkWidget * split_combobox = gtk_combo_box_text_new();
+    gtk_box_pack_start(GTK_BOX(vp_hbox), split_combobox, TRUE, FALSE, 0);
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(split_combobox), "nosplit", "No split");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(split_combobox), "split", "Split");
+    gtk_combo_box_set_active(GTK_COMBO_BOX(split_combobox), CS->VP[i].split);
+    g_signal_connect(G_OBJECT(split_combobox), "changed", G_CALLBACK(on_viewport_options_split_changed), (void *) &CS->VP[i]);
+
+    // Orientation
+    GtkWidget * orient_combobox = gtk_combo_box_text_new();
+    gtk_box_pack_start(GTK_BOX(vp_hbox), orient_combobox, TRUE, FALSE, 0);
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(orient_combobox), "horizontal", "Horizontally");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(orient_combobox), "vertical", "Vertically");
+    gtk_combo_box_set_active(GTK_COMBO_BOX(orient_combobox), CS->VP[i].orientation);
+    g_signal_connect(G_OBJECT(orient_combobox), "changed", G_CALLBACK(on_viewport_options_orientation_changed), (void *) &CS->VP[i]);
+
   }
 }
 
@@ -2331,19 +2369,19 @@ on_viewport_configure_clicked(GtkMenuItem * menuitem, gpointer user_data) {
 static GtkWidget *
 dv_create_menubar() {
   // Menu Bar
-  GtkWidget *menubar = gtk_menu_bar_new();
+  GtkWidget * menubar = gtk_menu_bar_new();
   
   // submenu viewports
-  GtkWidget *viewports = gtk_menu_item_new_with_mnemonic("Viewp_orts");
+  GtkWidget * viewports = gtk_menu_item_new_with_mnemonic("Viewp_orts");
   gtk_menu_shell_append(GTK_MENU_SHELL(menubar), viewports);
-  GtkWidget *viewports_menu = gtk_menu_new();
+  GtkWidget * viewports_menu = gtk_menu_new();
   gtk_menu_item_set_submenu(GTK_MENU_ITEM(viewports), viewports_menu);
-  GtkWidget *viewport, *viewport_menu;
+  GtkWidget * viewport, * viewport_menu;
   viewport = gtk_menu_item_new_with_mnemonic("_Configure");
   gtk_menu_shell_append(GTK_MENU_SHELL(viewports_menu), viewport);
   g_signal_connect(G_OBJECT(viewport), "activate", G_CALLBACK(on_viewport_configure_clicked), NULL);
-  GSList *group;
-  GtkWidget *item;
+  GSList * group;
+  GtkWidget * item;
   char s[100];
   int i, j;
   for (i=0; i<CS->nVP; i++) {
@@ -2365,11 +2403,11 @@ dv_create_menubar() {
   }
   
   // submenu views
-  GtkWidget *views = gtk_menu_item_new_with_mnemonic("_VIEWs");
+  GtkWidget * views = gtk_menu_item_new_with_mnemonic("_VIEWs");
   gtk_menu_shell_append(GTK_MENU_SHELL(menubar), views);
-  GtkWidget *views_menu = gtk_menu_new();
+  GtkWidget * views_menu = gtk_menu_new();
   gtk_menu_item_set_submenu(GTK_MENU_ITEM(views), views_menu);
-  GtkWidget *view, *view_menu;
+  GtkWidget * view, * view_menu;
   view = gtk_menu_item_new_with_label("Add new VIEW");
   gtk_menu_shell_append(GTK_MENU_SHELL(views_menu), view);
   view_menu = gtk_menu_new();
@@ -2397,11 +2435,11 @@ dv_create_menubar() {
     }    
   }
   // submenu DAGs
-  GtkWidget *dags = gtk_menu_item_new_with_mnemonic("_DAGs");
+  GtkWidget * dags = gtk_menu_item_new_with_mnemonic("_DAGs");
   gtk_menu_shell_append(GTK_MENU_SHELL(menubar), dags);
-  GtkWidget *dags_menu = gtk_menu_new();
+  GtkWidget * dags_menu = gtk_menu_new();
   gtk_menu_item_set_submenu(GTK_MENU_ITEM(dags), dags_menu);
-  GtkWidget *dag, *dag_menu;
+  GtkWidget * dag, * dag_menu;
   dag = gtk_menu_item_new_with_label("Add new DAG");
   gtk_menu_shell_append(GTK_MENU_SHELL(dags_menu), dag);
   dag_menu = gtk_menu_new();
@@ -2429,11 +2467,11 @@ dv_create_menubar() {
     }    
   }
   // submenu PIDAGs
-  GtkWidget *pidags = gtk_menu_item_new_with_mnemonic("_PIDAGs");
+  GtkWidget * pidags = gtk_menu_item_new_with_mnemonic("_PIDAGs");
   gtk_menu_shell_append(GTK_MENU_SHELL(menubar), pidags);
-  GtkWidget *pidags_menu = gtk_menu_new();
+  GtkWidget * pidags_menu = gtk_menu_new();
   gtk_menu_item_set_submenu(GTK_MENU_ITEM(pidags), pidags_menu);
-  GtkWidget *pidag;
+  GtkWidget * pidag;
   //pidag = gtk_menu_item_new_with_label("Add new dag file");
   //gtk_menu_shell_append(GTK_MENU_SHELL(pidags_menu), pidag);
   for (i=0; i<CS->nP; i++) {
@@ -2443,11 +2481,11 @@ dv_create_menubar() {
   }
   
   // submenu Sample Backtrace
-  GtkWidget *samplebt = gtk_menu_item_new_with_mnemonic("_Samples");
+  GtkWidget * samplebt = gtk_menu_item_new_with_mnemonic("_Samples");
   gtk_menu_shell_append(GTK_MENU_SHELL(menubar), samplebt);
-  GtkWidget *samplebt_menu = gtk_menu_new();
+  GtkWidget * samplebt_menu = gtk_menu_new();
   gtk_menu_item_set_submenu(GTK_MENU_ITEM(samplebt), samplebt_menu);
-  GtkWidget *samplebt_open = gtk_menu_item_new_with_mnemonic("_View Backtrace Samples");
+  GtkWidget * samplebt_open = gtk_menu_item_new_with_mnemonic("_View Backtrace Samples");
   gtk_menu_shell_append(GTK_MENU_SHELL(samplebt_menu), samplebt_open);
   g_signal_connect(G_OBJECT(samplebt_open), "activate", G_CALLBACK(on_menu_item_view_samples_clicked), (void *) 0);
 

@@ -26,9 +26,7 @@
 
 #include <execinfo.h>
 
-//#define ENABLE_LIBUNWIND
-
-#ifdef ENABLE_LIBUNWIND
+#ifdef DV_ENABLE_LIBUNWIND
 #define UNW_LOCAL_ONLY
 #include <libunwind.h>
 #endif
@@ -36,7 +34,10 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <signal.h>
+
+#ifdef DV_ENABLE_BFD
 #include <bfd.h>
+#endif
 
 
 /*-----Utilities-----*/
@@ -271,7 +272,7 @@ typedef struct dv_view_status {
   int focused;
 
   /* drawing parameters */
-  char init;     /* to recognize initial drawing */
+  char do_zoomfit;     /* flag to do zoomfit when drawing view */
   double x, y;        /* current coordinates of the central point */
   double basex, basey;
   double zoom_ratio_x; /* horizontal zoom ratio */
@@ -462,8 +463,10 @@ dv_view_t * dv_view_create_new_with_dag(dv_dag_t *);
 void * dv_view_interface_set_values(dv_view_t *, dv_view_interface_t *);
 dv_view_interface_t * dv_view_interface_create_new(dv_view_t *, dv_viewport_t *);
 void dv_view_interface_destroy(dv_view_interface_t *);
-void dv_view_add_viewport(dv_view_t *V, dv_viewport_t *VP);
+void dv_view_change_mainvp(dv_view_t *, dv_viewport_t *);
+void dv_view_add_viewport(dv_view_t *, dv_viewport_t *);
 void dv_view_remove_viewport(dv_view_t *, dv_viewport_t *);
+void dv_view_switch_viewport(dv_view_t *, dv_viewport_t *, dv_viewport_t *);
 dv_view_interface_t * dv_view_get_interface_to_viewport(dv_view_t *, dv_viewport_t *);
 
 void dv_viewport_init(dv_viewport_t *);

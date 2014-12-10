@@ -512,6 +512,7 @@ void dv_btsample_viewer_init(dv_btsample_viewer_t * btviewer) {
   g_object_ref(btviewer->entry_node_id);
 }
 
+#ifdef DV_ENABLE_BFD
 static asymbol **syms;           /* Symbol table.  */
 static bfd_vma pc;
 static const char *filename;
@@ -646,15 +647,18 @@ process_one_sample(int c, const char *bin_file, const char *target, bt_sample_t 
 
   bfd_close(abfd);
 }
+#endif /* DV_ENABLE_BFD */
 
-int dv_btsample_viewer_extract_interval(dv_btsample_viewer_t *btviewer, int worker, unsigned long long from, unsigned long long to) {
-  const char *binary_file = gtk_entry_get_text(GTK_ENTRY(btviewer->entry_binary_file_name));
-  const char *btsample_file = gtk_entry_get_text(GTK_ENTRY(btviewer->entry_bt_file_name));
+int
+dv_btsample_viewer_extract_interval(dv_btsample_viewer_t * btviewer, int worker, unsigned long long from, unsigned long long to) {
+#ifdef DV_ENABLE_BFD  
+  const char * binary_file = gtk_entry_get_text(GTK_ENTRY(btviewer->entry_binary_file_name));
+  const char * btsample_file = gtk_entry_get_text(GTK_ENTRY(btviewer->entry_bt_file_name));
 
   bfd_init();
   //set_default_bfd_target();
 
-  FILE *fi = fopen(btsample_file, "r");
+  FILE * fi = fopen(btsample_file, "r");
   if (!fi) {
     perror("fopen btsample_file");
     return 0;
@@ -667,7 +671,10 @@ int dv_btsample_viewer_extract_interval(dv_btsample_viewer_t *btviewer, int work
       process_one_sample(c++, binary_file, NULL, s, btviewer);
 
   fclose(fi);
-  
+#else  
+  GtkTextBuffer * buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(btviewer->text_view));
+  gtk_text_buffer_insert_at_cursor(buffer, "Error: BFD is not enabled.", -1);
+#endif /* DV_ENABLE_BFD */
   return 0;
 }
 
