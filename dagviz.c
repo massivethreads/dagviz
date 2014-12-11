@@ -1265,39 +1265,30 @@ static gboolean on_window_key_event(GtkWidget *widget, GdkEvent *event, gpointer
   return FALSE;
 }
 
-static void on_btn_attrs_clicked(GtkToolButton *toolbtn, gpointer user_data)
-{
-  dv_view_interface_t *I = (dv_view_interface_t *) user_data;
+static void
+on_btn_view_attributes_clicked(GtkToolButton * toolbtn, gpointer user_data) {
+  dv_view_interface_t * I = (dv_view_interface_t *) user_data;
 
   // Adjust I's attribute values
   dv_view_interface_set_values(I->V, I);
   
   // Build dialog
-  GtkWidget *dialog = gtk_dialog_new();
-  gtk_window_set_title(GTK_WINDOW(dialog), "View Attributes");
-  gtk_window_set_default_size(GTK_WINDOW(dialog), 200, -1);
+  GtkWidget * dialog = gtk_dialog_new();
+  char s[30];
+  sprintf(s, "VIEW %ld's Attributes", I->V - CS->V);
+  gtk_window_set_title(GTK_WINDOW(dialog), s);
+  //gtk_window_set_default_size(GTK_WINDOW(dialog), 600, -1);
   gtk_window_set_position(GTK_WINDOW(dialog), GTK_WIN_POS_MOUSE);
-  GtkWidget *dialog_vbox = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-  gtk_box_pack_start(GTK_BOX(dialog_vbox), I->combobox_lt, FALSE, FALSE, 0);
-  gtk_box_pack_start(GTK_BOX(dialog_vbox), I->combobox_nc, FALSE, FALSE, 0);
-  gtk_box_pack_start(GTK_BOX(dialog_vbox), I->combobox_sdt, FALSE, FALSE, 0);
-  gtk_box_pack_start(GTK_BOX(dialog_vbox), I->entry_radix, FALSE, FALSE, 0);
-  gtk_box_pack_start(GTK_BOX(dialog_vbox), I->combobox_frombt, FALSE, FALSE, 0);
-  gtk_box_pack_start(GTK_BOX(dialog_vbox), I->combobox_et, FALSE, FALSE, 0);
-  gtk_box_pack_start(GTK_BOX(dialog_vbox), I->togg_eaffix, FALSE, FALSE, 0);
+  GtkWidget * dialog_vbox = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
 
+  gtk_box_pack_start(GTK_BOX(dialog_vbox), I->grid, TRUE, TRUE, 0);
+  
   // Run
   gtk_widget_show_all(dialog_vbox);
   gtk_dialog_run(GTK_DIALOG(dialog));
-
+  
   // Destroy
-  gtk_container_remove(GTK_CONTAINER(dialog_vbox), I->combobox_lt);
-  gtk_container_remove(GTK_CONTAINER(dialog_vbox), I->combobox_nc);
-  gtk_container_remove(GTK_CONTAINER(dialog_vbox), I->combobox_sdt);
-  gtk_container_remove(GTK_CONTAINER(dialog_vbox), I->entry_radix);
-  gtk_container_remove(GTK_CONTAINER(dialog_vbox), I->combobox_frombt);
-  gtk_container_remove(GTK_CONTAINER(dialog_vbox), I->combobox_et);
-  gtk_container_remove(GTK_CONTAINER(dialog_vbox), I->togg_eaffix);
+  gtk_container_remove(GTK_CONTAINER(dialog_vbox), I->grid);
   gtk_widget_destroy(dialog);
 }
 
@@ -1490,10 +1481,29 @@ dv_view_interface_create_new(dv_view_t * V, dv_viewport_t * VP) {
   dv_view_interface_t * I = (dv_view_interface_t *) dv_malloc(sizeof(dv_view_interface_t));
   I->V = V;
   I->VP = VP;
+
+  // For toolbar
   I->toolbar = gtk_toolbar_new();
+  g_object_ref(I->toolbar);
+  
   char s[10];
   sprintf(s, "VIEW %ld", V - CS->V);
   I->togg_focused = gtk_toggle_button_new_with_label(s);
+  
+  I->entry_search = gtk_entry_new();
+  I->checkbox_xzoom = gtk_check_button_new_with_label("X Zoom");
+  I->checkbox_yzoom = gtk_check_button_new_with_label("Y Zoom");
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(I->checkbox_xzoom), V->S->do_zoom_x);
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(I->checkbox_yzoom), V->S->do_zoom_y);
+  I->checkbox_scale_radix = gtk_check_button_new_with_label("Scale Node Length");
+  I->checkbox_scale_radius = gtk_check_button_new_with_label("Scale Node Width");
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(I->checkbox_scale_radix), V->S->do_scale_radix);
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(I->checkbox_scale_radius), V->S->do_scale_radius);
+
+  // For grid
+  I->grid = gtk_grid_new();
+  g_object_ref(I->grid);
+  
   I->combobox_lt = gtk_combo_box_text_new();
   I->combobox_nc = gtk_combo_box_text_new();
   I->combobox_sdt = gtk_combo_box_text_new();
@@ -1501,37 +1511,21 @@ dv_view_interface_create_new(dv_view_t * V, dv_viewport_t * VP) {
   I->combobox_frombt = gtk_combo_box_text_new();
   I->combobox_et = gtk_combo_box_text_new();
   I->togg_eaffix = gtk_toggle_button_new_with_label("Edge Affix");
-  I->entry_search = gtk_entry_new();
-  I->checkbox_xzoom = gtk_check_button_new_with_label("X Zoom");
-  I->checkbox_yzoom = gtk_check_button_new_with_label("Y Zoom");
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(I->checkbox_xzoom), V->S->do_zoom_x);
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(I->checkbox_yzoom), V->S->do_zoom_y);
-  I->checkbox_scale_radix = gtk_check_button_new_with_label("Scale Radix");
-  I->checkbox_scale_radius = gtk_check_button_new_with_label("Scale Radius");
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(I->checkbox_scale_radix), V->S->do_scale_radix);
-  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(I->checkbox_scale_radius), V->S->do_scale_radius);
 
-  g_object_ref(I->combobox_lt);
-  g_object_ref(I->combobox_nc);
-  g_object_ref(I->combobox_sdt);
-  g_object_ref(I->entry_radix);
-  g_object_ref(I->combobox_frombt);
-  g_object_ref(I->combobox_et);
-  g_object_ref(I->togg_eaffix);
-  
-  dv_view_status_t *S = V->S;
+  dv_view_status_t * S = V->S;
   
   // White color
   GdkRGBA white[1];
   gdk_rgba_parse(white, "white");
 
   // Toolbar
-  GtkWidget *toolbar = I->toolbar;
+  GtkWidget * toolbar = I->toolbar;
   //gtk_widget_override_background_color(GTK_WIDGET(toolbar), GTK_STATE_FLAG_NORMAL, white);
 
   // Focused toggle
-  GtkToolItem *btn_togg_focused = gtk_tool_item_new();
+  GtkToolItem * btn_togg_focused = gtk_tool_item_new();
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_togg_focused, -1);
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_togg_focused), "Indicates if this VIEW is focused for hotkeys (use tab key to change btw VIEWs)");
   GtkWidget *togg_focused = I->togg_focused;
   gtk_container_add(GTK_CONTAINER(btn_togg_focused), togg_focused);
   g_signal_connect(G_OBJECT(togg_focused), "toggled", G_CALLBACK(on_togg_focused_toggled), (void *) V);
@@ -1543,87 +1537,17 @@ dv_view_interface_create_new(dv_view_t * V, dv_viewport_t * VP) {
   GtkToolItem *btn_attrs = gtk_tool_button_new(NULL, NULL);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_attrs, -1);
   gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_attrs), "preferences-system");
-  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_attrs), "Open attribute dialog");
-  g_signal_connect(G_OBJECT(btn_attrs), "clicked", G_CALLBACK(on_btn_attrs_clicked), (void *) I);
-
-  // Layout type combobox
-  //GtkToolItem *btn_combo_lt = gtk_tool_item_new();
-  //gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo_lt, -1);
-  GtkWidget *combobox_lt = I->combobox_lt;
-  //gtk_container_add(GTK_CONTAINER(btn_combo_lt), combobox_lt);
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "grid", "Grid like");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "bounding", "Bounding box");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "timeline", "Timeline");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "timeline2", "Timeline2");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "timeline2", "Parallelism profile");
-  g_signal_connect(G_OBJECT(combobox_lt), "changed", G_CALLBACK(on_combobox_lt_changed), (void *) V);
-
-  // Node color combobox
-  //GtkToolItem *btn_combo_nc = gtk_tool_item_new();
-  //gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo_nc, -1);
-  GtkWidget *combobox_nc = I->combobox_nc;
-  //gtk_container_add(GTK_CONTAINER(btn_combo_nc), combobox_nc);
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_nc), "worker", "Worker");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_nc), "cpu", "CPU");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_nc), "kind", "Node kind");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_nc), "code_start", "Code start");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_nc), "code_end", "Code end");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_nc), "code_start_end", "Code start-end");
-  g_signal_connect(G_OBJECT(combobox_nc), "changed", G_CALLBACK(on_combobox_nc_changed), (void *) V);
-
-  // Scale-down type combobox
-  //GtkToolItem *btn_combo_sdt = gtk_tool_item_new();
-  //gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo_sdt, -1);
-  GtkWidget *combobox_sdt = I->combobox_sdt;
-  //gtk_container_add(GTK_CONTAINER(btn_combo_sdt), combobox_sdt);
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_sdt), "log", "Log");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_sdt), "power", "Power");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_sdt), "linear", "Linear");
-  g_signal_connect(G_OBJECT(combobox_sdt), "changed", G_CALLBACK(on_combobox_sdt_changed), (void *) V);
-
-  // Radix value input
-  //GtkToolItem *btn_entry_radix = gtk_tool_item_new();
-  //gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_entry_radix, -1);
-  GtkWidget *entry_radix = I->entry_radix;
-  //gtk_container_add(GTK_CONTAINER(btn_entry_radix), entry_radix);
-  //gtk_entry_set_max_length(GTK_ENTRY(entry_radix), 10);
-  g_signal_connect(G_OBJECT(entry_radix), "activate", G_CALLBACK(on_entry_radix_activate), (void *) V);
-
-  // Frombt combobox
-  //GtkToolItem *btn_combo_frombt = gtk_tool_item_new();
-  //gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo_frombt, -1);
-  GtkWidget *combobox_frombt = I->combobox_frombt;
-  //gtk_container_add(GTK_CONTAINER(btn_combo_frombt), combobox_frombt);
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_frombt), "not", "Not frombt");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_frombt), "frombt", "From BT");
-  g_signal_connect(G_OBJECT(combobox_frombt), "changed", G_CALLBACK(on_combobox_frombt_changed), (void *) V);
-
-  // Edge type combobox
-  //GtkToolItem *btn_combo_et = gtk_tool_item_new();
-  //gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo_et, -1);
-  GtkWidget *combobox_et = I->combobox_et;
-  //gtk_container_add(GTK_CONTAINER(btn_combo_et), combobox_et);
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_et), "none", "None");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_et), "straight", "Straight");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_et), "down", "Down");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_et), "winding", "Winding");
-  g_signal_connect(G_OBJECT(combobox_et), "changed", G_CALLBACK(on_combobox_et_changed), (void *) V);
-
-  // Edge affix toggle
-  //GtkToolItem *btn_togg_eaffix = gtk_tool_item_new();
-  //gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_togg_eaffix, -1);
-  GtkWidget *togg_eaffix = I->togg_eaffix;
-  //gtk_container_add(GTK_CONTAINER(btn_togg_eaffix), togg_eaffix);
-  g_signal_connect(G_OBJECT(togg_eaffix), "toggled", G_CALLBACK(on_togg_eaffix_toggled), (void *) V);
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_attrs), "Open dialog to adjust VIEW's attributes");
+  g_signal_connect(G_OBJECT(btn_attrs), "clicked", G_CALLBACK(on_btn_view_attributes_clicked), (void *) I);
 
   // Click mode combobox
   GtkToolItem *btn_combo_cm = gtk_tool_item_new();
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo_cm, -1);
-  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_combo_cm), "Clicking Mode");
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_combo_cm), "What to do when clicking a node");
   GtkWidget *combobox_cm = gtk_combo_box_text_new();
   gtk_container_add(GTK_CONTAINER(btn_combo_cm), combobox_cm);
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_cm), "info", "Infotag");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_cm), "expand", "Expand");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_cm), "info", "Show info tag of node");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_cm), "expand", "Expand/Collapse node");
   gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_cm), S->cm);
   g_signal_connect(G_OBJECT(combobox_cm), "changed", G_CALLBACK(on_combobox_cm_changed), (void *) V);
 
@@ -1631,14 +1555,14 @@ dv_view_interface_create_new(dv_view_t * V, dv_viewport_t * VP) {
   GtkToolItem *btn_zoomfit_hor = gtk_tool_button_new(NULL, NULL);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_zoomfit_hor, -1);
   gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_zoomfit_hor), "zoom-fit-best");
-  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_zoomfit_hor), "Fit Horizontal (h)");
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_zoomfit_hor), "Fit horizontally (h)");
   g_signal_connect(G_OBJECT(btn_zoomfit_hor), "clicked", G_CALLBACK(on_btn_zoomfit_hor_clicked), (void *) V);
 
   // Zoomfit-vertically button
   GtkToolItem *btn_zoomfit_ver = gtk_tool_button_new(NULL, NULL);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_zoomfit_ver, -1);
   gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_zoomfit_ver), "zoom-fit-best");
-  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_zoomfit_ver), "Fit Vertical (v)");
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_zoomfit_ver), "Fit vertically (v)");
   g_signal_connect(G_OBJECT(btn_zoomfit_ver), "clicked", G_CALLBACK(on_btn_zoomfit_ver_clicked), (void *) V);
 
   // Shrink/Expand buttons
@@ -1648,8 +1572,8 @@ dv_view_interface_create_new(dv_view_t * V, dv_viewport_t * VP) {
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_expand, -1);
   gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_shrink), "zoom-out");
   gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_expand), "zoom-in");
-  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_shrink), "Collapse (c)"); 
-  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_expand), "Expand (x)");
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_shrink), "Collapse one depth (c)"); 
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_expand), "Expand one depth (x)");
   g_signal_connect(G_OBJECT(btn_shrink), "clicked", G_CALLBACK(on_btn_shrink_clicked), (void *) V);  
   g_signal_connect(G_OBJECT(btn_expand), "clicked", G_CALLBACK(on_btn_expand_clicked), (void *) V);
 
@@ -1661,8 +1585,8 @@ dv_view_interface_create_new(dv_view_t * V, dv_viewport_t * VP) {
   GtkToolItem * btn_yzoom = gtk_tool_item_new();
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_xzoom, -1);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_yzoom, -1);
-  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_xzoom), "Zoom X when scrolling");
-  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_yzoom), "Zoom Y when scrolling");
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_xzoom), "Cairo's horizontal zoom when scrolling");
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_yzoom), "Cairo's vertical zoom when scrolling");
   gtk_container_add(GTK_CONTAINER(btn_xzoom), I->checkbox_xzoom);
   gtk_container_add(GTK_CONTAINER(btn_yzoom), I->checkbox_yzoom);
   g_signal_connect(G_OBJECT(I->checkbox_xzoom), "toggled", G_CALLBACK(on_checkbox_xzoom_toggled), (void *) V);
@@ -1676,8 +1600,8 @@ dv_view_interface_create_new(dv_view_t * V, dv_viewport_t * VP) {
   GtkToolItem * btn_scale_radius = gtk_tool_item_new();
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_scale_radix, -1);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_scale_radius, -1);
-  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_scale_radix), "Scale radix when scrolling");
-  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_scale_radius), "Scale radius when scrolling");
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_scale_radix), "Scale node's lenth when scrolling");
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_scale_radius), "Scale node's width when scrolling");
   gtk_container_add(GTK_CONTAINER(btn_scale_radix), I->checkbox_scale_radix);
   gtk_container_add(GTK_CONTAINER(btn_scale_radius), I->checkbox_scale_radius);
   g_signal_connect(G_OBJECT(I->checkbox_scale_radix), "toggled", G_CALLBACK(on_checkbox_scale_radix_toggled), (void *) V);
@@ -1689,12 +1613,109 @@ dv_view_interface_create_new(dv_view_t * V, dv_viewport_t * VP) {
   // Search Entry
   GtkToolItem *btn_entry_search = gtk_tool_item_new();
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_entry_search, -1);
-  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_entry_search), "Search by pii index");
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_entry_search), "Search by node's index in DAG file (first number in node's info tag)");
   GtkWidget *entry_search = I->entry_search;
   gtk_container_add(GTK_CONTAINER(btn_entry_search), entry_search);
   gtk_entry_set_placeholder_text(GTK_ENTRY(entry_search), "Search");
   gtk_entry_set_max_length(GTK_ENTRY(entry_search), 7);
   g_signal_connect(G_OBJECT(entry_search), "activate", G_CALLBACK(on_entry_search_activate), (void *) V);
+
+
+  // Layout type combobox
+  GtkWidget * combobox_lt = I->combobox_lt;
+  gtk_widget_set_tooltip_text(GTK_WIDGET(combobox_lt), "How to layout nodes");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "grid", "DAG with round nodes");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "bounding", "DAG with long nodes");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "timeline", "Vertical timeline");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "timeline2", "Horizontal timeline");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "timeline2", "Parallelism profile");
+  g_signal_connect(G_OBJECT(combobox_lt), "changed", G_CALLBACK(on_combobox_lt_changed), (void *) V);
+
+  // Node color combobox
+  GtkWidget *combobox_nc = I->combobox_nc;
+  gtk_widget_set_tooltip_text(GTK_WIDGET(combobox_nc), "How to color nodes");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_nc), "worker", "Worker");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_nc), "cpu", "CPU");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_nc), "kind", "Node kind");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_nc), "code_start", "Code start");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_nc), "code_end", "Code end");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_nc), "code_start_end", "Code start-end pair");
+  g_signal_connect(G_OBJECT(combobox_nc), "changed", G_CALLBACK(on_combobox_nc_changed), (void *) V);
+
+  // Scale-down type combobox
+  GtkWidget *combobox_sdt = I->combobox_sdt;
+  gtk_widget_set_tooltip_text(GTK_WIDGET(combobox_sdt), "How to scale down nodes' length");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_sdt), "log", "Log");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_sdt), "power", "Power");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_sdt), "linear", "Linear");
+  g_signal_connect(G_OBJECT(combobox_sdt), "changed", G_CALLBACK(on_combobox_sdt_changed), (void *) V);
+
+  // Radix value input
+  GtkWidget *entry_radix = I->entry_radix;
+  gtk_widget_set_tooltip_text(GTK_WIDGET(entry_radix), "Radix of the scale-down function");
+  g_signal_connect(G_OBJECT(entry_radix), "activate", G_CALLBACK(on_entry_radix_activate), (void *) V);
+
+  // Frombt combobox
+  GtkWidget *combobox_frombt = I->combobox_frombt;
+  gtk_widget_set_tooltip_text(GTK_WIDGET(combobox_frombt), "Scale down overall from beginning time (must for timeline)");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_frombt), "not", "No");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_frombt), "frombt", "Yes");
+  g_signal_connect(G_OBJECT(combobox_frombt), "changed", G_CALLBACK(on_combobox_frombt_changed), (void *) V);
+
+  // Edge type combobox
+  GtkWidget *combobox_et = I->combobox_et;
+  gtk_widget_set_tooltip_text(GTK_WIDGET(combobox_et), "How to draw edges");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_et), "none", "None");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_et), "straight", "Straight");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_et), "down", "Down");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_et), "winding", "Winding");
+  g_signal_connect(G_OBJECT(combobox_et), "changed", G_CALLBACK(on_combobox_et_changed), (void *) V);
+
+  // Edge affix toggle
+  GtkWidget *togg_eaffix = I->togg_eaffix;
+  gtk_widget_set_tooltip_text(GTK_WIDGET(togg_eaffix), "Add a short line segment btw edges & nodes");
+  g_signal_connect(G_OBJECT(togg_eaffix), "toggled", G_CALLBACK(on_togg_eaffix_toggled), (void *) V);
+
+  // Grid
+  GtkWidget * grid = I->grid;
+  
+  // HBox 1
+  GtkWidget * label_1 = gtk_label_new("              VIEW mode: ");
+  gtk_widget_set_hexpand(GTK_WIDGET(label_1), TRUE);
+  gtk_label_set_justify(GTK_LABEL(label_1), GTK_JUSTIFY_RIGHT);
+  gtk_grid_attach(GTK_GRID(grid), label_1, 0, 0, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), I->combobox_lt, 1, 0, 1, 1);
+
+  // HBox 2
+  GtkWidget * label_2 = gtk_label_new("             Node color: ");
+  gtk_grid_attach(GTK_GRID(grid), label_2, 0, 1, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), I->combobox_nc, 1, 1, 1, 1);
+
+  // HBox 3
+  GtkWidget * label_3 = gtk_label_new("        Scale-down type: ");
+  gtk_grid_attach(GTK_GRID(grid), label_3, 0, 2, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), I->combobox_sdt, 1, 2, 1, 1);
+
+  // HBox 4
+  GtkWidget * label_4 = gtk_label_new("       Scale-down radix: ");
+  gtk_grid_attach(GTK_GRID(grid), label_4, 0, 3, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), I->entry_radix, 1, 3, 1, 1);
+
+  // HBox 5
+  GtkWidget * label_5 = gtk_label_new("    From beginning time: ");
+  gtk_grid_attach(GTK_GRID(grid), label_5, 0, 4, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), I->combobox_frombt, 1, 4, 1, 1);
+
+  // HBox 6
+  GtkWidget * label_6 = gtk_label_new("      Edge drawing type: ");
+  gtk_grid_attach(GTK_GRID(grid), label_6, 0, 5, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), I->combobox_et, 1, 5, 1, 1);
+
+  // HBox 7
+  GtkWidget * label_7 = gtk_label_new("Affix btw edges & nodes: ");
+  gtk_grid_attach(GTK_GRID(grid), label_7, 0, 6, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), I->togg_eaffix, 1, 6, 1, 1);
+
 
   // Set attribute values
   dv_view_interface_set_values(V, I);
@@ -1924,45 +1945,45 @@ dv_viewport_change_orientation(dv_viewport_t * vp, GtkOrientation o) {
 }
 
 void
-dv_viewport_add_interface(dv_viewport_t * vp, dv_view_interface_t * i) {
-  int idx = i->V - CS->V;
-  dv_check(!vp->I[idx]);
-  vp->I[idx] = i;
+dv_viewport_add_interface(dv_viewport_t * VP, dv_view_interface_t * I) {
+  int idx = I->V - CS->V;
+  dv_check(!VP->I[idx]);
+  VP->I[idx] = I;
   // Reset box
-  gtk_box_pack_start(GTK_BOX(vp->box), GTK_WIDGET(i->toolbar), FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(VP->box), GTK_WIDGET(I->toolbar), FALSE, FALSE, 0);
 }
 
 void
-dv_viewport_remove_interface(dv_viewport_t * vp, dv_view_interface_t * i) {
-  int idx = i->V - CS->V;
-  dv_check(vp->I[idx]);
-  vp->I[idx] = NULL;
+dv_viewport_remove_interface(dv_viewport_t * VP, dv_view_interface_t * I) {
+  int idx = I->V - CS->V;
+  dv_check(VP->I[idx]);
+  VP->I[idx] = NULL;
   // Reset box
-  gtk_container_remove(GTK_CONTAINER(vp->box), GTK_WIDGET(i->toolbar));
+  gtk_container_remove(GTK_CONTAINER(VP->box), GTK_WIDGET(I->toolbar));
 }
 
 dv_view_interface_t *
-dv_viewport_get_interface_to_view(dv_viewport_t * vp, dv_view_t * v) {
-  dv_check(vp);
+dv_viewport_get_interface_to_view(dv_viewport_t * VP, dv_view_t * v) {
+  dv_check(VP);
   if (!v)
     return NULL;
   int idx = v - CS->V;
-  dv_view_interface_t * i = vp->I[idx];
+  dv_view_interface_t * i = VP->I[idx];
   return i;
 }
 
 static GtkWidget *
-dv_viewport_create_frame(dv_viewport_t * vp) {
+dv_viewport_create_frame(dv_viewport_t * VP) {
   char s[10];
-  sprintf(s, "Viewport %ld", vp - CS->VP);
+  sprintf(s, "Viewport %ld", VP - CS->VP);
   GtkWidget * frame = gtk_frame_new(s);
-  if (vp->split) {
-    GtkWidget * paned = gtk_paned_new(vp->orientation);
+  if (VP->split) {
+    GtkWidget * paned = gtk_paned_new(VP->orientation);
     gtk_container_add(GTK_CONTAINER(frame), paned);
-    if (vp->vp1)
-      gtk_paned_pack1(GTK_PANED(paned), dv_viewport_create_frame(vp->vp1), TRUE, TRUE);
-    if (vp->vp2)
-      gtk_paned_pack2(GTK_PANED(paned), dv_viewport_create_frame(vp->vp2), TRUE, TRUE);
+    if (VP->vp1)
+      gtk_paned_pack1(GTK_PANED(paned), dv_viewport_create_frame(VP->vp1), TRUE, TRUE);
+    if (VP->vp2)
+      gtk_paned_pack2(GTK_PANED(paned), dv_viewport_create_frame(VP->vp2), TRUE, TRUE);
   }
   return frame;
 }
@@ -2358,6 +2379,7 @@ on_viewport_configure_clicked(GtkMenuItem * menuitem, gpointer user_data) {
   gtk_dialog_run(GTK_DIALOG(dialog));
 
   // Destroy
+  gtk_container_remove(GTK_CONTAINER(vbox), box);
   gtk_widget_destroy(dialog);
 }
 /*-----------------end of Menubar functions-----------------*/

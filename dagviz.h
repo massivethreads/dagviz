@@ -306,6 +306,7 @@ typedef struct dv_view_interface {
   GtkWidget * checkbox_yzoom;
   GtkWidget * checkbox_scale_radix;
   GtkWidget * checkbox_scale_radius;
+  GtkWidget * grid;
 } dv_view_interface_t;
 
 typedef struct dv_view {
