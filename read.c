@@ -266,7 +266,15 @@ int dv_dag_build_node_inner(dv_dag_t *D, dv_dag_node_t *node) {
     pi = dv_pidag_get_node(P, node);    
     pi_a = dv_pidag_get_node_offset(P, pi, pi->subgraphs_begin_offset);
     pi_b = dv_pidag_get_node_offset(P, pi, pi->subgraphs_end_offset - 1);
+#if 0
+    /* tau: I think this condition does not hold when P has 
+       exactly one child. the condition should be pi_a <= pi_b;
+       also, did you consider the case a section/task is
+       collapsed so does not have any children? */
     dv_check(pi_a < pi_b);
+#else
+    dv_check(pi_a <= pi_b);
+#endif
     
     // Check node pool for all child nodes
     long num_children;
