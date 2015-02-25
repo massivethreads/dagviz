@@ -36,7 +36,7 @@ compile_done : $(exe)
 	touch $@
 
 $(exe) : dagviz.h dagviz.c read.c layout.c draw.c utils.c print.c view_glike.c view_bbox.c view_timeline.c view_timeline2.c view_paraprof.c
-	$(CC) $(CFLAGS) dagviz.c read.c layout.c draw.c utils.c print.c view_glike.c view_bbox.c view_timeline.c view_timeline2.c view_paraprof.c $(LDFLAGS) -o $@
+	$(CC) $(CFLAGS) -fno-stack-protector dagviz.c read.c layout.c draw.c utils.c print.c view_glike.c view_bbox.c view_timeline.c view_timeline2.c view_paraprof.c $(LDFLAGS) -o $@
 
 install_done: compile_done
 	mkdir -p $(prefix)/bin

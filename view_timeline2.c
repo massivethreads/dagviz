@@ -11,10 +11,10 @@ dv_view_layout_timeline2_node(dv_view_t * V, dv_dag_node_t * node) {
   /* Calculate inward */
   nodeco->dw = V->D->radius * 2;
   nodeco->lw = 0.0;
-  nodeco->rw = dv_view_calculate_vresize(V, pi->info.end.t - D->bt) - dv_view_calculate_vresize(V, pi->info.start.t - D->bt);
+  nodeco->rw = dv_view_scale_down(V, pi->info.end.t - D->bt) - dv_view_scale_down(V, pi->info.start.t - D->bt);
   // node's outward
   int worker = pi->info.worker;
-  nodeco->x = dv_view_calculate_vresize(V, pi->info.start.t - D->bt);
+  nodeco->x = dv_view_scale_down(V, pi->info.start.t - D->bt);
   nodeco->y = worker * (2 * V->D->radius);
   if (dv_is_union(node) && dv_is_inner_loaded(node)) {
     // Recursive call

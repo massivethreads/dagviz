@@ -3,19 +3,19 @@
 /*-----------------BBox layout functions-----------*/
 
 static double dv_view_calculate_hgap(dv_view_t *V, dv_dag_node_t *node) {
-  double gap = dv_view_calculate_gap(V, node);
-  double hgap = gap * DV_HDIS;
+  double rate = dv_view_calculate_rate(V, node);
+  double hgap = rate * DV_HDIS;
   return hgap;
 }
 
 double dv_view_calculate_hsize(dv_view_t *V, dv_dag_node_t *node) {
-  double gap = dv_view_calculate_gap(V, node->parent);
-  double hsize = gap * V->D->radius;
+  double rate = dv_view_calculate_rate(V, node->parent);
+  double hsize = rate * V->D->radius;
   return hsize;
 }
 
 double
-dv_dag_calculate_vresize(dv_dag_t * D, double val) {
+dv_dag_scale_down(dv_dag_t * D, double val) {
   double ret;
   switch (D->sdt) {
   case 0:
@@ -35,8 +35,8 @@ dv_dag_calculate_vresize(dv_dag_t * D, double val) {
 }
 
 double
-dv_view_calculate_vresize(dv_view_t * V, double val) {
-  return dv_dag_calculate_vresize(V->D, val);
+dv_view_scale_down(dv_view_t * V, double val) {
+  return dv_dag_scale_down(V->D, val);
 }
 
 static double dv_view_calculate_vgap(dv_view_t *V, dv_dag_node_t *parent, dv_dag_node_t *node1, dv_dag_node_t *node2) {
@@ -44,17 +44,17 @@ static double dv_view_calculate_vgap(dv_view_t *V, dv_dag_node_t *parent, dv_dag
   dv_view_status_t *S = V->S;
   dr_pi_dag_node * pi1 = dv_pidag_get_node(D->P, node1);
   dr_pi_dag_node * pi2 = dv_pidag_get_node(D->P, node2);
-  double gap = dv_view_calculate_gap(V, parent);
+  double rate = dv_view_calculate_rate(V, parent);
   double vgap;
   if (!D->frombt) {
     // begin - end
-    double time_gap = dv_view_calculate_vresize(V, pi2->info.start.t - pi1->info.end.t);
-    vgap = gap * time_gap;
+    double time_gap = dv_view_scale_down(V, pi2->info.start.t - pi1->info.end.t);
+    vgap = rate * time_gap;
   } else {
     // from beginning
-    double time1 = dv_view_calculate_vresize(V, pi1->info.end.t - D->bt);
-    double time2 = dv_view_calculate_vresize(V, pi2->info.start.t - D->bt);
-    vgap = gap * (time2 - time1);
+    double time1 = dv_view_scale_down(V, pi1->info.end.t - D->bt);
+    double time2 = dv_view_scale_down(V, pi2->info.start.t - D->bt);
+    vgap = rate * (time2 - time1);
   }
   return vgap;
 }
@@ -63,17 +63,17 @@ double dv_view_calculate_vsize(dv_view_t *V, dv_dag_node_t *node) {
   dv_dag_t *D = V->D;
   dv_view_status_t *S = V->S;
   dr_pi_dag_node * pi = dv_pidag_get_node(D->P, node);
-  double gap = 1.0;//dv_view_calculate_gap(V, node->parent);
+  double rate = 1.0;//dv_view_calculate_rate(V, node->parent);
   double vsize;
   if (!D->frombt) {
     // begin - end
-    double time_gap = dv_view_calculate_vresize(V, pi->info.end.t - pi->info.start.t);
-    vsize = gap * time_gap;
+    double time_gap = dv_view_scale_down(V, pi->info.end.t - pi->info.start.t);
+    vsize = rate * time_gap;
   } else {
     // from beginning
-    double time1 = dv_view_calculate_vresize(V, pi->info.start.t - D->bt);
-    double time2 = dv_view_calculate_vresize(V, pi->info.end.t - D->bt);
-    vsize = gap * (time2 - time1);
+    double time1 = dv_view_scale_down(V, pi->info.start.t - D->bt);
+    double time2 = dv_view_scale_down(V, pi->info.end.t - D->bt);
+    vsize = rate * (time2 - time1);
   }
   return vsize;
 }
@@ -86,10 +86,10 @@ static double dv_view_calculate_vsize_pure(dv_view_t *V, dv_dag_node_t *node) {
   double vsize;
   if (!S->frombt) {
     double time = pi->info.end.t - pi->info.start.t;
-    vsize = dv_view_calculate_vresize(V, time);
+    vsize = dv_view_scale_down(V, time);
   } else {
-    double time1 = dv_view_calculate_vresize(V, pi->info.start.t - D->bt);
-    double time2 = dv_view_calculate_vresize(V, pi->info.end.t - D->bt);
+    double time1 = dv_view_scale_down(V, pi->info.start.t - D->bt);
+    double time2 = dv_view_scale_down(V, pi->info.end.t - D->bt);
     double vsize = time2 - time1;
   }
   return vsize;
@@ -168,7 +168,7 @@ static void dv_view_layout_bbox_node(dv_view_t *V, dv_dag_node_t *node) {
   int n_links = dv_llist_size(node->links);
   dv_dag_node_t *u, *v; // linked nodes
   dv_node_coordinate_t *uco, *vco;
-  double g, gap, ugap, vgap, hgap;
+  double rate, ugap, vgap, hgap;
   switch (n_links) {
   case 0:
     // node's link-along
@@ -179,37 +179,37 @@ static void dv_view_layout_bbox_node(dv_view_t *V, dv_dag_node_t *node) {
   case 1:
     u = (dv_dag_node_t *) node->links->top->item;
     uco = &u->c[lt];
-    // node & u's gap
-    g = dv_view_calculate_gap(V, node->parent);
+    // node & u's rate
+    rate = dv_view_calculate_rate(V, node->parent);
     ugap = dv_view_calculate_vgap(V, node->parent, node, u);
     // node's linked u's outward    
     uco->xpre = dv_layout_node_get_last_tail_xp_r(V, node);
-    uco->y = nodeco->y + nodeco->dw * g + ugap;
+    uco->y = nodeco->y + nodeco->dw * rate + ugap;
     // Recursive call
     dv_view_layout_bbox_node(V, u);
     // node's link-along
     nodeco->link_lw = dv_max(nodeco->lw, uco->link_lw - uco->xpre);
     nodeco->link_rw = dv_max(nodeco->rw, uco->link_rw + uco->xpre);
-    nodeco->link_dw = nodeco->dw * g + ugap + uco->link_dw;
+    nodeco->link_dw = nodeco->dw * rate + ugap + uco->link_dw;
     break;
   case 2:
     u = (dv_dag_node_t *) node->links->top->item; // cont node
     v = (dv_dag_node_t *) node->links->top->next->item; // task node
     uco = &u->c[lt];
     vco = &v->c[lt];
-    // node & u,v's gap
-    g = dv_view_calculate_gap(V, node->parent);
+    // node & u,v's rate
+    rate = dv_view_calculate_rate(V, node->parent);
     ugap = dv_view_calculate_vgap(V, node->parent, node, u);
     vgap = dv_view_calculate_vgap(V, node->parent, node, v);
     // node's linked u,v's outward
-    uco->y = nodeco->y + nodeco->dw * g + ugap;
-    vco->y = nodeco->y + nodeco->dw * g + vgap;
+    uco->y = nodeco->y + nodeco->dw * rate + ugap;
+    vco->y = nodeco->y + nodeco->dw * rate + vgap;
     // Recursive call
     dv_view_layout_bbox_node(V, u);
     dv_view_layout_bbox_node(V, v);
     
     // node's linked u,v's outward
-    hgap = g * DV_HDIS;
+    hgap = rate * DV_HDIS;
     // u
     uco->xpre = (uco->link_lw - V->D->radius) + hgap;
     if (dv_llist_size(u->links) == 2)
@@ -223,7 +223,7 @@ static void dv_view_layout_bbox_node(dv_view_t *V, dv_dag_node_t *node) {
     // node's link-along
     nodeco->link_lw = - vco->xpre + vco->link_lw;
     nodeco->link_rw = uco->xpre + uco->link_rw;
-    nodeco->link_dw = nodeco->dw * g + dv_max(ugap + uco->link_dw, vgap + vco->link_dw);
+    nodeco->link_dw = nodeco->dw * rate + dv_max(ugap + uco->link_dw, vgap + vco->link_dw);
     break;
   default:
     dv_check(0);

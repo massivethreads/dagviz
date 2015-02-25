@@ -72,7 +72,7 @@ typedef struct dv_llist {
 #define DV_ZOOM_INCREMENT 1.20
 #define DV_SCALE_INCREMENT 1.07
 #define DV_HDIS 70
-#define DV_VDIS 70
+#define DV_VDIS 60
 #define DV_RADIUS 15
 #define NUM_COLORS 34
 
@@ -100,7 +100,7 @@ typedef struct dv_llist {
 
 #define DV_NUM_LAYOUT_TYPES 5
 #define DV_LAYOUT_TYPE_INIT 0 // not paraprof coz need to check H of D
-#define DV_NODE_COLOR_INIT 0
+#define DV_NODE_COLOR_INIT 2
 #define DV_SCALE_TYPE_INIT 2
 #define DV_FROMBT_INIT 0
 #define DV_EDGE_TYPE_INIT 3
@@ -113,13 +113,13 @@ typedef struct dv_llist {
 #define DV_TIMELINE_NODE_WITH_BORDER 0
 #define DV_ENTRY_RADIX_MAX_LENGTH 20
 
-#define DV_DAG_NODE_POOL_SIZE 50000
+#define DV_DAG_NODE_POOL_SIZE 100000
 
 #define DV_MAX_DAG_FILE 5
 #define DV_MAX_DAG 10
 #define DV_MAX_VIEW 10
 #define DV_MAX_VIEWPORT 10
-#define DV_MAX_HISTOGRAM 1
+#define DV_MAX_HISTOGRAM 5
 
 #define DV_OK 0
 #define DV_ERROR_OONP 1 /* out of node pool */
@@ -517,8 +517,8 @@ int dv_btsample_viewer_extract_interval(dv_btsample_viewer_t *, int, unsigned lo
 
 /* layout.c */
 void dv_view_layout(dv_view_t *);
-double dv_view_calculate_gap(dv_view_t *, dv_dag_node_t *);
-double dv_view_calculate_reverse_ratio(dv_view_t *, dv_dag_node_t *);
+double dv_view_calculate_rate(dv_view_t *, dv_dag_node_t *);
+double dv_view_calculate_reverse_rate(dv_view_t *, dv_dag_node_t *);
 double dv_get_time();
 void dv_animation_init(dv_view_t *V, dv_animation_t *);
 void dv_animation_start(dv_animation_t *);
@@ -552,8 +552,8 @@ void dv_view_draw_glike(dv_view_t *, cairo_t *);
 
 /* view_bbox.c */
 double dv_view_calculate_hsize(dv_view_t *, dv_dag_node_t *);
-double dv_view_calculate_vresize(dv_view_t *, double);
-double dv_dag_calculate_vresize(dv_dag_t *, double);
+double dv_view_scale_down(dv_view_t *, double);
+double dv_dag_scale_down(dv_dag_t *, double);
 double dv_view_calculate_vsize(dv_view_t *, dv_dag_node_t *);
 void dv_view_layout_bbox(dv_view_t *);
 void dv_view_draw_bbox(dv_view_t *, cairo_t *);

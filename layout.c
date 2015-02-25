@@ -60,30 +60,30 @@ dv_view_layout(dv_view_t * V) {
 
 /*-----Common functions-----*/
 
-double dv_view_calculate_gap(dv_view_t *V, dv_dag_node_t *node) {
-  double gap = 1.0;
-  if (!node) return gap;
+double dv_view_calculate_rate(dv_view_t *V, dv_dag_node_t *node) {
+  double rate = 1.0;
+  if (!node) return rate;
   double ratio = (dv_get_time() - node->started) / V->S->a->duration;
   if (ratio > 1.0)
     ratio = 1.0;
   if (dv_is_shrinking(node)) {
-    //gap = 1.0 - ratio;
-    gap = (1.0 - ratio) * (1.0 - ratio);
+    //rate = 1.0 - ratio;
+    rate = (1.0 - ratio) * (1.0 - ratio);
   } else if (dv_is_expanding(node)) {
-    //gap = ratio;
-    gap = 1.0 - (1.0 - ratio) * (1.0 - ratio);
+    //rate = ratio;
+    rate = 1.0 - (1.0 - ratio) * (1.0 - ratio);
   }
-  return gap;
+  return rate;
 }
 
-double dv_view_calculate_reverse_ratio(dv_view_t *V, dv_dag_node_t *node) {
+double dv_view_calculate_reverse_rate(dv_view_t *V, dv_dag_node_t *node) {
   double ret = 0.0;
   if (!node) return ret;
-  double gap = dv_view_calculate_gap(V, node);
+  double rate = dv_view_calculate_rate(V, node);
   if (dv_is_shrinking(node)) {
-    ret = 1.0 - sqrt(1.0 - gap);
+    ret = 1.0 - sqrt(1.0 - rate);
   } else if (dv_is_expanding(node)) {
-    ret = 1.0 - sqrt(gap);
+    ret = 1.0 - sqrt(rate);
   }
   return ret;
 }
@@ -178,7 +178,7 @@ void dv_animation_reverse(dv_animation_t *a, dv_dag_node_t *node) {
   dv_llist_remove(a->movings, node);
   double cur = dv_get_time();
   //node->started = 2 * cur - a->duration - node->started;
-  node->started = cur - a->duration * dv_view_calculate_reverse_ratio(a->V, node);
+  node->started = cur - a->duration * dv_view_calculate_reverse_rate(a->V, node);
   dv_llist_add(a->movings, node);
 }
 

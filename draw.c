@@ -312,8 +312,8 @@ dv_view_draw_infotag_1(dv_view_t * V, cairo_t * cr, cairo_matrix_t * mt, dv_dag_
   cairo_save(cr);
   dv_dag_t * D = V->D;
   dv_view_status_t * S = V->S;
-  double line_height = 12;
-  double padding = 4;
+  double line_height = 16;
+  double padding = 3;
   int n = 6; /* number of lines */
   
   // Get coordinates
@@ -323,7 +323,7 @@ dv_view_draw_infotag_1(dv_view_t * V, cairo_t * cr, cairo_matrix_t * mt, dv_dag_
   yy = c->y - 2 * padding;
   //cairo_matrix_transform_point(mt, &xx, &yy);
   yy -= line_height * (n - 1);
-  double width = 450.0;
+  double width = 430.0;
   double height = n * line_height + 2 * padding;
   
   double cairo_bound_left = dv_view_cairo_coordinate_bound_left(V);
@@ -353,7 +353,7 @@ dv_view_draw_infotag_1(dv_view_t * V, cairo_t * cr, cairo_matrix_t * mt, dv_dag_
   // Lines
   cairo_set_source_rgb(cr, 1.0, 1.0, 0.1);
   cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-  cairo_set_font_size(cr, 12);
+  cairo_set_font_size(cr, 15);
 
   // Line 1
   /* TODO: adaptable string length */

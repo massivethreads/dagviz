@@ -356,8 +356,8 @@ dv_histogram_draw_entry(dv_histogram_t * H, dv_histogram_entry_t * e, cairo_t * 
     fprintf(stderr, "Warning: not draw entry at t=%lf due to no next\n", e->t);
     return;
   }
-  double x = dv_dag_calculate_vresize(H->D, e->t - H->D->bt);
-  double w = dv_dag_calculate_vresize(H->D, e->next->t - H->D->bt) - x;
+  double x = dv_dag_scale_down(H->D, e->t - H->D->bt);
+  double w = dv_dag_scale_down(H->D, e->next->t - H->D->bt) - x;
   double y = 0.0;
   double h;
   int i;
@@ -407,10 +407,10 @@ dv_view_layout_paraprof_node(dv_view_t * V, dv_dag_node_t * node) {
   /* Calculate inward */
   nodeco->dw = V->D->radius * 2;
   nodeco->lw = 0.0;
-  nodeco->rw = dv_view_calculate_vresize(V, pi->info.end.t - D->bt) - dv_view_calculate_vresize(V, pi->info.start.t - D->bt);
+  nodeco->rw = dv_view_scale_down(V, pi->info.end.t - D->bt) - dv_view_scale_down(V, pi->info.start.t - D->bt);
   // node's outward
   int worker = pi->info.worker;
-  nodeco->x = dv_view_calculate_vresize(V, pi->info.start.t - D->bt);
+  nodeco->x = dv_view_scale_down(V, pi->info.start.t - D->bt);
   nodeco->y = worker * (2 * V->D->radius);
   if (dv_is_union(node) && dv_is_inner_loaded(node)) {
     // Recursive call

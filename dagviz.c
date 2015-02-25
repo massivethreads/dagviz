@@ -178,7 +178,7 @@ dv_do_zoomfit_hor_(dv_view_t * V) {
     break;
   case 4:
     // Parallelism profile
-    d1 = dv_dag_calculate_vresize(V->D, V->D->et - V->D->bt);
+    d1 = dv_dag_scale_down(V->D, V->D->et - V->D->bt);
     d2 = w - 2 * DV_HISTOGRAM_MARGIN_SIDE;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
@@ -255,7 +255,7 @@ dv_do_zoomfit_ver_(dv_view_t * V) {
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     y -= D->P->num_workers * (2 * D->radius) * zoom_ratio;
-    double dx = (w - 2 * DV_HISTOGRAM_MARGIN_SIDE - zoom_ratio * dv_dag_calculate_vresize(V->D, V->D->et - V->D->bt)) / 2.0;
+    double dx = (w - 2 * DV_HISTOGRAM_MARGIN_SIDE - zoom_ratio * dv_dag_scale_down(V->D, V->D->et - V->D->bt)) / 2.0;
     if (dx > 0)
       x += dx;
     break;
@@ -1541,6 +1541,7 @@ dv_view_interface_create_new(dv_view_t * V, dv_viewport_t * VP) {
   g_signal_connect(G_OBJECT(btn_attrs), "clicked", G_CALLBACK(on_btn_view_attributes_clicked), (void *) I);
 
   // Click mode combobox
+  /*
   GtkToolItem *btn_combo_cm = gtk_tool_item_new();
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo_cm, -1);
   gtk_widget_set_tooltip_text(GTK_WIDGET(btn_combo_cm), "What to do when clicking a node");
@@ -1550,6 +1551,7 @@ dv_view_interface_create_new(dv_view_t * V, dv_viewport_t * VP) {
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_cm), "expand", "Expand/Collapse node");
   gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_cm), S->cm);
   g_signal_connect(G_OBJECT(combobox_cm), "changed", G_CALLBACK(on_combobox_cm_changed), (void *) V);
+  */
 
   // Zoomfit-horizontally button
   GtkToolItem *btn_zoomfit_hor = gtk_tool_button_new(NULL, NULL);
@@ -2321,7 +2323,7 @@ on_help_export_clicked(GtkToolButton *toolbtn, gpointer user_data) {
     fprintf(stderr, "Warning: there is no active V to export.\n");
     return;
   }
-  //dv_viewport_export_to_png(V->mainVP);
+  dv_viewport_export_to_png(V->mainVP);
   dv_viewport_export_to_eps(V->mainVP);
   return;  
 }
@@ -2638,9 +2640,11 @@ main(int argc, char * argv[]) {
   }
   V = CS->V;
   dv_view_add_viewport(V, VP);
-  dv_view_change_lt(V, 4);
+  //dv_view_change_lt(V, 4);
+  /*
   for (i=0; i<1; i++)
     dv_do_expanding_one(V);
+  */
   dv_do_set_focused_view(CS->V, 1);
   
   /* Open GUI */
