@@ -2,6 +2,30 @@
 
 dv_global_state_t  CS[1];
 
+const char * const DV_COLORS[] =
+  {"orange", "gold", "cyan", "azure", "green",
+   "magenta", "brown1", "burlywood1", "peachpuff", "aquamarine",
+   "chartreuse", "skyblue", "burlywood", "cadetblue", "chocolate",
+   "coral", "cornflowerblue", "cornsilk4", "darkolivegreen1", "darkorange1",
+   "khaki3", "lavenderblush2", "lemonchiffon1", "lightblue1", "lightcyan",
+   "lightgoldenrod", "lightgoldenrodyellow", "lightpink2", "lightsalmon2", "lightskyblue1",
+   "lightsteelblue3", "lightyellow3", "maroon1", "yellowgreen"};
+
+const char * const DV_HISTOGRAM_COLORS[] =
+  {"red", "green1", "blue", "magenta1", "cyan1", "yellow"};
+
+const char * const DV_LINEAR_PATTERN_STOPS[] =
+  //{"white", "black", "white"};
+  //{"black", "white", "black"};
+  {"orange", "yellow", "yellowgreen", "cyan"};
+
+const int DV_LINEAR_PATTERN_STOPS_NUM = 3;
+
+const char * const DV_RADIAL_PATTERN_STOPS[] =
+  {"black", "white"};
+
+const int DV_RADIAL_PATTERN_STOPS_NUM = 2;
+
 /*---------------Environment Variables-----*/
 
 static int dv_get_env_int(char * s, int * t) {
@@ -1541,7 +1565,6 @@ dv_view_interface_create_new(dv_view_t * V, dv_viewport_t * VP) {
   g_signal_connect(G_OBJECT(btn_attrs), "clicked", G_CALLBACK(on_btn_view_attributes_clicked), (void *) I);
 
   // Click mode combobox
-  /*
   GtkToolItem *btn_combo_cm = gtk_tool_item_new();
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo_cm, -1);
   gtk_widget_set_tooltip_text(GTK_WIDGET(btn_combo_cm), "What to do when clicking a node");
@@ -1551,7 +1574,6 @@ dv_view_interface_create_new(dv_view_t * V, dv_viewport_t * VP) {
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_cm), "expand", "Expand/Collapse node");
   gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_cm), S->cm);
   g_signal_connect(G_OBJECT(combobox_cm), "changed", G_CALLBACK(on_combobox_cm_changed), (void *) V);
-  */
 
   // Zoomfit-horizontally button
   GtkToolItem *btn_zoomfit_hor = gtk_tool_button_new(NULL, NULL);

@@ -75,6 +75,7 @@ typedef struct dv_llist {
 #define DV_VDIS 60
 #define DV_RADIUS 15
 #define NUM_COLORS 34
+#define DV_UNION_NODE_DOUBLE_BORDER 3
 
 #define DV_NODE_FLAG_NONE         0        /* none */
 #define DV_NODE_FLAG_SET          1        /* none - set */
@@ -88,9 +89,10 @@ typedef struct dv_llist {
 #define DV_STRING_LENGTH 100
 #define DV_STATUS_PADDING 7
 #define DV_SAFE_CLICK_RANGE 1
-#define DV_UNION_NODE_MARGIN 4
-#define DV_NODE_LINE_WIDTH 0.5
-#define DV_EDGE_LINE_WIDTH 0.5
+#define DV_UNION_NODE_MARGIN 6
+#define DV_NODE_LINE_WIDTH 1.5
+#define DV_NODE_LINE_WIDTH_COLLECTIVE_FACTOR 2.0
+//#define DV_EDGE_LINE_WIDTH 1.5
 #define DV_RADIX_LOG 1.8
 #define DV_RADIX_POWER 0.42
 #define DV_RADIX_LINEAR 100000
@@ -100,7 +102,7 @@ typedef struct dv_llist {
 
 #define DV_NUM_LAYOUT_TYPES 5
 #define DV_LAYOUT_TYPE_INIT 0 // not paraprof coz need to check H of D
-#define DV_NODE_COLOR_INIT 2
+#define DV_NODE_COLOR_INIT 0 // 0:worker, 1:cpu, 2:kind, 3:code start, 4:code end, 5: code segment
 #define DV_SCALE_TYPE_INIT 2
 #define DV_FROMBT_INIT 0
 #define DV_EDGE_TYPE_INIT 3
@@ -434,6 +436,11 @@ extern const char * const DV_HISTOGRAM_COLORS[];
 
 extern dv_global_state_t  CS[]; /* global common state */
 
+extern const char * const DV_LINEAR_PATTERN_STOPS[];
+extern const int DV_LINEAR_PATTERN_STOPS_NUM;
+
+extern const char * const DV_RADIAL_PATTERN_STOPS[];
+extern const int DV_RADIAL_PATTERN_STOPS_NUM;
 
 /*-----------------Headers-----------------*/
 
@@ -535,8 +542,16 @@ void dv_motion_stop(dv_motion_t *);
 /* draw.c */
 void dv_draw_text(cairo_t *);
 void dv_draw_rounded_rectangle(cairo_t *, double, double, double, double);
+void dv_draw_path_isosceles_triangle(cairo_t *, double, double, double, double);
+void dv_draw_path_isosceles_triangle_upside_down(cairo_t *, double, double, double, double);
+void dv_draw_path_rectangle(cairo_t *, double, double, double, double);
+void dv_draw_path_rounded_rectangle(cairo_t *, double, double, double, double);
+void dv_draw_path_circle(cairo_t *, double, double, double);
 void dv_lookup_color_value(int, double *, double *, double *, double *);
 void dv_lookup_color(dr_pi_dag_node *, int, double *, double *, double *, double *);
+cairo_pattern_t * dv_create_color_linear_pattern(int *, int, double, double);
+cairo_pattern_t * dv_get_color_linear_pattern(double, double);
+cairo_pattern_t * dv_get_color_radial_pattern(double, double);
 double dv_view_get_alpha_fading_out(dv_view_t *, dv_dag_node_t *);
 double dv_view_get_alpha_fading_in(dv_view_t *, dv_dag_node_t *);
 void dv_view_draw_edge_1(dv_view_t *, cairo_t *, dv_dag_node_t *, dv_dag_node_t *);

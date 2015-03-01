@@ -159,7 +159,9 @@ static void dv_view_draw_timeline_node_r(dv_view_t *V, cairo_t *cr, dv_dag_node_
 }
 
 void dv_view_draw_timeline(dv_view_t *V, cairo_t *cr) {
-  cairo_set_line_width(cr, DV_NODE_LINE_WIDTH);
+  // Set adaptive line width
+  double line_width = dv_min(DV_NODE_LINE_WIDTH, DV_NODE_LINE_WIDTH / dv_min(V->S->zoom_ratio_x, V->S->zoom_ratio_y));
+  cairo_set_line_width(cr, line_width);
   int i;
   // Draw nodes
   dv_llist_init(V->D->itl);

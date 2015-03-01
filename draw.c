@@ -41,8 +41,67 @@ void dv_draw_rounded_rectangle(cairo_t *cr, double x, double y, double width, do
   cairo_set_source_rgba(cr, 0.1, 0.1, 0.1, 0.6);
   cairo_fill_preserve(cr);
   cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
-  cairo_set_line_width(cr, 0.5);
   cairo_stroke(cr);
+  cairo_restore(cr);
+}
+
+void
+dv_draw_path_isosceles_triangle(cairo_t * cr, double x, double y, double w, double h) {
+  cairo_save(cr);
+  cairo_move_to(cr, x + w / 2.0, y);
+  cairo_rel_line_to(cr, - w / 2.0, h);
+  cairo_rel_line_to(cr, w, 0.0);
+  cairo_close_path(cr);
+  cairo_restore(cr);
+}
+
+void
+dv_draw_path_isosceles_triangle_upside_down(cairo_t * cr, double x, double y, double w, double h) {
+  cairo_save(cr);
+  cairo_move_to(cr, x, y);
+  cairo_rel_line_to(cr, w / 2.0, h);
+  cairo_rel_line_to(cr, w / 2.0, - h);
+  cairo_close_path(cr);
+  cairo_restore(cr);
+}
+
+void
+dv_draw_path_rectangle(cairo_t * cr, double x, double y, double w, double h) {
+  cairo_save(cr);
+  cairo_move_to(cr, x, y);
+  cairo_rel_line_to(cr, 0.0, h);
+  cairo_rel_line_to(cr, w, 0.0);
+  cairo_rel_line_to(cr, 0.0, - h);
+  cairo_close_path(cr);
+  cairo_restore(cr);  
+}
+
+void
+dv_draw_path_rounded_rectangle(cairo_t * cr, double x, double y, double w, double h) {
+  cairo_save(cr);
+
+  double r = h / 8.0;     /* corner radius */
+  double d = M_PI / 180.0; /* degrees */
+  
+  cairo_new_sub_path(cr);
+  cairo_arc(cr, x + r    , y + r    , r, -180 * d, -90 * d);
+  cairo_arc(cr, x + w - r, y + r    , r,  -90 * d,   0 * d);
+  cairo_arc(cr, x + w - r, y + h - r, r,    0 * d,  90 * d);
+  cairo_arc(cr, x + r    , y + h - r, r,   90 * d, 180 * d);
+  cairo_close_path(cr);
+  
+  cairo_restore(cr);  
+}
+
+void
+dv_draw_path_circle(cairo_t * cr, double x, double y, double w) {
+  cairo_save(cr);
+
+  double r = w / 2.0;
+  cairo_new_sub_path(cr);
+  cairo_arc(cr, x + r, y + r, r, 0.0, 2 * M_PI);
+  cairo_close_path(cr);
+    
   cairo_restore(cr);
 }
 
@@ -100,13 +159,16 @@ dv_lookup_color(dr_pi_dag_node * pi, int nc, double * r, double * g, double * b,
   dv_check(nc < DV_NUM_COLOR_POOLS);
   switch (nc) {
   case 0:
-    v = dv_get_color_pool_index(nc, 0, 0, 0, pi->info.worker);
+    //v = dv_get_color_pool_index(nc, 0, 0, 0, pi->info.worker);
+    v = pi->info.worker;
     break;
   case 1:
-    v = dv_get_color_pool_index(nc, 0, 0, 0, pi->info.cpu);
+    //v = dv_get_color_pool_index(nc, 0, 0, 0, pi->info.cpu);
+    v = pi->info.cpu;
     break;
   case 2:
-    v = dv_get_color_pool_index(nc, 0, 0, 0, pi->info.kind);
+    //v = dv_get_color_pool_index(nc, 0, 0, 0, pi->info.kind);
+    v = (int) pi->info.kind;
     v += 10;
     break;
   case 3:
@@ -123,6 +185,54 @@ dv_lookup_color(dr_pi_dag_node * pi, int nc, double * r, double * g, double * b,
     break;
   }  
   dv_lookup_color_value(v, r, g, b, a);
+}
+
+cairo_pattern_t *
+dv_create_color_linear_pattern(int * stops, int n, double w, double alpha) {
+  if (n == 0 || n == 1)
+    return NULL;
+  cairo_pattern_t * pat = cairo_pattern_create_linear(0.0, 0.0, w, 0.0);
+  double step = 1.0 / (n - 1);
+  double r, g, b, a;
+  int i;
+  for (i = 0; i < n; i++) {
+    dv_lookup_color_value(stops[i], &r, &g, &b, &a);
+    a *= alpha;
+    cairo_pattern_add_color_stop_rgba(pat, i * step, r, g, b, a);
+  }
+  return pat;
+}
+
+cairo_pattern_t *
+dv_get_color_linear_pattern(double w, double alpha) {
+  char ** stops = (char **) DV_LINEAR_PATTERN_STOPS;
+  int n = DV_LINEAR_PATTERN_STOPS_NUM;
+  cairo_pattern_t * pat = cairo_pattern_create_linear(0.0, 0.0, w, 0.0);
+  double step = 1.0 / (n - 1);
+  double r, g, b, a;
+  int i;
+  for (i = 0; i < n; i++) {
+    GdkRGBA color;
+    gdk_rgba_parse(&color, stops[i]);
+    cairo_pattern_add_color_stop_rgba(pat, i * step, color.red, color.green, color.blue, color.alpha * alpha);
+  }
+  return pat;
+}
+
+cairo_pattern_t *
+dv_get_color_radial_pattern(double radius, double alpha) {
+  char ** stops = (char **) DV_RADIAL_PATTERN_STOPS;
+  int n = DV_RADIAL_PATTERN_STOPS_NUM;
+  cairo_pattern_t * pat = cairo_pattern_create_radial(0.0, 0.0, 0.0, 0.0, 0.0, radius);
+  double step = 1.0 / (n - 1);
+  double r, g, b, a;
+  int i;
+  for (i = 0; i < n; i++) {
+    GdkRGBA color;
+    gdk_rgba_parse(&color, stops[i]);
+    cairo_pattern_add_color_stop_rgba(pat, i * step, color.red, color.green, color.blue, color.alpha * alpha);
+  }
+  return pat;
 }
 
 double dv_view_get_alpha_fading_out(dv_view_t *V, dv_dag_node_t *node) {
@@ -312,8 +422,10 @@ dv_view_draw_infotag_1(dv_view_t * V, cairo_t * cr, cairo_matrix_t * mt, dv_dag_
   cairo_save(cr);
   dv_dag_t * D = V->D;
   dv_view_status_t * S = V->S;
-  double line_height = 16;
+  double line_height = 13;
   double padding = 3;
+  double upper_padding = padding;
+  double lower_padding = 2.5 * padding;
   int n = 6; /* number of lines */
   
   // Get coordinates
@@ -323,8 +435,8 @@ dv_view_draw_infotag_1(dv_view_t * V, cairo_t * cr, cairo_matrix_t * mt, dv_dag_
   yy = c->y - 2 * padding;
   //cairo_matrix_transform_point(mt, &xx, &yy);
   yy -= line_height * (n - 1);
-  double width = 430.0;
-  double height = n * line_height + 2 * padding;
+  double width = 450.0;
+  double height = n * line_height + upper_padding + lower_padding;
   
   double cairo_bound_left = dv_view_cairo_coordinate_bound_left(V);
   double cairo_bound_right = dv_view_cairo_coordinate_bound_right(V);
@@ -346,14 +458,14 @@ dv_view_draw_infotag_1(dv_view_t * V, cairo_t * cr, cairo_matrix_t * mt, dv_dag_
   // Cover rectangle
   dv_draw_rounded_rectangle(cr,
                             xx - padding,
-                            yy - line_height - padding,
+                            yy - line_height - upper_padding,
                             width,
                             height);
 
   // Lines
   cairo_set_source_rgb(cr, 1.0, 1.0, 0.1);
   cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
-  cairo_set_font_size(cr, 15);
+  cairo_set_font_size(cr, 13);
 
   // Line 1
   /* TODO: adaptable string length */

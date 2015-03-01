@@ -1,17 +1,5 @@
 #include "dagviz.h"
 
-const char * const DV_COLORS[] =
-  {"orange", "gold", "cyan", "azure", "green",
-   "magenta", "brown1", "burlywood1", "peachpuff", "aquamarine",
-   "chartreuse", "skyblue", "burlywood", "cadetblue", "chocolate",
-   "coral", "cornflowerblue", "cornsilk4", "darkolivegreen1", "darkorange1",
-   "khaki3", "lavenderblush2", "lemonchiffon1", "lightblue1", "lightcyan",
-   "lightgoldenrod", "lightgoldenrodyellow", "lightpink2", "lightsalmon2", "lightskyblue1",
-   "lightsteelblue3", "lightyellow3", "maroon1", "yellowgreen"};
-
-const char * const DV_HISTOGRAM_COLORS[] =
-  {"red", "green1", "blue", "magenta1", "cyan1", "yellow"};
-
 char * dv_get_node_kind_name(dr_dag_node_kind_t kind) {
   switch (kind) {
   case dr_dag_node_kind_create_task:
