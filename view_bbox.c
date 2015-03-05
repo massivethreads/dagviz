@@ -308,12 +308,19 @@ void dv_view_layout_bbox(dv_view_t *V) {
 
 /*-----------------DAG BBox Drawing functions-----------*/
 
-static void dv_view_draw_bbox_node_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *node) {
-  dv_dag_t *D = V->D;
-  dv_view_status_t *S = V->S;
+static void
+dv_view_draw_bbox_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
+  /* Get inputs */
+  dv_dag_t * D = V->D;
+  dv_view_status_t * S = V->S;
   int lt = 1;
-  dv_node_coordinate_t *nodeco = &node->c[lt];
-  // Count node drawn
+  dr_pi_dag_node * pi = dv_pidag_get_node(D->P, node);
+  dr_dag_node_kind_t kind = pi->info.kind;
+  dv_node_coordinate_t * nodeco = &node->c[lt];
+  double x = nodeco->x;
+  double y = nodeco->y;
+
+  /* Count drawn node */
   S->nd++;
   if (node->d > D->cur_d)
     D->cur_d = node->d;
@@ -321,34 +328,40 @@ static void dv_view_draw_bbox_node_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *n
       && dv_is_shrinked(node)
       && node->d < D->cur_d_ex)
     D->cur_d_ex = node->d;
-  // Node color
-  double x = nodeco->x;
-  double y = nodeco->y;
+  
+  /* Color */
   double c[4];
-  dr_pi_dag_node *pi = dv_pidag_get_node(D->P, node);
   dv_lookup_color(pi, S->nc, c, c+1, c+2, c+3);
-  // Alpha
+  int use_mixed_color = 0;
+  if ((S->nc == 0 && pi->info.worker == -1)
+      || (S->nc == 1 && pi->info.cpu == -1)) {
+    use_mixed_color = 1;
+  }
+  
+  /* Alpha, Margin */
   double alpha = 1.0;
-  // Draw path
+  double margin = 0.0;
+  
+  /* Coordinates */
+  double xx, yy, w, h;
+  
+  /* Draw path */
   cairo_save(cr);
   cairo_new_path(cr);
-  double xx, yy, w, h;
   if (dv_is_union(node) && dv_is_inner_loaded(node)) {
 
     if (dv_is_expanding(node) || dv_is_shrinking(node)) {
 
-      double margin = 1.0;
+      /* Calculate alpha, margin */
+      margin = DV_UNION_NODE_MARGIN;
       if (dv_is_expanding(node)) {
-        // Fading out
-        alpha = dv_view_get_alpha_fading_out(V, node);
-        margin = dv_view_get_alpha_fading_in(V, node);
+        alpha *= dv_view_get_alpha_fading_out(V, node);
+        margin *= dv_view_get_alpha_fading_in(V, node);
       } else {
-        // Fading in
-        alpha = dv_view_get_alpha_fading_in(V, node);
-        margin = dv_view_get_alpha_fading_out(V, node);
+        alpha *= dv_view_get_alpha_fading_in(V, node);
+        margin *= dv_view_get_alpha_fading_out(V, node);
       }
-      // Large-sized box
-      margin *= DV_UNION_NODE_MARGIN;
+      /* Calculate coordinates: large-sized box */
       xx = x - nodeco->lw - margin;
       yy = y - margin;
       w = nodeco->lw + nodeco->rw + 2 * margin;
@@ -356,57 +369,70 @@ static void dv_view_draw_bbox_node_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *n
       
     } else {
       
-      // Normal-sized box
+      /* Calculate coordinates: normal-sized box */
       xx = x - nodeco->lw;
       yy = y;
       w = nodeco->lw + nodeco->rw;
       h = nodeco->dw;
-      alpha = 1.0;
-      if (dv_is_shrinking(node->parent)) {
-        // Fading out
-        alpha = dv_view_get_alpha_fading_out(V, node->parent);
-      } else if (dv_is_expanding(node->parent)) {
-        // Fading in
-        alpha = dv_view_get_alpha_fading_in(V, node->parent);
-      }
       
     }
 
   } else {
     
-    // Normal-sized box (terminal node)
+    /* Calculate coordinates: normal-sized box (leaf node) */
     xx = x - nodeco->lw;
     yy = y;
     w = nodeco->lw + nodeco->rw;
     h = nodeco->dw;
-    alpha = 1.0;
-    if (dv_is_shrinking(node->parent)) {
-      // Fading out
-      alpha = dv_view_get_alpha_fading_out(V, node->parent);
-    } else if (dv_is_expanding(node->parent)) {
-      // Fading in
-      alpha = dv_view_get_alpha_fading_in(V, node->parent);
-    }
     
   }
-  // Draw path
+  /* Draw path */
   cairo_move_to(cr, xx, yy);
   cairo_line_to(cr, xx + w, yy);
   cairo_line_to(cr, xx + w, yy + h);
   cairo_line_to(cr, xx, yy + h);
   cairo_close_path(cr);
 
-  // Draw node
-  cairo_set_source_rgba(cr, c[0], c[1], c[2], c[3] * alpha);
-  cairo_fill_preserve(cr);
+  /* Calculate alpha (based on parent) */
+  if (dv_is_shrinking(node->parent)) {
+    alpha *= dv_view_get_alpha_fading_out(V, node->parent);
+  } else if (dv_is_expanding(node->parent)) {
+    alpha *= dv_view_get_alpha_fading_in(V, node->parent);
+  }
+
+  /* Mixed color pattern */
+  cairo_pattern_t * pat = NULL;
+  if (use_mixed_color) {
+    /*
+    int nstops = 3;
+    int stops[] = {0, 1, 2};
+    pat = dv_create_color_linear_pattern(stops, nstops, w, alpha);
+    */
+    pat = dv_get_color_linear_pattern(w, alpha);
+    //pat = dv_get_color_radial_pattern(dv_min(w/2.0, h/2.0), alpha);
+  }
+
+  /* Draw node */
+  if (!pat) {
+    cairo_set_source_rgba(cr, c[0], c[1], c[2], c[3] * alpha);
+    cairo_fill_preserve(cr);
+  } else {
+    cairo_translate(cr, xx, yy);
+    //cairo_translate(cr, xx + w / 2.0, yy + h / 2.0);
+    cairo_set_source(cr, pat);
+    cairo_fill_preserve(cr);
+    cairo_pattern_destroy(pat);
+  }
   cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
   cairo_stroke_preserve(cr);
-  // Draw infotag
+  
+  /* Draw infotag */
   if (dv_llist_has(V->D->P->itl, (void *) node->pii)) {
     cairo_set_source_rgba(cr, 0.1, 0.1, 0.1, 0.6);
     cairo_fill(cr);
     dv_llist_add(V->D->itl, (void *) node);
   }
+  
   cairo_restore(cr);
 }
 

@@ -172,9 +172,9 @@ dv_view_draw_glike_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
   dv_dag_t * D = V->D;
   dv_view_status_t * S = V->S;
   int lt = 0;
-  dv_node_coordinate_t * nodeco = &node->c[lt];
   dr_pi_dag_node * pi = dv_pidag_get_node(D->P, node);
   dr_dag_node_kind_t kind = pi->info.kind;
+  dv_node_coordinate_t * nodeco = &node->c[lt];
   double x = nodeco->x;
   double y = nodeco->y;
   
@@ -189,8 +189,8 @@ dv_view_draw_glike_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
   
   /* Color */
   double c[4];
-  int use_mixed_color = 0;
   dv_lookup_color(pi, S->nc, c, c+1, c+2, c+3);
+  int use_mixed_color = 0;
   if ((S->nc == 0 && pi->info.worker == -1)
       || (S->nc == 1 && pi->info.cpu == -1)) {
     use_mixed_color = 1;

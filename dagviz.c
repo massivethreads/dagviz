@@ -14,12 +14,13 @@ const char * const DV_COLORS[] =
 const char * const DV_HISTOGRAM_COLORS[] =
   {"red", "green1", "blue", "magenta1", "cyan1", "yellow"};
 
+const int DV_LINEAR_PATTERN_STOPS_NUM = 3;
 const char * const DV_LINEAR_PATTERN_STOPS[] =
   //{"white", "black", "white"};
   //{"black", "white", "black"};
-  {"orange", "yellow", "yellowgreen", "cyan"};
-
-const int DV_LINEAR_PATTERN_STOPS_NUM = 3;
+  ///{"green", "yellowgreen", "yellowgreen", "cyan"};
+  //{"orange", "yellow", "coral"};
+  {"orange", "yellow", "cyan"};
 
 const char * const DV_RADIAL_PATTERN_STOPS[] =
   {"black", "white"};
