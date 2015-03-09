@@ -2,18 +2,6 @@
 
 /*-----------------BBox layout functions-----------*/
 
-static double dv_view_calculate_hgap(dv_view_t *V, dv_dag_node_t *node) {
-  double rate = dv_view_calculate_rate(V, node);
-  double hgap = rate * DV_HDIS;
-  return hgap;
-}
-
-double dv_view_calculate_hsize(dv_view_t *V, dv_dag_node_t *node) {
-  double rate = dv_view_calculate_rate(V, node->parent);
-  double hsize = rate * V->D->radius;
-  return hsize;
-}
-
 double
 dv_dag_scale_down(dv_dag_t * D, double val) {
   double ret;
@@ -159,8 +147,8 @@ static void dv_view_layout_bbox_node(dv_view_t *V, dv_dag_node_t *node) {
       nodeco->dw = vsize;
   } else {
     // node's inward
-    nodeco->lw = V->D->radius;//dv_view_calculate_hsize(V, node);
-    nodeco->rw = V->D->radius;//dv_view_calculate_hsize(V, node);
+    nodeco->lw = V->D->radius;
+    nodeco->rw = V->D->radius;
     nodeco->dw = dv_view_calculate_vsize(V, node);
   }
     

@@ -45,7 +45,7 @@ static void dv_view_layout_glike_node(dv_view_t *V, dv_dag_node_t *node) {
     rate = dv_view_calculate_rate(V, node->parent);
     // node's linked u's outward
     uco->xpre = 0.0;
-    ypre = (nodeco->dw + DV_VDIS) * rate;
+    ypre = (nodeco->dw - 2 * V->D->radius + DV_VDIS) * rate;
     uco->y = nodeco->y + ypre;
     // Recursive call
     dv_view_layout_glike_node(V, u);
@@ -62,7 +62,7 @@ static void dv_view_layout_glike_node(dv_view_t *V, dv_dag_node_t *node) {
     // node & u,v's rate
     rate = dv_view_calculate_rate(V, node->parent);
     // node's linked u,v's outward
-    ypre = (nodeco->dw + DV_VDIS) * rate;
+    ypre = (nodeco->dw - 2 * V->D->radius + DV_VDIS) * rate;
     uco->y = nodeco->y + ypre;
     vco->y = nodeco->y + ypre;
     // Recursive call
@@ -70,15 +70,18 @@ static void dv_view_layout_glike_node(dv_view_t *V, dv_dag_node_t *node) {
     dv_view_layout_glike_node(V, v);
     
     // node's linked u,v's outward
-    hgap = rate * DV_HDIS;
+    hgap = DV_HDIS * rate;
     // u
     uco->xpre = (uco->link_lw - V->D->radius) + hgap;
     if (dv_llist_size(u->links) == 2)
       uco->xpre = - ((dv_dag_node_t *) dv_llist_get(u->links, 1))->c[lt].xpre;
     // v
     vco->xpre = (vco->link_rw - V->D->radius) + hgap;
+    double left_push = 0.0;
     if (dv_llist_size(u->links) == 2)
-      vco->xpre += (uco->link_lw - V->D->radius) - uco->xpre;
+      left_push = (uco->link_lw - V->D->radius) - uco->xpre;
+    if (left_push > 0)
+      vco->xpre += left_push;
     vco->xpre = - vco->xpre;
     
     // node's link-along

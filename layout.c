@@ -60,7 +60,8 @@ dv_view_layout(dv_view_t * V) {
 
 /*-----Common functions-----*/
 
-double dv_view_calculate_rate(dv_view_t *V, dv_dag_node_t *node) {
+double
+dv_view_calculate_rate(dv_view_t * V, dv_dag_node_t * node) {
   double rate = 1.0;
   if (!node) return rate;
   double ratio = (dv_get_time() - node->started) / V->S->a->duration;

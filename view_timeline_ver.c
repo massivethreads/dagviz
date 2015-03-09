@@ -8,12 +8,12 @@ static void dv_view_layout_timeline_node(dv_view_t *V, dv_dag_node_t *node) {
   dv_dag_t *D = V->D;
   dr_pi_dag_node * pi = dv_pidag_get_node(D->P, node);
   /* Calculate inward */
-  nodeco->lw = V->D->radius;//dv_view_calculate_hsize(V, node);
-  nodeco->rw = V->D->radius;//dv_view_calculate_hsize(V, node);
+  nodeco->lw = V->D->radius;
+  nodeco->rw = V->D->radius;
   nodeco->dw = dv_view_scale_down(V, pi->info.end.t - D->bt) - dv_view_scale_down(V, pi->info.start.t - D->bt);
   // node's outward
   int worker = pi->info.worker;
-  nodeco->x = V->D->radius + worker * (2 * V->D->radius + DV_HDIS);
+  nodeco->x = V->D->radius + worker * DV_HDIS;
   nodeco->y = dv_view_scale_down(V, pi->info.start.t - D->bt);
   if (dv_is_union(node) && dv_is_inner_loaded(node)) {
     // Recursive call
@@ -178,7 +178,7 @@ void dv_view_draw_timeline(dv_view_t *V, cairo_t *cr) {
     sprintf(s, "Worker %d", i);            
     cairo_move_to(cr, xx - 30, yy);
     cairo_show_text(cr, s);
-    xx += 2 * V->D->radius + DV_HDIS;
+    xx += DV_HDIS;
   }
 }
 

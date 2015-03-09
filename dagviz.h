@@ -72,8 +72,8 @@ typedef struct dv_llist {
 #define DV_ZOOM_INCREMENT 1.20
 #define DV_SCALE_INCREMENT 1.07
 #define DV_HDIS 70
-#define DV_VDIS 60
-#define DV_RADIUS 15
+#define DV_VDIS 70
+#define DV_RADIUS 20
 #define NUM_COLORS 34
 #define DV_UNION_NODE_DOUBLE_BORDER 3
 
@@ -561,12 +561,11 @@ void dv_view_draw_infotags(dv_view_t *, cairo_t *, cairo_matrix_t *);
 void dv_view_draw(dv_view_t *, cairo_t *);
 void dv_viewport_draw_label(dv_viewport_t *, cairo_t *);
 
-/* view_glike.c */
+/* view_dag.c */
 void dv_view_layout_glike(dv_view_t *);
 void dv_view_draw_glike(dv_view_t *, cairo_t *);
 
-/* view_bbox.c */
-double dv_view_calculate_hsize(dv_view_t *, dv_dag_node_t *);
+/* view_dag_long.c */
 double dv_view_scale_down(dv_view_t *, double);
 double dv_dag_scale_down(dv_dag_t *, double);
 double dv_view_calculate_vsize(dv_view_t *, dv_dag_node_t *);
@@ -574,12 +573,12 @@ void dv_view_layout_bbox(dv_view_t *);
 void dv_view_draw_bbox(dv_view_t *, cairo_t *);
 
 /* view_timeline.c */
-void dv_view_layout_timeline(dv_view_t *);
-void dv_view_draw_timeline(dv_view_t *, cairo_t *);
-
-/* view_timeline2.c */
 void dv_view_layout_timeline2(dv_view_t *);
 void dv_view_draw_timeline2(dv_view_t *, cairo_t *);
+
+/* view_timeline_ver.c */
+void dv_view_layout_timeline(dv_view_t *);
+void dv_view_draw_timeline(dv_view_t *, cairo_t *);
 
 /* view_paraprof.c */
 void dv_histogram_init(dv_histogram_t *);

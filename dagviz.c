@@ -187,7 +187,7 @@ dv_do_zoomfit_hor_(dv_view_t * V) {
     break;
   case 2:
     // Vertical Timeline
-    d1 = 2 * D->radius + (D->P->num_workers - 1) * (2 * D->radius + DV_HDIS);
+    d1 = 2 * D->radius + (D->P->num_workers - 1) * DV_HDIS;
     d2 = w - 2 * DV_ZOOM_TO_FIT_MARGIN;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
@@ -263,7 +263,7 @@ dv_do_zoomfit_ver_(dv_view_t * V) {
     d2 = h - 2 * DV_ZOOM_TO_FIT_MARGIN;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
-    double lrw = 2 * D->radius + (D->P->num_workers - 1) * (2 * D->radius + DV_HDIS);
+    double lrw = 2 * D->radius + (D->P->num_workers - 1) * DV_HDIS;
     x += (w - lrw * zoom_ratio) * 0.5;
     break;
   case 3:
@@ -1088,7 +1088,7 @@ static gboolean on_entry_search_activate(GtkEntry *entry, gpointer user_data) {
     break;
   case 2:
     // Vertical Timeline
-    d1 = 2*D->radius + (D->P->num_workers - 1) * (2*D->radius + DV_HDIS);
+    d1 = 2*D->radius + (D->P->num_workers - 1) * DV_HDIS;
     d2 = S->vpw - 2 * DV_ZOOM_TO_FIT_MARGIN;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
