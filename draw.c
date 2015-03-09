@@ -571,10 +571,10 @@ dv_view_draw(dv_view_t * V, cairo_t * cr) {
   D->cur_d_ex = D->dmax;
   switch (S->lt) {
   case 0:
-    dv_view_draw_glike(V, cr);
+    dv_view_draw_dag(V, cr);
     break;
   case 1:
-    dv_view_draw_bbox(V, cr);
+    dv_view_draw_dagbox(V, cr);
     break;
   case 2:
     dv_view_draw_timeline(V, cr);

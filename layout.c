@@ -6,10 +6,10 @@ static void
 dv_view_layout_with_type(dv_view_t * V, int lt) {
   switch (lt) {
   case 0:
-    dv_view_layout_glike(V);
+    dv_view_layout_dag(V);
     break;
   case 1:
-    dv_view_layout_bbox(V);
+    dv_view_layout_dagbox(V);
     break;
   case 2:
     dv_view_layout_timeline(V);
@@ -36,8 +36,8 @@ dv_view_layout_with_type(dv_view_t * V, int lt) {
 void
 dv_view_layout(dv_view_t * V) {
   /*
-  dv_view_layout_glike(V);
-  dv_view_layout_bbox(V);
+  dv_view_layout_dag(V);
+  dv_view_layout_dagbox(V);
   dv_view_layout_timeline(V);
   dv_view_layout_timeline2(V);
   if (V - CS->V == 0) {

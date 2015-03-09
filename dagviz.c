@@ -170,7 +170,7 @@ dv_do_zoomfit_hor_(dv_view_t * V) {
   dv_node_coordinate_t *rtco = &D->rt->c[S->lt];
   switch (S->lt) {
   case 0:
-    // Grid-based
+    // DAG
     d1 = rtco->lw + rtco->rw;
     d2 = w - 2 * (DV_ZOOM_TO_FIT_MARGIN + D->radius);
     if (d1 > d2)
@@ -178,7 +178,7 @@ dv_do_zoomfit_hor_(dv_view_t * V) {
     x -= (rtco->rw - rtco->lw) * 0.5 * zoom_ratio;
     break;
   case 1:
-    // Bounding box
+    // DAG with Boxes
     d1 = rtco->lw + rtco->rw;
     d2 = w - 2 * DV_ZOOM_TO_FIT_MARGIN;
     if (d1 > d2)
@@ -708,7 +708,7 @@ dv_do_finding_clicked_node_1(dv_view_t * V, double x, double y, dv_dag_node_t * 
   double vc, hc;
   switch (V->S->lt) {
   case 0:
-    // grid-like layout
+    // DAG
     vc = c->x;
     hc = c->y;
     if (vc - V->D->radius < x && x < vc + V->D->radius
@@ -720,7 +720,7 @@ dv_do_finding_clicked_node_1(dv_view_t * V, double x, double y, dv_dag_node_t * 
   case 2:
   case 3:
   case 4:
-    // bbox/timeline/timeline2/paraprof layouts
+    // dagbox/timeline_ver/timeline/paraprof layouts
     if (c->x - c->lw < x && x < c->x + c->rw
         && c->y < y && y < c->y + c->dw) {
       ret = node;
@@ -1059,7 +1059,7 @@ static gboolean on_entry_search_activate(GtkEntry *entry, gpointer user_data) {
   double d1, d2;
   switch (S->lt) {
   case 0:
-    // Grid-based
+    // DAG
     d1 = co->lw + co->rw;
     d2 = S->vpw - 2 * (DV_ZOOM_TO_FIT_MARGIN + D->radius);
     if (d1 > d2)
@@ -1073,7 +1073,7 @@ static gboolean on_entry_search_activate(GtkEntry *entry, gpointer user_data) {
     y -= co->y * zoom_ratio - (S->vph - 2 * DV_ZOOM_TO_FIT_MARGIN - co->dw * zoom_ratio) * 0.5;
     break;
   case 1:
-    // Bounding box
+    // DAG box
     d1 = co->lw + co->rw;
     d2 = S->vpw - 2 * DV_ZOOM_TO_FIT_MARGIN;
     if (d1 > d2)
@@ -1649,11 +1649,11 @@ dv_view_interface_create_new(dv_view_t * V, dv_viewport_t * VP) {
   // Layout type combobox
   GtkWidget * combobox_lt = I->combobox_lt;
   gtk_widget_set_tooltip_text(GTK_WIDGET(combobox_lt), "How to layout nodes");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "grid", "DAG with round nodes");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "bounding", "DAG with long nodes");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "timeline", "Vertical timeline");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "timeline2", "Horizontal timeline");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "timeline2", "Parallelism profile");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "dag", "DAG");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "dagbox", "DAG with boxes");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "timelinev", "Vertical timeline");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "timeline", "Horizontal timeline");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "paraprof", "Parallelism profile");
   g_signal_connect(G_OBJECT(combobox_lt), "changed", G_CALLBACK(on_combobox_lt_changed), (void *) V);
 
   // Node color combobox
@@ -2283,8 +2283,8 @@ on_help_hotkeys_clicked(GtkToolButton *toolbtn, gpointer user_data) {
   // Label
   GtkWidget * label = gtk_label_new("\n"
                                     "tab : switch control between VIEWs\n"
-                                    "Ctrl + 1 : glike view\n"
-                                    "Ctrl + 2 : bbox view\n"
+                                    "Ctrl + 1 : dag view\n"
+                                    "Ctrl + 2 : dagbox view\n"
                                     "Ctrl + 3 : timeline view\n"
                                     "Ctrl + 4 : timeline2 (horizontal) view\n"
                                     "x : expand\n"

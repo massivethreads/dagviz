@@ -188,7 +188,7 @@ typedef struct dv_dag_node {
   dv_llist_t tails[1]; /* list of inner tail nodes */
 
   /* layout */
-  dv_node_coordinate_t c[DV_NUM_LAYOUT_TYPES]; /* 0:grid, 1:bbox, 2:timeline, 3:timeline2 */
+  dv_node_coordinate_t c[DV_NUM_LAYOUT_TYPES]; /* 0:dag, 1:dagbox, 2:timeline_ver, 3:timeline, 4:paraprof */
 
   /* animation */
   double started; /* started time of animation */
@@ -484,6 +484,7 @@ dv_view_interface_t * dv_viewport_get_interface_to_view(dv_viewport_t *, dv_view
 
 void dv_signal_handler(int);
 
+
 /* print.c */
 char * dv_get_node_kind_name(dr_dag_node_kind_t);
 char * dv_get_edge_kind_name(dr_dag_edge_kind_t);
@@ -539,6 +540,7 @@ void dv_motion_reset_target(dv_motion_t *, long, double, double, double, double)
 void dv_motion_start(dv_motion_t *, long, double, double, double, double);
 void dv_motion_stop(dv_motion_t *);
 
+
 /* draw.c */
 void dv_draw_text(cairo_t *);
 void dv_draw_rounded_rectangle(cairo_t *, double, double, double, double);
@@ -561,24 +563,29 @@ void dv_view_draw_infotags(dv_view_t *, cairo_t *, cairo_matrix_t *);
 void dv_view_draw(dv_view_t *, cairo_t *);
 void dv_viewport_draw_label(dv_viewport_t *, cairo_t *);
 
-/* view_dag.c */
-void dv_view_layout_glike(dv_view_t *);
-void dv_view_draw_glike(dv_view_t *, cairo_t *);
 
-/* view_dag_long.c */
+/* view_dag.c */
+void dv_view_layout_dag(dv_view_t *);
+void dv_view_draw_dag(dv_view_t *, cairo_t *);
+
+
+/* view_dag_box.c */
 double dv_view_scale_down(dv_view_t *, double);
 double dv_dag_scale_down(dv_dag_t *, double);
 double dv_view_calculate_vsize(dv_view_t *, dv_dag_node_t *);
-void dv_view_layout_bbox(dv_view_t *);
-void dv_view_draw_bbox(dv_view_t *, cairo_t *);
+void dv_view_layout_dagbox(dv_view_t *);
+void dv_view_draw_dagbox(dv_view_t *, cairo_t *);
+
 
 /* view_timeline.c */
 void dv_view_layout_timeline2(dv_view_t *);
 void dv_view_draw_timeline2(dv_view_t *, cairo_t *);
 
+
 /* view_timeline_ver.c */
 void dv_view_layout_timeline(dv_view_t *);
 void dv_view_draw_timeline(dv_view_t *, cairo_t *);
+
 
 /* view_paraprof.c */
 void dv_histogram_init(dv_histogram_t *);
