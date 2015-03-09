@@ -336,9 +336,12 @@ dv_view_draw_dagbox_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
   /* Draw path */
   cairo_save(cr);
   cairo_new_path(cr);
-  if (dv_is_union(node) && dv_is_inner_loaded(node)) {
+  if (dv_is_union(node)) {
 
-    if (dv_is_expanding(node) || dv_is_shrinking(node)) {
+    cairo_set_line_width(cr, DV_NODE_LINE_WIDTH_COLLECTIVE_FACTOR * DV_NODE_LINE_WIDTH);
+    
+    if ( dv_is_inner_loaded(node)
+         && (dv_is_expanding(node) || dv_is_shrinking(node))) {
 
       /* Calculate alpha, margin */
       margin = DV_UNION_NODE_MARGIN;

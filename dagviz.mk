@@ -4,7 +4,7 @@ prefix ?= $(parallel2_dir)/sys/inst/$(platform)
 
 CC := gcc
 
-cflags_1 ?= -g -fno-stack-protector #-Wall
+cflags_1 ?= -g #-fno-stack-protector #-Wall
 cflags_2 ?= #-DDV_ENABLE_LIBUNWIND
 cflags_3 ?= #-DDV_ENABLE_BFD
 

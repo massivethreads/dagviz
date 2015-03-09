@@ -85,7 +85,8 @@ typedef struct dv_llist {
 #define DV_NODE_FLAG_EXPANDING    (1 << 4) /* expanding */
 #define DV_NODE_FLAG_SHRINKING    (1 << 5) /* shrinking */
 
-#define DV_ZOOM_TO_FIT_MARGIN 17
+#define DV_ZOOM_TO_FIT_MARGIN 15
+#define DV_ZOOM_TO_FIT_MARGIN_DOWN 20
 #define DV_STRING_LENGTH 100
 #define DV_STATUS_PADDING 7
 #define DV_SAFE_CLICK_RANGE 1
@@ -132,8 +133,8 @@ typedef struct dv_llist {
 #define DV_HISTOGRAM_ENTRY_POOL_SIZE 40000
 
 #define DV_CLIPPING_FRAME_MARGIN 0
-#define DV_HISTOGRAM_MARGIN_DOWN 20
-#define DV_HISTOGRAM_MARGIN_SIDE 15
+#define DV_HISTOGRAM_MARGIN 15
+#define DV_HISTOGRAM_MARGIN_DOWN 23
 
 #define DV_HISTOGRAM_DIVIDE_TO_PIECES 0
 

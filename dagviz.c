@@ -172,7 +172,7 @@ dv_do_zoomfit_hor_(dv_view_t * V) {
   case 0:
     // DAG
     d1 = rtco->lw + rtco->rw;
-    d2 = w - 2 * (DV_ZOOM_TO_FIT_MARGIN + D->radius);
+    d2 = w - 2 * DV_ZOOM_TO_FIT_MARGIN;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     x -= (rtco->rw - rtco->lw) * 0.5 * zoom_ratio;
@@ -204,12 +204,12 @@ dv_do_zoomfit_hor_(dv_view_t * V) {
   case 4:
     // Parallelism profile
     d1 = dv_dag_scale_down(V->D, V->D->et - V->D->bt);
-    d2 = w - 2 * DV_HISTOGRAM_MARGIN_SIDE;
+    d2 = w - 2 * DV_HISTOGRAM_MARGIN;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     y -= V->D->P->num_workers * 2 * V->D->radius * zoom_ratio;
     double dy = (h - DV_HISTOGRAM_MARGIN_DOWN
-                 - DV_ZOOM_TO_FIT_MARGIN
+                 - DV_HISTOGRAM_MARGIN
                  - zoom_ratio
                  * (D->P->num_workers * 2 * D->radius
                     + D->H->max_e->sum_h)
@@ -245,14 +245,14 @@ dv_do_zoomfit_ver_(dv_view_t * V) {
   switch (S->lt) {
   case 0:
     d1 = rtco->dw;
-    d2 = h - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    d2 = h - DV_ZOOM_TO_FIT_MARGIN - DV_ZOOM_TO_FIT_MARGIN_DOWN;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     x -= (rtco->rw - rtco->lw) * 0.5 * zoom_ratio;
     break;
   case 1:
     d1 = rtco->dw;
-    d2 = h - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    d2 = h - DV_ZOOM_TO_FIT_MARGIN - DV_ZOOM_TO_FIT_MARGIN_DOWN;
     if (d1 > d2)
       zoom_ratio = d2 / d1;    
     x -= (rtco->rw - rtco->lw) * 0.5 * zoom_ratio;
@@ -260,7 +260,7 @@ dv_do_zoomfit_ver_(dv_view_t * V) {
   case 2:
     // Vertical Timeline
     d1 = 10 + rtco->dw;
-    d2 = h - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    d2 = h - DV_ZOOM_TO_FIT_MARGIN - DV_ZOOM_TO_FIT_MARGIN_DOWN;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     double lrw = 2 * D->radius + (D->P->num_workers - 1) * DV_HDIS;
@@ -269,18 +269,18 @@ dv_do_zoomfit_ver_(dv_view_t * V) {
   case 3:
     // Horizontal Timeline
     d1 = D->P->num_workers * (D->radius * 2);
-    d2 = h - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    d2 = h - DV_ZOOM_TO_FIT_MARGIN - DV_ZOOM_TO_FIT_MARGIN_DOWN;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     break;
   case 4:
     // Parallelism profile
     d1 = D->P->num_workers * (2 * D->radius) + D->H->max_e->sum_h;
-    d2 = h - DV_ZOOM_TO_FIT_MARGIN - DV_HISTOGRAM_MARGIN_DOWN;
+    d2 = h - DV_HISTOGRAM_MARGIN - DV_HISTOGRAM_MARGIN_DOWN;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     y -= D->P->num_workers * (2 * D->radius) * zoom_ratio;
-    double dx = (w - 2 * DV_HISTOGRAM_MARGIN_SIDE - zoom_ratio * dv_dag_scale_down(V->D, V->D->et - V->D->bt)) / 2.0;
+    double dx = (w - 2 * DV_HISTOGRAM_MARGIN - zoom_ratio * dv_dag_scale_down(V->D, V->D->et - V->D->bt)) / 2.0;
     if (dx > 0)
       x += dx;
     break;
@@ -538,7 +538,7 @@ dv_viewport_draw(dv_viewport_t * VP, cairo_t * cr) {
         S->basey = DV_ZOOM_TO_FIT_MARGIN;
         break;
       case 4:
-        S->basex = DV_HISTOGRAM_MARGIN_SIDE;
+        S->basex = DV_HISTOGRAM_MARGIN;
         S->basey = S->vph - DV_HISTOGRAM_MARGIN_DOWN;
         break;
       default:
@@ -1061,16 +1061,16 @@ static gboolean on_entry_search_activate(GtkEntry *entry, gpointer user_data) {
   case 0:
     // DAG
     d1 = co->lw + co->rw;
-    d2 = S->vpw - 2 * (DV_ZOOM_TO_FIT_MARGIN + D->radius);
+    d2 = S->vpw - 2 * DV_ZOOM_TO_FIT_MARGIN;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     d1 = co->dw;
-    d2 = S->vph - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    d2 = S->vph - DV_ZOOM_TO_FIT_MARGIN - DV_ZOOM_TO_FIT_MARGIN_DOWN;
     if (d1 > d2)
       zoom_ratio = dv_min(zoom_ratio, d2 / d1);
     zoom_ratio = dv_min(zoom_ratio, dv_min(S->zoom_ratio_x, S->zoom_ratio_y));
     x -= (co->x + (co->rw - co->lw) * 0.5) * zoom_ratio;
-    y -= co->y * zoom_ratio - (S->vph - 2 * DV_ZOOM_TO_FIT_MARGIN - co->dw * zoom_ratio) * 0.5;
+    y -= co->y * zoom_ratio - (S->vph - DV_ZOOM_TO_FIT_MARGIN - DV_ZOOM_TO_FIT_MARGIN_DOWN - co->dw * zoom_ratio) * 0.5;
     break;
   case 1:
     // DAG box
@@ -1079,12 +1079,12 @@ static gboolean on_entry_search_activate(GtkEntry *entry, gpointer user_data) {
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     d1 = co->dw;
-    d2 = S->vph - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    d2 = S->vph - DV_ZOOM_TO_FIT_MARGIN - DV_ZOOM_TO_FIT_MARGIN_DOWN;
     if (d1 > d2)
       zoom_ratio = dv_min(zoom_ratio, d2 / d1);
     zoom_ratio = dv_min(zoom_ratio, dv_min(S->zoom_ratio_x, S->zoom_ratio_y));
     x -= (co->x + (co->rw - co->lw) * 0.5) * zoom_ratio;
-    y -= co->y * zoom_ratio - (S->vph - 2 * DV_ZOOM_TO_FIT_MARGIN - co->dw * zoom_ratio) * 0.5;
+    y -= co->y * zoom_ratio - (S->vph - DV_ZOOM_TO_FIT_MARGIN - DV_ZOOM_TO_FIT_MARGIN_DOWN - co->dw * zoom_ratio) * 0.5;
     break;
   case 2:
     // Vertical Timeline
@@ -1093,17 +1093,17 @@ static gboolean on_entry_search_activate(GtkEntry *entry, gpointer user_data) {
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     d1 = co->dw;
-    d2 = S->vph - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    d2 = S->vph - DV_ZOOM_TO_FIT_MARGIN - DV_ZOOM_TO_FIT_MARGIN_DOWN;
     if (d1 > d2)
       zoom_ratio = dv_min(zoom_ratio, d2 / d1);
     zoom_ratio = dv_min(zoom_ratio, dv_min(S->zoom_ratio_x, S->zoom_ratio_y));
     x -= (co->x + (co->rw - co->lw) * 0.5) * zoom_ratio - S->vpw * 0.5;
-    y -= co->y * zoom_ratio - (S->vph - 2 * DV_ZOOM_TO_FIT_MARGIN - co->dw * zoom_ratio) * 0.5;
+    y -= co->y * zoom_ratio - (S->vph - DV_ZOOM_TO_FIT_MARGIN  - DV_ZOOM_TO_FIT_MARGIN_DOWN - co->dw * zoom_ratio) * 0.5;
     break;
   case 3:
     // Horizontal Timeline
     d1 = D->P->num_workers * (D->radius * 2);
-    d2 = S->vph - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    d2 = S->vph - DV_ZOOM_TO_FIT_MARGIN - DV_ZOOM_TO_FIT_MARGIN_DOWN;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     d1 = co->rw;
@@ -1111,12 +1111,12 @@ static gboolean on_entry_search_activate(GtkEntry *entry, gpointer user_data) {
     if (d1 > d2)
       zoom_ratio = dv_min(zoom_ratio, d2 / d1);
     x -= (co->x + co->rw * 0.5) * zoom_ratio - S->vpw * 0.5;
-    y -= co->y * zoom_ratio - (S->vph - 2 * DV_ZOOM_TO_FIT_MARGIN - co->dw * zoom_ratio) * 0.5;
+    y -= co->y * zoom_ratio - (S->vph - DV_ZOOM_TO_FIT_MARGIN - DV_ZOOM_TO_FIT_MARGIN_DOWN - co->dw * zoom_ratio) * 0.5;
     break;
   case 4:
     // Parallelism profile
     d1 = D->P->num_workers * (D->radius * 2);
-    d2 = S->vph - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    d2 = S->vph - DV_ZOOM_TO_FIT_MARGIN - DV_ZOOM_TO_FIT_MARGIN_DOWN;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     d1 = co->rw;
@@ -1124,7 +1124,7 @@ static gboolean on_entry_search_activate(GtkEntry *entry, gpointer user_data) {
     if (d1 > d2)
       zoom_ratio = dv_min(zoom_ratio, d2 / d1);
     x -= (co->x + co->rw * 0.5) * zoom_ratio - S->vpw * 0.5;
-    y -= co->y * zoom_ratio - (S->vph - 2 * DV_ZOOM_TO_FIT_MARGIN - co->dw * zoom_ratio) * 0.5;
+    y -= co->y * zoom_ratio - (S->vph - DV_ZOOM_TO_FIT_MARGIN - DV_ZOOM_TO_FIT_MARGIN_DOWN - co->dw * zoom_ratio) * 0.5;
     break;
   default:
     dv_check(0);
