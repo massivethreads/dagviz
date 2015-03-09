@@ -381,7 +381,7 @@ dv_view_change_lt(dv_view_t * V, int new_lt) {
     switch (new_lt) {
     case 0:
       dv_view_change_nc(V, 0);
-      dv_view_change_eaffix(V, 1);
+      dv_view_change_eaffix(V, 0);
       break;
     case 1:
       dv_view_change_nc(V, 0);

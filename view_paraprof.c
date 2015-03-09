@@ -629,10 +629,10 @@ dv_view_draw_paraprof(dv_view_t * V, cairo_t * cr) {
     cairo_show_text(cr, s);
     yy += 2 * V->D->radius;
   }
-  cairo_move_to(cr, 20, - 64 * V->D->radius);
-  cairo_line_to(cr, V->S->vpw - 20, -64 * V->D->radius);
-  cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
-  cairo_stroke(cr);
+  //cairo_move_to(cr, 20, - 64 * V->D->radius);
+  //cairo_line_to(cr, V->S->vpw - 20, -64 * V->D->radius);
+  //cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
+  //cairo_stroke(cr);
   // Draw parallelism profile
   if (V->D->H)
     dv_histogram_draw(V->D->H, cr);
