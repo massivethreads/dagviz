@@ -443,7 +443,12 @@ void dv_view_draw_dag(dv_view_t *V, cairo_t *cr) {
   dv_llist_init(V->D->itl);
   dv_view_draw_dag_node_r(V, cr, V->D->rt);
   // Draw edges
+  cairo_save(cr);
+  cairo_new_path(cr);
   dv_view_draw_dag_edge_r(V, cr, V->D->rt);
+  cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, 1.0);
+  cairo_stroke(cr);
+  cairo_restore(cr);
 }
 
 /*-----------------end of DAG Drawing functions-----------*/

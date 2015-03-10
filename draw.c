@@ -251,15 +251,16 @@ double dv_view_get_alpha_fading_in(dv_view_t *V, dv_dag_node_t *node) {
   return ret;
 }
 
-void dv_view_draw_edge_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *u, dv_dag_node_t *v) {
-  dv_view_status_t *S = V->S;
+void
+dv_view_draw_edge_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * u, dv_dag_node_t * v) {
+  dv_view_status_t * S = V->S;
   if (S->et == 0)
     return;
   
   /* Get coordinates */
   double x1, y1, x2, y2;
-  dv_node_coordinate_t *uc = &u->c[S->lt];
-  dv_node_coordinate_t *vc = &v->c[S->lt];
+  dv_node_coordinate_t * uc = &u->c[S->lt];
+  dv_node_coordinate_t * vc = &v->c[S->lt];
   x1 = uc->x;
   y1 = uc->y + uc->dw;
   x2 = vc->x;
@@ -279,9 +280,9 @@ void dv_view_draw_edge_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *u, dv_dag_nod
     alpha = dv_view_get_alpha_fading_in(V, u->parent);
 
   /* Draw edge */
-  dr_pi_dag_node *pi;
-  cairo_save(cr);
-  cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
+  dr_pi_dag_node * pi;
+  //cairo_save(cr);
+  //cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
   cairo_move_to(cr, x1, y1);
   // edge affix
   double a = S->edge_affix;
@@ -322,8 +323,8 @@ void dv_view_draw_edge_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *u, dv_dag_nod
   if (a != 0) {
     cairo_line_to(cr, x2, y2 + a);
   }    
-  cairo_stroke(cr);
-  cairo_restore(cr);
+  //cairo_stroke(cr);
+  //cairo_restore(cr);
 }
 
 /*-----------------end of Common Drawing functions-----------*/
