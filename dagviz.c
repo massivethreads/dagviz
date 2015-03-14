@@ -940,10 +940,10 @@ dv_do_button_event(dv_view_t * V, GdkEventButton * event) {
   }
 }
 
-static gboolean on_button_event(GtkWidget *widget, GdkEventButton *event, gpointer user_data)
-{
-  dv_viewport_t *VP = (dv_viewport_t *) user_data;
-  dv_view_interface_t *I = dv_viewport_get_interface_to_view(VP, CS->activeV);
+static gboolean
+on_button_event(GtkWidget * widget, GdkEventButton * event, gpointer user_data) {
+  dv_viewport_t * VP = (dv_viewport_t *) user_data;
+  dv_view_interface_t * I = dv_viewport_get_interface_to_view(VP, CS->activeV);
   if (I) {
     dv_do_button_event(CS->activeV, event);
   } else {
@@ -955,10 +955,11 @@ static gboolean on_button_event(GtkWidget *widget, GdkEventButton *event, gpoint
   return TRUE;
 }
 
-static void dv_do_motion_event(dv_view_t *V, GdkEventMotion *event) {
-  dv_view_status_t *S = V->S;
+static void
+dv_do_motion_event(dv_view_t * V, GdkEventMotion * event) {
+  dv_view_status_t * S = V->S;
+  /* Dragging */
   if (S->drag_on) {
-    // Drag
     double deltax = event->x - S->pressx;
     double deltay = event->y - S->pressy;
     S->x += deltax;
@@ -969,12 +970,61 @@ static void dv_do_motion_event(dv_view_t *V, GdkEventMotion *event) {
     S->pressy = event->y;
     dv_queue_draw_d(V);
   }
+  /* Hovering */
+  double ox = (event->x - S->basex - S->x) / S->zoom_ratio_x;
+  double oy = (event->y - S->basey - S->y) / S->zoom_ratio_y;
+  dv_dag_node_t * node = dv_do_finding_clicked_node(V, ox, oy);
+  if (node
+      && node != S->last_hovered_node
+      && !dv_is_shrinking(node->parent)
+      && !dv_is_expanding(node->parent)) {
+    switch (S->hm) {
+    case 0:
+      break;
+    case 1:
+      /* Info */
+      if (!dv_llist_remove(V->D->P->itl, (void *) node->pii)) {
+        dv_llist_add(V->D->P->itl, (void *) node->pii);
+      }
+      dv_queue_draw_d_p(V);
+      break;
+    case 2:
+      /* Expand */
+      if (dv_is_union(node)) {
+        if ((!dv_is_inner_loaded(node) || dv_is_shrinked(node) || dv_is_shrinking(node))
+            && !dv_is_expanding(node))
+          dv_do_expanding_one_1(V, node);
+      }
+      break;
+    case 3:
+      /* Collapse */
+      if (!dv_is_union(node)) {
+        dv_do_collapsing_one_r(V, node->parent);
+      }
+      break;
+    case 4:
+      /* Expand/Collapse */
+      if (dv_is_union(node)) {
+        if ((!dv_is_inner_loaded(node) || dv_is_shrinked(node) || dv_is_shrinking(node))
+            && !dv_is_expanding(node))
+          dv_do_expanding_one_1(V, node);
+      } else {
+        dv_do_collapsing_one_r(V, node->parent);
+      }
+      break;
+    default:
+      dv_check(0);
+    }
+    S->last_hovered_node = node;
+  }
+  if (!node)
+    S->last_hovered_node = NULL;
 }
 
-static gboolean on_motion_event(GtkWidget *widget, GdkEventMotion *event, gpointer user_data)
-{
-  dv_viewport_t *VP = (dv_viewport_t *) user_data;
-  dv_view_interface_t *I = dv_viewport_get_interface_to_view(VP, CS->activeV);
+static gboolean
+on_motion_event(GtkWidget * widget, GdkEventMotion * event, gpointer user_data) {
+  dv_viewport_t * VP = (dv_viewport_t *) user_data;
+  dv_view_interface_t * I = dv_viewport_get_interface_to_view(VP, CS->activeV);
   if (I) {
     dv_do_motion_event(CS->activeV, event);
   } else {
@@ -1173,9 +1223,17 @@ static void on_togg_focused_toggled(GtkWidget *widget, gpointer user_data) {
   dv_do_set_focused_view(V, focused);
 }
 
-static gboolean on_combobox_cm_changed(GtkComboBox *widget, gpointer user_data) {
-  dv_view_t *V = (dv_view_t *) user_data;
+static gboolean
+on_combobox_cm_changed(GtkComboBox * widget, gpointer user_data) {
+  dv_view_t * V = (dv_view_t *) user_data;
   V->S->cm = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+  return TRUE;
+}
+
+static gboolean
+on_combobox_hm_changed(GtkComboBox * widget, gpointer user_data) {
+  dv_view_t * V = (dv_view_t *) user_data;
+  V->S->hm = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
   return TRUE;
 }
 
@@ -1450,6 +1508,8 @@ void dv_view_status_init(dv_view_t *V, dv_view_status_t *S) {
   S->do_scale_radix = 0;
   S->do_scale_radius = 0;
   dv_motion_init(S->m, V);
+  S->last_hovered_node = NULL;
+  S->hm = DV_HOVER_MODE_INIT;
 }
 
 void dv_view_init(dv_view_t *V) {
@@ -1550,7 +1610,7 @@ dv_view_interface_create_new(dv_view_t * V, dv_viewport_t * VP) {
   // Focused toggle
   GtkToolItem * btn_togg_focused = gtk_tool_item_new();
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_togg_focused, -1);
-  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_togg_focused), "Indicates if this VIEW is focused for hotkeys (use tab key to change btw VIEWs)");
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_togg_focused), "Indicates if this VIEW is focused for hotkeys (use tab key to change btwn VIEWs)");
   GtkWidget *togg_focused = I->togg_focused;
   gtk_container_add(GTK_CONTAINER(btn_togg_focused), togg_focused);
   g_signal_connect(G_OBJECT(togg_focused), "toggled", G_CALLBACK(on_togg_focused_toggled), (void *) V);
@@ -1568,13 +1628,27 @@ dv_view_interface_create_new(dv_view_t * V, dv_viewport_t * VP) {
   // Click mode combobox
   GtkToolItem *btn_combo_cm = gtk_tool_item_new();
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo_cm, -1);
-  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_combo_cm), "What to do when clicking a node");
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_combo_cm), "When clicking a node");
   GtkWidget *combobox_cm = gtk_combo_box_text_new();
   gtk_container_add(GTK_CONTAINER(btn_combo_cm), combobox_cm);
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_cm), "info", "Show info tag of node");
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_cm), "expand", "Expand/Collapse node");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_cm), "info", "Show info tag");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_cm), "expand", "Expand/Collapse");
   gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_cm), S->cm);
   g_signal_connect(G_OBJECT(combobox_cm), "changed", G_CALLBACK(on_combobox_cm_changed), (void *) V);
+
+  // Hover mode combobox
+  GtkToolItem * btn_combo_hm = gtk_tool_item_new();
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_combo_hm, -1);
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_combo_hm), "When hovering a node");
+  GtkWidget * combobox_hm = gtk_combo_box_text_new();
+  gtk_container_add(GTK_CONTAINER(btn_combo_hm), combobox_hm);
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_hm), "none", "None");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_hm), "info", "Info box");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_hm), "expand", "Expand");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_hm), "collapse", "Colapse");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_hm), "expcoll", "Expand/Collapse");
+  gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_hm), S->hm);
+  g_signal_connect(G_OBJECT(combobox_hm), "changed", G_CALLBACK(on_combobox_hm_changed), (void *) V);
 
   // Zoomfit-horizontally button
   GtkToolItem *btn_zoomfit_hor = gtk_tool_button_new(NULL, NULL);
@@ -1698,7 +1772,7 @@ dv_view_interface_create_new(dv_view_t * V, dv_viewport_t * VP) {
 
   // Edge affix toggle
   GtkWidget *togg_eaffix = I->togg_eaffix;
-  gtk_widget_set_tooltip_text(GTK_WIDGET(togg_eaffix), "Add a short line segment btw edges & nodes");
+  gtk_widget_set_tooltip_text(GTK_WIDGET(togg_eaffix), "Add a short line segment btwn edges & nodes");
   g_signal_connect(G_OBJECT(togg_eaffix), "toggled", G_CALLBACK(on_togg_eaffix_toggled), (void *) V);
 
   // Grid
@@ -1737,7 +1811,7 @@ dv_view_interface_create_new(dv_view_t * V, dv_viewport_t * VP) {
   gtk_grid_attach(GTK_GRID(grid), I->combobox_et, 1, 5, 1, 1);
 
   // HBox 7
-  GtkWidget * label_7 = gtk_label_new("Affix btw edges & nodes: ");
+  GtkWidget * label_7 = gtk_label_new("Affix btwn edges & nodes: ");
   gtk_grid_attach(GTK_GRID(grid), label_7, 0, 6, 1, 1);
   gtk_grid_attach(GTK_GRID(grid), I->togg_eaffix, 1, 6, 1, 1);
 

@@ -108,7 +108,8 @@ typedef struct dv_llist {
 #define DV_FROMBT_INIT 0
 #define DV_EDGE_TYPE_INIT 3
 #define DV_EDGE_AFFIX_LENGTH 0//10
-#define DV_CLICK_MODE_INIT 0
+#define DV_CLICK_MODE_INIT 0 // 0:info, 1:expand/collapse
+#define DV_HOVER_MODE_INIT 2 // 0:none, 1:info, 2:expand, 3:collapse, 4:expand/collapse
 
 #define DV_COLOR_POOL_SIZE 100
 #define DV_NUM_COLOR_POOLS 6
@@ -287,6 +288,9 @@ typedef struct dv_view_status {
 
   /* moving animation */
   dv_motion_t m[1];
+
+  dv_dag_node_t * last_hovered_node;
+  int hm; /* hovering mode: 0:info, 1:expand, 2:collapse, 3:expand/collapse */
 } dv_view_status_t;
 
 typedef struct dv_viewport dv_viewport_t;
