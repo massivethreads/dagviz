@@ -621,7 +621,6 @@ dv_viewport_draw_label(dv_viewport_t * VP, cairo_t * cr) {
 
 void
 dv_view_draw_legend(dv_view_t * V, cairo_t * cr) {
-  /*
   dv_dag_t * D = V->D;
   dv_view_status_t * S = V->S;
   
@@ -645,7 +644,6 @@ dv_view_draw_legend(dv_view_t * V, cairo_t * cr) {
   default:
     dv_check(0);
   }
-  */
 }
 
 /*-----end of Main drawing functions-----*/

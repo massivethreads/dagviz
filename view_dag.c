@@ -459,15 +459,17 @@ dv_view_draw_legend_dag(dv_view_t * V, cairo_t * cr) {
   cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
   cairo_set_font_size(cr, 12);
 
-  const int L = 15;
+  const int L = 20;
   double box_w = 20;
-  double box_h = 15;
-  double box_dis = 7;
+  double box_h = 20;
+  double box_dis = 12;
+  double box_down_margin = 2;
   char s[L];
   const double char_width = 7;
-  const double line_height = 15;
+  const double line_height = 27;
   double x = V->S->vpw  - DV_STATUS_PADDING - L * char_width;
   double y = DV_STATUS_PADDING;
+  double xx, yy, xxt;
   cairo_new_path(cr);
 
   /* create */
@@ -477,7 +479,9 @@ dv_view_draw_legend_dag(dv_view_t * V, cairo_t * cr) {
   cairo_show_text(cr, s);
   // box
   cairo_new_path(cr);
-  dv_draw_path_isosceles_triangle(cr, x - box_dis - box_w, y - box_h, box_w, box_h);
+  xx = x - box_dis - box_w;
+  yy = y + box_down_margin - box_h;
+  dv_draw_path_isosceles_triangle(cr, xx, yy, box_w, box_h);
   cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
   cairo_stroke(cr);
   
@@ -488,7 +492,9 @@ dv_view_draw_legend_dag(dv_view_t * V, cairo_t * cr) {
   cairo_show_text(cr, s);
   // box
   cairo_new_path(cr);
-  dv_draw_path_isosceles_triangle_upside_down(cr, x - box_dis - box_w, y - box_h, box_w, box_h);
+  xx = x - box_dis - box_w;
+  yy = y + box_down_margin - box_h;
+  dv_draw_path_isosceles_triangle_upside_down(cr, xx, yy, box_w, box_h);
   cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
   cairo_stroke(cr);
   
@@ -497,36 +503,96 @@ dv_view_draw_legend_dag(dv_view_t * V, cairo_t * cr) {
   y += line_height;
   cairo_move_to(cr, x, y);
   cairo_show_text(cr, s);
-  
+  // circle
+  xx = x - box_dis - box_w;
+  yy = y + box_down_margin - box_h;
+  dv_draw_path_circle(cr, xx, yy, dv_min(box_w, box_h));
+  cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
+  cairo_stroke(cr);
+
   /* section */
   sprintf(s, "section");
   y += line_height;
   cairo_move_to(cr, x, y);
   cairo_show_text(cr, s);
+  // box
+  xx = x - box_dis - box_w;
+  yy = y + box_down_margin - box_h;
+  dv_draw_path_rounded_rectangle(cr, xx, yy, box_w, box_h);
+  cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
+  cairo_stroke(cr);
   
   /* task */
   sprintf(s, "task");
   y += line_height;
   cairo_move_to(cr, x, y);
   cairo_show_text(cr, s);
+  // box
+  xx = x - box_dis - box_w;
+  yy = y + box_down_margin - box_h;
+  dv_draw_path_rectangle(cr, xx, yy, box_w, box_h);
+  cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
+  cairo_stroke(cr);
   
   /* expandable */
   sprintf(s, "expandable");
   y += line_height;
   cairo_move_to(cr, x, y);
   cairo_show_text(cr, s);
+  // boxes
+  cairo_save(cr);
+  cairo_set_line_width(cr, DV_NODE_LINE_WIDTH_COLLECTIVE_FACTOR * DV_NODE_LINE_WIDTH);
+  cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
+  xx = xxt = x - box_dis - box_w;
+  yy = y + box_down_margin - box_h;
+  dv_draw_path_rectangle(cr, xx, yy, box_w, box_h);
+  cairo_stroke(cr);
+  xx = xxt = xxt - box_dis * 0.5 - box_w;
+  yy = y + box_down_margin - box_h;
+  dv_draw_path_rounded_rectangle(cr, xx, yy, box_w, box_h);
+  cairo_stroke(cr);
+  cairo_restore(cr);
   
   /* worker */
-  sprintf(s, "worker");
+  sprintf(s, "worker 0, 1, 2, ...");
   y += line_height;
   cairo_move_to(cr, x, y);
   cairo_show_text(cr, s);
+  // boxes
+  double r, g, b, a;
+  xx = xxt = x - box_dis - box_w;
+  yy = y + box_down_margin - box_h;
+  dv_draw_path_rectangle(cr, xx, yy, box_w, box_h);
+  dv_lookup_color_value(2, &r, &g, &b, &a);
+  cairo_set_source_rgba(cr, r, g, b, a);
+  cairo_fill(cr);
+  xx = xxt = xxt - box_dis * 0.5 - box_w;
+  yy = y + box_down_margin - box_h;
+  dv_draw_path_rectangle(cr, xx, yy, box_w, box_h);
+  dv_lookup_color_value(1, &r, &g, &b, &a);
+  cairo_set_source_rgba(cr, r, g, b, a);
+  cairo_fill(cr);
+  xx = xxt = xxt - box_dis * 0.5 - box_w;
+  yy = y + box_down_margin - box_h;
+  dv_draw_path_rectangle(cr, xx, yy, box_w, box_h);
+  dv_lookup_color_value(0, &r, &g, &b, &a);
+  cairo_set_source_rgba(cr, r, g, b, a);
+  cairo_fill(cr);
   
   /* many workers */
   sprintf(s, "many workers");
   y += line_height;
   cairo_move_to(cr, x, y);
+  cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
   cairo_show_text(cr, s);
+  // box
+  xx = x - box_dis - box_w;
+  yy = y + box_down_margin - box_h;
+  cairo_pattern_t * pat = dv_get_color_linear_pattern(box_w, 1.0);
+  dv_draw_path_rectangle(cr, xx, yy, box_w, box_h);
+  cairo_translate(cr, xx, yy);
+  cairo_set_source(cr, pat);
+  cairo_fill(cr);
   
   cairo_restore(cr);
 }

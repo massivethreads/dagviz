@@ -547,7 +547,8 @@ dv_viewport_draw(dv_viewport_t * VP, cairo_t * cr) {
       // Draw
       dv_view_prepare_drawing(V, cr);
       dv_view_draw_status(V, cr, count);
-      dv_view_draw_legend(V, cr);
+      if (V->S->show_legend)
+        dv_view_draw_legend(V, cr);
       count++;
     }
   dv_viewport_draw_label(VP, cr);
@@ -1478,9 +1479,16 @@ on_checkbox_scale_radix_toggled(GtkWidget * widget, gpointer user_data) {
 }
 
 static void
+on_checkbox_legend_toggled(GtkWidget * widget, gpointer user_data) {
+  dv_view_t * V = (dv_view_t *) user_data;
+  V->S->show_legend = 1 - V->S->show_legend;
+  dv_queue_draw(V);
+}
+
+static void
 on_checkbox_scale_radius_toggled(GtkWidget * widget, gpointer user_data) {
   dv_view_t * V = (dv_view_t *) user_data;
-  V->S->do_scale_radius = 1 - V->S->do_scale_radius;
+  V->S->show_legend = 1 - V->S->show_legend;
 }
 
 
@@ -1511,6 +1519,7 @@ void dv_view_status_init(dv_view_t *V, dv_view_status_t *S) {
   dv_motion_init(S->m, V);
   S->last_hovered_node = NULL;
   S->hm = DV_HOVER_MODE_INIT;
+  S->show_legend = DV_SHOW_LEGEND_INIT;
 }
 
 void dv_view_init(dv_view_t *V) {
@@ -1816,6 +1825,14 @@ dv_view_interface_create_new(dv_view_t * V, dv_viewport_t * VP) {
   gtk_grid_attach(GTK_GRID(grid), label_7, 0, 6, 1, 1);
   gtk_grid_attach(GTK_GRID(grid), I->togg_eaffix, 1, 6, 1, 1);
 
+  // HBox 8
+  I->checkbox_legend = gtk_check_button_new();
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(I->checkbox_legend), V->S->show_legend);
+  g_signal_connect(G_OBJECT(I->checkbox_legend), "toggled", G_CALLBACK(on_checkbox_legend_toggled), (void *) V);
+  GtkWidget * label_8 = gtk_label_new("Show legend");
+  gtk_grid_attach(GTK_GRID(grid), label_8, 0, 7, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), I->checkbox_legend, 1, 7, 1, 1);  
+    
 
   // Set attribute values
   dv_view_interface_set_values(V, I);
