@@ -547,6 +547,7 @@ dv_viewport_draw(dv_viewport_t * VP, cairo_t * cr) {
       // Draw
       dv_view_prepare_drawing(V, cr);
       dv_view_draw_status(V, cr, count);
+      dv_view_draw_legend(V, cr);
       count++;
     }
   dv_viewport_draw_label(VP, cr);
@@ -2672,7 +2673,7 @@ dv_create_menubar() {
     dag_menu = gtk_menu_new();
     gtk_menu_item_set_submenu(GTK_MENU_ITEM(dag), dag_menu);
     for (j=0; j<CS->nP; j++) {
-      sprintf(s, "PIDAG %d: [%0.0lfMB,%ld] %s", j, ((double) CS->P[j].stat->st_size) / (1024.0 * 1024.0), CS->P[j].n, CS->P[j].fn);
+      sprintf(s, "PIDAG %d: [%ld nodes] %s", j, CS->P[j].n, CS->P[j].fn);
       item = gtk_radio_menu_item_new_with_label(group, s);
       gtk_menu_shell_append(GTK_MENU_SHELL(dag_menu), item);
       group = gtk_radio_menu_item_get_group(GTK_RADIO_MENU_ITEM(item));
@@ -2689,7 +2690,7 @@ dv_create_menubar() {
   //pidag = gtk_menu_item_new_with_label("Add new dag file");
   //gtk_menu_shell_append(GTK_MENU_SHELL(pidags_menu), pidag);
   for (i=0; i<CS->nP; i++) {
-    sprintf(s, "PIDAG %d: [%0.0lfMB,%ld] %s", i, ((double) CS->P[i].stat->st_size) / (1024.0 * 1024.0), CS->P[i].n, CS->P[i].fn);
+    sprintf(s, "PIDAG %d: [%ld nodes] %s", i, CS->P[i].n, CS->P[i].fn);
     pidag = gtk_menu_item_new_with_label(s);
     gtk_menu_shell_append(GTK_MENU_SHELL(pidags_menu), pidag);
   }

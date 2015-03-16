@@ -436,7 +436,8 @@ static void dv_view_draw_dag_edge_r(dv_view_t *V, cairo_t *cr, dv_dag_node_t *u)
   }
 }
 
-void dv_view_draw_dag(dv_view_t *V, cairo_t *cr) {
+void
+dv_view_draw_dag(dv_view_t * V, cairo_t * cr) {
   cairo_set_line_width(cr, DV_NODE_LINE_WIDTH);
   int i;
   // Draw nodes
@@ -450,5 +451,86 @@ void dv_view_draw_dag(dv_view_t *V, cairo_t *cr) {
   cairo_stroke(cr);
   cairo_restore(cr);
 }
+
+void
+dv_view_draw_legend_dag(dv_view_t * V, cairo_t * cr) {
+  cairo_save(cr);
+  cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
+  cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
+  cairo_set_font_size(cr, 12);
+
+  const int L = 15;
+  double box_w = 20;
+  double box_h = 15;
+  double box_dis = 7;
+  char s[L];
+  const double char_width = 7;
+  const double line_height = 15;
+  double x = V->S->vpw  - DV_STATUS_PADDING - L * char_width;
+  double y = DV_STATUS_PADDING;
+  cairo_new_path(cr);
+
+  /* create */
+  sprintf(s, "create");
+  y += line_height;
+  cairo_move_to(cr, x, y);
+  cairo_show_text(cr, s);
+  // box
+  cairo_new_path(cr);
+  dv_draw_path_isosceles_triangle(cr, x - box_dis - box_w, y - box_h, box_w, box_h);
+  cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
+  cairo_stroke(cr);
+  
+  /* wait */
+  sprintf(s, "wait");
+  y += line_height;
+  cairo_move_to(cr, x, y);
+  cairo_show_text(cr, s);
+  // box
+  cairo_new_path(cr);
+  dv_draw_path_isosceles_triangle_upside_down(cr, x - box_dis - box_w, y - box_h, box_w, box_h);
+  cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
+  cairo_stroke(cr);
+  
+  /* end */
+  sprintf(s, "end");
+  y += line_height;
+  cairo_move_to(cr, x, y);
+  cairo_show_text(cr, s);
+  
+  /* section */
+  sprintf(s, "section");
+  y += line_height;
+  cairo_move_to(cr, x, y);
+  cairo_show_text(cr, s);
+  
+  /* task */
+  sprintf(s, "task");
+  y += line_height;
+  cairo_move_to(cr, x, y);
+  cairo_show_text(cr, s);
+  
+  /* expandable */
+  sprintf(s, "expandable");
+  y += line_height;
+  cairo_move_to(cr, x, y);
+  cairo_show_text(cr, s);
+  
+  /* worker */
+  sprintf(s, "worker");
+  y += line_height;
+  cairo_move_to(cr, x, y);
+  cairo_show_text(cr, s);
+  
+  /* many workers */
+  sprintf(s, "many workers");
+  y += line_height;
+  cairo_move_to(cr, x, y);
+  cairo_show_text(cr, s);
+  
+  cairo_restore(cr);
+}
+
+
 
 /*-----------------end of DAG Drawing functions-----------*/

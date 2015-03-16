@@ -159,10 +159,11 @@ typedef struct dv_pidag {
   long num_workers;		/* number of workers */
   dr_pi_dag_node * T;		/* all nodes in a contiguous array */
   dr_pi_dag_edge * E;		/* all edges in a contiguous array */
-  dr_pi_string_table S[1];
+  dr_pi_string_table * S;
   char * fn; /* dag file name */
-  struct stat stat[1]; /* file stat structure */
+  //struct stat stat[1]; /* file stat structure */
   dv_llist_t itl[1]; /* list of pii's of nodes that have info tag */
+  dr_pi_dag * G;
 } dv_pidag_t;
 
 typedef struct dv_node_coordinate {
@@ -567,11 +568,13 @@ void dv_view_draw_infotag_1(dv_view_t *, cairo_t *, cairo_matrix_t *, dv_dag_nod
 void dv_view_draw_infotags(dv_view_t *, cairo_t *, cairo_matrix_t *);
 void dv_view_draw(dv_view_t *, cairo_t *);
 void dv_viewport_draw_label(dv_viewport_t *, cairo_t *);
+void dv_view_draw_legend(dv_view_t *, cairo_t *);
 
 
 /* view_dag.c */
 void dv_view_layout_dag(dv_view_t *);
 void dv_view_draw_dag(dv_view_t *, cairo_t *);
+void dv_view_draw_legend_dag(dv_view_t *, cairo_t *);
 
 
 /* view_dag_box.c */

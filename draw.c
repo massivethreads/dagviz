@@ -619,4 +619,33 @@ dv_viewport_draw_label(dv_viewport_t * VP, cairo_t * cr) {
   cairo_restore(cr);
 }
 
+void
+dv_view_draw_legend(dv_view_t * V, cairo_t * cr) {
+  /*
+  dv_dag_t * D = V->D;
+  dv_view_status_t * S = V->S;
+  
+  switch (S->lt) {
+  case 0:
+    dv_view_draw_legend_dag(V, cr);
+    break;
+  case 1:
+    //dv_view_draw_legend_dagbox(V, cr);
+    break;
+  case 2:
+    //dv_view_draw_legend_timeline(V, cr);
+    break;
+  case 3:
+    //dv_view_draw_legend_timeline2(V, cr);
+    break;
+  case 4: {
+    //dv_view_draw_legend_paraprof(V, cr);
+    break;
+  }
+  default:
+    dv_check(0);
+  }
+  */
+}
+
 /*-----end of Main drawing functions-----*/

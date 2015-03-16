@@ -8,11 +8,39 @@ dv_pidag_t * dv_pidag_read_new_file(char * filename) {
   dv_pidag_t * P = &CS->P[CS->nP++];
   P->fn = filename;
   dv_llist_init(P->itl);
+
+  /* Read DR's PI_DAG */
+  dr_pi_dag * G = dr_read_dag(filename);
+  
+  P->n = G->n;
+  P->m = G->m;
+  P->start_clock = G->start_clock;
+  P->num_workers = G->num_workers;
+  printf("PI DAG: %s\n"
+         "  n = %ld\n"
+         "  m = %ld\n"
+         "  sc = %ld\n"
+         "  nw = %ld\n", DAG_RECORDER_HEADER, P->n, P->m, P->start_clock, P->num_workers);
+  
+  P->T = G->T;
+  P->E = G->E;
+  P->S = G->S;
+  P->G = G;
+  
+  return P;
+}
+
+dv_pidag_t * dv_pidag_read_new_file_bk(char * filename) {
+  /* Get new PIDAG */
+  dv_check(CS->nP < DV_MAX_DAG_FILE);
+  dv_pidag_t * P = &CS->P[CS->nP++];
+  P->fn = filename;
+  dv_llist_init(P->itl);
   
   /* Read file */
   int err;
   int fd;
-  struct stat *statbuf = P->stat;
+  struct stat statbuf[1];
   void *dp;
   
   fd = open(filename, O_RDONLY);
