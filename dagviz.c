@@ -546,12 +546,13 @@ dv_viewport_draw(dv_viewport_t * VP, cairo_t * cr) {
       }
       // Draw
       dv_view_prepare_drawing(V, cr);
-      dv_view_draw_status(V, cr, count);
+      if (V->S->show_status)
+        dv_view_draw_status(V, cr, count);
       if (V->S->show_legend)
         dv_view_draw_legend(V, cr);
       count++;
     }
-  dv_viewport_draw_label(VP, cr);
+  //dv_viewport_draw_label(VP, cr);
 }
 
 static void
@@ -1486,6 +1487,13 @@ on_checkbox_legend_toggled(GtkWidget * widget, gpointer user_data) {
 }
 
 static void
+on_checkbox_status_toggled(GtkWidget * widget, gpointer user_data) {
+  dv_view_t * V = (dv_view_t *) user_data;
+  V->S->show_status = 1 - V->S->show_status;
+  dv_queue_draw(V);
+}
+
+static void
 on_checkbox_scale_radius_toggled(GtkWidget * widget, gpointer user_data) {
   dv_view_t * V = (dv_view_t *) user_data;
   V->S->show_legend = 1 - V->S->show_legend;
@@ -1520,6 +1528,7 @@ void dv_view_status_init(dv_view_t *V, dv_view_status_t *S) {
   S->last_hovered_node = NULL;
   S->hm = DV_HOVER_MODE_INIT;
   S->show_legend = DV_SHOW_LEGEND_INIT;
+  S->show_status = DV_SHOW_STATUS_INIT;
 }
 
 void dv_view_init(dv_view_t *V) {
@@ -1641,7 +1650,7 @@ dv_view_interface_create_new(dv_view_t * V, dv_viewport_t * VP) {
   gtk_widget_set_tooltip_text(GTK_WIDGET(btn_combo_cm), "When clicking a node");
   GtkWidget *combobox_cm = gtk_combo_box_text_new();
   gtk_container_add(GTK_CONTAINER(btn_combo_cm), combobox_cm);
-  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_cm), "info", "Show info tag");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_cm), "info", "Info box");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_cm), "expand", "Expand/Collapse");
   gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_cm), S->cm);
   g_signal_connect(G_OBJECT(combobox_cm), "changed", G_CALLBACK(on_combobox_cm_changed), (void *) V);
@@ -1832,6 +1841,14 @@ dv_view_interface_create_new(dv_view_t * V, dv_viewport_t * VP) {
   GtkWidget * label_8 = gtk_label_new("Show legend");
   gtk_grid_attach(GTK_GRID(grid), label_8, 0, 7, 1, 1);
   gtk_grid_attach(GTK_GRID(grid), I->checkbox_legend, 1, 7, 1, 1);  
+    
+  // HBox 9
+  I->checkbox_status = gtk_check_button_new();
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(I->checkbox_status), V->S->show_status);
+  g_signal_connect(G_OBJECT(I->checkbox_status), "toggled", G_CALLBACK(on_checkbox_status_toggled), (void *) V);
+  GtkWidget * label_9 = gtk_label_new("Show status");
+  gtk_grid_attach(GTK_GRID(grid), label_9, 0, 8, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), I->checkbox_status, 1, 8, 1, 1);  
     
 
   // Set attribute values
