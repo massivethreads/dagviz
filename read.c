@@ -552,7 +552,7 @@ dv_pidag_node_lookup_value(dr_pi_dag_node * pi, int nc) {
   case 2:
     //v = dv_get_color_pool_index(nc, 0, 0, 0, pi->info.kind);
     v = (int) pi->info.kind;
-    v += 10;
+    //v += 10;
     break;
   case 3:
     v = dv_get_color_pool_index(nc, 0, 0, pi->info.start.pos.file_idx, pi->info.start.pos.line);
