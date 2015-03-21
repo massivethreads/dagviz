@@ -190,15 +190,6 @@ dv_view_draw_dag_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
       && node->d < D->cur_d_ex)
     D->cur_d_ex = node->d;
   
-  /* Color */
-  double c[4];
-  dv_lookup_color(pi, S->nc, c, c+1, c+2, c+3);
-  int use_mixed_color = 0;
-  if ((S->nc == 0 && pi->info.worker == -1)
-      || (S->nc == 1 && pi->info.cpu == -1)) {
-    use_mixed_color = 1;
-  }
-
   /* Alpha, Margin */
   double alpha = 1.0;
   double margin = 0.0;
@@ -309,33 +300,39 @@ dv_view_draw_dag_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
     alpha *= dv_view_get_alpha_fading_in(V, node->parent);
   }
 
-  /* Mixed color pattern */
+  /* Color */
+  GdkRGBA c;
   cairo_pattern_t * pat = NULL;
-  if (use_mixed_color) {
+  dv_lookup_color(pi, S->nc, &c.red, &c.green, &c.blue, &c.alpha);
+  if ((S->nc == 0 && pi->info.worker == -1)
+      || (S->nc == 1 && pi->info.cpu == -1)) {
     /*
     int nstops = 3;
     int stops[] = {0, 1, 2};
     pat = dv_create_color_linear_pattern(stops, nstops, w, alpha);
     */
-    pat = dv_get_color_linear_pattern(w, alpha);
+    pat = dv_get_color_linear_pattern(V, w, alpha, node->r);
     //pat = dv_get_color_radial_pattern(dv_min(w/2.0, h/2.0), alpha);
   }
 
-  /* Draw node */
-  if (!pat) {
-    cairo_set_source_rgba(cr, c[0], c[1], c[2], c[3] * alpha);
-    cairo_fill_preserve(cr);
-  } else {
-    cairo_translate(cr, xx, yy);
-    //cairo_translate(cr, xx + w / 2.0, yy + h / 2.0);
-    cairo_set_source(cr, pat);
-    cairo_fill_preserve(cr);
-    cairo_pattern_destroy(pat);
+  /* Draw node's filling */
+  if (V->D->nr == 0 || !V->S->color_remarked_only || node->r != 0) {
+    if (!pat) {
+      cairo_set_source_rgba(cr, c.red, c.green, c.blue, c.alpha * alpha);
+      cairo_fill_preserve(cr);      
+    } else {
+      cairo_translate(cr, xx, yy);
+      cairo_set_source(cr, pat);
+      cairo_fill_preserve(cr);
+      cairo_pattern_destroy(pat);      
+    }
   }
+
+  /* Draw node's border */
   cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
   cairo_stroke_preserve(cr);
   
-  /* Draw infotag */
+  /* Draw node's infotag's mark */
   if (dv_llist_has(V->D->P->itl, (void *) node->pii)) {
     cairo_set_source_rgba(cr, 0.1, 0.1, 0.1, 0.6);
     cairo_fill(cr);
@@ -588,7 +585,7 @@ dv_view_draw_legend_dag(dv_view_t * V, cairo_t * cr) {
   // box
   xx = x - box_dis - box_w;
   yy = y + box_down_margin - box_h;
-  cairo_pattern_t * pat = dv_get_color_linear_pattern(box_w, 1.0);
+  cairo_pattern_t * pat = dv_get_color_linear_pattern(V, box_w, 1.0, 0);
   dv_draw_path_rectangle(cr, xx, yy, box_w, box_h);
   cairo_translate(cr, xx, yy);
   cairo_set_source(cr, pat);

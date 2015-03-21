@@ -257,6 +257,9 @@ void dv_dag_node_init(dv_dag_node_t *node, dv_dag_node_t *parent, long pii) {
     dv_node_coordinate_init(&node->c[i]);
 
   node->started = 0.0;
+
+  node->r = 0;
+  node->link_r = 0;
 }
 
 int dv_dag_node_set(dv_dag_t *D, dv_dag_node_t *node) {
@@ -283,18 +286,19 @@ int dv_dag_node_set(dv_dag_t *D, dv_dag_node_t *node) {
   return DV_OK;
 }
 
-int dv_dag_build_node_inner(dv_dag_t *D, dv_dag_node_t *node) {
-  dv_pidag_t *P = D->P;
+int
+dv_dag_build_node_inner(dv_dag_t * D, dv_dag_node_t * node) {
+  dv_pidag_t * P = D->P;
 
   if (!dv_is_set(node))
     dv_dag_node_set(D, node);
   
   if (dv_is_union(node)) {
     
-    dr_pi_dag_node *pi, *pi_a, *pi_b, *pi_x;
-    dv_dag_node_t *node_a, *node_b, *node_x, *node_t;
+    dr_pi_dag_node * pi, * pi_a, * pi_b, * pi_x;
+    dv_dag_node_t * node_a, * node_b, * node_x, * node_t;
 
-    pi = dv_pidag_get_node(P, node);    
+    pi = dv_pidag_get_node(P, node);
     pi_a = dv_pidag_get_node_offset(P, pi, pi->subgraphs_begin_offset);
     pi_b = dv_pidag_get_node_offset(P, pi, pi->subgraphs_end_offset - 1);
 #if 0
@@ -315,7 +319,7 @@ int dv_dag_build_node_inner(dv_dag_t *D, dv_dag_node_t *node) {
       return dv_log_set_error(DV_ERROR_OONP);
     node_b = node_a + num_children - 1;
     
-      // Initialize children
+    // Initialize children
     pi_x = pi_a;
     for (node_x = node_a; node_x <= node_b; node_x++) {
       dv_dag_node_init(node_x, node, dv_pidag_get_idx(P, pi_x));
@@ -358,12 +362,13 @@ int dv_dag_build_node_inner(dv_dag_t *D, dv_dag_node_t *node) {
   return DV_OK;
 }
 
-int dv_dag_destroy_node_innner(dv_dag_t *D, dv_dag_node_t *node) {
+int
+dv_dag_collapse_node_inner(dv_dag_t * D, dv_dag_node_t * node) {
   // Check flags node->f
   if (dv_is_set(node) && dv_is_union(node)
       && dv_is_inner_loaded(node)) {
 
-    dv_dag_node_t *node_a, *node_b, *node_x, *node_t;
+    dv_dag_node_t * node_a, * node_b, * node_x, * node_t;
     
     node_a = node->head;
     node_b = (dv_dag_node_t *) dv_llist_pop(node->tails);
@@ -387,11 +392,13 @@ int dv_dag_destroy_node_innner(dv_dag_t *D, dv_dag_node_t *node) {
   return DV_OK;
 }
 
-static void dv_dag_clear_shrinked_nodes_1(dv_dag_t *D, dv_dag_node_t *node) {
-  dv_dag_destroy_node_innner(D, node);
+static void
+dv_dag_clear_shrinked_nodes_1(dv_dag_t * D, dv_dag_node_t * node) {
+  dv_dag_collapse_node_inner(D, node);
 }
 
-static void dv_dag_clear_shrinked_nodes_r(dv_dag_t *D, dv_dag_node_t *node) {
+static void
+dv_dag_clear_shrinked_nodes_r(dv_dag_t * D, dv_dag_node_t * node) {
   if (!dv_is_set(node))
     return;
   if (dv_is_union(node) && dv_is_inner_loaded(node)) {
@@ -409,13 +416,13 @@ static void dv_dag_clear_shrinked_nodes_r(dv_dag_t *D, dv_dag_node_t *node) {
         dv_dag_node_t * x = (dv_dag_node_t *) dv_stack_pop(s);
         if (dv_is_set(node) && dv_is_union(x) && dv_is_inner_loaded(x))
           has_no_innerloaded_node = 0;
-        dv_dag_node_t *xx = NULL;
+        dv_dag_node_t * xx = NULL;
         while (xx = (dv_dag_node_t *) dv_llist_iterate_next(x->links, xx)) {
           dv_stack_push(s, (void *) xx);
-        }      
+        }
       }
       if (has_no_innerloaded_node) {
-        // destroy inner
+        // collapse inner
         dv_dag_clear_shrinked_nodes_1(D, node);
       } else {
         /* Call inward */
@@ -430,13 +437,14 @@ static void dv_dag_clear_shrinked_nodes_r(dv_dag_t *D, dv_dag_node_t *node) {
   }
   
   /* Call link-along */
-  dv_dag_node_t *u = NULL;
+  dv_dag_node_t * u = NULL;
   while (u = (dv_dag_node_t *) dv_llist_iterate_next(node->links, u)) {
     dv_dag_clear_shrinked_nodes_r(D, u);
   }
 }
 
-void dv_dag_clear_shrinked_nodes(dv_dag_t *D) {
+void
+dv_dag_clear_shrinked_nodes(dv_dag_t * D) {
   dv_dag_clear_shrinked_nodes_r(D, D->rt);
 }
 
@@ -463,6 +471,7 @@ void dv_dag_init(dv_dag_t *D, dv_pidag_t *P) {
   int i;
   for (i=0; i<DV_NUM_LAYOUT_TYPES; i++)
     D->tolayout[i] = 0;
+  D->nr = 0;
 }
 
 dv_dag_t * dv_dag_create_new_with_pidag(dv_pidag_t *P) {
@@ -525,6 +534,46 @@ dv_dag_set_radix(dv_dag_t * D, double radix) {
   default:
     dv_check(0);
   }
+}
+
+int
+dv_pidag_node_lookup_value(dr_pi_dag_node * pi, int nc) {
+  int v = 0;
+  dv_check(nc < DV_NUM_COLOR_POOLS);
+  switch (nc) {
+  case 0:
+    //v = dv_get_color_pool_index(nc, 0, 0, 0, pi->info.worker);
+    v = pi->info.worker;
+    break;
+  case 1:
+    //v = dv_get_color_pool_index(nc, 0, 0, 0, pi->info.cpu);
+    v = pi->info.cpu;
+    break;
+  case 2:
+    //v = dv_get_color_pool_index(nc, 0, 0, 0, pi->info.kind);
+    v = (int) pi->info.kind;
+    v += 10;
+    break;
+  case 3:
+    v = dv_get_color_pool_index(nc, 0, 0, pi->info.start.pos.file_idx, pi->info.start.pos.line);
+    break;
+  case 4:
+    v = dv_get_color_pool_index(nc, 0, 0, pi->info.end.pos.file_idx, pi->info.end.pos.line);
+    break;
+  case 5:
+    v = dv_get_color_pool_index(nc, pi->info.start.pos.file_idx, pi->info.start.pos.line, pi->info.end.pos.file_idx, pi->info.end.pos.line);
+    break;
+  default:
+    dv_check(0);
+    break;
+  }
+  return v;
+}
+
+int
+dv_dag_node_lookup_value(dv_dag_t * D, dv_dag_node_t * node, int nc) {
+  dr_pi_dag_node * pi = dv_pidag_get_node(D->P, node);
+  return dv_pidag_node_lookup_value(pi, nc);
 }
 
 /*-----------------end of DAG's functions-----------*/
@@ -718,3 +767,59 @@ dv_btsample_viewer_extract_interval(dv_btsample_viewer_t * btviewer, int worker,
 }
 
 /*-----------------end of BTSAMPLE_VIEWER's functions-----------*/
+
+
+
+/*-----------------Composite worker's functions-----------*/
+
+static void
+dv_view_scan_r(dv_view_t * V, dv_dag_node_t * node) {
+  dv_dag_t * D = V->D;
+  if (!dv_is_set(node))
+    dv_dag_node_set(D, node);
+  
+  if (dv_is_union(node)) {
+
+    /* Build inner */
+    int is_inner_loaded = dv_is_inner_loaded(node);
+    if (!is_inner_loaded) {
+      if (dv_dag_build_node_inner(D, node) != DV_OK) {
+        fprintf(stderr, "error in dv_dag_build_node_inner\n");
+        return;
+      }
+    }
+    /* Call inward */
+    dv_check(node->head);
+    dv_view_scan_r(V, node->head);
+    /* Process single */
+    node->r = node->head->link_r;
+    /* Collapse inner */
+    if (!is_inner_loaded && !V->S->remain_inner) {
+      dv_dag_collapse_node_inner(D, node);
+    }
+    
+  } else {
+    node->r = 0;
+    int v = dv_dag_node_lookup_value(D, node, V->S->nc);
+    int i;
+    for (i=0; i<V->D->nr; i++)
+      if (V->D->ar[i] == v) break;
+    if (i < V->D->nr)
+      dv_set_bit(&node->r, i);
+  }
+  
+  /* Call link-along */
+  node->link_r = node->r;
+  dv_dag_node_t * u = NULL;
+  while (u = (dv_dag_node_t *) dv_llist_iterate_next(node->links, u)) {
+    dv_view_scan_r(V, u);
+    node->link_r |= u->link_r;
+  }
+}
+
+void
+dv_view_scan(dv_view_t * V) {
+  dv_view_scan_r(V, V->D->rt);
+}
+
+/*-----------------end of Composite worker's functions-----------*/

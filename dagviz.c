@@ -20,6 +20,7 @@ const char * const DV_LINEAR_PATTERN_STOPS[] =
   //{"black", "white", "black"};
   ///{"green", "yellowgreen", "yellowgreen", "cyan"};
   //{"orange", "yellow", "coral"};
+  //{"white", "white", "white"};
   {"orange", "yellow", "cyan"};
 
 const char * const DV_RADIAL_PATTERN_STOPS[] =
@@ -308,6 +309,16 @@ dv_view_set_entry_radix_text(dv_view_t * V) {
     if (V->I[i]) {      
       gtk_entry_set_width_chars(GTK_ENTRY(V->I[i]->entry_radix), strlen(str));
       gtk_entry_set_text(GTK_ENTRY(V->I[i]->entry_radix), str);
+    }
+}
+
+static void
+dv_view_set_entry_remark_text(dv_view_t * V, char * remark_str) {
+  int i;
+  for (i=0; i<CS->nVP; i++)
+    if (V->I[i]) {
+      gtk_entry_set_width_chars(GTK_ENTRY(V->I[i]->entry_remark), strlen(remark_str));
+      gtk_entry_set_text(GTK_ENTRY(V->I[i]->entry_remark), remark_str);
     }
 }
 
@@ -1064,11 +1075,49 @@ static gboolean on_combobox_sdt_changed(GtkComboBox *widget, gpointer user_data)
   return TRUE;
 }
 
-static gboolean on_entry_radix_activate(GtkEntry *entry, gpointer user_data) {
-  dv_view_t *V = (dv_view_t *) user_data;
+static gboolean
+on_entry_radix_activate(GtkEntry * entry, gpointer user_data) {
+  dv_view_t * V = (dv_view_t *) user_data;
   double radix = atof(gtk_entry_get_text(GTK_ENTRY(entry)));
   dv_view_change_radix(V, radix);
   dv_view_layout(V);
+  dv_queue_draw_d(V);
+  return TRUE;
+}
+
+static gboolean
+on_entry_remark_activate(GtkEntry * entry, gpointer user_data) {
+  dv_view_t * V = (dv_view_t *) user_data;
+  /* Read string */
+  const char * str = gtk_entry_get_text(GTK_ENTRY(entry));
+  char str2[strlen(str) + 1];
+  strcpy(str2, str);
+  /* Read values in string to array */
+  V->D->nr = 0;
+  long v;
+  char * p = str2;
+  while (*p) {
+    if (isdigit(*p)) {
+      v = strtol(p, &p, 10);
+      if (V->D->nr < DV_MAX_NUM_REMARKS)
+        V->D->ar[V->D->nr++] = v;
+    } else {
+      p++;
+    }
+  }
+  /* Convert read values back to string */
+  char str3[V->D->nr * 3 + 1];
+  str3[0] = 0;
+  int i;
+  for (i = 0; i < V->D->nr; i++) {
+    v = V->D->ar[i];
+    if (i == 0)
+      sprintf(str2, "%ld", v);
+    else
+      sprintf(str2, ", %ld", v);
+    strcat(str3, str2);
+  }
+  dv_view_set_entry_remark_text(V, str3);
   dv_queue_draw_d(V);
   return TRUE;
 }
@@ -1494,10 +1543,31 @@ on_checkbox_status_toggled(GtkWidget * widget, gpointer user_data) {
 }
 
 static void
+on_checkbox_remain_inner_toggled(GtkWidget * widget, gpointer user_data) {
+  dv_view_t * V = (dv_view_t *) user_data;
+  V->S->remain_inner = 1 - V->S->remain_inner;
+}
+
+static void
+on_checkbox_color_remarked_only_toggled(GtkWidget * widget, gpointer user_data) {
+  dv_view_t * V = (dv_view_t *) user_data;
+  V->S->color_remarked_only = 1 - V->S->color_remarked_only;
+  dv_queue_draw(V);
+}
+
+static void
 on_checkbox_scale_radius_toggled(GtkWidget * widget, gpointer user_data) {
   dv_view_t * V = (dv_view_t *) user_data;
   V->S->show_legend = 1 - V->S->show_legend;
 }
+
+static void
+on_btn_run_dag_scan_clicked(GtkButton * button, gpointer user_data) {
+  dv_view_t * V = (dv_view_t *) user_data;
+  dv_view_scan(V);
+  dv_queue_draw_d(V);
+}
+
 
 
 void dv_view_status_init(dv_view_t *V, dv_view_status_t *S) {
@@ -1529,6 +1599,8 @@ void dv_view_status_init(dv_view_t *V, dv_view_status_t *S) {
   S->hm = DV_HOVER_MODE_INIT;
   S->show_legend = DV_SHOW_LEGEND_INIT;
   S->show_status = DV_SHOW_STATUS_INIT;
+  S->remain_inner = DV_REMAIN_INNER_INIT;
+  S->color_remarked_only = DV_COLOR_REMARKED_ONLY;
 }
 
 void dv_view_init(dv_view_t *V) {
@@ -1734,7 +1806,7 @@ dv_view_interface_create_new(dv_view_t * V, dv_viewport_t * VP) {
   gtk_widget_set_tooltip_text(GTK_WIDGET(btn_entry_search), "Search by node's index in DAG file (first number in node's info tag)");
   GtkWidget *entry_search = I->entry_search;
   gtk_container_add(GTK_CONTAINER(btn_entry_search), entry_search);
-  gtk_entry_set_placeholder_text(GTK_ENTRY(entry_search), "Search");
+  gtk_entry_set_placeholder_text(GTK_ENTRY(entry_search), "Search e.g. 0");
   gtk_entry_set_max_length(GTK_ENTRY(entry_search), 7);
   g_signal_connect(G_OBJECT(entry_search), "activate", G_CALLBACK(on_entry_search_activate), (void *) V);
 
@@ -1796,6 +1868,9 @@ dv_view_interface_create_new(dv_view_t * V, dv_viewport_t * VP) {
 
   // Grid
   GtkWidget * grid = I->grid;
+  int order;
+  GtkWidget * label;
+  GtkWidget * widget;
   
   // HBox 1
   GtkWidget * label_1 = gtk_label_new("              VIEW mode: ");
@@ -1840,8 +1915,8 @@ dv_view_interface_create_new(dv_view_t * V, dv_viewport_t * VP) {
   g_signal_connect(G_OBJECT(I->checkbox_legend), "toggled", G_CALLBACK(on_checkbox_legend_toggled), (void *) V);
   GtkWidget * label_8 = gtk_label_new("Show legend");
   gtk_grid_attach(GTK_GRID(grid), label_8, 0, 7, 1, 1);
-  gtk_grid_attach(GTK_GRID(grid), I->checkbox_legend, 1, 7, 1, 1);  
-    
+  gtk_grid_attach(GTK_GRID(grid), I->checkbox_legend, 1, 7, 1, 1);
+  
   // HBox 9
   I->checkbox_status = gtk_check_button_new();
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(I->checkbox_status), V->S->show_status);
@@ -1849,6 +1924,42 @@ dv_view_interface_create_new(dv_view_t * V, dv_viewport_t * VP) {
   GtkWidget * label_9 = gtk_label_new("Show status");
   gtk_grid_attach(GTK_GRID(grid), label_9, 0, 8, 1, 1);
   gtk_grid_attach(GTK_GRID(grid), I->checkbox_status, 1, 8, 1, 1);  
+    
+  // HBox 10
+  order = 10;
+  label = gtk_label_new("Remark");
+  I->entry_remark = gtk_entry_new();
+  gtk_widget_set_tooltip_text(GTK_WIDGET(I->entry_remark), "All ID(s) (e.g. worker numbers) to remark");
+  gtk_entry_set_placeholder_text(GTK_ENTRY(I->entry_remark), "e.g. 0, 1, 2");
+  g_signal_connect(G_OBJECT(I->entry_remark), "activate", G_CALLBACK(on_entry_remark_activate), (void *) V);
+  gtk_grid_attach(GTK_GRID(grid), label, 0, order - 1, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), I->entry_remark, 1, order - 1, 1, 1);
+    
+  // HBox 11
+  order = 11;
+  label = gtk_label_new("Remain inner after scanning");
+  I->checkbox_remain_inner = gtk_check_button_new();
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(I->checkbox_remain_inner), V->S->remain_inner);
+  g_signal_connect(G_OBJECT(I->checkbox_remain_inner), "toggled", G_CALLBACK(on_checkbox_remain_inner_toggled), (void *) V);
+  gtk_grid_attach(GTK_GRID(grid), label, 0, order - 1, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), I->checkbox_remain_inner, 1, order - 1, 1, 1);  
+    
+  // HBox 12
+  order = 12;
+  label = gtk_label_new("Scan DAG");
+  widget = gtk_button_new_with_label("Scan");
+  g_signal_connect(G_OBJECT(widget), "clicked", G_CALLBACK(on_btn_run_dag_scan_clicked), (void *) V);
+  gtk_grid_attach(GTK_GRID(grid), label, 0, order - 1, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), widget, 1, order - 1, 1, 1);
+  
+  // HBox 13
+  order = 13;
+  label = gtk_label_new("Color only remarked nodes");
+  widget = I->checkbox_color_remarked_only = gtk_check_button_new();
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(widget), V->S->color_remarked_only);
+  g_signal_connect(G_OBJECT(widget), "toggled", G_CALLBACK(on_checkbox_color_remarked_only_toggled), (void *) V);
+  gtk_grid_attach(GTK_GRID(grid), label, 0, order - 1, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), widget, 1, order - 1, 1, 1);  
     
 
   // Set attribute values
@@ -1858,14 +1969,10 @@ dv_view_interface_create_new(dv_view_t * V, dv_viewport_t * VP) {
 }
 
 void dv_view_interface_destroy(dv_view_interface_t *I) {
-  if (GTK_IS_WIDGET(I->togg_focused))
-    gtk_widget_destroy(I->togg_focused);
-  if (GTK_IS_WIDGET(I->combobox_lt))
-    gtk_widget_destroy(I->combobox_lt);
-  if (GTK_IS_WIDGET(I->entry_radix))
-    gtk_widget_destroy(I->entry_radix);
-  if (GTK_IS_WIDGET(I->toolbar))
-    gtk_widget_destroy(I->toolbar);
+  if (GTK_IS_WIDGET(I->togg_focused)) gtk_widget_destroy(I->togg_focused);
+  if (GTK_IS_WIDGET(I->combobox_lt)) gtk_widget_destroy(I->combobox_lt);
+  if (GTK_IS_WIDGET(I->entry_radix)) gtk_widget_destroy(I->entry_radix);
+  if (GTK_IS_WIDGET(I->toolbar)) gtk_widget_destroy(I->toolbar);
   dv_free(I, sizeof(dv_view_interface_t));
 }
 

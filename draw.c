@@ -105,24 +105,6 @@ dv_draw_path_circle(cairo_t * cr, double x, double y, double w) {
   cairo_restore(cr);
 }
 
-static int
-dv_get_color_pool_index(int t, int v0, int v1, int v2, int v3) {
-  int n = CS->CP_sizes[t];
-  int i;
-  for (i=0; i<n; i++) {
-    if (CS->CP[t][i][0] == v0 && CS->CP[t][i][1] == v1
-        && CS->CP[t][i][2] == v2 && CS->CP[t][i][3] == v3)
-      return i;
-  }
-  dv_check(n < DV_COLOR_POOL_SIZE);
-  CS->CP[t][n][0] = v0;
-  CS->CP[t][n][1] = v1;
-  CS->CP[t][n][2] = v2;
-  CS->CP[t][n][3] = v3;
-  CS->CP_sizes[t]++;
-  return n;
-}
-
 void
 dv_lookup_color_value(int v, double * r, double * g, double * b, double * a) {
   GdkRGBA color;
@@ -155,35 +137,7 @@ dv_lookup_color_value(int v, double * r, double * g, double * b, double * a) {
 
 void
 dv_lookup_color(dr_pi_dag_node * pi, int nc, double * r, double * g, double * b, double * a) {
-  int v = 0;
-  dv_check(nc < DV_NUM_COLOR_POOLS);
-  switch (nc) {
-  case 0:
-    //v = dv_get_color_pool_index(nc, 0, 0, 0, pi->info.worker);
-    v = pi->info.worker;
-    break;
-  case 1:
-    //v = dv_get_color_pool_index(nc, 0, 0, 0, pi->info.cpu);
-    v = pi->info.cpu;
-    break;
-  case 2:
-    //v = dv_get_color_pool_index(nc, 0, 0, 0, pi->info.kind);
-    v = (int) pi->info.kind;
-    v += 10;
-    break;
-  case 3:
-    v = dv_get_color_pool_index(nc, 0, 0, pi->info.start.pos.file_idx, pi->info.start.pos.line);
-    break;
-  case 4:
-    v = dv_get_color_pool_index(nc, 0, 0, pi->info.end.pos.file_idx, pi->info.end.pos.line);
-    break;
-  case 5:
-    v = dv_get_color_pool_index(nc, pi->info.start.pos.file_idx, pi->info.start.pos.line, pi->info.end.pos.file_idx, pi->info.end.pos.line);
-    break;
-  default:
-    dv_check(0);
-    break;
-  }  
+  int v = dv_pidag_node_lookup_value(pi, nc);
   dv_lookup_color_value(v, r, g, b, a);
 }
 
@@ -204,18 +158,43 @@ dv_create_color_linear_pattern(int * stops, int n, double w, double alpha) {
 }
 
 cairo_pattern_t *
-dv_get_color_linear_pattern(double w, double alpha) {
-  char ** stops = (char **) DV_LINEAR_PATTERN_STOPS;
-  int n = DV_LINEAR_PATTERN_STOPS_NUM;
+dv_get_color_linear_pattern(dv_view_t * V, double w, double alpha, long long remark) {
   cairo_pattern_t * pat = cairo_pattern_create_linear(0.0, 0.0, w, 0.0);
-  double step = 1.0 / (n - 1);
-  double r, g, b, a;
+
+  int a[DV_MAX_NUM_REMARKS];
+  int n = 0;
+  long v = 0;
   int i;
-  for (i = 0; i < n; i++) {
-    GdkRGBA color;
-    gdk_rgba_parse(&color, stops[i]);
-    cairo_pattern_add_color_stop_rgba(pat, i * step, color.red, color.green, color.blue, color.alpha * alpha);
+  for (i = 0; i < V->D->nr; i++) {
+    if (dv_get_bit(remark, i)) {
+      v = V->D->ar[i];
+      a[n++] = v;
+    }
   }
+
+  double step;
+  GdkRGBA color;
+  if (n > 0) {
+    /* Remark colors */
+    step = 1.0 / (n - 1 + 1);
+    for (i=0; i<n; i++) {
+      v = a[i];
+      dv_lookup_color_value(v, &color.red, &color.green, &color.blue, &color.alpha);
+      cairo_pattern_add_color_stop_rgba(pat, i * step, color.red, color.green, color.blue, color.alpha);
+    }
+    gdk_rgba_parse(&color, "white");
+    cairo_pattern_add_color_stop_rgba(pat, n * step, color.red, color.green, color.blue, color.alpha);
+  } else {
+    /* Mixed */
+    char ** stops = (char **) DV_LINEAR_PATTERN_STOPS;
+    n = DV_LINEAR_PATTERN_STOPS_NUM;
+    step = 1.0 / (n - 1);
+    for (i = 0; i < n; i++) {
+      gdk_rgba_parse(&color, stops[i]);
+      cairo_pattern_add_color_stop_rgba(pat, i * step, color.red, color.green, color.blue, color.alpha * alpha);
+    }
+  }
+  
   return pat;
 }
 
@@ -519,11 +498,33 @@ dv_view_draw_infotag_1(dv_view_t * V, cairo_t * cr, cairo_matrix_t * mt, dv_dag_
   yy += line_height;
 
   // Line 4
-  sprintf(s, "by worker %d on cpu %d",
+  sprintf(s, "by worker %d on cpu %d (r=%lld",
           pi->info.worker, 
-          pi->info.cpu);
+          pi->info.cpu,
+          node->r);
   cairo_move_to(cr, xx, yy);
   cairo_show_text(cr, s);
+  char s2[V->D->nr * 2 + 1];
+  char s3[5];
+  s2[0] = 0;
+  long long r = node->r;
+  long v;
+  int i = 0;
+  while (i < V->D->nr) {
+    if (dv_get_bit(r, i)) {
+      v = V->D->ar[i];
+      if (strlen(s2) == 0)
+        sprintf(s3, " {%ld", v);
+      else
+        sprintf(s3, ",%ld", v);
+      strcat(s2, s3);
+    }
+    i++;
+  }
+  if (strlen(s2) > 0)
+    strcat(s2, "}");
+  strcat(s2, ")");
+  cairo_show_text(cr, s2);
   yy += line_height;
 
   // Line 5

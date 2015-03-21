@@ -112,6 +112,8 @@ typedef struct dv_llist {
 #define DV_HOVER_MODE_INIT 0 // 0:none, 1:info, 2:expand, 3:collapse, 4:expand/collapse
 #define DV_SHOW_LEGEND_INIT 0
 #define DV_SHOW_STATUS_INIT 0
+#define DV_REMAIN_INNER_INIT 1
+#define DV_COLOR_REMARKED_ONLY 1
 
 #define DV_COLOR_POOL_SIZE 100
 #define DV_NUM_COLOR_POOLS 6
@@ -119,7 +121,7 @@ typedef struct dv_llist {
 #define DV_TIMELINE_NODE_WITH_BORDER 0
 #define DV_ENTRY_RADIX_MAX_LENGTH 20
 
-#define DV_DAG_NODE_POOL_SIZE 100000
+#define DV_DAG_NODE_POOL_SIZE 200000
 
 #define DV_MAX_DAG_FILE 5
 #define DV_MAX_DAG 10
@@ -143,6 +145,8 @@ typedef struct dv_llist {
 
 #define DV_CAIRO_BOUND_MIN -8e6 //-(1<<23)
 #define DV_CAIRO_BOUND_MAX 8e6 //(1<<23)
+
+#define DV_MAX_NUM_REMARKS 32
 
 /*-----------------Data Structures-----------------*/
 
@@ -198,6 +202,9 @@ typedef struct dv_dag_node {
   /* animation */
   double started; /* started time of animation */
 
+  long long r; /* remarks */
+  long long link_r; /* summed remarks with linked paths */
+
 } dv_dag_node_t;
 
 typedef struct dv_histogram dv_histogram_t;
@@ -234,6 +241,9 @@ typedef struct dv_dag {
   dv_llist_t itl[1]; /* list of nodes that have info tag */
   dv_histogram_t * H; /* structure for the paraprof view (5th) */
   char tolayout[DV_NUM_LAYOUT_TYPES];
+
+  int ar[DV_MAX_NUM_REMARKS];
+  int nr;
 } dv_dag_t;
 
 typedef struct dv_view dv_view_t;
@@ -250,7 +260,7 @@ typedef struct dv_motion {
   int on;
   double duration;
   double step;
-  dv_view_t *V;
+  dv_view_t * V;
   long target_pii;
   double xfrom, yfrom;
   double zrxfrom, zryfrom;
@@ -296,6 +306,8 @@ typedef struct dv_view_status {
   int hm; /* hovering mode: 0:info, 1:expand, 2:collapse, 3:expand/collapse */
   int show_legend;
   int show_status;
+  int remain_inner;
+  int color_remarked_only;
 } dv_view_status_t;
 
 typedef struct dv_viewport dv_viewport_t;
@@ -321,6 +333,9 @@ typedef struct dv_view_interface {
   GtkWidget * grid;
   GtkWidget * checkbox_legend;
   GtkWidget * checkbox_status;
+  GtkWidget * entry_remark;
+  GtkWidget * checkbox_remain_inner;
+  GtkWidget * checkbox_color_remarked_only;
 } dv_view_interface_t;
 
 typedef struct dv_view {
@@ -524,15 +539,19 @@ dv_dag_node_t * dv_dag_node_pool_pop_contiguous(dv_dag_t *, long);
 void dv_dag_node_init(dv_dag_node_t *, dv_dag_node_t *, long);
 int dv_dag_node_set(dv_dag_t *, dv_dag_node_t *);
 int  dv_dag_build_node_inner(dv_dag_t *, dv_dag_node_t *);
-int dv_dag_destroy_node_innner(dv_dag_t *, dv_dag_node_t *);
+int dv_dag_collapse_node_inner(dv_dag_t *, dv_dag_node_t *);
 void dv_dag_clear_shrinked_nodes(dv_dag_t *);
 void dv_dag_init(dv_dag_t *, dv_pidag_t *);
 dv_dag_t * dv_dag_create_new_with_pidag(dv_pidag_t *);
 double dv_dag_get_radix(dv_dag_t *);
 void dv_dag_set_radix(dv_dag_t *, double);
+int dv_pidag_node_lookup_value(dr_pi_dag_node *, int);
+int dv_dag_node_lookup_value(dv_dag_t *, dv_dag_node_t *, int);
 
 void dv_btsample_viewer_init(dv_btsample_viewer_t *);
 int dv_btsample_viewer_extract_interval(dv_btsample_viewer_t *, int, unsigned long long, unsigned long long);
+
+void dv_view_scan(dv_view_t *);
 
 
 /* layout.c */
@@ -564,7 +583,7 @@ void dv_draw_path_circle(cairo_t *, double, double, double);
 void dv_lookup_color_value(int, double *, double *, double *, double *);
 void dv_lookup_color(dr_pi_dag_node *, int, double *, double *, double *, double *);
 cairo_pattern_t * dv_create_color_linear_pattern(int *, int, double, double);
-cairo_pattern_t * dv_get_color_linear_pattern(double, double);
+cairo_pattern_t * dv_get_color_linear_pattern(dv_view_t *, double, double, long long);
 cairo_pattern_t * dv_get_color_radial_pattern(double, double);
 double dv_view_get_alpha_fading_out(dv_view_t *, dv_dag_node_t *);
 double dv_view_get_alpha_fading_in(dv_view_t *, dv_dag_node_t *);
@@ -799,5 +818,50 @@ static int dv_log_set_error(int err) {
   fprintf(stderr, "CS->err = %d\n", err);
   return err;
 }
+
+
+static void
+dv_longlong_init(long long * w) {
+  int i;
+  for (i=0; i<64; i++) {
+    long long v = 1 << i;
+    if ((*w & v) == v)
+      *w -= v;
+  }
+}
+
+static void
+dv_set_bit(long long * w, int v) {
+  long long vv = 1 << v;
+  if ((*w & vv) != vv)
+    *w += vv;
+}
+
+static int
+dv_get_bit(long long w, int v) {
+  long long vv = 1 << v;
+  return ((w & vv) == vv);
+}
+
+
+static int
+dv_get_color_pool_index(int t, int v0, int v1, int v2, int v3) {
+  int n = CS->CP_sizes[t];
+  int i;
+  for (i=0; i<n; i++) {
+    if (CS->CP[t][i][0] == v0 && CS->CP[t][i][1] == v1
+        && CS->CP[t][i][2] == v2 && CS->CP[t][i][3] == v3)
+      return i;
+  }
+  dv_check(n < DV_COLOR_POOL_SIZE);
+  CS->CP[t][n][0] = v0;
+  CS->CP[t][n][1] = v1;
+  CS->CP[t][n][2] = v2;
+  CS->CP[t][n][3] = v3;
+  CS->CP_sizes[t]++;
+  return n;
+}
+
+
 
 #endif /* DAGVIZ_HEADER_ */
