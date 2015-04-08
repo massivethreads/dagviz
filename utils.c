@@ -4,7 +4,7 @@
 #define DV_LLIST_CELL_SZ 1
 
 
-/* DV LINKED_LIST  */
+/* DV LINKED_LIST  */ /* (obsolete) */
 
 dv_linked_list_t * dv_linked_list_create() {
   dv_linked_list_t * l = (dv_linked_list_t *) dv_malloc( sizeof(dv_linked_list_t) );
@@ -290,6 +290,8 @@ int dv_llist_size(dv_llist_t *l) {
 
 
 
+/*----------Convenient Functions-------------------------------*/
+
 const char * dv_convert_char_to_binary(int x)
 {
   static char b[9];
@@ -313,4 +315,104 @@ double dv_min(double d1, double d2) {
   else
     return d2;
 }
+
+/*----------end of Convenient Functions-----------------------*/
+
+
+
+
+
+/*----------DAG Node Pool------------------------------*/
+
+void
+dv_dag_node_pool_init(dv_dag_node_pool_t * pool) {
+  pool->head = NULL;
+  pool->tail = NULL;
+  pool->pages = NULL;
+  pool->sz = 0;
+  pool->N = 0;
+  pool->n = 0;
+}
+
+static dv_dag_node_t *
+dv_dag_node_pool_add_page(dv_dag_node_pool_t * pool) {
+  /* allocate page */
+  size_t sz_ = DV_DEFAULT_PAGE_SIZE;
+  size_t sz = (sz_ >= sizeof(dv_dag_node_page_t) ? sz_ : sizeof(dv_dag_node_page_t));
+  dv_dag_node_page_t * page = (dv_dag_node_page_t *) dv_malloc(sz);
+  /* initialize page */
+  page->sz = sz;
+  long n = ( sz - sizeof(dv_dag_node_page_t) ) / sizeof(dv_dag_node_t) + DV_DEFAULT_PAGE_MIN_NODES;
+  long i;
+  for (i = 0; i < n - 1; i++) {
+    page->nodes[i].next = &page->nodes[i+1];
+  }
+  page->nodes[n-1].next = NULL;
+  /* append page */
+  page->next = pool->pages;
+  pool->pages = page;
+  pool->sz += page->sz;
+  /* append nodes */
+  if (!pool->head)
+    pool->head = &page->nodes[0];
+  else
+    pool->tail->next = &page->nodes[0];
+  pool->tail = &page->nodes[n-1];
+  pool->N += n;
+  pool->n += n;
+  //fprintf(stderr, "allocated %ld bytes (%ld nodes), total %ld (%ld)\n", sz, n, pool->sz, pool->N);
+  return pool->head;
+}
+
+dv_dag_node_t *
+dv_dag_node_pool_pop(dv_dag_node_pool_t * pool) {
+  dv_dag_node_t * ret = pool->head;
+  if (!ret)
+    ret = dv_dag_node_pool_add_page(pool);
+  dv_check(ret);
+  pool->head = ret->next;
+  if (!pool->head)
+    pool->tail = NULL;
+  ret->next = NULL;
+  pool->n--;
+  return ret;
+}
+
+void
+dv_dag_node_pool_push(dv_dag_node_pool_t * pool, dv_dag_node_t * node) {
+  node->next = pool->head;
+  pool->head = node;
+  if (!pool->tail)
+    pool->tail = node;
+  pool->n++;
+}
+
+dv_dag_node_t *
+dv_dag_node_pool_pop_contiguous(dv_dag_node_pool_t * pool, long num) {
+  if (num < 1)
+    return NULL;
+  while (pool->n < num)
+    dv_dag_node_pool_add_page(pool);
+  dv_dag_node_t * ret = pool->head;
+  dv_check(ret);
+  dv_dag_node_t * ret_ = ret;
+  long i = 1;
+  while (i < num) {
+    dv_check(ret_);
+    ret_ = ret_->next;
+    i++;
+  }
+  pool->head = ret_->next;
+  if (!pool->head)
+    pool->tail = NULL;
+  ret_->next = NULL;
+  pool->n -= num;
+  return ret;
+}
+
+
+/*----------end of DAG Node Pool-----------------------*/
+
+
+
 

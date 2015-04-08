@@ -67,7 +67,8 @@ static void dv_get_env() {
 
 /*-----------------Global State-----------------*/
 
-void dv_global_state_init(dv_global_state_t *CS) {
+void
+dv_global_state_init(dv_global_state_t * CS) {
   CS->nP = 0;
   CS->nD = 0;
   CS->nV = 0;
@@ -82,6 +83,7 @@ void dv_global_state_init(dv_global_state_t *CS) {
   dv_btsample_viewer_init(CS->btviewer);
   CS->box_viewport_configure = NULL;
   CS->nH = 0;
+  dv_dag_node_pool_init(CS->pool);
 }
 
 void dv_global_state_set_active_view(dv_view_t *V) {
@@ -1307,14 +1309,15 @@ on_darea_configure_event(GtkWidget * widget, GdkEventConfigure * event, gpointer
   return TRUE;
 }
 
-static gboolean on_window_key_event(GtkWidget *widget, GdkEvent *event, gpointer user_data) {
-  dv_view_t *aV = dv_global_state_get_active_view();
+static gboolean
+on_window_key_event(GtkWidget * widget, GdkEvent * event, gpointer user_data) {
+  dv_view_t * aV = dv_global_state_get_active_view();
   if (!aV)
     return FALSE;
   
   GdkModifierType modifiers = gtk_accelerator_get_default_mod_mask();
   
-  GdkEventKey *e = (GdkEventKey *) event;
+  GdkEventKey * e = (GdkEventKey *) event;
   int i;
   //printf("key: %d\n", e->keyval);
   switch (e->keyval) {
@@ -1394,6 +1397,12 @@ static gboolean on_window_key_event(GtkWidget *widget, GdkEvent *event, gpointer
     aV->S->y -= 15;
     dv_queue_draw(aV);
     return TRUE;
+  case 97: /* a */
+    if (aV->I[ aV->mainVP - CS->VP ]) {
+      fprintf(stderr, "open attribute dialog of V %ld on VP %ld\n", aV - CS->V, aV->mainVP - CS->VP);
+      dv_view_interface_open_attribute_dialog(aV->I[ aV->mainVP - CS->VP ]);
+    }
+    return TRUE;
   default:
     return FALSE;
   }
@@ -1403,28 +1412,7 @@ static gboolean on_window_key_event(GtkWidget *widget, GdkEvent *event, gpointer
 static void
 on_btn_view_attributes_clicked(GtkToolButton * toolbtn, gpointer user_data) {
   dv_view_interface_t * I = (dv_view_interface_t *) user_data;
-
-  // Adjust I's attribute values
-  dv_view_interface_set_values(I->V, I);
-  
-  // Build dialog
-  GtkWidget * dialog = gtk_dialog_new();
-  char s[30];
-  sprintf(s, "VIEW %ld's Attributes", I->V - CS->V);
-  gtk_window_set_title(GTK_WINDOW(dialog), s);
-  //gtk_window_set_default_size(GTK_WINDOW(dialog), 600, -1);
-  gtk_window_set_position(GTK_WINDOW(dialog), GTK_WIN_POS_MOUSE);
-  GtkWidget * dialog_vbox = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-
-  gtk_box_pack_start(GTK_BOX(dialog_vbox), I->grid, TRUE, TRUE, 0);
-  
-  // Run
-  gtk_widget_show_all(dialog_vbox);
-  gtk_dialog_run(GTK_DIALOG(dialog));
-  
-  // Destroy
-  gtk_container_remove(GTK_CONTAINER(dialog_vbox), I->grid);
-  gtk_widget_destroy(dialog);
+  dv_view_interface_open_attribute_dialog(I);
 }
 
 static void on_btn_choose_bt_file_clicked(GtkToolButton *toolbtn, gpointer user_data) {
@@ -1974,6 +1962,31 @@ void dv_view_interface_destroy(dv_view_interface_t *I) {
   if (GTK_IS_WIDGET(I->entry_radix)) gtk_widget_destroy(I->entry_radix);
   if (GTK_IS_WIDGET(I->toolbar)) gtk_widget_destroy(I->toolbar);
   dv_free(I, sizeof(dv_view_interface_t));
+}
+
+void
+dv_view_interface_open_attribute_dialog(dv_view_interface_t * I) {
+  // Adjust I's attribute values
+  dv_view_interface_set_values(I->V, I);
+  
+  // Build dialog
+  GtkWidget * dialog = gtk_dialog_new();
+  char s[30];
+  sprintf(s, "VIEW %ld's Attributes", I->V - CS->V);
+  gtk_window_set_title(GTK_WINDOW(dialog), s);
+  //gtk_window_set_default_size(GTK_WINDOW(dialog), 600, -1);
+  gtk_window_set_position(GTK_WINDOW(dialog), GTK_WIN_POS_MOUSE);
+  GtkWidget * dialog_vbox = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+
+  gtk_box_pack_start(GTK_BOX(dialog_vbox), I->grid, TRUE, TRUE, 0);
+  
+  // Run
+  gtk_widget_show_all(dialog_vbox);
+  gtk_dialog_run(GTK_DIALOG(dialog));
+  
+  // Destroy
+  gtk_container_remove(GTK_CONTAINER(dialog_vbox), I->grid);
+  gtk_widget_destroy(dialog);
 }
 
 void
