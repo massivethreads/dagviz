@@ -288,7 +288,7 @@ dv_view_draw_edge_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * u, dv_dag_node_
     break;
   case 3:
     // winding
-    pi = dv_pidag_get_node(V->D->P, u);
+    pi = dv_pidag_get_node_by_dag_node(V->D->P, u);
     if (pi->info.kind == dr_dag_node_kind_create_task)
       cairo_line_to(cr, x2, y1);
     else
@@ -337,19 +337,19 @@ dv_view_draw_status(dv_view_t * V, cairo_t * cr, int count) {
   
   // Depth
   //sprintf(s, "d=%d/%d/%d, ", D->cur_d_ex, D->cur_d, D->dmax);
-  sprintf(s, "d=%d/%d", D->cur_d, D->dmax);
+  sprintf(s, "depth:%d/%d", D->cur_d, D->dmax);
   x -= strlen(s) * char_width;
   cairo_move_to(cr, x, y);
   cairo_show_text(cr, s);
 
   // Node pool
-  sprintf(s, "np=%ld/%ld-%ld, ", D->Tn, D->P->n, D->Tsz);
+  sprintf(s, "pool:%ld/%ld(%ldMB), ", CS->pool->n, CS->pool->N, CS->pool->sz / (1 << 20));
   x -= strlen(s) * char_width;
   cairo_move_to(cr, x, y);
   cairo_show_text(cr, s);
   
   // Nodes drawn
-  sprintf(s, "n=%ld/%ld, ", S->nd, S->ndh);
+  sprintf(s, "nodes:%ld/%ld/%ld, ", S->nd, S->ndh, D->P->n);
   x -= strlen(s) * char_width;
   cairo_move_to(cr, x, y);
   cairo_show_text(cr, s);
@@ -449,11 +449,10 @@ dv_view_draw_infotag_1(dv_view_t * V, cairo_t * cr, cairo_matrix_t * mt, dv_dag_
 
   // Line 1
   /* TODO: adaptable string length */
-  dr_pi_dag_node * pi = dv_pidag_get_node(D->P, node);
+  dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, node);
   char * s = (char *) dv_malloc( DV_STRING_LENGTH * sizeof(char) );
-  sprintf(s, "[%ld][%ld] %s d=%d f=%d%d%d%d%d%d n=%ld/%ld/%ld",
+  sprintf(s, "[%ld] %s d=%d f=%d%d%d%d%d%d n=%ld/%ld/%ld",
           pi - D->P->T,
-          node - D->T,
           dv_get_node_kind_name(pi->info.kind),
           node->d,
           dv_is_set(node),

@@ -621,10 +621,10 @@ dv_do_expanding_one_r(dv_view_t * V, dv_dag_node_t * node) {
   }
   
   /* Call link-along */
-  dv_dag_node_t *u = NULL;
-  while (u = (dv_dag_node_t *) dv_llist_iterate_next(node->links, u)) {
-    dv_do_expanding_one_r(V, u);
-  }
+  if (node->next)
+    dv_do_expanding_one_r(V, node->next);
+  if (node->spawn)
+    dv_do_expanding_one_r(V, node->spawn);
 }
 
 static void
@@ -677,21 +677,24 @@ dv_do_collapsing_one_r(dv_view_t * V, dv_dag_node_t * node) {
       && (dv_is_expanded(node) || dv_is_expanding(node))) {
     // check if node has expanded node, excluding shrinking nodes
     int has_expanded_node = 0;
-    dv_stack_t s[1];
-    dv_stack_init(s);
-    dv_check(node->head);
-    dv_stack_push(s, (void *) node->head);
-    while (s->top) {
-      dv_dag_node_t * x = (dv_dag_node_t *) dv_stack_pop(s);
+    /* Traverse all children */
+    dv_dag_node_t * x = node->head;
+    while (x) {
       if (dv_is_union(x) && dv_is_inner_loaded(x)
           && (dv_is_expanded(x) || dv_is_expanding(x))
-          && !dv_is_shrinking(x))
+          && !dv_is_shrinking(x)) {
         has_expanded_node = 1;
-      dv_dag_node_t * xx = NULL;
-      while (xx = (dv_dag_node_t *) dv_llist_iterate_next(x->links, xx)) {
-        dv_stack_push(s, (void *) xx);
-      }      
-    }
+        break;
+      }
+      if (x->spawn &&
+          (dv_is_union(x->spawn) && dv_is_inner_loaded(x->spawn)
+           && (dv_is_expanded(x->spawn) || dv_is_expanding(x->spawn))
+           && !dv_is_shrinking(x->spawn)) ) {
+        has_expanded_node = 1;
+        break;
+      }
+      x = x->next;
+    }    
     if (!has_expanded_node) {
       // collapsing node's parent
       dv_do_collapsing_one_1(V, node);
@@ -702,10 +705,10 @@ dv_do_collapsing_one_r(dv_view_t * V, dv_dag_node_t * node) {
   }
   
   /* Call link-along */
-  dv_dag_node_t *u = NULL;
-  while (u = (dv_dag_node_t *) dv_llist_iterate_next(node->links, u)) {
-    dv_do_collapsing_one_r(V, u);
-  }
+  if (node->next)
+    dv_do_collapsing_one_r(V, node->next);
+  if (node->spawn)
+    dv_do_collapsing_one_r(V, node->spawn);
 }
 
 static void
@@ -750,7 +753,7 @@ dv_do_finding_clicked_node_1(dv_view_t * V, double x, double y, dv_dag_node_t * 
 
 static dv_dag_node_t *
 dv_do_finding_clicked_node_r(dv_view_t * V, double x, double y, dv_dag_node_t * node) {
-  dv_dag_node_t * ret;
+  dv_dag_node_t * ret = NULL;
   /* Call inward */
   if (dv_is_union(node) && dv_is_inner_loaded(node)
       && !dv_is_shrinking(node)
@@ -762,13 +765,17 @@ dv_do_finding_clicked_node_r(dv_view_t * V, double x, double y, dv_dag_node_t * 
       return node;
   }
   /* Call link-along */
-  dv_dag_node_t * u = NULL;
-  while (u = (dv_dag_node_t *) dv_llist_iterate_next(node->links, u)) {
-    ret = dv_do_finding_clicked_node_r(V, x, y, u);
+  if (node->next) {
+    ret = dv_do_finding_clicked_node_r(V, x, y, node->next);
     if (ret)
       return ret;
   }
-  return 0;
+  if (node->spawn) {
+    ret = dv_do_finding_clicked_node_r(V, x, y, node->spawn);
+    if (ret)
+      return ret;
+  }
+  return NULL;
 }
 
 static dv_dag_node_t *
@@ -1127,7 +1134,7 @@ on_entry_remark_activate(GtkEntry * entry, gpointer user_data) {
 static dv_dag_node_t * dv_find_node_with_pii_r(dv_view_t *V, long pii, dv_dag_node_t *node) {
   if (node->pii == pii)
     return node;
-  dv_dag_node_t *ret;
+  dv_dag_node_t * ret = NULL;
   /* Call inward */
   if (dv_is_union(node) && dv_is_inner_loaded(node)
       && !dv_is_shrinking(node)
@@ -1137,13 +1144,17 @@ static dv_dag_node_t * dv_find_node_with_pii_r(dv_view_t *V, long pii, dv_dag_no
       return ret;
   }
   /* Call link-along */
-  dv_dag_node_t *u = NULL;
-  while (u = (dv_dag_node_t *) dv_llist_iterate_next(node->links, u)) {
-    ret = dv_find_node_with_pii_r(V, pii, u);
+  if (node->next) {
+    ret = dv_find_node_with_pii_r(V, pii, node->next);
     if (ret)
       return ret;
   }
-  return 0;
+  if (node->spawn) {
+    ret = dv_find_node_with_pii_r(V, pii, node->spawn);
+    if (ret)
+      return ret;
+  }
+  return NULL;
 }
 
 static gboolean on_entry_search_activate(GtkEntry *entry, gpointer user_data) {
@@ -1469,7 +1480,7 @@ static void on_btn_find_node_clicked(GtkToolButton *toolbtn, gpointer user_data)
   dv_btsample_viewer_t * btviewer = (dv_btsample_viewer_t *) user_data;
   long pii = atol(gtk_entry_get_text(GTK_ENTRY(btviewer->entry_node_id)));
   //dv_dag_node_t *node = dv_find_node_with_pii_r(CS->activeV, pii, CS->activeV->D->rt);
-  dr_pi_dag_node *pi = dv_pidag_get_node_with_id(btviewer->P, pii);
+  dr_pi_dag_node *pi = dv_pidag_get_node_by_id(btviewer->P, pii);
   if (pi) {
     gtk_combo_box_set_active(GTK_COMBO_BOX(btviewer->combobox_worker), pi->info.worker);
     char str[30];
@@ -2378,7 +2389,6 @@ on_view_add_new(GtkMenuItem * menuitem, gpointer user_data) {
   dv_dag_t * D = (dv_dag_t *) user_data;
   dv_view_t * V = dv_view_create_new_with_dag(D);
   if (V) {
-    //dv_do_expanding_one(V);
     dv_view_layout(V);
     // Alternate menubar
     dv_alternate_menubar();

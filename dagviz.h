@@ -121,7 +121,7 @@ typedef struct dv_llist {
 #define DV_TIMELINE_NODE_WITH_BORDER 0
 #define DV_ENTRY_RADIX_MAX_LENGTH 20
 
-#define DV_DAG_NODE_POOL_SIZE 460000
+#define DV_DAG_NODE_POOL_SIZE 50000
 
 #define DV_MAX_DAG_FILE 5
 #define DV_MAX_DAG 10
@@ -134,7 +134,7 @@ typedef struct dv_llist {
 
 #define backtrace_sample_sz 15
 
-#define DV_HISTOGRAM_PIECE_POOL_SIZE 10000000
+#define DV_HISTOGRAM_PIECE_POOL_SIZE 100000
 #define DV_HISTOGRAM_ENTRY_POOL_SIZE 40000
 
 #define DV_CLIPPING_FRAME_MARGIN 0
@@ -193,12 +193,12 @@ typedef struct dv_dag_node {
   int d; /* depth */
   
   /* linking structure */
-  struct dv_dag_node * next;
   struct dv_dag_node * parent;
   struct dv_dag_node * pre;
-  dv_llist_t links[1]; /* linked nodes */
+  struct dv_dag_node * next; /* is used for linking in pool before node is really initialized */
+  struct dv_dag_node * spawn;
   struct dv_dag_node * head; /* inner head node */
-  dv_llist_t tails[1]; /* list of inner tail nodes */
+  struct dv_dag_node * tail; /* inner tail node */
 
   /* layout */
   dv_node_coordinate_t c[DV_NUM_LAYOUT_TYPES]; /* 0:dag, 1:dagbox, 2:timeline_ver, 3:timeline, 4:paraprof */
@@ -218,12 +218,12 @@ typedef struct dv_dag {
   dv_pidag_t * P;
 
   /* DAG's skeleton */
-  dv_dag_node_t * T;  /* array of all nodes */
-  char * To;
-  long Tsz;
-  long Tn;
+  //dv_dag_node_t * T;  /* array of all nodes */
+  //char * To;
+  //long Tsz;
+  //long Tn;
 
-  /* DAG's content */
+  /* DAG */
   dv_dag_node_t * rt;  /* root task */
   int dmax; /* depth max */
   double bt; /* begin time */
@@ -550,8 +550,8 @@ void dv_check_layout(dv_dag_t *);
 
 /* read.c */
 dv_pidag_t *     dv_pidag_read_new_file(char *);
-dr_pi_dag_node * dv_pidag_get_node_with_id(dv_pidag_t *, long);
-dr_pi_dag_node * dv_pidag_get_node(dv_pidag_t *, dv_dag_node_t *);
+dr_pi_dag_node * dv_pidag_get_node_by_id(dv_pidag_t *, long);
+dr_pi_dag_node * dv_pidag_get_node_by_dag_node(dv_pidag_t *, dv_dag_node_t *);
 
 /*
 void            dv_dag_node_pool_init(dv_dag_t *);
@@ -564,7 +564,7 @@ dv_dag_node_t * dv_dag_node_pool_pop_contiguous(dv_dag_t *, long);
 
 void dv_dag_node_init(dv_dag_node_t *, dv_dag_node_t *, long);
 int dv_dag_node_set(dv_dag_t *, dv_dag_node_t *);
-int  dv_dag_build_node_inner(dv_dag_t *, dv_dag_node_t *);
+int dv_dag_build_node_inner(dv_dag_t *, dv_dag_node_t *);
 int dv_dag_collapse_node_inner(dv_dag_t *, dv_dag_node_t *);
 void dv_dag_clear_shrinked_nodes(dv_dag_t *);
 void dv_dag_init(dv_dag_t *, dv_pidag_t *);

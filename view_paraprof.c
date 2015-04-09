@@ -241,7 +241,7 @@ dv_histogram_add_node(dv_histogram_t * H, dv_dag_node_t * node) {
   count_add_node++;
   if (!H)
     return;
-  dr_pi_dag_node * pi = dv_pidag_get_node(H->D->P, node);
+  dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(H->D->P, node);
   double first_ready_t = pi->info.first_ready_t;
   double start_t = pi->info.start.t;
   double last_start_t = pi->info.last_start_t;
@@ -272,7 +272,7 @@ dv_histogram_add_node(dv_histogram_t * H, dv_dag_node_t * node) {
                     dv_histogram_layer_running,
                     start_t, end_t,
                     pi->info.t_1 / dt);
-  H->added[node - H->D->T] = 1;
+  //H->added[node - H->D->T] = 1;
   //fprintf(stderr, "used #entries: %ld\n", H->epool->n);
 }
 
@@ -403,7 +403,7 @@ dv_view_layout_paraprof_node(dv_view_t * V, dv_dag_node_t * node) {
   int lt = 4;
   dv_node_coordinate_t * nodeco = &node->c[lt];
   dv_dag_t * D = V->D;
-  dr_pi_dag_node * pi = dv_pidag_get_node(D->P, node);
+  dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, node);
   /* Calculate inward */
   nodeco->dw = V->D->radius * 2;
   nodeco->lw = 0.0;
@@ -438,19 +438,23 @@ dv_view_layout_paraprof_node(dv_view_t * V, dv_dag_node_t * node) {
   }
     
   /* Calculate link-along */
-  int n_links = dv_llist_size(node->links);
+  int n_links = 0;
+  if (node->next && node->spawn)
+    n_links = 2;
+  else if (node->next)
+    n_links = 1;
   dv_dag_node_t * u, * v; // linked nodes
   switch (n_links) {
   case 0:
     break;
   case 1:
-    u = (dv_dag_node_t *) node->links->top->item;
+    u = node->next;
     // Recursive call
     dv_view_layout_paraprof_node(V, u);
     break;
   case 2:
-    u = (dv_dag_node_t *) node->links->top->item; // cont node
-    v = (dv_dag_node_t *) node->links->top->next->item; // task node
+    u = node->next;  // cont node
+    v = node->spawn; // task node
     // Recursive call
     dv_view_layout_paraprof_node(V, u);
     dv_view_layout_paraprof_node(V, v);
@@ -509,7 +513,7 @@ dv_view_draw_paraprof_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) 
   double x = nodeco->x;
   double y = nodeco->y;
   double c[4];
-  dr_pi_dag_node * pi = dv_pidag_get_node(D->P, node);
+  dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, node);
   dv_lookup_color(pi, S->nc, c, c+1, c+2, c+3);
   // Alpha
   double alpha = 1.0;
@@ -584,10 +588,10 @@ dv_view_draw_paraprof_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) 
     dv_view_draw_paraprof_node_1(V, cr, node);
   }
   /* Call link-along */
-  dv_dag_node_t * u = NULL;
-  while (u = (dv_dag_node_t *) dv_llist_iterate_next(node->links, u)) {
-    dv_view_draw_paraprof_node_r(V, cr, u);
-  }
+  if (node->next)
+    dv_view_draw_paraprof_node_r(V, cr, node->next);
+  if (node->spawn)
+    dv_view_draw_paraprof_node_r(V, cr, node->spawn);
 }
 
 void

@@ -2,11 +2,12 @@
 
 /*-----------Timeline layout functions----------------------*/
 
-static void dv_view_layout_timeline_node(dv_view_t *V, dv_dag_node_t *node) {
+static void
+dv_view_layout_timeline_node(dv_view_t * V, dv_dag_node_t * node) {
   int lt = 2;
-  dv_node_coordinate_t *nodeco = &node->c[lt];
-  dv_dag_t *D = V->D;
-  dr_pi_dag_node * pi = dv_pidag_get_node(D->P, node);
+  dv_node_coordinate_t * nodeco = &node->c[lt];
+  dv_dag_t * D = V->D;
+  dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, node);
   /* Calculate inward */
   nodeco->lw = V->D->radius;
   nodeco->rw = V->D->radius;
@@ -22,19 +23,23 @@ static void dv_view_layout_timeline_node(dv_view_t *V, dv_dag_node_t *node) {
   }
     
   /* Calculate link-along */
-  int n_links = dv_llist_size(node->links);
-  dv_dag_node_t *u, *v; // linked nodes
+  int n_links = 0;
+  if (node->next && node->spawn)
+    n_links = 2;
+  else if (node->next)
+    n_links = 1;
+  dv_dag_node_t * u, * v; // linked nodes
   switch (n_links) {
   case 0:
     break;
   case 1:
-    u = (dv_dag_node_t *) node->links->top->item;
+    u = node->next;
     // Recursive call
     dv_view_layout_timeline_node(V, u);
     break;
   case 2:
-    u = (dv_dag_node_t *) node->links->top->item; // cont node
-    v = (dv_dag_node_t *) node->links->top->next->item; // task node
+    u = node->next;  // cont node
+    v = node->spawn; // task node
     // Recursive call
     dv_view_layout_timeline_node(V, u);
     dv_view_layout_timeline_node(V, v);
@@ -46,7 +51,8 @@ static void dv_view_layout_timeline_node(dv_view_t *V, dv_dag_node_t *node) {
   
 }
 
-void dv_view_layout_timeline(dv_view_t *V) {
+void
+dv_view_layout_timeline(dv_view_t * V) {
 
   // Absolute coord
   dv_view_layout_timeline_node(V, V->D->rt);
@@ -61,11 +67,12 @@ void dv_view_layout_timeline(dv_view_t *V) {
 
 /*-----------------TIMELINE Drawing functions-----------*/
 
-static void dv_view_draw_timeline_node_1(dv_view_t *V, cairo_t *cr, dv_dag_node_t *node) {
-  dv_dag_t *D = V->D;
-  dv_view_status_t *S = V->S;
+static void
+dv_view_draw_timeline_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
+  dv_dag_t * D = V->D;
+  dv_view_status_t * S = V->S;
   int lt = 2;
-  dv_node_coordinate_t *nodeco = &node->c[lt];
+  dv_node_coordinate_t * nodeco = &node->c[lt];
   // Count node drawn
   S->nd++;
   if (node->d > D->cur_d)
@@ -78,7 +85,7 @@ static void dv_view_draw_timeline_node_1(dv_view_t *V, cairo_t *cr, dv_dag_node_
   double x = nodeco->x;
   double y = nodeco->y;
   double c[4];
-  dr_pi_dag_node *pi = dv_pidag_get_node(D->P, node);
+  dr_pi_dag_node *pi = dv_pidag_get_node_by_dag_node(D->P, node);
   dv_lookup_color(pi, S->nc, c, c+1, c+2, c+3);
   // Alpha
   double alpha = 1.0;
@@ -139,7 +146,8 @@ static void dv_view_draw_timeline_node_1(dv_view_t *V, cairo_t *cr, dv_dag_node_
   cairo_restore(cr);
 }
 
-static void dv_view_draw_timeline_node_r(dv_view_t *V, cairo_t *cr, dv_dag_node_t *node) {
+static void
+dv_view_draw_timeline_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
   // Count node
   V->S->ndh++;
   if (!node || !dv_is_set(node))
@@ -152,10 +160,10 @@ static void dv_view_draw_timeline_node_r(dv_view_t *V, cairo_t *cr, dv_dag_node_
     dv_view_draw_timeline_node_1(V, cr, node);
   }
   /* Call link-along */
-  dv_dag_node_t * u = NULL;
-  while (u = (dv_dag_node_t *) dv_llist_iterate_next(node->links, u)) {
-    dv_view_draw_timeline_node_r(V, cr, u);
-  }
+  if (node->next)
+    dv_view_draw_timeline_node_r(V, cr, node->next);
+  if (node->spawn)
+    dv_view_draw_timeline_node_r(V, cr, node->spawn);
 }
 
 void dv_view_draw_timeline(dv_view_t *V, cairo_t *cr) {
