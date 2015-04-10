@@ -28,15 +28,10 @@ dv_view_layout_dag_node(dv_view_t * V, dv_dag_node_t * node) {
   }
     
   /* Calculate link-along */
-  int n_links = 0;
-  if (node->next && node->spawn)
-    n_links = 2;
-  else if (node->next)
-    n_links = 1;
   dv_dag_node_t * u, * v; // linked nodes
   dv_node_coordinate_t * uco, * vco;
   double rate, ypre, hgap;
-  switch (n_links) {
+  switch ( dv_dag_node_count_nexts(node) ) {
   case 0:
     // node's link-along
     nodeco->link_lw = nodeco->lw;
@@ -100,14 +95,15 @@ dv_view_layout_dag_node(dv_view_t * V, dv_dag_node_t * node) {
   }  
 }
 
-static void dv_view_layout_dag_node_2nd(dv_dag_node_t *node) {
+static void
+dv_view_layout_dag_node_2nd(dv_dag_node_t * node) {
   int lt = 0;
-  dv_node_coordinate_t *nodeco = &node->c[lt];
+  dv_node_coordinate_t * nodeco = &node->c[lt];
   /* Calculate inward */
   if (dv_is_inward_callable(node)) {
     dv_check(node->head);
     // node's head's outward
-    dv_node_coordinate_t *headco = &node->head->c[lt];
+    dv_node_coordinate_t * headco = &node->head->c[lt];
     headco->xp = 0.0;
     headco->x = nodeco->x;
     // Recursive call
@@ -115,14 +111,9 @@ static void dv_view_layout_dag_node_2nd(dv_dag_node_t *node) {
   }
     
   /* Calculate link-along */
-  int n_links = 0;
-  if (node->next && node->spawn)
-    n_links = 2;
-  else if (node->next)
-    n_links = 1;
   dv_dag_node_t *u, *v; // linked nodes
   dv_node_coordinate_t *uco, *vco;
-  switch (n_links) {
+  switch ( dv_dag_node_count_nexts(node) ) {
   case 0:
     break;
   case 1:
@@ -155,10 +146,11 @@ static void dv_view_layout_dag_node_2nd(dv_dag_node_t *node) {
   
 }
 
-void dv_view_layout_dag(dv_view_t *V) {
-  dv_dag_t *D = V->D;
+void
+dv_view_layout_dag(dv_view_t * V) {
+  dv_dag_t * D = V->D;
   int lt = 0;
-  dv_node_coordinate_t *rtco = &D->rt->c[lt];
+  dv_node_coordinate_t * rtco = &D->rt->c[lt];
 
   // Relative coord
   rtco->xpre = 0.0; // pre-based
@@ -352,107 +344,66 @@ dv_view_draw_dag_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
 }
 
 static void
-dv_view_draw_dag_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * u) {
+dv_view_draw_dag_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
   // Count node
   V->S->ndh++;
-  if (!u || !dv_is_set(u))
+  if (!node || !dv_is_set(node))
     return;
   /* Draw node */
-  if (!dv_is_union(u) || !dv_is_inner_loaded(u)
-      || dv_is_shrinked(u) || dv_is_shrinking(u)) {
-    dv_view_draw_dag_node_1(V, cr, u);
+  if (!dv_is_union(node) || !dv_is_inner_loaded(node)
+      || dv_is_shrinked(node) || dv_is_shrinking(node)) {
+    dv_view_draw_dag_node_1(V, cr, node);
   }
   /* Call inward */
-  if (!dv_is_single(u)) {
-    dv_view_draw_dag_node_r(V, cr, u->head);
+  if (!dv_is_single(node)) {
+    dv_view_draw_dag_node_r(V, cr, node->head);
   }
   /* Call link-along */
-  if (u->next)
-    dv_view_draw_dag_node_r(V, cr, u->next);
-  if (u->spawn)
-    dv_view_draw_dag_node_r(V, cr, u->spawn);
+  dv_dag_node_t * x = NULL;
+  while (x = dv_dag_node_traverse_nexts(node, x)) {
+    dv_view_draw_dag_node_r(V, cr, x);
+  }
 }
 
 static void
-dv_view_draw_dag_edge_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * u, dv_dag_node_t * v) {
-  dv_view_draw_edge_1(V, cr, u, v);
-}
-
-static dv_dag_node_t *
-dv_dag_node_get_first(dv_dag_node_t * u) {
-  dv_check(u);
-  while (!dv_is_single(u)) {
-    dv_check(u->head);
-    u = u->head;
-  }
-  return u;
-}
-
-static dv_dag_node_t *
-dv_dag_node_get_last(dv_dag_node_t * u) {
-  dv_check(u);
-  while (!dv_is_single(u)) {
-    dv_check(u->tail);
-    u = u->tail;
-  }
-  return u;
+dv_view_draw_dag_edge_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node, dv_dag_node_t * next) {
+  dv_view_draw_edge_1(V, cr, node, next);
 }
 
 static void
-dv_view_draw_dag_edge_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * u) {
-  if (!u || !dv_is_set(u))
+dv_view_draw_dag_edge_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
+  if (!node || !dv_is_set(node))
     return;
   /* Call inward */
-  if (!dv_is_single(u)) {
-    dv_view_draw_dag_edge_r(V, cr, u->head);
+  if (!dv_is_single(node)) {
+    dv_view_draw_dag_edge_r(V, cr, node->head);
   }
   /* Call link-along */
-  dv_dag_node_t * v = NULL;
-  dv_dag_node_t * a[2];
-  a[0] = u->next;
-  a[1] = u->spawn;
-  int i;
-  for (i = 0; i < 2; i++) {
+  dv_dag_node_t * next = NULL;
+  while (next = dv_dag_node_traverse_nexts(node, next)) {
     
-    v = a[i];
-    if (!v) break;
-    dv_dag_node_t * u_tail, * v_head;
-    if (dv_is_single(u)) {
+    if (dv_is_single(node)) {
       
-      if (dv_is_single(v)) {
-        dv_view_draw_dag_edge_1(V, cr, u, v);        
-      } else {
-        v_head = v->head;
-        dv_dag_node_t * v_first = dv_dag_node_get_first(v_head);
-        dv_view_draw_dag_edge_1(V, cr, u, v_first);        
-      }
+      if (dv_is_single(next))
+        dv_view_draw_dag_edge_1(V, cr, node, next);
+      else
+        dv_view_draw_dag_edge_1(V, cr, node, dv_dag_node_get_single_head(next->head));
       
     } else {
 
-      /* Traverse all tails */
-      dv_dag_node_t * x = u->head;
-      while (x) {
-        u_tail = x->spawn;
-        if (!u_tail && !x->next)
-          u_tail = x;
-        if (u_tail) {
-          
-          dv_dag_node_t * u_last = dv_dag_node_get_last(u_tail);
+      dv_dag_node_t * tail = NULL;
+      while (tail = dv_dag_node_traverse_tails(node, tail)) {
+          dv_dag_node_t * last = dv_dag_node_get_single_last(tail);
         
-          if (dv_is_single(v)) {
-            dv_view_draw_dag_edge_1(V, cr, u_last, v);
-          } else {
-            v_head = v->head;
-            dv_dag_node_t * v_first = dv_dag_node_get_first(v_head);
-            dv_view_draw_dag_edge_1(V, cr, u_last, v_first);
-          }
-          
-        }
-        x = x->next;
+          if (dv_is_single(next))
+            dv_view_draw_dag_edge_1(V, cr, last, next);
+          else
+            dv_view_draw_dag_edge_1(V, cr, last, dv_dag_node_get_single_head(next->head));
+      
       }
       
     }
-    dv_view_draw_dag_edge_r(V, cr, v);
+    dv_view_draw_dag_edge_r(V, cr, next);
     
   }
 }

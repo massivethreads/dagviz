@@ -370,7 +370,7 @@ dv_dag_build_node_inner(dv_dag_t * D, dv_dag_node_t * node) {
       if (node_x->d > D->dmax)
         D->dmax = node_x->d;
       pi_x++;
-      node_x = node_x->next;
+      node_x = dv_dag_node_get_next(node_x);
     }
     
     // Set node->head, node->tail
@@ -410,17 +410,17 @@ dv_dag_collapse_node_inner(dv_dag_t * D, dv_dag_node_t * node) {
   if (dv_is_set(node) && dv_is_union(node)
       && dv_is_inner_loaded(node)) {
 
-    dv_dag_node_t * node_x = node->head;
+    dv_dag_node_t * x = node->head;
     dv_dag_node_t * next;
-    while (node_x) {
-      next = node_x->next;
-      if (node_x->spawn) {
-        dv_check(!dv_is_union(node_x->spawn) || !dv_is_inner_loaded(node_x->spawn));
-        dv_dag_node_pool_push(CS->pool, node_x->spawn);
+    while (x) {
+      next = x->next;
+      if (x->spawn) {
+        dv_check(!dv_is_union(x->spawn) || !dv_is_inner_loaded(x->spawn));
+        dv_dag_node_pool_push(CS->pool, x->spawn);
       }
-      dv_check(!dv_is_union(node_x) || !dv_is_inner_loaded(node_x));
-      dv_dag_node_pool_push(CS->pool, node_x);
-      node_x = next;
+      dv_check(!dv_is_union(x) || !dv_is_inner_loaded(x));
+      dv_dag_node_pool_push(CS->pool, x);
+      x = next;
     }
 
     // Unset node->f
@@ -446,18 +446,12 @@ dv_dag_clear_shrinked_nodes_r(dv_dag_t * D, dv_dag_node_t * node) {
         && !dv_is_expanding(node)) {
       // check if node has inner_loaded node
       int has_no_innerloaded_node = 1;
-      dv_dag_node_t * x = node->head;
-      while (x) {
+      dv_dag_node_t * x = NULL;
+      while (x = dv_dag_node_traverse_children(node, x)) {
         if (dv_is_set(x) && dv_is_union(x) && dv_is_inner_loaded(x)) {
           has_no_innerloaded_node = 0;
           break;
         }
-        if (x->spawn &&
-            ( dv_is_set(x->spawn) && dv_is_union(x->spawn) && dv_is_inner_loaded(x->spawn) )) {
-          has_no_innerloaded_node = 0;
-          break;
-        }
-        x = x->next;
       }
       if (has_no_innerloaded_node) {
         // collapse inner
@@ -475,10 +469,10 @@ dv_dag_clear_shrinked_nodes_r(dv_dag_t * D, dv_dag_node_t * node) {
   }
   
   /* Call link-along */
-  if (node->next)
-    dv_dag_clear_shrinked_nodes_r(D, node->next);
-  if (node->spawn)
-    dv_dag_clear_shrinked_nodes_r(D, node->spawn);
+  dv_dag_node_t * x = NULL;
+  while (x = dv_dag_node_traverse_nexts(node, x)) {
+    dv_dag_clear_shrinked_nodes_r(D, x);
+  }
 }
 
 void
@@ -613,6 +607,113 @@ dv_dag_node_lookup_value(dv_dag_t * D, dv_dag_node_t * node, int nc) {
   dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, node);
   return dv_pidag_node_lookup_value(pi, nc);
 }
+
+dv_dag_node_t *
+dv_dag_node_traverse_children(dv_dag_node_t * node, dv_dag_node_t * cur) {
+  if (!node) return NULL;
+  if (!cur) {
+    return node->head;
+  } else if (cur == node->tail) {
+    return NULL;
+  } else if (!cur->next) {
+    return cur->pre->next;
+  } else if (cur->spawn) {
+    return cur->spawn;
+  } else {
+    return cur->next;
+  }
+}
+
+dv_dag_node_t *
+dv_dag_node_traverse_children_inorder(dv_dag_node_t * node, dv_dag_node_t * cur) {
+  if (!node) return NULL;
+  if (!cur) {
+    dv_dag_node_t * x = node->head;
+    if (x->spawn)
+      return x->spawn;
+    else
+      return x;
+  } else if (cur == node->tail) {
+    return NULL;
+  } else if (!cur->next) {
+    return cur->pre;
+  } else {
+    dv_dag_node_t * x = cur->next;
+    if (x->spawn)
+      return x->spawn;
+    else
+      return x;
+  }
+}
+
+dv_dag_node_t *
+dv_dag_node_traverse_tails(dv_dag_node_t * node, dv_dag_node_t * cur) {
+  if (!node) return NULL;
+  if (cur == node->tail) return NULL;
+  
+  dv_dag_node_t * x;
+  if (!cur)
+    x = node->head;
+  else
+    x = cur->pre->next;
+
+  while (x && !x->spawn && x->next) {
+    x = x->next;
+  }
+
+  if (!x)
+    return NULL;
+  if (x->spawn)
+    return x->spawn;
+  return x;
+}
+
+dv_dag_node_t *
+dv_dag_node_traverse_nexts(dv_dag_node_t * node, dv_dag_node_t * cur) {
+  if (!node) return NULL;
+  if (!cur)
+    return node->next;
+  else if (cur == node->next)
+    return node->spawn;
+  return NULL;
+}
+
+int
+dv_dag_node_count_nexts(dv_dag_node_t * node) {
+  if (!node) return 0;
+  if (node->next && node->spawn)
+    return 2;
+  else if (node->next)
+    return 1;
+  return 0;
+}
+
+dv_dag_node_t *
+dv_dag_node_get_next(dv_dag_node_t * node) {
+  if (!node) return NULL;
+  return node->next;
+}
+
+dv_dag_node_t *
+dv_dag_node_get_single_head(dv_dag_node_t * node) {
+  if (!node) return NULL;
+  while (!dv_is_single(node)) {
+    dv_check(node->head);
+    node = node->head;
+  }
+  return node;
+}
+
+dv_dag_node_t *
+dv_dag_node_get_single_last(dv_dag_node_t * node) {
+  if (!node) return NULL;
+  while (!dv_is_single(node)) {
+    dv_check(node->tail);
+    node = node->tail;
+  }
+  return node;
+}
+
 
 /*-----------------end of DAG's functions-----------*/
 
@@ -808,7 +909,7 @@ dv_btsample_viewer_extract_interval(dv_btsample_viewer_t * btviewer, int worker,
 
 
 
-/*-----------------Composite worker's functions-----------*/
+/*-----------------Remarked Workers-----------*/
 
 static void
 dv_view_scan_r(dv_view_t * V, dv_dag_node_t * node) {
@@ -848,13 +949,10 @@ dv_view_scan_r(dv_view_t * V, dv_dag_node_t * node) {
   
   /* Call link-along */
   node->link_r = node->r;
-  if (node->next) {
-    dv_view_scan_r(V, node->next);
-    node->link_r |= node->next->link_r;
-  }
-  if (node->spawn) {
-    dv_view_scan_r(V, node->spawn);
-    node->link_r |= node->spawn->link_r;
+  dv_dag_node_t * x = NULL;
+  while (x = dv_dag_node_traverse_nexts(node, x)) {
+    dv_view_scan_r(V, x);
+    node->link_r |= x->link_r;
   }
 }
 
@@ -863,4 +961,4 @@ dv_view_scan(dv_view_t * V) {
   dv_view_scan_r(V, V->D->rt);
 }
 
-/*-----------------end of Composite worker's functions-----------*/
+/*-----------------end of Remarked Workers-----------*/

@@ -621,10 +621,10 @@ dv_do_expanding_one_r(dv_view_t * V, dv_dag_node_t * node) {
   }
   
   /* Call link-along */
-  if (node->next)
-    dv_do_expanding_one_r(V, node->next);
-  if (node->spawn)
-    dv_do_expanding_one_r(V, node->spawn);
+  dv_dag_node_t * x = NULL;
+  while (x = dv_dag_node_traverse_nexts(node, x)) {
+    dv_do_expanding_one_r(V, x);
+  }
 }
 
 static void
@@ -678,23 +678,15 @@ dv_do_collapsing_one_r(dv_view_t * V, dv_dag_node_t * node) {
     // check if node has expanded node, excluding shrinking nodes
     int has_expanded_node = 0;
     /* Traverse all children */
-    dv_dag_node_t * x = node->head;
-    while (x) {
+    dv_dag_node_t * x = NULL;
+    while (x = dv_dag_node_traverse_children(node, x)) {
       if (dv_is_union(x) && dv_is_inner_loaded(x)
           && (dv_is_expanded(x) || dv_is_expanding(x))
           && !dv_is_shrinking(x)) {
         has_expanded_node = 1;
         break;
       }
-      if (x->spawn &&
-          (dv_is_union(x->spawn) && dv_is_inner_loaded(x->spawn)
-           && (dv_is_expanded(x->spawn) || dv_is_expanding(x->spawn))
-           && !dv_is_shrinking(x->spawn)) ) {
-        has_expanded_node = 1;
-        break;
-      }
-      x = x->next;
-    }    
+    }
     if (!has_expanded_node) {
       // collapsing node's parent
       dv_do_collapsing_one_1(V, node);
@@ -705,10 +697,10 @@ dv_do_collapsing_one_r(dv_view_t * V, dv_dag_node_t * node) {
   }
   
   /* Call link-along */
-  if (node->next)
-    dv_do_collapsing_one_r(V, node->next);
-  if (node->spawn)
-    dv_do_collapsing_one_r(V, node->spawn);
+  dv_dag_node_t * x = NULL;
+  while (x = dv_dag_node_traverse_nexts(node, x)) {
+    dv_do_collapsing_one_r(V, x);
+  }
 }
 
 static void
@@ -765,13 +757,9 @@ dv_do_finding_clicked_node_r(dv_view_t * V, double x, double y, dv_dag_node_t * 
       return node;
   }
   /* Call link-along */
-  if (node->next) {
-    ret = dv_do_finding_clicked_node_r(V, x, y, node->next);
-    if (ret)
-      return ret;
-  }
-  if (node->spawn) {
-    ret = dv_do_finding_clicked_node_r(V, x, y, node->spawn);
+  dv_dag_node_t * next = NULL;
+  while (next = dv_dag_node_traverse_nexts(node, next)) {
+    ret = dv_do_finding_clicked_node_r(V, x, y, next);
     if (ret)
       return ret;
   }
@@ -1144,13 +1132,9 @@ static dv_dag_node_t * dv_find_node_with_pii_r(dv_view_t *V, long pii, dv_dag_no
       return ret;
   }
   /* Call link-along */
-  if (node->next) {
-    ret = dv_find_node_with_pii_r(V, pii, node->next);
-    if (ret)
-      return ret;
-  }
-  if (node->spawn) {
-    ret = dv_find_node_with_pii_r(V, pii, node->spawn);
+  dv_dag_node_t * x = NULL;
+  while (x = dv_dag_node_traverse_nexts(node, x)) {
+    ret = dv_find_node_with_pii_r(V, pii, x);
     if (ret)
       return ret;
   }

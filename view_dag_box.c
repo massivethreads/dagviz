@@ -85,28 +85,20 @@ static double dv_view_calculate_vsize_pure(dv_view_t *V, dv_dag_node_t *node) {
 */
 
 static dv_dag_node_t *
-dv_layout_node_get_last_tail(dv_view_t * V, dv_dag_node_t * node) {
+dv_layout_node_get_last_finished_tail(dv_view_t * V, dv_dag_node_t * node) {
   dv_dag_node_t * ret = 0;
-
-  /* Traverse all tails */
-  dv_dag_node_t * x = node->head;
-  while (x) {
-    dv_dag_node_t * tail = x->spawn;
-    if (!tail && !x->next)
-      tail = x;
-    if (tail) {
-      dr_pi_dag_node * ret_pi = dv_pidag_get_node_by_dag_node(V->D->P, ret);
-      dr_pi_dag_node * tail_pi = dv_pidag_get_node_by_dag_node(V->D->P, tail);
-      if (!ret || ret_pi->info.end.t < tail_pi->info.end.t)
-        ret = tail;
-    }
-    x = x->next;
+  dv_dag_node_t * tail = NULL;
+  while (tail = dv_dag_node_traverse_tails(node, tail)) {
+    dr_pi_dag_node * ret_pi = dv_pidag_get_node_by_dag_node(V->D->P, ret);
+    dr_pi_dag_node * tail_pi = dv_pidag_get_node_by_dag_node(V->D->P, tail);
+    if (!ret || ret_pi->info.end.t < tail_pi->info.end.t)
+      ret = tail;
   }
-  
   return ret;
 }
 
-static double dv_layout_node_get_node_xp(dv_dag_node_t *node) {
+static double
+dv_layout_node_get_xp_by_accumulating_xpre(dv_dag_node_t * node) {
   int lt = 1;
   dv_dag_node_t * u = node;
   double dis = 0.0;
@@ -117,15 +109,15 @@ static double dv_layout_node_get_node_xp(dv_dag_node_t *node) {
   return dis;
 }
 
-static double dv_layout_node_get_last_tail_xp_r(dv_view_t *V, dv_dag_node_t *node) {
+static double
+dv_layout_node_get_last_tail_xp_r(dv_view_t * V, dv_dag_node_t * node) {
   dv_check(node);
   double ret = 0.0;
-  dv_dag_node_t * last_tail = 0;
   if (!dv_is_single(node)) {
-    last_tail = dv_layout_node_get_last_tail(V, node);
-    if (last_tail) {
-      ret += dv_layout_node_get_node_xp(last_tail);
-      ret += dv_layout_node_get_last_tail_xp_r(V, last_tail);
+    dv_dag_node_t * last = dv_layout_node_get_last_finished_tail(V, node);
+    if (last) {
+      ret += dv_layout_node_get_xp_by_accumulating_xpre(last);
+      ret += dv_layout_node_get_last_tail_xp_r(V, last);
     }
   }
   return ret;
@@ -164,15 +156,10 @@ dv_view_layout_dagbox_node(dv_view_t * V, dv_dag_node_t * node) {
   }
     
   /* Calculate link-along */
-  int n_links = 0;
-  if (node->next && node->spawn)
-    n_links = 2;
-  else if (node->next)
-    n_links = 1;
   dv_dag_node_t * u, * v; // linked nodes
   dv_node_coordinate_t * uco, * vco;
   double rate, ugap, vgap, hgap;
-  switch (n_links) {
+  switch ( dv_dag_node_count_nexts(node) ) {
   case 0:
     // node's link-along
     nodeco->link_lw = nodeco->lw;
@@ -251,14 +238,9 @@ dv_view_layout_dagbox_node_2nd(dv_dag_node_t * node) {
   }
     
   /* Calculate link-along */
-  int n_links = 0;
-  if (node->next && node->spawn)
-    n_links = 2;
-  else if (node->next)
-    n_links = 1;
   dv_dag_node_t * u, * v; // linked nodes
   dv_node_coordinate_t * uco, * vco;
-  switch (n_links) {
+  switch ( dv_dag_node_count_nexts(node) ) {
   case 0:
     break;
   case 1:
@@ -460,81 +442,51 @@ dv_view_draw_dagbox_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
     dv_view_draw_dagbox_node_r(V, cr, node->head);
   }
   /* Call link-along */
-  if (node->next)
-    dv_view_draw_dagbox_node_r(V, cr, node->next);
-  if (node->spawn)
-    dv_view_draw_dagbox_node_r(V, cr, node->spawn);
-}
-
-static void
-dv_view_draw_dagbox_edge_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * u, dv_dag_node_t * v) {
-  dv_view_draw_edge_1(V, cr, u, v);
-}
-
-static dv_dag_node_t *
-dv_dag_node_get_first(dv_dag_node_t * u) {
-  dv_check(u);
-  while (!dv_is_single(u)) {
-    dv_check(u->head);
-    u = u->head;
-    dv_check(u);
+  dv_dag_node_t * x = NULL;
+  while (x = dv_dag_node_traverse_nexts(node, x)) {
+    dv_view_draw_dagbox_node_r(V, cr, x);
   }
-  return u;
 }
 
 static void
-dv_view_draw_dagbox_edge_last_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * u, dv_dag_node_t * v) {
-  if (!u->head) return;
-  
-  /* Traverse all tails */
-  dv_dag_node_t * x = u->head;
-  while (x) {
-    dv_dag_node_t * u_tail = x->spawn;
-    if (!u_tail && !x->next)
-      u_tail = x;
-    if (u_tail) {  
-      if (dv_is_single(u_tail))
-        dv_view_draw_dagbox_edge_1(V, cr, u_tail, v);
-      else
-        dv_view_draw_dagbox_edge_last_r(V, cr, u_tail, v);
-    }    
-  }  
+dv_view_draw_dagbox_edge_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node, dv_dag_node_t * next) {
+  dv_view_draw_edge_1(V, cr, node, next);
 }
 
 static void
-dv_view_draw_dagbox_edge_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * u) {
-  if (!u || !dv_is_set(u))
+dv_view_draw_dagbox_edge_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
+  if (!node || !dv_is_set(node))
     return;
   /* Call inward */
-  if (!dv_is_single(u)) {
-    dv_view_draw_dagbox_edge_r(V, cr, u->head);
+  if (!dv_is_single(node)) {
+    dv_view_draw_dagbox_edge_r(V, cr, node->head);
   }
   /* Call link-along */
-  dv_dag_node_t * v = NULL;
-  dv_dag_node_t * a[2];
-  a[0] = u->next;
-  a[1] = u->spawn;
-  int i;
-  for (i = 0; i < 2; i++) {
-    v = a[i];
-    if (!v) break;
-
-    if (dv_is_single(u)) {
+  dv_dag_node_t * next = NULL;
+  while (next = dv_dag_node_traverse_nexts(node, next)) {
+    
+    if (dv_is_single(node)) {
       
-      if (dv_is_single(v))
-        dv_view_draw_dagbox_edge_1(V, cr, u, v);
+      if (dv_is_single(next))
+        dv_view_draw_dagbox_edge_1(V, cr, node, next);
       else
-        dv_view_draw_dagbox_edge_1(V, cr, u, dv_dag_node_get_first(v->head));
+        dv_view_draw_dagbox_edge_1(V, cr, node, dv_dag_node_get_single_head(next->head));
       
     } else {
-    
-      if (dv_is_single(v))
-        dv_view_draw_dagbox_edge_last_r(V, cr, u, v);
-      else
-        dv_view_draw_dagbox_edge_last_r(V, cr, u, dv_dag_node_get_first(v->head));
+
+      dv_dag_node_t * tail = NULL;
+      while (tail = dv_dag_node_traverse_tails(node, tail)) {
+          dv_dag_node_t * last = dv_dag_node_get_single_last(tail);
+
+          if (dv_is_single(next))
+            dv_view_draw_dagbox_edge_1(V, cr, last, next);
+          else
+            dv_view_draw_dagbox_edge_1(V, cr, last, dv_dag_node_get_single_head(next->head));
+
+      }
 
     }
-    dv_view_draw_dagbox_edge_r(V, cr, v);
+    dv_view_draw_dagbox_edge_r(V, cr, next);
     
   }
 }

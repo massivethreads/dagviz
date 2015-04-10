@@ -23,13 +23,8 @@ dv_view_layout_timeline2_node(dv_view_t * V, dv_dag_node_t * node) {
   }
     
   /* Calculate link-along */
-  int n_links = 0;
-  if (node->next && node->spawn)
-    n_links = 2;
-  else if (node->next)
-    n_links = 1;
   dv_dag_node_t * u, * v; // linked nodes
-  switch (n_links) {
+  switch ( dv_dag_node_count_nexts(node) ) {
   case 0:
     break;
   case 1:
@@ -170,10 +165,10 @@ dv_view_draw_timeline2_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node)
     dv_view_draw_timeline2_node_1(V, cr, node);
   }
   /* Call link-along */
-  if (node->next)
-    dv_view_draw_timeline2_node_r(V, cr, node->next);
-  if (node->spawn)
-    dv_view_draw_timeline2_node_r(V, cr, node->spawn);
+  dv_dag_node_t * next = NULL;
+  while (next = dv_dag_node_traverse_nexts(node, next)) {
+    dv_view_draw_timeline2_node_r(V, cr, next);
+  }
 }
 
 void

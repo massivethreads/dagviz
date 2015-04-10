@@ -111,7 +111,7 @@ typedef struct dv_llist {
 #define DV_CLICK_MODE_INIT 0 // 0:info, 1:expand/collapse
 #define DV_HOVER_MODE_INIT 0 // 0:none, 1:info, 2:expand, 3:collapse, 4:expand/collapse
 #define DV_SHOW_LEGEND_INIT 0
-#define DV_SHOW_STATUS_INIT 0
+#define DV_SHOW_STATUS_INIT 1
 #define DV_REMAIN_INNER_INIT 1
 #define DV_COLOR_REMARKED_ONLY 1
 
@@ -573,6 +573,14 @@ double dv_dag_get_radix(dv_dag_t *);
 void dv_dag_set_radix(dv_dag_t *, double);
 int dv_pidag_node_lookup_value(dr_pi_dag_node *, int);
 int dv_dag_node_lookup_value(dv_dag_t *, dv_dag_node_t *, int);
+dv_dag_node_t * dv_dag_node_traverse_children(dv_dag_node_t *, dv_dag_node_t *);
+dv_dag_node_t * dv_dag_node_traverse_children_inorder(dv_dag_node_t *, dv_dag_node_t *);
+dv_dag_node_t * dv_dag_node_traverse_tails(dv_dag_node_t *, dv_dag_node_t *);
+dv_dag_node_t * dv_dag_node_traverse_nexts(dv_dag_node_t *, dv_dag_node_t *);
+int dv_dag_node_count_nexts(dv_dag_node_t *);
+dv_dag_node_t * dv_dag_node_get_next(dv_dag_node_t *);
+dv_dag_node_t * dv_dag_node_get_single_head(dv_dag_node_t *);
+dv_dag_node_t * dv_dag_node_get_single_last(dv_dag_node_t *);
 
 void dv_btsample_viewer_init(dv_btsample_viewer_t *);
 int dv_btsample_viewer_extract_interval(dv_btsample_viewer_t *, int, unsigned long long, unsigned long long);
