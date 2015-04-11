@@ -99,9 +99,6 @@ dv_histogram_init(dv_histogram_t * H) {
   H->head_e = NULL;
   H->tail_e = NULL;
   H->n_e = 0;
-  int i;
-  for (i=0; i<DV_DAG_NODE_POOL_SIZE; i++)
-    H->added[i] = 0;
   H->D = NULL;
   H->max_e = NULL;
 }
@@ -272,8 +269,6 @@ dv_histogram_add_node(dv_histogram_t * H, dv_dag_node_t * node) {
                     dv_histogram_layer_running,
                     start_t, end_t,
                     pi->info.t_1 / dt);
-  //H->added[node - H->D->T] = 1;
-  //fprintf(stderr, "used #entries: %ld\n", H->epool->n);
 }
 
 static void

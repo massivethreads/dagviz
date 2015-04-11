@@ -108,7 +108,7 @@ typedef struct dv_llist {
 #define DV_FROMBT_INIT 0
 #define DV_EDGE_TYPE_INIT 3
 #define DV_EDGE_AFFIX_LENGTH 0//10
-#define DV_CLICK_MODE_INIT 0 // 0:info, 1:expand/collapse
+#define DV_CLICK_MODE_INIT 1 // 0:none, 1:info, 1:expand/collapse
 #define DV_HOVER_MODE_INIT 0 // 0:none, 1:info, 2:expand, 3:collapse, 4:expand/collapse
 #define DV_SHOW_LEGEND_INIT 0
 #define DV_SHOW_STATUS_INIT 1
@@ -424,7 +424,6 @@ typedef struct dv_histogram {
   dv_histogram_entry_t * head_e;
   dv_histogram_entry_t * tail_e;
   long n_e;
-  char added[DV_DAG_NODE_POOL_SIZE];
   dv_dag_t * D;
   dv_histogram_entry_t * max_e;
 } dv_histogram_t;

@@ -925,14 +925,17 @@ dv_do_button_event(dv_view_t * V, GdkEventButton * event) {
       if (node) {
         switch (S->cm) {
         case 0:
-          // Info tag
+          /* None */
+          break;
+        case 1:
+          /* Info tag */
           if (!dv_llist_remove(itl, (void *) node->pii)) {
             dv_llist_add(itl, (void *) node->pii);
           }
           dv_queue_draw_d_p(V);
           break;
-        case 1:
-          // Expand/Collapse
+        case 2:
+          /* Expand/Collapse */
           if (dv_is_union(node)) {
             if ((!dv_is_inner_loaded(node) || dv_is_shrinked(node) || dv_is_shrinking(node))
                 && !dv_is_expanding(node))
@@ -1705,6 +1708,7 @@ dv_view_interface_create_new(dv_view_t * V, dv_viewport_t * VP) {
   gtk_widget_set_tooltip_text(GTK_WIDGET(btn_combo_cm), "When clicking a node");
   GtkWidget *combobox_cm = gtk_combo_box_text_new();
   gtk_container_add(GTK_CONTAINER(btn_combo_cm), combobox_cm);
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_cm), "none", "None");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_cm), "info", "Info box");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_cm), "expand", "Expand/Collapse");
   gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_cm), S->cm);
@@ -1830,7 +1834,7 @@ dv_view_interface_create_new(dv_view_t * V, dv_viewport_t * VP) {
 
   // Frombt combobox
   GtkWidget *combobox_frombt = I->combobox_frombt;
-  gtk_widget_set_tooltip_text(GTK_WIDGET(combobox_frombt), "Scale down overall from beginning time (must for timeline)");
+  gtk_widget_set_tooltip_text(GTK_WIDGET(combobox_frombt), "Scale down overall from start time (must for timeline)");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_frombt), "not", "No");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_frombt), "frombt", "Yes");
   g_signal_connect(G_OBJECT(combobox_frombt), "changed", G_CALLBACK(on_combobox_frombt_changed), (void *) V);
@@ -1878,7 +1882,7 @@ dv_view_interface_create_new(dv_view_t * V, dv_viewport_t * VP) {
   gtk_grid_attach(GTK_GRID(grid), I->entry_radix, 1, 3, 1, 1);
 
   // HBox 5
-  GtkWidget * label_5 = gtk_label_new("    From beginning time: ");
+  GtkWidget * label_5 = gtk_label_new("    From start time: ");
   gtk_grid_attach(GTK_GRID(grid), label_5, 0, 4, 1, 1);
   gtk_grid_attach(GTK_GRID(grid), I->combobox_frombt, 1, 4, 1, 1);
 
