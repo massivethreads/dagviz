@@ -151,6 +151,8 @@ typedef struct dv_llist {
 #define DV_DEFAULT_PAGE_SIZE 1 << 20 // 1 MB
 #define DV_DEFAULT_PAGE_MIN_NODES 2
 
+#define DV_MAX_DISTRIBUTION 10
+
 /*-----------------Data Structures-----------------*/
 
 /* a single record of backtrace */
@@ -445,6 +447,21 @@ typedef struct dv_dag_node_pool {
   long n;  /* number of free nodes */
 } dv_dag_node_pool_t;
 
+
+typedef struct dv_stat_distribution_entry {
+  int dag_id;
+  int type; /* 0:spawn, 1:cont */
+  int stolen; /* stolen condition */
+  char * title;
+} dv_stat_distribution_entry_t;
+
+typedef struct dv_stat_distribution {
+  int ne;
+  dv_stat_distribution_entry_t e[DV_MAX_DISTRIBUTION];
+  long xrange_from, xrange_to;
+} dv_stat_distribution_t;
+
+
 typedef struct dv_global_state {
   /* DAG */
   dv_pidag_t P[DV_MAX_DAG_FILE];
@@ -478,6 +495,9 @@ typedef struct dv_global_state {
 
   /* Node Pool */
   dv_dag_node_pool_t pool[1];
+
+  /* Statistics: Distributions */
+  dv_stat_distribution_t SD[1];
 } dv_global_state_t;
 
 extern const char * const DV_COLORS[];

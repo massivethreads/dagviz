@@ -78,12 +78,21 @@ dv_global_state_init(dv_global_state_t * CS) {
   CS->activeV = NULL;
   CS->err = DV_OK;
   int i;
-  for (i=0; i<DV_NUM_COLOR_POOLS; i++)
+  for (i = 0; i < DV_NUM_COLOR_POOLS; i++)
     CS->CP_sizes[i] = 0;
   dv_btsample_viewer_init(CS->btviewer);
   CS->box_viewport_configure = NULL;
   CS->nH = 0;
   dv_dag_node_pool_init(CS->pool);
+  CS->SD->ne = 0;
+  for (i = 0; i < DV_MAX_DISTRIBUTION; i++) {
+    CS->SD->e[i].dag_id = -1; /* none */
+    CS->SD->e[i].type = 0;
+    CS->SD->e[i].stolen = 0;
+    CS->SD->e[i].title = NULL;
+  }
+  CS->SD->xrange_from = 0;
+  CS->SD->xrange_to = 10000;
 }
 
 void dv_global_state_set_active_view(dv_view_t *V) {
@@ -1965,10 +1974,10 @@ void dv_view_interface_destroy(dv_view_interface_t *I) {
 
 void
 dv_view_interface_open_attribute_dialog(dv_view_interface_t * I) {
-  // Adjust I's attribute values
+  /* Adjust I's attribute values */
   dv_view_interface_set_values(I->V, I);
-  
-  // Build dialog
+   
+  /* Build dialog */
   GtkWidget * dialog = gtk_dialog_new();
   char s[30];
   sprintf(s, "VIEW %ld's Attributes", I->V - CS->V);
@@ -1976,14 +1985,13 @@ dv_view_interface_open_attribute_dialog(dv_view_interface_t * I) {
   //gtk_window_set_default_size(GTK_WINDOW(dialog), 600, -1);
   gtk_window_set_position(GTK_WINDOW(dialog), GTK_WIN_POS_MOUSE);
   GtkWidget * dialog_vbox = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-
   gtk_box_pack_start(GTK_BOX(dialog_vbox), I->grid, TRUE, TRUE, 0);
   
-  // Run
+  /* Run */
   gtk_widget_show_all(dialog_vbox);
   gtk_dialog_run(GTK_DIALOG(dialog));
   
-  // Destroy
+  /* Destroy */
   gtk_container_remove(GTK_CONTAINER(dialog_vbox), I->grid);
   gtk_widget_destroy(dialog);
 }
@@ -2728,307 +2736,264 @@ on_viewport_configure_clicked(GtkMenuItem * menuitem, gpointer user_data) {
   gtk_widget_destroy(dialog);
 }
 
-static dr_clock_t min, max;
 
 static void
-dv_dag_collect_spawn_min_max_r(dv_dag_t * D, dv_dag_node_t * node) {
-  dv_check(node);
+dv_dag_collect_delays_r(dv_dag_t * D, dv_dag_node_t * node, FILE * out, dv_stat_distribution_entry_t * e) {
+  if (!node)
+    dv_check(node);
 
   if (dv_is_union(node) && dv_is_inner_loaded(node)) {
-    dv_dag_collect_spawn_min_max_r(D, node->head);
+    dv_dag_collect_delays_r(D, node->head, out, e);
   } else {
     dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, node);
     if (pi->info.kind == dr_dag_node_kind_create_task) {
-      dr_pi_dag_node * pi_child = dv_pidag_get_node_by_dag_node(D->P, node->spawn);
-      dv_check(pi_child);
-      dr_clock_t x = pi_child->info.start.t - pi->info.end.t;
-      if (min == 0 || x < min)
-        min = x;
-      if (max == 0 || x > max)
-        max = x;
+      dr_pi_dag_node * pi_;
+      if (e->type == 0)
+        pi_ = dv_pidag_get_node_by_dag_node(D->P, node->spawn);
+      else
+        pi_ = dv_pidag_get_node_by_dag_node(D->P, node->next);
+      dv_check(pi_);
+      if (!e->stolen || pi_->info.worker != pi->info.worker)
+        fprintf(out, "%lld\n", pi_->info.start.t - pi->info.end.t);
     }
   }
 
   dv_dag_node_t * next = NULL;
   while (next = dv_dag_node_traverse_nexts(node, next)) {
-    dv_dag_collect_spawn_min_max_r(D, next);
+    dv_dag_collect_delays_r(D, next, out, e);
   }
 }
 
-static void
-dv_dag_collect_cont_min_max_r(dv_dag_t * D, dv_dag_node_t * node) {
-  dv_check(node);
-
-  if (dv_is_union(node) && dv_is_inner_loaded(node)) {
-    dv_dag_collect_cont_min_max_r(D, node->head);
-  } else {
-    dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, node);
-    if (pi->info.kind == dr_dag_node_kind_create_task) {
-      dr_pi_dag_node * pi_cont = dv_pidag_get_node_by_dag_node(D->P, node->next);
-      dv_check(pi_cont);
-      dr_clock_t x = pi_cont->info.start.t - pi->info.end.t;
-      if (min == 0 || x < min)
-        min = x;
-      if (max == 0 || x > max)
-        max = x;
-    }
-  }
-
-  dv_dag_node_t * next = NULL;
-  while (next = dv_dag_node_traverse_nexts(node, next)) {
-    dv_dag_collect_cont_min_max_r(D, next);
-  }
+static gboolean
+on_stat_distribution_dag_changed(GtkWidget * widget, gpointer user_data) {
+  long i = (long) user_data;
+  int new_id = gtk_combo_box_get_active(GTK_COMBO_BOX(widget)) - 1;
+  CS->SD->e[i].dag_id = new_id;
 }
 
-static void
-dv_dag_collect_spawn_delays_r(dv_dag_t * D, dv_dag_node_t * node, FILE * out) {
-  dv_check(node);
-
-  if (dv_is_union(node) && dv_is_inner_loaded(node)) {
-    dv_dag_collect_spawn_delays_r(D, node->head, out);
-  } else {
-    dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, node);
-    if (pi->info.kind == dr_dag_node_kind_create_task) {
-      dr_pi_dag_node * pi_child = dv_pidag_get_node_by_dag_node(D->P, node->spawn);
-      dv_check(pi_child);
-      fprintf(out, "%lld\n", pi_child->info.start.t - pi->info.end.t);
-    }
-  }
-
-  dv_dag_node_t * next = NULL;
-  while (next = dv_dag_node_traverse_nexts(node, next)) {
-    dv_dag_collect_spawn_delays_r(D, next, out);
-  }
+static gboolean
+on_stat_distribution_type_changed(GtkWidget * widget, gpointer user_data) {
+  long i = (long) user_data;
+  int new_type = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+  CS->SD->e[i].type = new_type;
 }
 
-static void
-dv_dag_collect_cont_delays_r(dv_dag_t * D, dv_dag_node_t * node, FILE * out) {
-  dv_check(node);
-
-  if (dv_is_union(node) && dv_is_inner_loaded(node)) {
-    dv_dag_collect_cont_delays_r(D, node->head, out);
-  } else {
-    dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, node);
-    if (pi->info.kind == dr_dag_node_kind_create_task) {
-      dr_pi_dag_node * pi_cont = dv_pidag_get_node_by_dag_node(D->P, node->next);
-      dv_check(pi_cont);
-      fprintf(out, "%lld\n", pi_cont->info.start.t - pi->info.end.t);
-    }
-  }
-
-  dv_dag_node_t * next = NULL;
-  while (next = dv_dag_node_traverse_nexts(node, next)) {
-    dv_dag_collect_cont_delays_r(D, next, out);
-  }
+static gboolean
+on_stat_distribution_stolen_changed(GtkWidget * widget, gpointer user_data) {
+  long i = (long) user_data;
+  int new_stolen = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+  CS->SD->e[i].stolen = new_stolen;
 }
 
-static void
-dv_dag_collect_stolen_spawn_delays_r(dv_dag_t * D, dv_dag_node_t * node, FILE * out) {
-  dv_check(node);
-
-  if (dv_is_union(node) && dv_is_inner_loaded(node)) {
-    dv_dag_collect_stolen_spawn_delays_r(D, node->head, out);
-  } else {
-    dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, node);
-    if (pi->info.kind == dr_dag_node_kind_create_task) {
-      dr_pi_dag_node * pi_child = dv_pidag_get_node_by_dag_node(D->P, node->spawn);
-      dv_check(pi_child);
-      if (pi_child->info.worker != pi->info.worker)
-        fprintf(out, "%lld\n", pi_child->info.start.t - pi->info.end.t);
-    }
-  }
-
-  dv_dag_node_t * next = NULL;
-  while (next = dv_dag_node_traverse_nexts(node, next)) {
-    dv_dag_collect_stolen_spawn_delays_r(D, next, out);
-  }
+static gboolean
+on_stat_distribution_title_activate(GtkWidget * widget, gpointer user_data) {
+  long i = (long) user_data;
+  const char * new_title = gtk_entry_get_text(GTK_ENTRY(widget));
+  strcpy(CS->SD->e[i].title, new_title);
 }
 
-static void
-dv_dag_collect_stolen_cont_delays_r(dv_dag_t * D, dv_dag_node_t * node, FILE * out) {
-  dv_check(node);
-
-  if (dv_is_union(node) && dv_is_inner_loaded(node)) {
-    dv_dag_collect_stolen_cont_delays_r(D, node->head, out);
-  } else {
-    dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, node);
-    if (pi->info.kind == dr_dag_node_kind_create_task) {
-      dr_pi_dag_node * pi_cont = dv_pidag_get_node_by_dag_node(D->P, node->next);
-      dv_check(pi_cont);
-      if (pi_cont->info.worker != pi->info.worker)
-        fprintf(out, "%lld\n", pi_cont->info.start.t - pi->info.end.t);
-    }
-  }
-
-  dv_dag_node_t * next = NULL;
-  while (next = dv_dag_node_traverse_nexts(node, next)) {
-    dv_dag_collect_stolen_cont_delays_r(D, next, out);
-  }
+static gboolean
+on_stat_distribution_xrange_from_activate(GtkWidget * widget, gpointer user_data) {
+  long i = (long) user_data;
+  long new_xrange_from = atol(gtk_entry_get_text(GTK_ENTRY(widget)));
+  CS->SD->xrange_from = new_xrange_from;
 }
 
-static void
-dv_dag_collect_spawn_cont_delays(dv_dag_t * D) {
+static gboolean
+on_stat_distribution_xrange_to_activate(GtkWidget * widget, gpointer user_data) {
+  long i = (long) user_data;
+  long new_xrange_to = atol(gtk_entry_get_text(GTK_ENTRY(widget)));
+  CS->SD->xrange_to = new_xrange_to;
+}
+
+static gboolean
+on_stat_distribution_show_button_clicked(GtkWidget * widget, gpointer user_data) {
   char * filename;
   FILE * out;
-  dr_clock_t spawn_min, spawn_max, cont_min, cont_max;
   
-  /* spawn */
-  filename = "00dv_spawn_distribution.gpl";
+  /* generate plots */
+  filename = "00dv_stat_distribution.gpl";
   out = fopen(filename, "w");
   dv_check(out);
-  min = max = 0;
-  dv_dag_collect_spawn_min_max_r(D, D->rt);
-  spawn_min = min;
-  spawn_max = max;
   fprintf(out,
           "width=20\n"
           "hist(x,width)=width*floor(x/width)+width/2.0\n"
-          "# x min, max = [%lld:%lld]\n"
-          "set xrange [0:10000]\n"
+          "set xrange [%ld:%ld]\n"
           "set yrange [0:]\n"
           "set boxwidth width\n"
           "set style fill solid 1.0 noborder\n"
           "set xlabel \"clocks\"\n"
           "set ylabel \"count\"\n"
-          "plot \"-\" u (hist($1,width)):(1.0) smooth frequency w boxes lc rgb\"red\" t \"spawn\"\n",
-          spawn_min,
-          spawn_max);
-  dv_dag_collect_spawn_delays_r(D, D->rt, out);
+          //          "plot \"-\" u (hist($1,width)):(1.0) smooth frequency w boxes lc rgb\"red\" t \"spawn\"\n");
+          "plot ",
+          CS->SD->xrange_from,
+          CS->SD->xrange_to);
+  int i;
+  for (i = 0; i < CS->SD->ne; i++) {
+    fprintf(out, "\"-\" u (hist($1,width)):(1.0) smooth frequency w boxes t \"%s\"", CS->SD->e[i].title);
+    if (i < CS->SD->ne - 1)
+      fprintf(out, ", ");
+    else
+      fprintf(out, "\n");
+  }
+  for (i = 0; i < CS->SD->ne; i++) {
+    if (CS->SD->e[i].dag_id < 0)
+      continue;
+    dv_dag_t * D = CS->D + CS->SD->e[i].dag_id;
+    dv_dag_collect_delays_r(D, D->rt, out, &CS->SD->e[i]);
+    fprintf(out,
+            "e\n");
+  }
   fprintf(out,
-          "e\n"
           "pause -1\n");
   fclose(out);
-  fprintf(stdout, "generated spawn delays to %s\n", filename);
+  fprintf(stdout, "generated distribution of delays to %s\n", filename);
   
-  /* cont */
-  filename = "00dv_cont_distribution.gpl";
-  out = fopen(filename, "w");
-  dv_check(out);
-  min = max = 0;
-  dv_dag_collect_cont_min_max_r(D, D->rt);
-  cont_min = min;
-  cont_max = max;
-  fprintf(out,
-          "width=20\n"
-          "hist(x,width)=width*floor(x/width)+width/2.0\n"
-          "# x min, max = [%lld:%lld]\n"
-          "set xrange [0:10000]\n"
-          "set yrange [0:]\n"
-          "set boxwidth width\n"
-          "set style fill solid 1.0 noborder\n"
-          "set xlabel \"clocks\"\n"
-          "set ylabel \"count\"\n"
-          "plot \"-\" u (hist($1,width)):(1.0) smooth frequency w boxes lc rgb\"green\" t \"cont\"\n",
-          cont_min,
-          cont_max);
-  dv_dag_collect_cont_delays_r(D, D->rt, out);
-  fprintf(out,
-          "e\n"
-          "pause -1\n");
-  fclose(out);
-  fprintf(stdout, "generated cont delays to %s\n", filename);
-  
-  /* stolen spawn */
-  filename = "00dv_stolen_spawn_distribution.gpl";
-  out = fopen(filename, "w");
-  dv_check(out);
-  fprintf(out,
-          "width=20\n"
-          "hist(x,width)=width*floor(x/width)+width/2.0\n"
-          "set xrange [0:10000]\n"
-          "set yrange [0:]\n"
-          "set boxwidth width\n"
-          "set style fill solid 1.0 noborder\n"
-          "set xlabel \"clocks\"\n"
-          "set ylabel \"count\"\n"
-          "plot \"-\" u (hist($1,width)):(1.0) smooth frequency w boxes lc rgb\"red\" t \"stolen spawn\"\n");
-  dv_dag_collect_stolen_spawn_delays_r(D, D->rt, out);
-  fprintf(out,
-          "e\n"
-          "pause -1\n");
-  fclose(out);
-  fprintf(stdout, "generated stolen spawn delays to %s\n", filename);
-  
-  /* stolen cont */
-  filename = "00dv_stolen_cont_distribution.gpl";
-  out = fopen(filename, "w");
-  dv_check(out);
-  fprintf(out,
-          "width=20\n"
-          "hist(x,width)=width*floor(x/width)+width/2.0\n"
-          "set xrange [0:10000]\n"
-          "set yrange [0:]\n"
-          "set boxwidth width\n"
-          "set style fill solid 1.0 noborder\n"
-          "set xlabel \"clocks\"\n"
-          "set ylabel \"count\"\n"
-          "plot \"-\" u (hist($1,width)):(1.0) smooth frequency w boxes lc rgb\"green\" t \"stolen cont\"\n");
-  dv_dag_collect_stolen_cont_delays_r(D, D->rt, out);
-  fprintf(out,
-          "e\n"
-          "pause -1\n");
-  fclose(out);
-  fprintf(stdout, "generated stolen cont delays to %s\n", filename);
-  
-  /* spawn + stolen cont */
-  filename = "00dv_spawn_stolen_cont_distribution.gpl";
-  out = fopen(filename, "w");
-  dv_check(out);
-  fprintf(out,
-          "width=20\n"
-          "hist(x,width)=width*floor(x/width)+width/2.0\n"
-          "set xrange [0:10000]\n"
-          "set yrange [0:]\n"
-          "set boxwidth width\n"
-          "set style fill solid 1.0 noborder\n"
-          "set xlabel \"clocks\"\n"
-          "set ylabel \"count\"\n"
-          "plot \"-\" u (hist($1,width)):(1.0) smooth frequency w boxes lc rgb\"red\" t \"spawn\", "
-          "\"-\" u (hist($1,width)):(1.0) smooth frequency w boxes lc rgb\"green\" t \"stolen cont\"\n");
-  dv_dag_collect_spawn_delays_r(D, D->rt, out);
-  fprintf(out,
-          "e\n");
-  dv_dag_collect_stolen_cont_delays_r(D, D->rt, out);
-  fprintf(out,
-          "e\n"
-          "pause -1\n");
-  fclose(out);
-  fprintf(stdout, "generated spawn & stolen cont delays to %s\n", filename);
-
-  /* stolen spawn + cont */
-  filename = "00dv_stolen_spawn_cont_distribution.gpl";
-  out = fopen(filename, "w");
-  dv_check(out);
-  fprintf(out,
-          "width=20\n"
-          "hist(x,width)=width*floor(x/width)+width/2.0\n"
-          "set xrange [0:10000]\n"
-          "set yrange [0:]\n"
-          "set boxwidth width\n"
-          "set style fill solid 1.0 noborder\n"
-          "set xlabel \"clocks\"\n"
-          "set ylabel \"count\"\n"
-          "plot \"-\" u (hist($1,width)):(1.0) smooth frequency w boxes lc rgb\"red\" t \"stolen spawn\", "
-          "\"-\" u (hist($1,width)):(1.0) smooth frequency w boxes lc rgb\"green\" t \"cont\"\n");
-  dv_dag_collect_stolen_spawn_delays_r(D, D->rt, out);
-  fprintf(out,
-          "e\n");
-  dv_dag_collect_cont_delays_r(D, D->rt, out);
-  fprintf(out,
-          "e\n"
-          "pause -1\n");
-  fclose(out);
-  fprintf(stdout, "generated stolen spawn & cont delays to %s\n", filename);
+  /* call gnuplot */
+  GPid pid;
+  char * argv[4];
+  argv[0] = "gnuplot";
+  argv[1] = "-persist";
+  argv[2] = filename;
+  argv[3] = NULL;
+  int ret = g_spawn_async_with_pipes(NULL, argv, NULL,
+                                     G_SPAWN_DEFAULT | G_SPAWN_SEARCH_PATH,
+                                     NULL, NULL, &pid,
+                                     NULL, NULL, NULL, NULL);
+  if (!ret) {
+    fprintf(stderr, "g_spawn_async_with_pipes() failed.\n");
+  }
 }
 
 static void
-on_file_generate_spawn_cont_distribution_plot_clicked(GtkMenuItem * menuitem, gpointer user_data) {
+dv_open_statistics_dialog() {
+  /* Get default DAG */
   dv_view_t * V = CS->activeV;
   if (!V) {
-    fprintf(stderr, "Warning: there is no active V to export.\n");
-    return;
+    V = &CS->V[0];
   }
-  dv_dag_collect_spawn_cont_delays(V->D);
+  dv_dag_t * D = V->D;
+  
+  /* Build dialog */
+  GtkWidget * dialog = gtk_dialog_new();
+  gtk_window_set_title(GTK_WINDOW(dialog), "Statistics");
+  //gtk_window_set_default_size(GTK_WINDOW(dialog), 600, -1);
+  gtk_window_set_position(GTK_WINDOW(dialog), GTK_WIN_POS_MOUSE);
+  GtkWidget * dialog_box = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+  GtkWidget * notebook = gtk_notebook_new();
+  gtk_box_pack_start(GTK_BOX(dialog_box), notebook, TRUE, TRUE, 0);
+
+  GtkWidget * tab_label;
+  GtkWidget * tab_box;
+
+  /* Build distribution tab */
+  tab_label = gtk_label_new("Delay Distribution");
+  tab_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+  gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_box, tab_label);
+  GtkWidget * frame;
+  if (CS->SD->ne == 0) {
+    CS->SD->ne = CS->nP;
+    if (CS->SD->ne > DV_MAX_DISTRIBUTION)
+      CS->SD->ne = DV_MAX_DISTRIBUTION;
+    if (CS->SD->ne < 3)
+      CS->SD->ne = 3;
+  }
+  int n_frames = CS->SD->ne;
+  long i;
+  for (i = 0; i < n_frames; i++) {
+    //frame = gtk_frame_new("One distribution");
+    //gtk_box_pack_start(GTK_BOX(tab_box), frame, FALSE, FALSE, 0);
+    GtkWidget * frame_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_container_add(GTK_CONTAINER(tab_box), frame_box);
+
+    GtkWidget * combobox;
+    /* dag */
+    combobox = gtk_combo_box_text_new();
+    gtk_box_pack_start(GTK_BOX(frame_box), combobox, FALSE, FALSE, 0);
+    gtk_widget_set_tooltip_text(GTK_WIDGET(combobox), "Choose DAG");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "none", "None");
+    int j;
+    for (j = 0; j < CS->nD; j++) {
+      char str[30];
+      sprintf(str, "DAG %d", j);
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "dag", str);
+    }
+    gtk_combo_box_set_active(GTK_COMBO_BOX(combobox), CS->SD->e[i].dag_id + 1);
+    g_signal_connect(G_OBJECT(combobox), "changed", G_CALLBACK(on_stat_distribution_dag_changed), (void *) i);
+    /* type */
+    combobox = gtk_combo_box_text_new();
+    gtk_box_pack_start(GTK_BOX(frame_box), combobox, FALSE, FALSE, 0);
+    gtk_widget_set_tooltip_text(GTK_WIDGET(combobox), "Choose delay type");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "spawn", "spawn");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "cont", "cont");
+    gtk_combo_box_set_active(GTK_COMBO_BOX(combobox), CS->SD->e[i].type);
+    g_signal_connect(G_OBJECT(combobox), "changed", G_CALLBACK(on_stat_distribution_type_changed), (void *) i);
+    /* stolen */
+    combobox = gtk_combo_box_text_new();
+    gtk_box_pack_start(GTK_BOX(frame_box), combobox, FALSE, FALSE, 0);
+    gtk_widget_set_tooltip_text(GTK_WIDGET(combobox), "Choose all or stolen only");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "all", "All");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "stolen", "Stolen only");
+    gtk_combo_box_set_active(GTK_COMBO_BOX(combobox), CS->SD->e[i].stolen);
+    g_signal_connect(G_OBJECT(combobox), "changed", G_CALLBACK(on_stat_distribution_stolen_changed), (void *) i);
+    /* title */
+    GtkWidget * entry = gtk_entry_new();
+    gtk_box_pack_start(GTK_BOX(frame_box), entry, FALSE, FALSE, 0);
+    gtk_widget_set_tooltip_text(GTK_WIDGET(entry), "Title of the plot");
+    gtk_entry_set_width_chars(GTK_ENTRY(entry), 20);
+    if (!CS->SD->e[i].title) {
+      CS->SD->e[i].title = dv_malloc(sizeof(char) * 30);
+      sprintf(CS->SD->e[i].title, "distribution %ld", i);
+    }
+    gtk_entry_set_text(GTK_ENTRY(entry), CS->SD->e[i].title);
+    g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_stat_distribution_title_activate), (void *) i);
+  }
+
+  gtk_box_pack_start(GTK_BOX(tab_box), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), TRUE, TRUE, 0);
+
+
+  GtkWidget * hbox, * label, * entry;
+  hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+  gtk_box_pack_start(GTK_BOX(tab_box), hbox, FALSE, FALSE, 0);
+  label = gtk_label_new("xrange: from ");
+  gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
+  entry = gtk_entry_new();
+  gtk_box_pack_start(GTK_BOX(hbox), entry, FALSE, FALSE, 0);
+  gtk_entry_set_width_chars(GTK_ENTRY(entry), 10);
+  char str[10];
+  sprintf(str, "%ld", CS->SD->xrange_from);
+  gtk_entry_set_text(GTK_ENTRY(entry), str);
+  g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_stat_distribution_xrange_from_activate), (void *) i);
+  label = gtk_label_new(" to ");
+  gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
+  entry = gtk_entry_new();
+  gtk_box_pack_start(GTK_BOX(hbox), entry, FALSE, FALSE, 0);
+  gtk_entry_set_width_chars(GTK_ENTRY(entry), 10);
+  sprintf(str, "%ld", CS->SD->xrange_to);
+  gtk_entry_set_text(GTK_ENTRY(entry), str);
+  g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_stat_distribution_xrange_to_activate), (void *) i);
+  
+  
+  gtk_box_pack_start(GTK_BOX(tab_box), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), TRUE, TRUE, 0);
+  
+  hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+  gtk_box_pack_start(GTK_BOX(tab_box), hbox, FALSE, FALSE, 0);
+  GtkWidget * button;
+  button = gtk_button_new_with_mnemonic("_Show");
+  gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
+  g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_stat_distribution_show_button_clicked), (void *) NULL);
+
+  /* Run */
+  gtk_widget_show_all(dialog_box);
+  gtk_dialog_run(GTK_DIALOG(dialog));
+  
+  /* Destroy */
+  gtk_widget_destroy(dialog);
+}
+
+static void
+on_file_statistics_clicked(GtkMenuItem * menuitem, gpointer user_data) {
+  dv_open_statistics_dialog();
 }
 
 /*-----------------end of Menubar functions-----------------*/
@@ -3047,15 +3012,15 @@ dv_create_menubar() {
   gtk_menu_shell_append(GTK_MENU_SHELL(menubar), file);
   GtkWidget * file_menu = gtk_menu_new();
   gtk_menu_item_set_submenu(GTK_MENU_ITEM(file), file_menu);
+  GtkWidget * plot_1 = gtk_menu_item_new_with_mnemonic("_Statistics");
+  gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), plot_1);
+  g_signal_connect(G_OBJECT(plot_1), "activate", G_CALLBACK(on_file_statistics_clicked), NULL);
   GtkWidget * export = gtk_menu_item_new_with_mnemonic("E_xport focused viewport");
   gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), export);
   g_signal_connect(G_OBJECT(export), "activate", G_CALLBACK(on_file_export_clicked), NULL);
   GtkWidget * exportall = gtk_menu_item_new_with_mnemonic("Export _all viewports");
   gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), exportall);
   g_signal_connect(G_OBJECT(exportall), "activate", G_CALLBACK(on_file_export_all_clicked), NULL);
-  GtkWidget * plot_1 = gtk_menu_item_new_with_mnemonic("Generate _spawn-cont distribution plot");
-  gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), plot_1);
-  g_signal_connect(G_OBJECT(plot_1), "activate", G_CALLBACK(on_file_generate_spawn_cont_distribution_plot_clicked), NULL);
 
   
   // submenu viewports
