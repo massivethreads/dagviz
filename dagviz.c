@@ -90,6 +90,7 @@ dv_global_state_init(dv_global_state_t * CS) {
     CS->SD->e[i].type = 0;
     CS->SD->e[i].stolen = 0;
     CS->SD->e[i].title = NULL;
+    CS->SD->e[i].title_entry = NULL;
   }
   CS->SD->xrange_from = 0;
   CS->SD->xrange_to = 10000;
@@ -2736,39 +2737,32 @@ on_viewport_configure_clicked(GtkMenuItem * menuitem, gpointer user_data) {
   gtk_widget_destroy(dialog);
 }
 
-
-static void
-dv_dag_collect_delays_r(dv_dag_t * D, dv_dag_node_t * node, FILE * out, dv_stat_distribution_entry_t * e) {
-  if (!node)
-    dv_check(node);
-
-  if (dv_is_union(node) && dv_is_inner_loaded(node)) {
-    dv_dag_collect_delays_r(D, node->head, out, e);
-  } else {
-    dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, node);
-    if (pi->info.kind == dr_dag_node_kind_create_task) {
-      dr_pi_dag_node * pi_;
-      if (e->type == 0)
-        pi_ = dv_pidag_get_node_by_dag_node(D->P, node->spawn);
-      else
-        pi_ = dv_pidag_get_node_by_dag_node(D->P, node->next);
-      dv_check(pi_);
-      if (!e->stolen || pi_->info.worker != pi->info.worker)
-        fprintf(out, "%lld\n", pi_->info.start.t - pi->info.end.t);
-    }
-  }
-
-  dv_dag_node_t * next = NULL;
-  while (next = dv_dag_node_traverse_nexts(node, next)) {
-    dv_dag_collect_delays_r(D, next, out, e);
-  }
-}
+#include "control.c"
 
 static gboolean
 on_stat_distribution_dag_changed(GtkWidget * widget, gpointer user_data) {
   long i = (long) user_data;
   int new_id = gtk_combo_box_get_active(GTK_COMBO_BOX(widget)) - 1;
-  CS->SD->e[i].dag_id = new_id;
+  char * new_title = "";
+  if (new_id >= 0)
+    new_title = dv_filename_get_short_name(CS->D[new_id].P->fn);
+  dv_stat_distribution_entry_t * e = &CS->SD->e[i];
+  int old_id = e->dag_id;
+  char * old_title = NULL;
+  if (old_id >= 0)
+    old_title = dv_filename_get_short_name(CS->D[old_id].P->fn);
+  if ( !e->title || strlen(e->title) == 0 ||
+       (old_title && strcmp(e->title, old_title) == 0) ) {
+    if (e->title && strlen(e->title))
+      dv_free(e->title, strlen(e->title) + 1);
+    e->title = new_title;
+    if (e->title_entry) 
+      gtk_entry_set_text(GTK_ENTRY(e->title_entry), e->title);
+  } else {
+    if (strlen(new_title))
+      dv_free(new_title, strlen(new_title) + 1);
+  }
+  e->dag_id = new_id;
 }
 
 static gboolean
@@ -2789,7 +2783,11 @@ static gboolean
 on_stat_distribution_title_activate(GtkWidget * widget, gpointer user_data) {
   long i = (long) user_data;
   const char * new_title = gtk_entry_get_text(GTK_ENTRY(widget));
-  strcpy(CS->SD->e[i].title, new_title);
+  dv_stat_distribution_entry_t * e = &CS->SD->e[i];
+  if (strlen(e->title))
+    dv_free(e->title, strlen(e->title) + 1);
+  e->title = dv_malloc( sizeof(char) * (strlen(new_title) + 1) );
+  strcpy(e->title, new_title);
 }
 
 static gboolean
@@ -2886,7 +2884,7 @@ dv_open_statistics_dialog() {
   GtkWidget * tab_label;
   GtkWidget * tab_box;
 
-  /* Build distribution tab */
+  /* Build delay distribution tab */
   tab_label = gtk_label_new("Delay Distribution");
   tab_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
   gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_box, tab_label);
@@ -2898,18 +2896,16 @@ dv_open_statistics_dialog() {
     if (CS->SD->ne < 3)
       CS->SD->ne = 3;
   }
-  int n_frames = CS->SD->ne;
   long i;
-  for (i = 0; i < n_frames; i++) {
-    //frame = gtk_frame_new("One distribution");
-    //gtk_box_pack_start(GTK_BOX(tab_box), frame, FALSE, FALSE, 0);
-    GtkWidget * frame_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-    gtk_container_add(GTK_CONTAINER(tab_box), frame_box);
+  for (i = 0; i < CS->SD->ne; i++) {
+    dv_stat_distribution_entry_t * e = &CS->SD->e[i];
+    GtkWidget * e_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_container_add(GTK_CONTAINER(tab_box), e_box);
 
     GtkWidget * combobox;
     /* dag */
     combobox = gtk_combo_box_text_new();
-    gtk_box_pack_start(GTK_BOX(frame_box), combobox, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(e_box), combobox, FALSE, FALSE, 0);
     gtk_widget_set_tooltip_text(GTK_WIDGET(combobox), "Choose DAG");
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "none", "None");
     int j;
@@ -2918,34 +2914,32 @@ dv_open_statistics_dialog() {
       sprintf(str, "DAG %d", j);
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "dag", str);
     }
-    gtk_combo_box_set_active(GTK_COMBO_BOX(combobox), CS->SD->e[i].dag_id + 1);
+    gtk_combo_box_set_active(GTK_COMBO_BOX(combobox), e->dag_id + 1);
     g_signal_connect(G_OBJECT(combobox), "changed", G_CALLBACK(on_stat_distribution_dag_changed), (void *) i);
     /* type */
     combobox = gtk_combo_box_text_new();
-    gtk_box_pack_start(GTK_BOX(frame_box), combobox, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(e_box), combobox, FALSE, FALSE, 0);
     gtk_widget_set_tooltip_text(GTK_WIDGET(combobox), "Choose delay type");
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "spawn", "spawn");
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "cont", "cont");
-    gtk_combo_box_set_active(GTK_COMBO_BOX(combobox), CS->SD->e[i].type);
+    gtk_combo_box_set_active(GTK_COMBO_BOX(combobox), e->type);
     g_signal_connect(G_OBJECT(combobox), "changed", G_CALLBACK(on_stat_distribution_type_changed), (void *) i);
     /* stolen */
     combobox = gtk_combo_box_text_new();
-    gtk_box_pack_start(GTK_BOX(frame_box), combobox, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(e_box), combobox, FALSE, FALSE, 0);
     gtk_widget_set_tooltip_text(GTK_WIDGET(combobox), "Choose all or stolen only");
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "all", "All");
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "stolen", "Stolen only");
-    gtk_combo_box_set_active(GTK_COMBO_BOX(combobox), CS->SD->e[i].stolen);
+    gtk_combo_box_set_active(GTK_COMBO_BOX(combobox), e->stolen);
     g_signal_connect(G_OBJECT(combobox), "changed", G_CALLBACK(on_stat_distribution_stolen_changed), (void *) i);
     /* title */
     GtkWidget * entry = gtk_entry_new();
-    gtk_box_pack_start(GTK_BOX(frame_box), entry, FALSE, FALSE, 0);
+    e->title_entry = entry;
+    gtk_box_pack_start(GTK_BOX(e_box), e->title_entry, FALSE, FALSE, 0);
+    if (e->title)
+      gtk_entry_set_text(GTK_ENTRY(entry), e->title);
     gtk_widget_set_tooltip_text(GTK_WIDGET(entry), "Title of the plot");
     gtk_entry_set_width_chars(GTK_ENTRY(entry), 20);
-    if (!CS->SD->e[i].title) {
-      CS->SD->e[i].title = dv_malloc(sizeof(char) * 30);
-      sprintf(CS->SD->e[i].title, "distribution %ld", i);
-    }
-    gtk_entry_set_text(GTK_ENTRY(entry), CS->SD->e[i].title);
     g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_stat_distribution_title_activate), (void *) i);
   }
 

@@ -453,6 +453,7 @@ typedef struct dv_stat_distribution_entry {
   int type; /* 0:spawn, 1:cont */
   int stolen; /* stolen condition */
   char * title;
+  GtkWidget * title_entry;
 } dv_stat_distribution_entry_t;
 
 typedef struct dv_stat_distribution {
