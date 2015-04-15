@@ -2737,7 +2737,7 @@ on_viewport_configure_clicked(GtkMenuItem * menuitem, gpointer user_data) {
   gtk_widget_destroy(dialog);
 }
 
-#include "control.c"
+#include "process.c"
 
 static gboolean
 on_stat_distribution_dag_changed(GtkWidget * widget, gpointer user_data) {
