@@ -94,6 +94,10 @@ dv_global_state_init(dv_global_state_t * CS) {
   }
   CS->SD->xrange_from = 0;
   CS->SD->xrange_to = 10000;
+  for (i = 0; i < DV_MAX_DAG; i++) {
+    CS->SD->dag_status_labels[i] = NULL;
+  }
+  CS->SD->node_pool_label = NULL;
 }
 
 void dv_global_state_set_active_view(dv_view_t *V) {
@@ -2863,6 +2867,14 @@ on_stat_distribution_show_button_clicked(GtkWidget * widget, gpointer user_data)
   }
 }
 
+static gboolean
+on_stat_distribution_expand_dag_button_clicked(GtkWidget * widget, gpointer user_data) {
+  dv_dag_t * D = (dv_dag_t *) user_data;
+  dv_dag_expand_implicitly(D);
+  dv_dag_set_status_label(D, CS->SD->dag_status_labels[D - CS->D]);
+  dv_dag_node_pool_set_status_label(CS->pool, CS->SD->node_pool_label);
+}
+
 static void
 dv_open_statistics_dialog() {
   /* Get default DAG */
@@ -2885,97 +2897,130 @@ dv_open_statistics_dialog() {
   GtkWidget * tab_box;
 
   /* Build delay distribution tab */
-  tab_label = gtk_label_new("Delay Distribution");
-  tab_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-  gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_box, tab_label);
-  GtkWidget * frame;
-  if (CS->SD->ne == 0) {
-    CS->SD->ne = CS->nP;
-    if (CS->SD->ne > DV_MAX_DISTRIBUTION)
-      CS->SD->ne = DV_MAX_DISTRIBUTION;
-    if (CS->SD->ne < 3)
-      CS->SD->ne = 3;
-  }
-  long i;
-  for (i = 0; i < CS->SD->ne; i++) {
-    dv_stat_distribution_entry_t * e = &CS->SD->e[i];
-    GtkWidget * e_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-    gtk_container_add(GTK_CONTAINER(tab_box), e_box);
-
-    GtkWidget * combobox;
-    /* dag */
-    combobox = gtk_combo_box_text_new();
-    gtk_box_pack_start(GTK_BOX(e_box), combobox, FALSE, FALSE, 0);
-    gtk_widget_set_tooltip_text(GTK_WIDGET(combobox), "Choose DAG");
-    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "none", "None");
-    int j;
-    for (j = 0; j < CS->nD; j++) {
-      char str[30];
-      sprintf(str, "DAG %d", j);
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "dag", str);
+  {
+    tab_label = gtk_label_new("Delay Distribution");
+    tab_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_box, tab_label);
+    if (CS->SD->ne == 0) {
+      CS->SD->ne = CS->nP;
+      if (CS->SD->ne > DV_MAX_DISTRIBUTION)
+        CS->SD->ne = DV_MAX_DISTRIBUTION;
+      if (CS->SD->ne < 3)
+        CS->SD->ne = 3;
     }
-    gtk_combo_box_set_active(GTK_COMBO_BOX(combobox), e->dag_id + 1);
-    g_signal_connect(G_OBJECT(combobox), "changed", G_CALLBACK(on_stat_distribution_dag_changed), (void *) i);
-    /* type */
-    combobox = gtk_combo_box_text_new();
-    gtk_box_pack_start(GTK_BOX(e_box), combobox, FALSE, FALSE, 0);
-    gtk_widget_set_tooltip_text(GTK_WIDGET(combobox), "Choose delay type");
-    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "spawn", "spawn");
-    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "cont", "cont");
-    gtk_combo_box_set_active(GTK_COMBO_BOX(combobox), e->type);
-    g_signal_connect(G_OBJECT(combobox), "changed", G_CALLBACK(on_stat_distribution_type_changed), (void *) i);
-    /* stolen */
-    combobox = gtk_combo_box_text_new();
-    gtk_box_pack_start(GTK_BOX(e_box), combobox, FALSE, FALSE, 0);
-    gtk_widget_set_tooltip_text(GTK_WIDGET(combobox), "Choose all or stolen only");
-    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "all", "All");
-    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "stolen", "Stolen only");
-    gtk_combo_box_set_active(GTK_COMBO_BOX(combobox), e->stolen);
-    g_signal_connect(G_OBJECT(combobox), "changed", G_CALLBACK(on_stat_distribution_stolen_changed), (void *) i);
-    /* title */
-    GtkWidget * entry = gtk_entry_new();
-    e->title_entry = entry;
-    gtk_box_pack_start(GTK_BOX(e_box), e->title_entry, FALSE, FALSE, 0);
-    if (e->title)
-      gtk_entry_set_text(GTK_ENTRY(entry), e->title);
-    gtk_widget_set_tooltip_text(GTK_WIDGET(entry), "Title of the plot");
-    gtk_entry_set_width_chars(GTK_ENTRY(entry), 20);
-    g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_stat_distribution_title_activate), (void *) i);
+    long i;
+    for (i = 0; i < CS->SD->ne; i++) {
+      dv_stat_distribution_entry_t * e = &CS->SD->e[i];
+      GtkWidget * e_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+      gtk_container_add(GTK_CONTAINER(tab_box), e_box);
+
+      GtkWidget * combobox;
+      /* dag */
+      combobox = gtk_combo_box_text_new();
+      gtk_box_pack_start(GTK_BOX(e_box), combobox, FALSE, FALSE, 0);
+      gtk_widget_set_tooltip_text(GTK_WIDGET(combobox), "Choose DAG");
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "none", "None");
+      int j;
+      for (j = 0; j < CS->nD; j++) {
+        char str[30];
+        sprintf(str, "DAG %d", j);
+        gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "dag", str);
+      }
+      gtk_combo_box_set_active(GTK_COMBO_BOX(combobox), e->dag_id + 1);
+      g_signal_connect(G_OBJECT(combobox), "changed", G_CALLBACK(on_stat_distribution_dag_changed), (void *) i);
+      /* type */
+      combobox = gtk_combo_box_text_new();
+      gtk_box_pack_start(GTK_BOX(e_box), combobox, FALSE, FALSE, 0);
+      gtk_widget_set_tooltip_text(GTK_WIDGET(combobox), "Choose delay type");
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "spawn", "spawn");
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "cont", "cont");
+      gtk_combo_box_set_active(GTK_COMBO_BOX(combobox), e->type);
+      g_signal_connect(G_OBJECT(combobox), "changed", G_CALLBACK(on_stat_distribution_type_changed), (void *) i);
+      /* stolen */
+      combobox = gtk_combo_box_text_new();
+      gtk_box_pack_start(GTK_BOX(e_box), combobox, FALSE, FALSE, 0);
+      gtk_widget_set_tooltip_text(GTK_WIDGET(combobox), "Choose all or stolen only");
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "all", "All");
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "stolen", "Stolen only");
+      gtk_combo_box_set_active(GTK_COMBO_BOX(combobox), e->stolen);
+      g_signal_connect(G_OBJECT(combobox), "changed", G_CALLBACK(on_stat_distribution_stolen_changed), (void *) i);
+      /* title */
+      GtkWidget * entry = gtk_entry_new();
+      e->title_entry = entry;
+      gtk_box_pack_start(GTK_BOX(e_box), e->title_entry, FALSE, FALSE, 0);
+      if (e->title)
+        gtk_entry_set_text(GTK_ENTRY(entry), e->title);
+      gtk_widget_set_tooltip_text(GTK_WIDGET(entry), "Title of the plot");
+      gtk_entry_set_width_chars(GTK_ENTRY(entry), 20);
+      g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_stat_distribution_title_activate), (void *) i);
+    }
+
+    gtk_box_pack_start(GTK_BOX(tab_box), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), TRUE, TRUE, 0);
+
+    GtkWidget * hbox, * label, * entry;
+    hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_box_pack_start(GTK_BOX(tab_box), hbox, FALSE, FALSE, 0);
+    label = gtk_label_new("xrange: from ");
+    gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
+    entry = gtk_entry_new();
+    gtk_box_pack_start(GTK_BOX(hbox), entry, FALSE, FALSE, 0);
+    gtk_entry_set_width_chars(GTK_ENTRY(entry), 10);
+    char str[10];
+    sprintf(str, "%ld", CS->SD->xrange_from);
+    gtk_entry_set_text(GTK_ENTRY(entry), str);
+    g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_stat_distribution_xrange_from_activate), (void *) i);
+    label = gtk_label_new(" to ");
+    gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
+    entry = gtk_entry_new();
+    gtk_box_pack_start(GTK_BOX(hbox), entry, FALSE, FALSE, 0);
+    gtk_entry_set_width_chars(GTK_ENTRY(entry), 10);
+    sprintf(str, "%ld", CS->SD->xrange_to);
+    gtk_entry_set_text(GTK_ENTRY(entry), str);
+    g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_stat_distribution_xrange_to_activate), (void *) i);
+  
+    gtk_box_pack_start(GTK_BOX(tab_box), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), TRUE, TRUE, 0);
+  
+    hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_box_pack_start(GTK_BOX(tab_box), hbox, FALSE, FALSE, 0);
+    GtkWidget * button;
+    button = gtk_button_new_with_mnemonic("_Show");
+    gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
+    g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_stat_distribution_show_button_clicked), (void *) NULL);
   }
 
-  gtk_box_pack_start(GTK_BOX(tab_box), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), TRUE, TRUE, 0);
-
-
-  GtkWidget * hbox, * label, * entry;
-  hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-  gtk_box_pack_start(GTK_BOX(tab_box), hbox, FALSE, FALSE, 0);
-  label = gtk_label_new("xrange: from ");
-  gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
-  entry = gtk_entry_new();
-  gtk_box_pack_start(GTK_BOX(hbox), entry, FALSE, FALSE, 0);
-  gtk_entry_set_width_chars(GTK_ENTRY(entry), 10);
-  char str[10];
-  sprintf(str, "%ld", CS->SD->xrange_from);
-  gtk_entry_set_text(GTK_ENTRY(entry), str);
-  g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_stat_distribution_xrange_from_activate), (void *) i);
-  label = gtk_label_new(" to ");
-  gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
-  entry = gtk_entry_new();
-  gtk_box_pack_start(GTK_BOX(hbox), entry, FALSE, FALSE, 0);
-  gtk_entry_set_width_chars(GTK_ENTRY(entry), 10);
-  sprintf(str, "%ld", CS->SD->xrange_to);
-  gtk_entry_set_text(GTK_ENTRY(entry), str);
-  g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_stat_distribution_xrange_to_activate), (void *) i);
-  
-  
-  gtk_box_pack_start(GTK_BOX(tab_box), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), TRUE, TRUE, 0);
-  
-  hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-  gtk_box_pack_start(GTK_BOX(tab_box), hbox, FALSE, FALSE, 0);
-  GtkWidget * button;
-  button = gtk_button_new_with_mnemonic("_Show");
-  gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
-  g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_stat_distribution_show_button_clicked), (void *) NULL);
+  /* Build DAG(s) tab */
+  {
+    tab_label = gtk_label_new("DAG(s)");
+    tab_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_box, tab_label);
+    GtkWidget * hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_box_pack_start(GTK_BOX(tab_box), hbox, FALSE, FALSE, 0);
+    GtkWidget * label = gtk_label_new("");
+    gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
+    CS->SD->node_pool_label = label;
+    dv_dag_node_pool_set_status_label(CS->pool, label);
+    int i;
+    for (i = 0; i < CS->nD; i++) {
+      dv_dag_t * D = &CS->D[i];
+      GtkWidget * dag_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+      gtk_box_pack_start(GTK_BOX(tab_box), dag_box, FALSE, FALSE, 0);
+      char str[20];
+      sprintf(str, "DAG %2d ", i);
+      label = gtk_label_new(str);
+      gtk_box_pack_start(GTK_BOX(dag_box), label, FALSE, FALSE, 0);
+      GtkWidget * entry = gtk_entry_new();
+      gtk_box_pack_start(GTK_BOX(dag_box), entry, FALSE, FALSE, 0);
+      gtk_entry_set_width_chars(GTK_ENTRY(entry), 20);
+      gtk_entry_set_text(GTK_ENTRY(entry), D->P->fn);
+      label = gtk_label_new("");
+      gtk_box_pack_start(GTK_BOX(dag_box), label, FALSE, FALSE, 0);
+      CS->SD->dag_status_labels[i] = label;
+      dv_dag_set_status_label(D, label);
+      GtkWidget * button = gtk_button_new_with_label("Expand");
+      gtk_box_pack_start(GTK_BOX(dag_box), button, FALSE, FALSE, 0);
+      g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_stat_distribution_expand_dag_button_clicked), (void *) D);
+    }
+  }
 
   /* Run */
   gtk_widget_show_all(dialog_box);

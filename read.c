@@ -27,6 +27,21 @@ dv_pidag_read_new_file(char * filename) {
   P->E = G->E;
   P->S = G->S;
   P->G = G;
+
+  /* Read file size */
+  int fd = open(filename, O_RDONLY);
+  if (fd < 0) {
+    fprintf(stderr, "cannot open file: %d\n", errno);
+    exit(1);
+  }
+  struct stat statbuf[1];
+  int err = fstat(fd, statbuf);
+  if (err < 0) {
+    fprintf(stderr, "cannot run fstat: %d\n", errno);
+    exit(1);
+  }
+  P->sz = statbuf->st_size;
+  close(fd);
   
   return P;
 }
@@ -351,6 +366,7 @@ dv_dag_build_node_inner(dv_dag_t * D, dv_dag_node_t * node) {
     node_a = dv_dag_node_pool_pop_contiguous(CS->pool, num_children);
     if (!node_a)
       return dv_log_set_error(DV_ERROR_OONP);
+    D->n += num_children;
 
     // Get last node, btw check number of children
     node_b = node_a;
@@ -391,6 +407,7 @@ dv_dag_build_node_inner(dv_dag_t * D, dv_dag_node_t * node) {
         dv_dag_node_set(D, node_t);
         node_x->spawn = node_t;
         node_t->pre = node_x;
+        D->n++;
       }
       node_x = node_x->next;
     }
@@ -490,6 +507,7 @@ dv_dag_init(dv_dag_t * D, dv_pidag_t * P) {
   D->dmax = 0;
   D->bt = 0.0;
   D->et = 0.0;
+  D->n = 1;
   D->cur_d = 0;
   D->cur_d_ex = 0;
   D->sdt = DV_SCALE_TYPE_INIT;

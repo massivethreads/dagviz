@@ -1,6 +1,5 @@
 #include "dagviz.h"
 
-
 static char *
 dv_filename_get_short_name(char * fn) {
   char * p_from = strrchr(fn, '/');
@@ -43,3 +42,49 @@ dv_dag_collect_delays_r(dv_dag_t * D, dv_dag_node_t * node, FILE * out, dv_stat_
   }
 }
 
+static void
+dv_dag_expand_implicitly_r(dv_dag_t * D, dv_dag_node_t * node) {
+  if (!dv_is_set(node))
+    dv_dag_node_set(D, node);
+  
+  if (dv_is_union(node)) {
+
+    /* Build inner */
+    if ( !dv_is_inner_loaded(node) ) {
+      if (dv_dag_build_node_inner(D, node) != DV_OK) {
+        fprintf(stderr, "error in dv_dag_build_node_inner\n");
+        return;
+      }
+    }
+    /* Call inward */
+    dv_check(node->head);
+    dv_dag_expand_implicitly_r(D, node->head);
+    
+  }
+  
+  /* Call link-along */
+  dv_dag_node_t * next = NULL;
+  while (next = dv_dag_node_traverse_nexts(node, next)) {
+    dv_dag_expand_implicitly_r(D, next);
+  }
+}
+
+static void
+dv_dag_expand_implicitly(dv_dag_t * D) {
+  dv_dag_expand_implicitly_r(D, D->rt);
+}
+
+static void
+dv_dag_set_status_label(dv_dag_t * D, GtkWidget * label) {
+  char str[100];
+  sprintf(str, " nodes: %ld, file: %ld (%ldMB)", D->n, D->P->n, D->P->sz / (1 << 20));
+  gtk_label_set_text(GTK_LABEL(label), str);
+}
+
+
+static void
+dv_dag_node_pool_set_status_label(dv_dag_node_pool_t * pool, GtkWidget * label) {
+  char str[100];
+  sprintf(str, "Node Pool: %ld / %ld (%ldMB)", pool->n, pool->N, pool->sz / (1 << 20) );
+  gtk_label_set_text(GTK_LABEL(label), str);
+}

@@ -175,6 +175,7 @@ typedef struct dv_pidag {
   //struct stat stat[1]; /* file stat structure */
   dv_llist_t itl[1]; /* list of pii's of nodes that have info tag */
   dr_pi_dag * G;
+  long sz;
 } dv_pidag_t;
 
 typedef struct dv_node_coordinate {
@@ -230,6 +231,7 @@ typedef struct dv_dag {
   int dmax; /* depth max */
   double bt; /* begin time */
   double et; /* end time */
+  long n;
 
   /* expansion state */
   int cur_d; /* current depth */
@@ -460,6 +462,8 @@ typedef struct dv_stat_distribution {
   int ne;
   dv_stat_distribution_entry_t e[DV_MAX_DISTRIBUTION];
   long xrange_from, xrange_to;
+  GtkWidget * dag_status_labels[DV_MAX_DAG];
+  GtkWidget * node_pool_label;
 } dv_stat_distribution_t;
 
 
