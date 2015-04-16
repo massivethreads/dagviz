@@ -153,6 +153,8 @@ typedef struct dv_llist {
 
 #define DV_MAX_DISTRIBUTION 10
 
+#define DV_STAT_DISTRIBUTION_OUTPUT_DEFAULT_NAME "00dv_stat_distribution.gpl"
+
 /*-----------------Data Structures-----------------*/
 
 /* a single record of backtrace */
@@ -464,6 +466,7 @@ typedef struct dv_stat_distribution {
   long xrange_from, xrange_to;
   GtkWidget * dag_status_labels[DV_MAX_DAG];
   GtkWidget * node_pool_label;
+  char * fn;
 } dv_stat_distribution_t;
 
 

@@ -98,6 +98,7 @@ dv_global_state_init(dv_global_state_t * CS) {
     CS->SD->dag_status_labels[i] = NULL;
   }
   CS->SD->node_pool_label = NULL;
+  CS->SD->fn = DV_STAT_DISTRIBUTION_OUTPUT_DEFAULT_NAME;
 }
 
 void dv_global_state_set_active_view(dv_view_t *V) {
@@ -2796,16 +2797,24 @@ on_stat_distribution_title_activate(GtkWidget * widget, gpointer user_data) {
 
 static gboolean
 on_stat_distribution_xrange_from_activate(GtkWidget * widget, gpointer user_data) {
-  long i = (long) user_data;
   long new_xrange_from = atol(gtk_entry_get_text(GTK_ENTRY(widget)));
   CS->SD->xrange_from = new_xrange_from;
 }
 
 static gboolean
 on_stat_distribution_xrange_to_activate(GtkWidget * widget, gpointer user_data) {
-  long i = (long) user_data;
   long new_xrange_to = atol(gtk_entry_get_text(GTK_ENTRY(widget)));
   CS->SD->xrange_to = new_xrange_to;
+}
+
+static gboolean
+on_stat_distribution_output_filename_activate(GtkWidget * widget, gpointer user_data) {
+  const char * new_output = gtk_entry_get_text(GTK_ENTRY(widget));
+  if (strcmp(CS->SD->fn, DV_STAT_DISTRIBUTION_OUTPUT_DEFAULT_NAME) != 0) {
+    dv_free(CS->SD->fn, strlen(CS->SD->fn) + 1);
+  }
+  CS->SD->fn = (char *) dv_malloc( sizeof(char) * ( strlen(new_output) + 1) );
+  strcpy(CS->SD->fn, new_output);
 }
 
 static gboolean
@@ -2814,7 +2823,11 @@ on_stat_distribution_show_button_clicked(GtkWidget * widget, gpointer user_data)
   FILE * out;
   
   /* generate plots */
-  filename = "00dv_stat_distribution.gpl";
+  filename = CS->SD->fn;
+  if (!filename || strlen(filename) == 0) {
+    fprintf(stderr, "Error: no file name to output.");
+    return;
+  }
   out = fopen(filename, "w");
   dv_check(out);
   fprintf(out,
@@ -2865,6 +2878,63 @@ on_stat_distribution_show_button_clicked(GtkWidget * widget, gpointer user_data)
   if (!ret) {
     fprintf(stderr, "g_spawn_async_with_pipes() failed.\n");
   }
+}
+
+static gboolean
+on_stat_distribution_open_stat_button_clicked(GtkWidget * widget, gpointer user_data) {
+  dv_dag_t * D = (dv_dag_t *) user_data;
+  int n = strlen(D->P->fn);
+  char * filename = (char *) dv_malloc( sizeof(char) * (n + 2) );
+  strcpy(filename, D->P->fn);
+  if (strcmp(filename + n - 3, "dag") != 0)
+    return;
+  filename[n-3] = 's';
+  filename[n-2] = 't';
+  filename[n-1] = 'a';
+  filename[n]   = 't';
+  filename[n+1] = '\0';
+  /* call gnuplot */
+  GPid pid;
+  char * argv[3];
+  argv[0] = "gedit";
+  argv[1] = filename;
+  argv[2] = NULL;
+  int ret = g_spawn_async_with_pipes(NULL, argv, NULL,
+                                     G_SPAWN_DEFAULT | G_SPAWN_SEARCH_PATH,
+                                     NULL, NULL, &pid,
+                                     NULL, NULL, NULL, NULL);
+  if (!ret) {
+    fprintf(stderr, "g_spawn_async_with_pipes() failed.\n");
+  }
+  dv_free(filename, strlen(filename) + 1);
+}
+
+static gboolean
+on_stat_distribution_open_pp_button_clicked(GtkWidget * widget, gpointer user_data) {
+  dv_dag_t * D = (dv_dag_t *) user_data;
+  int n = strlen(D->P->fn);
+  char * filename = (char *) dv_malloc( sizeof(char) * (n + 1) );
+  strcpy(filename, D->P->fn);
+  if (strcmp(filename + n - 3, "dag") != 0)
+    return;
+  filename[n-3] = 'g';
+  filename[n-2] = 'p';
+  filename[n-1] = 'l';
+  /* call gnuplot */
+  GPid pid;
+  char * argv[4];
+  argv[0] = "gnuplot";
+  argv[1] = "-persist";
+  argv[2] = filename;
+  argv[3] = NULL;
+  int ret = g_spawn_async_with_pipes(NULL, argv, NULL,
+                                     G_SPAWN_DEFAULT | G_SPAWN_SEARCH_PATH,
+                                     NULL, NULL, &pid,
+                                     NULL, NULL, NULL, NULL);
+  if (!ret) {
+    fprintf(stderr, "g_spawn_async_with_pipes() failed.\n");
+  }
+  dv_free(filename, strlen(filename) + 1);
 }
 
 static gboolean
@@ -2968,7 +3038,7 @@ dv_open_statistics_dialog() {
     char str[10];
     sprintf(str, "%ld", CS->SD->xrange_from);
     gtk_entry_set_text(GTK_ENTRY(entry), str);
-    g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_stat_distribution_xrange_from_activate), (void *) i);
+    g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_stat_distribution_xrange_from_activate), (void *) NULL);
     label = gtk_label_new(" to ");
     gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
     entry = gtk_entry_new();
@@ -2976,12 +3046,19 @@ dv_open_statistics_dialog() {
     gtk_entry_set_width_chars(GTK_ENTRY(entry), 10);
     sprintf(str, "%ld", CS->SD->xrange_to);
     gtk_entry_set_text(GTK_ENTRY(entry), str);
-    g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_stat_distribution_xrange_to_activate), (void *) i);
+    g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_stat_distribution_xrange_to_activate), (void *) NULL);
   
     gtk_box_pack_start(GTK_BOX(tab_box), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), TRUE, TRUE, 0);
   
     hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
     gtk_box_pack_start(GTK_BOX(tab_box), hbox, FALSE, FALSE, 0);
+    label = gtk_label_new("Output: ");
+    gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
+    entry = gtk_entry_new();
+    gtk_box_pack_start(GTK_BOX(hbox), entry, FALSE, FALSE, 0);
+    gtk_entry_set_width_chars(GTK_ENTRY(entry), 15);
+    gtk_entry_set_text(GTK_ENTRY(entry), CS->SD->fn);
+    g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_stat_distribution_output_filename_activate), (void *) NULL);
     GtkWidget * button;
     button = gtk_button_new_with_mnemonic("_Show");
     gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
@@ -3010,13 +3087,20 @@ dv_open_statistics_dialog() {
       gtk_box_pack_start(GTK_BOX(dag_box), label, FALSE, FALSE, 0);
       GtkWidget * entry = gtk_entry_new();
       gtk_box_pack_start(GTK_BOX(dag_box), entry, FALSE, FALSE, 0);
-      gtk_entry_set_width_chars(GTK_ENTRY(entry), 20);
+      gtk_entry_set_width_chars(GTK_ENTRY(entry), 15);
       gtk_entry_set_text(GTK_ENTRY(entry), D->P->fn);
       label = gtk_label_new("");
       gtk_box_pack_start(GTK_BOX(dag_box), label, FALSE, FALSE, 0);
       CS->SD->dag_status_labels[i] = label;
       dv_dag_set_status_label(D, label);
-      GtkWidget * button = gtk_button_new_with_label("Expand");
+      GtkWidget * button;
+      button = gtk_button_new_with_label("Open Stat");
+      gtk_box_pack_start(GTK_BOX(dag_box), button, FALSE, FALSE, 0);
+      g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_stat_distribution_open_stat_button_clicked), (void *) D);
+      button = gtk_button_new_with_label("Open PP");
+      gtk_box_pack_start(GTK_BOX(dag_box), button, FALSE, FALSE, 0);
+      g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_stat_distribution_open_pp_button_clicked), (void *) D);
+      button = gtk_button_new_with_label("Expand");
       gtk_box_pack_start(GTK_BOX(dag_box), button, FALSE, FALSE, 0);
       g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_stat_distribution_expand_dag_button_clicked), (void *) D);
     }
