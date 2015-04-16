@@ -467,6 +467,7 @@ typedef struct dv_stat_distribution {
   GtkWidget * dag_status_labels[DV_MAX_DAG];
   GtkWidget * node_pool_label;
   char * fn;
+  int bar_width;
 } dv_stat_distribution_t;
 
 

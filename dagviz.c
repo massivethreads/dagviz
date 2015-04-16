@@ -99,6 +99,7 @@ dv_global_state_init(dv_global_state_t * CS) {
   }
   CS->SD->node_pool_label = NULL;
   CS->SD->fn = DV_STAT_DISTRIBUTION_OUTPUT_DEFAULT_NAME;
+  CS->SD->bar_width = 20;
 }
 
 void dv_global_state_set_active_view(dv_view_t *V) {
@@ -2808,6 +2809,17 @@ on_stat_distribution_xrange_to_activate(GtkWidget * widget, gpointer user_data) 
 }
 
 static gboolean
+on_stat_distribution_granularity_activate(GtkWidget * widget, gpointer user_data) {
+  long new_width = atoi(gtk_entry_get_text(GTK_ENTRY(widget)));
+  CS->SD->bar_width = new_width;
+}
+
+static gboolean
+on_stat_distribution_add_button_clicked(GtkWidget * widget, gpointer user_data) {
+  CS->SD->ne++;
+}
+
+static gboolean
 on_stat_distribution_output_filename_activate(GtkWidget * widget, gpointer user_data) {
   const char * new_output = gtk_entry_get_text(GTK_ENTRY(widget));
   if (strcmp(CS->SD->fn, DV_STAT_DISTRIBUTION_OUTPUT_DEFAULT_NAME) != 0) {
@@ -2831,7 +2843,7 @@ on_stat_distribution_show_button_clicked(GtkWidget * widget, gpointer user_data)
   out = fopen(filename, "w");
   dv_check(out);
   fprintf(out,
-          "width=20\n"
+          "width=%d\n"
           "hist(x,width)=width*floor(x/width)+width/2.0\n"
           "set xrange [%ld:%ld]\n"
           "set yrange [0:]\n"
@@ -2841,21 +2853,39 @@ on_stat_distribution_show_button_clicked(GtkWidget * widget, gpointer user_data)
           "set ylabel \"count\"\n"
           //          "plot \"-\" u (hist($1,width)):(1.0) smooth frequency w boxes lc rgb\"red\" t \"spawn\"\n");
           "plot ",
+          CS->SD->bar_width,
           CS->SD->xrange_from,
           CS->SD->xrange_to);
+  dv_stat_distribution_entry_t * e;
   int i;
+  int count_e = 0;
   for (i = 0; i < CS->SD->ne; i++) {
-    fprintf(out, "\"-\" u (hist($1,width)):(1.0) smooth frequency w boxes t \"%s\"", CS->SD->e[i].title);
-    if (i < CS->SD->ne - 1)
-      fprintf(out, ", ");
-    else
-      fprintf(out, "\n");
+    e = &CS->SD->e[i];
+    if (e->dag_id >= 0)
+      count_e++;
+  }    
+  for (i = 0; i < CS->SD->ne; i++) {
+    e = &CS->SD->e[i];
+    if (e->dag_id >= 0) {
+      fprintf(out, "\"-\" u (hist($1,width)):(1.0) smooth frequency w boxes t \"%s\"", CS->SD->e[i].title);
+      if (count_e > 1)
+        fprintf(out, ", ");
+      else
+        fprintf(out, "\n");
+      count_e--;
+    }
   }
   for (i = 0; i < CS->SD->ne; i++) {
-    if (CS->SD->e[i].dag_id < 0)
+    e = &CS->SD->e[i];
+    if (e->dag_id < 0)
       continue;
-    dv_dag_t * D = CS->D + CS->SD->e[i].dag_id;
-    dv_dag_collect_delays_r(D, D->rt, out, &CS->SD->e[i]);
+    dv_dag_t * D = CS->D + e->dag_id;
+    if (e->type == 0 || e->type == 1)
+      dv_dag_collect_delays_r(D, D->rt, out, e);
+    else if (e->type == 2)
+      dv_dag_collect_sync_delays_r(D, D->rt, out, e);
+    else if (e->type == 3)
+      dv_dag_collect_intervals_r(D, D->rt, out, e);
     fprintf(out,
             "e\n");
   }
@@ -2975,8 +3005,8 @@ dv_open_statistics_dialog() {
       CS->SD->ne = CS->nP;
       if (CS->SD->ne > DV_MAX_DISTRIBUTION)
         CS->SD->ne = DV_MAX_DISTRIBUTION;
-      if (CS->SD->ne < 3)
-        CS->SD->ne = 3;
+      if (CS->SD->ne < 4)
+        CS->SD->ne = 4;
     }
     long i;
     for (i = 0; i < CS->SD->ne; i++) {
@@ -3004,6 +3034,8 @@ dv_open_statistics_dialog() {
       gtk_widget_set_tooltip_text(GTK_WIDGET(combobox), "Choose delay type");
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "spawn", "spawn");
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "cont", "cont");
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "sync", "sync");
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "intervals", "intervals");
       gtk_combo_box_set_active(GTK_COMBO_BOX(combobox), e->type);
       g_signal_connect(G_OBJECT(combobox), "changed", G_CALLBACK(on_stat_distribution_type_changed), (void *) i);
       /* stolen */
@@ -3025,9 +3057,17 @@ dv_open_statistics_dialog() {
       g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_stat_distribution_title_activate), (void *) i);
     }
 
+    GtkWidget * hbox, * label, * entry;
+    GtkWidget * button;
+
+    hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_box_pack_start(GTK_BOX(tab_box), hbox, FALSE, FALSE, 0);
+    button = gtk_button_new_with_mnemonic("_Add +");
+    gtk_box_pack_start(GTK_BOX(hbox), button, FALSE, FALSE, 0);
+    g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_stat_distribution_add_button_clicked), (void *) NULL);
+    
     gtk_box_pack_start(GTK_BOX(tab_box), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), TRUE, TRUE, 0);
 
-    GtkWidget * hbox, * label, * entry;
     hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
     gtk_box_pack_start(GTK_BOX(tab_box), hbox, FALSE, FALSE, 0);
     label = gtk_label_new("xrange: from ");
@@ -3047,7 +3087,18 @@ dv_open_statistics_dialog() {
     sprintf(str, "%ld", CS->SD->xrange_to);
     gtk_entry_set_text(GTK_ENTRY(entry), str);
     g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_stat_distribution_xrange_to_activate), (void *) NULL);
-  
+
+    hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_box_pack_start(GTK_BOX(tab_box), hbox, FALSE, FALSE, 0);
+    label = gtk_label_new("granularity: ");
+    gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
+    entry = gtk_entry_new();
+    gtk_box_pack_start(GTK_BOX(hbox), entry, FALSE, FALSE, 0);
+    gtk_entry_set_width_chars(GTK_ENTRY(entry), 10);
+    sprintf(str, "%d", CS->SD->bar_width);
+    gtk_entry_set_text(GTK_ENTRY(entry), str);
+    g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_stat_distribution_granularity_activate), (void *) NULL);
+    
     gtk_box_pack_start(GTK_BOX(tab_box), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), TRUE, TRUE, 0);
   
     hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
@@ -3059,7 +3110,6 @@ dv_open_statistics_dialog() {
     gtk_entry_set_width_chars(GTK_ENTRY(entry), 15);
     gtk_entry_set_text(GTK_ENTRY(entry), CS->SD->fn);
     g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_stat_distribution_output_filename_activate), (void *) NULL);
-    GtkWidget * button;
     button = gtk_button_new_with_mnemonic("_Show");
     gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
     g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_stat_distribution_show_button_clicked), (void *) NULL);

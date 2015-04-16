@@ -43,6 +43,54 @@ dv_dag_collect_delays_r(dv_dag_t * D, dv_dag_node_t * node, FILE * out, dv_stat_
 }
 
 static void
+dv_dag_collect_sync_delays_r(dv_dag_t * D, dv_dag_node_t * node, FILE * out, dv_stat_distribution_entry_t * e) {
+  if (!node)
+    dv_check(node);
+
+  if (dv_is_union(node) && dv_is_inner_loaded(node)) {
+    dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, node);
+    if (pi->info.kind == dr_dag_node_kind_section) {
+      dr_pi_dag_node * pi_ = dv_pidag_get_node_by_dag_node(D->P, node->next);
+      if (pi_) {
+        dr_clock_t last_t = 0;
+        dv_dag_node_t * x = NULL;
+        while (x = dv_dag_node_traverse_tails(node, x)) {
+          dr_pi_dag_node * x_pi = dv_pidag_get_node_by_dag_node(D->P, x);
+          if (x_pi->info.end.t > last_t)
+            last_t = x_pi->info.end.t;
+        }
+        dv_check(last_t);
+        fprintf(out, "%lld\n", pi_->info.start.t - last_t);
+      }
+    }
+    dv_dag_collect_sync_delays_r(D, node->head, out, e);
+  }
+
+  dv_dag_node_t * next = NULL;
+  while (next = dv_dag_node_traverse_nexts(node, next)) {
+    dv_dag_collect_sync_delays_r(D, next, out, e);
+  }
+}
+
+static void
+dv_dag_collect_intervals_r(dv_dag_t * D, dv_dag_node_t * node, FILE * out, dv_stat_distribution_entry_t * e) {
+  if (!node)
+    dv_check(node);
+
+  if (dv_is_union(node) && dv_is_inner_loaded(node)) {
+    dv_dag_collect_intervals_r(D, node->head, out, e);
+  } else if (!dv_is_union(node) || !dv_is_inner_loaded(node)) {
+    dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, node);
+    fprintf(out, "%lld\n", pi->info.end.t - pi->info.start.t);
+  }
+
+  dv_dag_node_t * next = NULL;
+  while (next = dv_dag_node_traverse_nexts(node, next)) {
+    dv_dag_collect_intervals_r(D, next, out, e);
+  }
+}
+
+static void
 dv_dag_expand_implicitly_r(dv_dag_t * D, dv_dag_node_t * node) {
   if (!dv_is_set(node))
     dv_dag_node_set(D, node);
