@@ -154,6 +154,7 @@ typedef struct dv_llist {
 #define DV_MAX_DISTRIBUTION 10
 
 #define DV_STAT_DISTRIBUTION_OUTPUT_DEFAULT_NAME "00dv_stat_distribution.gpl"
+#define DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME "00dv_stat_breakdown.gpl"
 
 /*-----------------Data Structures-----------------*/
 
@@ -470,6 +471,11 @@ typedef struct dv_stat_distribution {
   int bar_width;
 } dv_stat_distribution_t;
 
+typedef struct dv_stat_breakdown_graph {
+  int D[DV_MAX_DAG]; /* show or not show */
+  char * fn;
+} dv_stat_breakdown_graph_t;
+
 
 typedef struct dv_global_state {
   /* DAG */
@@ -505,8 +511,9 @@ typedef struct dv_global_state {
   /* Node Pool */
   dv_dag_node_pool_t pool[1];
 
-  /* Statistics: Distributions */
+  /* Statistics */
   dv_stat_distribution_t SD[1];
+  dv_stat_breakdown_graph_t SBG[1];
 } dv_global_state_t;
 
 extern const char * const DV_COLORS[];

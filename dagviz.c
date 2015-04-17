@@ -100,6 +100,10 @@ dv_global_state_init(dv_global_state_t * CS) {
   CS->SD->node_pool_label = NULL;
   CS->SD->fn = DV_STAT_DISTRIBUTION_OUTPUT_DEFAULT_NAME;
   CS->SD->bar_width = 20;
+  for (i = 0; i < DV_MAX_DAG; i++) {
+    CS->SBG->D[i] = 0;
+  }
+  CS->SBG->fn = DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME;
 }
 
 void dv_global_state_set_active_view(dv_view_t *V) {
@@ -2975,6 +2979,324 @@ on_stat_distribution_expand_dag_button_clicked(GtkWidget * widget, gpointer user
   dv_dag_node_pool_set_status_label(CS->pool, CS->SD->node_pool_label);
 }
 
+static gboolean
+on_stat_breakdown_dag_checkbox_toggled(GtkWidget * widget, gpointer user_data) {
+  long i = (long) user_data;
+  CS->SBG->D[i] = 1 - CS->SBG->D[i];
+}
+
+static gboolean
+on_stat_breakdown_output_filename_activate(GtkWidget * widget, gpointer user_data) {
+  const char * new_output = gtk_entry_get_text(GTK_ENTRY(widget));
+  if (strcmp(CS->SBG->fn, DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME) != 0) {
+    dv_free(CS->SBG->fn, strlen(CS->SBG->fn) + 1);
+  }
+  CS->SBG->fn = (char *) dv_malloc( sizeof(char) * ( strlen(new_output) + 1) );
+  strcpy(CS->SBG->fn, new_output);
+}
+
+typedef struct {
+  void (*process_event)(chronological_traverser * ct, dr_event evt);
+  dr_pi_dag * G;
+  dr_clock_t cum_running;
+  dr_clock_t cum_delay;
+  dr_clock_t cum_no_work;
+  dr_clock_t t;
+  long n_running;
+  long n_ready;
+  long n_workers;
+  dr_clock_t total_elapsed;
+  dr_clock_t total_t_1;
+  long * edge_counts;		/* kind,u,v */
+} dr_basic_stat;
+
+static void 
+dr_basic_stat_process_event(chronological_traverser * ct, 
+			    dr_event evt);
+
+static void
+dr_calc_inner_delay(dr_basic_stat * bs, dr_pi_dag * G) {
+  long n = G->n;
+  long i;
+  dr_clock_t total_elapsed = 0;
+  dr_clock_t total_t_1 = 0;
+  dr_pi_dag_node * T = G->T;
+  long n_negative_inner_delays = 0;
+  for (i = 0; i < n; i++) {
+    dr_pi_dag_node * t = &T[i];
+    dr_clock_t t_1 = t->info.t_1;
+    dr_clock_t elapsed = t->info.end.t - t->info.start.t;
+    if (t->info.kind < dr_dag_node_kind_section
+	|| t->subgraphs_begin_offset == t->subgraphs_end_offset) {
+      total_elapsed += elapsed;
+      total_t_1 += t_1;
+      if (elapsed < t_1 && t->info.worker != -1) {
+	if (1 || (n_negative_inner_delays == 0)) {
+	  fprintf(stderr,
+		  "warning: node %ld has negative"
+		  " inner delay (worker=%d, start=%llu, end=%llu,"
+		  " t_1=%llu, end - start - t_1 = -%llu\n",
+		  i, t->info.worker,
+		  t->info.start.t, t->info.end.t, t->info.t_1,
+		  t_1 - elapsed);
+	}
+	n_negative_inner_delays++;
+      }
+    }
+  }
+  if (n_negative_inner_delays > 0) {
+    fprintf(stderr,
+	    "warning: there are %ld nodes that have negative delays",
+	    n_negative_inner_delays);
+  }
+  bs->total_elapsed = total_elapsed;
+  bs->total_t_1 = total_t_1;
+}
+
+static void
+dr_calc_edges(dr_basic_stat * bs, dr_pi_dag * G) {
+  long n = G->n;
+  long m = G->m;
+  long nw = G->num_workers;
+  /* C : a three dimensional array
+     C(kind,i,j) is the number of type k edges from 
+     worker i to worker j.
+     we may counter nodes with worker id = -1
+     (executed by more than one workers);
+     we use worker id = nw for such entries
+  */
+  long * C_ = (long *)dr_malloc(sizeof(long) * dr_dag_edge_kind_max * (nw + 1) * (nw + 1));
+#define EDGE_COUNTS(k,i,j) C_[k*(nw+1)*(nw+1)+i*(nw+1)+j]
+  dr_dag_edge_kind_t k;
+  long i, j;
+  for (k = 0; k < dr_dag_edge_kind_max; k++) {
+    for (i = 0; i < nw + 1; i++) {
+      for (j = 0; j < nw + 1; j++) {
+	EDGE_COUNTS(k,i,j) = 0;
+      }
+    }
+  }
+  for (i = 0; i < n; i++) {
+    dr_pi_dag_node * t = &G->T[i];
+    if (t->info.kind >= dr_dag_node_kind_section
+	&& t->subgraphs_begin_offset == t->subgraphs_end_offset) {
+      for (k = 0; k < dr_dag_edge_kind_max; k++) {
+	int w = t->info.worker;
+	if (w == -1) {
+#if 0
+	  fprintf(stderr, 
+		  "warning: node %ld (kind=%s) has worker = %d)\n",
+		  i, dr_dag_node_kind_to_str(t->info.kind), w);
+#endif
+	  EDGE_COUNTS(k, nw, nw) += t->info.logical_edge_counts[k];
+	} else {
+	  (void)dr_check(w >= 0);
+	  (void)dr_check(w < nw);
+	  EDGE_COUNTS(k, w, w) += t->info.logical_edge_counts[k];
+	}
+      }
+    }    
+  }
+  for (i = 0; i < m; i++) {
+    dr_pi_dag_edge * e = &G->E[i];
+    int uw = G->T[e->u].info.worker;
+    int vw = G->T[e->v].info.worker;
+    if (uw == -1) {
+#if 0
+      fprintf(stderr, "warning: source node (%ld) of edge %ld %ld (kind=%s) -> %ld (kind=%s) has worker = %d\n",
+	      e->u,
+	      i, 
+	      e->u, dr_dag_node_kind_to_str(G->T[e->u].info.kind), 
+	      e->v, dr_dag_node_kind_to_str(G->T[e->v].info.kind), uw);
+#endif
+      uw = nw;
+    }
+    if (vw == -1) {
+#if 0
+      fprintf(stderr, "warning: dest node (%ld) of edge %ld %ld (kind=%s) -> %ld (kind=%s) has worker = %d\n",
+	      e->v,
+	      i, 
+	      e->u, dr_dag_node_kind_to_str(G->T[e->u].info.kind), 
+	      e->v, dr_dag_node_kind_to_str(G->T[e->v].info.kind), vw);
+#endif
+      vw = nw;
+    }
+    (void)dr_check(uw >= 0);
+    (void)dr_check(uw <= nw);
+    (void)dr_check(vw >= 0);
+    (void)dr_check(vw <= nw);
+    EDGE_COUNTS(e->kind, uw, vw)++;
+  }
+#undef EDGE_COUNTS
+  bs->edge_counts = C_;
+}
+
+static void 
+dr_basic_stat_init(dr_basic_stat * bs, dr_pi_dag * G) {
+  bs->process_event = dr_basic_stat_process_event;
+  bs->G = G;
+  bs->n_running = 0;
+  bs->n_ready = 0;
+  bs->n_workers = G->num_workers;
+  bs->cum_running = 0;		/* cumulative running cpu time */
+  bs->cum_delay = 0;		/* cumulative delay cpu time */
+  bs->cum_no_work = 0;		/* cumulative no_work cpu time */
+  bs->t = 0;			/* time of the last event */
+}
+
+static void
+dr_basic_stat_destroy(dr_basic_stat * bs, dr_pi_dag * G) {
+  long nw = G->num_workers;
+  dr_free(bs->edge_counts, 
+	  sizeof(long) * dr_dag_edge_kind_max * (nw + 1) * (nw + 1));
+}
+
+static void 
+dr_basic_stat_process_event(chronological_traverser * ct, 
+			    dr_event evt) {
+  dr_basic_stat * bs = (dr_basic_stat *)ct;
+  dr_clock_t dt = evt.t - bs->t;
+
+  int n_running = bs->n_running;
+  int n_delay, n_no_work;
+  if (bs->n_running >= bs->n_workers) {
+    /* great, all workers are running */
+    n_delay = 0;
+    n_no_work = 0;
+    if (bs->n_running > bs->n_workers) {
+      fprintf(stderr, 
+	      "warning: n_running = %ld"
+	      " > n_workers = %ld (clock skew?)\n",
+	      bs->n_running, bs->n_workers);
+    }
+    n_delay = 0;
+    n_no_work = 0;
+  } else if (bs->n_running + bs->n_ready <= bs->n_workers) {
+    /* there were enough workers to run ALL ready tasks */
+    n_delay = bs->n_ready;
+    n_no_work = bs->n_workers - (bs->n_running + bs->n_ready);
+  } else {
+    n_delay = bs->n_workers - bs->n_running;
+    n_no_work = 0;
+  }
+  bs->cum_running += n_running * dt;
+  bs->cum_delay   += n_delay * dt;
+  bs->cum_no_work += n_no_work * dt;
+
+  switch (evt.kind) {
+  case dr_event_kind_ready: {
+    bs->n_ready++;
+    break;
+  }
+  case dr_event_kind_start: {
+    bs->n_running++;
+    break;
+  }
+  case dr_event_kind_last_start: {
+    bs->n_ready--;
+    break;
+  }
+  case dr_event_kind_end: {
+    bs->n_running--;
+    break;
+  }
+  default:
+    assert(0);
+    break;
+  }
+
+  bs->t = evt.t;
+}
+
+
+static gboolean
+on_stat_breakdown_show_button_clicked(GtkWidget * widget, gpointer user_data) {
+  char * filename;
+  FILE * out;
+  
+  /* generate plots */
+  filename = CS->SBG->fn;
+  if (!filename || strlen(filename) == 0) {
+    fprintf(stderr, "Error: no file name to output.");
+    return;
+  }
+  out = fopen(filename, "w");
+  dv_check(out);
+  fprintf(out,
+          "set style data histograms\n"
+          "set style histogram rowstacked\n"
+          "set style fill solid 0.8 noborder\n"
+          "set key outside center top horizontal\n"
+          "set boxwidth 0.75 relative\n"
+          "set yrange [0:]\n"
+          //          "set xtics rotate by -30\n"
+          //          "set xlabel \"clocks\"\n"
+          "set ylabel \"cumul. clocks\"\n"
+          "plot "
+          "\"-\" u 2:xtic(1) w histogram t \"t1\", "
+          "\"-\" u 3 w histogram t \"delay\", "
+          "\"-\" u 4 w histogram t \"nowork\"\n");
+  dr_clock_t works[DV_MAX_DAG];
+  dr_clock_t delays[DV_MAX_DAG];
+  dr_clock_t noworks[DV_MAX_DAG];
+  int DAGs[DV_MAX_DAG];
+  int n = 0;
+  int i;
+  for (i = 0; i < CS->nD; i++) {
+    if (CS->SBG->D[i] == 0)
+      continue;
+    dv_dag_t * D = &CS->D[i];
+    DAGs[n] = i;
+
+    dr_pi_dag * G = D->P->G;
+    dr_basic_stat bs[1];
+    dr_basic_stat_init(bs, G);
+    dr_calc_inner_delay(bs, G);
+    dr_calc_edges(bs, G);
+    dr_pi_dag_chronological_traverse(G, (chronological_traverser *)bs);
+
+    dr_clock_t work = bs->total_t_1;
+    dr_clock_t delay = bs->cum_delay + (bs->total_elapsed - bs->total_t_1);
+    dr_clock_t no_work = bs->cum_no_work;
+    works[n] = work;
+    delays[n] = delay;
+    noworks[n] = no_work;
+    n++;
+  }
+  int j;
+  for (j = 0; j < 3; j++) {
+    for (i = 0; i < n; i++) {
+      fprintf(out,
+              "DAG_%d  %lld %lld %lld\n",
+              DAGs[i],
+              works[i],
+              delays[i],
+              noworks[i]);
+    }
+    fprintf(out,
+            "e\n");
+  }
+  fprintf(out,
+          "pause -1\n");
+  fclose(out);
+  fprintf(stdout, "generated breakdown graphs to %s\n", filename);
+  
+  /* call gnuplot */
+  GPid pid;
+  char * argv[4];
+  argv[0] = "gnuplot";
+  argv[1] = "-persist";
+  argv[2] = filename;
+  argv[3] = NULL;
+  int ret = g_spawn_async_with_pipes(NULL, argv, NULL,
+                                     G_SPAWN_DEFAULT | G_SPAWN_SEARCH_PATH,
+                                     NULL, NULL, &pid,
+                                     NULL, NULL, NULL, NULL);
+  if (!ret) {
+    fprintf(stderr, "g_spawn_async_with_pipes() failed.\n");
+  }
+}
+
 static void
 dv_open_statistics_dialog() {
   /* Get default DAG */
@@ -2998,7 +3320,7 @@ dv_open_statistics_dialog() {
 
   /* Build delay distribution tab */
   {
-    tab_label = gtk_label_new("Delay Distribution");
+    tab_label = gtk_label_new("Delay Distributions");
     tab_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_box, tab_label);
     if (CS->SD->ne == 0) {
@@ -3155,6 +3477,42 @@ dv_open_statistics_dialog() {
       g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_stat_distribution_expand_dag_button_clicked), (void *) D);
     }
   }
+
+  /* Build breakdown graphs tab */
+  {
+    tab_label = gtk_label_new("Breakdown Graphs");
+    tab_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_box, tab_label);
+    long i;
+    for (i = 0; i < CS->nD; i++) {
+      dv_dag_t * D = &CS->D[i];
+      GtkWidget * dag_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+      gtk_box_pack_start(GTK_BOX(tab_box), dag_box, FALSE, FALSE, 0);
+      char str[20];
+      sprintf(str, "DAG %2ld ", i);
+      GtkWidget * checkbox = gtk_check_button_new_with_label(str);
+      gtk_box_pack_start(GTK_BOX(dag_box), checkbox, FALSE, FALSE, 0);
+      gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(checkbox), CS->SBG->D[i]);
+      g_signal_connect(G_OBJECT(checkbox), "toggled", G_CALLBACK(on_stat_breakdown_dag_checkbox_toggled), (void *) i);
+    }
+
+    gtk_box_pack_start(GTK_BOX(tab_box), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), TRUE, TRUE, 0);
+
+    GtkWidget * hbox, * label, * entry, * button;
+    hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_box_pack_start(GTK_BOX(tab_box), hbox, FALSE, FALSE, 0);
+    label = gtk_label_new("Output: ");
+    gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
+    entry = gtk_entry_new();
+    gtk_box_pack_start(GTK_BOX(hbox), entry, FALSE, FALSE, 0);
+    gtk_entry_set_width_chars(GTK_ENTRY(entry), 15);
+    gtk_entry_set_text(GTK_ENTRY(entry), CS->SBG->fn);
+    g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_stat_breakdown_output_filename_activate), (void *) NULL);
+    button = gtk_button_new_with_mnemonic("_Show");
+    gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
+    g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_stat_breakdown_show_button_clicked), (void *) NULL);
+  }
+
 
   /* Run */
   gtk_widget_show_all(dialog_box);
