@@ -2326,7 +2326,7 @@ dv_viewport_update_configure_box() {
   gtk_box_pack_start(GTK_BOX(box), left, TRUE, TRUE, 3);
 
   // Separator
-  gtk_box_pack_start(GTK_BOX(box), gtk_separator_new(GTK_ORIENTATION_VERTICAL), FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(box), gtk_separator_new(GTK_ORIENTATION_VERTICAL), FALSE, FALSE, 4);
 
   // Right
   GtkWidget * right = gtk_scrolled_window_new(NULL, NULL);
@@ -3365,7 +3365,7 @@ dv_open_statistics_dialog() {
       gtk_box_pack_start(GTK_BOX(e_box), combobox, FALSE, FALSE, 0);
       gtk_widget_set_tooltip_text(GTK_WIDGET(combobox), "Choose all or stolen only");
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "all", "All");
-      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "stolen", "Stolen only");
+      gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "stolen", "Stolen");
       gtk_combo_box_set_active(GTK_COMBO_BOX(combobox), e->stolen);
       g_signal_connect(G_OBJECT(combobox), "changed", G_CALLBACK(on_stat_distribution_stolen_changed), (void *) i);
       /* title */
@@ -3388,7 +3388,7 @@ dv_open_statistics_dialog() {
     gtk_box_pack_start(GTK_BOX(hbox), button, FALSE, FALSE, 0);
     g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_stat_distribution_add_button_clicked), (void *) NULL);
     
-    gtk_box_pack_start(GTK_BOX(tab_box), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(tab_box), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), FALSE, FALSE, 4);
 
     hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
     gtk_box_pack_start(GTK_BOX(tab_box), hbox, FALSE, FALSE, 0);
@@ -3421,7 +3421,7 @@ dv_open_statistics_dialog() {
     gtk_entry_set_text(GTK_ENTRY(entry), str);
     g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_stat_distribution_granularity_activate), (void *) NULL);
     
-    gtk_box_pack_start(GTK_BOX(tab_box), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(tab_box), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), FALSE, FALSE, 4);
   
     hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
     gtk_box_pack_start(GTK_BOX(tab_box), hbox, FALSE, FALSE, 0);
@@ -3442,40 +3442,53 @@ dv_open_statistics_dialog() {
     tab_label = gtk_label_new("DAG(s)");
     tab_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_box, tab_label);
-    GtkWidget * hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-    gtk_box_pack_start(GTK_BOX(tab_box), hbox, FALSE, FALSE, 0);
-    GtkWidget * label = gtk_label_new("");
-    gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
-    CS->SD->node_pool_label = label;
-    dv_dag_node_pool_set_status_label(CS->pool, label);
+    GtkWidget * hbox, * label;
     int i;
     for (i = 0; i < CS->nD; i++) {
       dv_dag_t * D = &CS->D[i];
+      /* Line 1 */
       GtkWidget * dag_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
       gtk_box_pack_start(GTK_BOX(tab_box), dag_box, FALSE, FALSE, 0);
       char str[20];
-      sprintf(str, "DAG %2d ", i);
+      sprintf(str, "DAG %2d :  ", i);
       label = gtk_label_new(str);
       gtk_box_pack_start(GTK_BOX(dag_box), label, FALSE, FALSE, 0);
-      GtkWidget * entry = gtk_entry_new();
-      gtk_box_pack_start(GTK_BOX(dag_box), entry, FALSE, FALSE, 0);
-      gtk_entry_set_width_chars(GTK_ENTRY(entry), 15);
-      gtk_entry_set_text(GTK_ENTRY(entry), D->P->fn);
+      GtkWidget * button;
+      button = gtk_button_new_with_label("Open DR's Stat");
+      gtk_box_pack_start(GTK_BOX(dag_box), button, FALSE, FALSE, 0);
+      g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_stat_distribution_open_stat_button_clicked), (void *) D);
+      button = gtk_button_new_with_label("Open DR's PP");
+      gtk_box_pack_start(GTK_BOX(dag_box), button, FALSE, FALSE, 0);
+      g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_stat_distribution_open_pp_button_clicked), (void *) D);
+      gtk_box_pack_start(GTK_BOX(dag_box), gtk_separator_new(GTK_ORIENTATION_VERTICAL), FALSE, FALSE, 4);
+      button = gtk_button_new_with_label("Load Full");
+      gtk_box_pack_start(GTK_BOX(dag_box), button, FALSE, FALSE, 0);
+      g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_stat_distribution_expand_dag_button_clicked), (void *) D);
+      /* Line 2 */
+      dag_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+      gtk_box_pack_start(GTK_BOX(tab_box), dag_box, FALSE, FALSE, 0);
+      //GtkWidget * entry = gtk_entry_new();
+      //gtk_box_pack_start(GTK_BOX(dag_box), entry, FALSE, FALSE, 0);
+      //gtk_entry_set_width_chars(GTK_ENTRY(entry), 15);
+      //gtk_entry_set_text(GTK_ENTRY(entry), D->P->fn);
+      label = gtk_label_new(D->P->fn);
+      gtk_box_pack_start(GTK_BOX(dag_box), label, FALSE, FALSE, 0);
+      /* Line 3 */
+      dag_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+      gtk_box_pack_start(GTK_BOX(tab_box), dag_box, FALSE, FALSE, 0);
       label = gtk_label_new("");
       gtk_box_pack_start(GTK_BOX(dag_box), label, FALSE, FALSE, 0);
       CS->SD->dag_status_labels[i] = label;
       dv_dag_set_status_label(D, label);
-      GtkWidget * button;
-      button = gtk_button_new_with_label("Open Stat");
-      gtk_box_pack_start(GTK_BOX(dag_box), button, FALSE, FALSE, 0);
-      g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_stat_distribution_open_stat_button_clicked), (void *) D);
-      button = gtk_button_new_with_label("Open PP");
-      gtk_box_pack_start(GTK_BOX(dag_box), button, FALSE, FALSE, 0);
-      g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_stat_distribution_open_pp_button_clicked), (void *) D);
-      button = gtk_button_new_with_label("Expand");
-      gtk_box_pack_start(GTK_BOX(dag_box), button, FALSE, FALSE, 0);
-      g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_stat_distribution_expand_dag_button_clicked), (void *) D);
+      gtk_box_pack_start(GTK_BOX(tab_box), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), FALSE, FALSE, 4);
     }
+    /* Node Pool's status */
+    hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_box_pack_start(GTK_BOX(tab_box), hbox, FALSE, FALSE, 0);
+    label = gtk_label_new("");
+    gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
+    CS->SD->node_pool_label = label;
+    dv_dag_node_pool_set_status_label(CS->pool, label);
   }
 
   /* Build breakdown graphs tab */
@@ -3496,7 +3509,7 @@ dv_open_statistics_dialog() {
       g_signal_connect(G_OBJECT(checkbox), "toggled", G_CALLBACK(on_stat_breakdown_dag_checkbox_toggled), (void *) i);
     }
 
-    gtk_box_pack_start(GTK_BOX(tab_box), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(tab_box), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), FALSE, FALSE, 4);
 
     GtkWidget * hbox, * label, * entry, * button;
     hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);

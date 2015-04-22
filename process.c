@@ -126,7 +126,7 @@ static void
 dv_dag_set_status_label(dv_dag_t * D, GtkWidget * label) {
   char str[100];
   dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, D->rt);
-  sprintf(str, " nodes: %ld/%ld (%ldMB), %llu", D->n, D->P->n, D->P->sz / (1 << 20), pi->info.end.t - pi->info.start.t);
+  sprintf(str, " nodes: %ld/%ld (%ldMB), elasped: %llu clocks", D->n, D->P->n, D->P->sz / (1 << 20), pi->info.end.t - pi->info.start.t);
   gtk_label_set_text(GTK_LABEL(label), str);
 }
 

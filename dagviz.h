@@ -123,7 +123,7 @@ typedef struct dv_llist {
 
 #define DV_DAG_NODE_POOL_SIZE 50000
 
-#define DV_MAX_DAG_FILE 5
+#define DV_MAX_DAG_FILE 10
 #define DV_MAX_DAG 10
 #define DV_MAX_VIEW 10
 #define DV_MAX_VIEWPORT 10
