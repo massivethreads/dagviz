@@ -406,7 +406,7 @@ dv_view_draw_infotag_1(dv_view_t * V, cairo_t * cr, cairo_matrix_t * mt, dv_dag_
   double padding = 3;
   double upper_padding = padding;
   double lower_padding = 2.5 * padding;
-  int n = 6; /* number of lines */
+  int n = 7; /* number of lines */
   
   // Get coordinates
   double xx, yy;
@@ -479,6 +479,23 @@ dv_view_draw_infotag_1(dv_view_t * V, cairo_t * cr, cairo_matrix_t * mt, dv_dag_
   cairo_show_text(cr, s);
   yy += line_height;
 
+  // Line 2.5
+  sprintf(s, "counters=");
+  int i;
+  for (i = 0; i < dr_max_counters - 1; i++) {
+    sprintf(s, "%s%lld/",
+            s,
+            pi->info.counters_1[i]
+            );
+  }
+  sprintf(s, "%s%lld",
+          s,
+          pi->info.counters_1[i]
+          );
+  cairo_move_to(cr, xx, yy);
+  cairo_show_text(cr, s);
+  yy += line_height;
+
   // Line 3
   sprintf(s, "T=%llu/%llu,nodes=%ld/%ld/%ld/%ld,edges=%ld/%ld/%ld/%ld/%ld",
           pi->info.t_1, 
@@ -508,7 +525,6 @@ dv_view_draw_infotag_1(dv_view_t * V, cairo_t * cr, cairo_matrix_t * mt, dv_dag_
   s2[0] = 0;
   long long r = node->r;
   long v;
-  int i = 0;
   while (i < V->D->nr) {
     if (dv_get_bit(r, i)) {
       v = V->D->ar[i];
