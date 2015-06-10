@@ -108,7 +108,7 @@ typedef struct dv_llist {
 #define DV_FROMBT_INIT 0
 #define DV_EDGE_TYPE_INIT 3
 #define DV_EDGE_AFFIX_LENGTH 0//10
-#define DV_CLICK_MODE_INIT 1 // 0:none, 1:info, 1:expand/collapse
+#define DV_CLICK_MODE_INIT 2 // 0:none, 1:info, 2:expand/collapse
 #define DV_HOVER_MODE_INIT 0 // 0:none, 1:info, 2:expand, 3:collapse, 4:expand/collapse
 #define DV_SHOW_LEGEND_INIT 0
 #define DV_SHOW_STATUS_INIT 1
@@ -336,11 +336,6 @@ typedef struct dv_view_interface {
   GtkWidget * combobox_frombt;
   GtkWidget * combobox_et;
   GtkWidget * togg_eaffix;
-  GtkWidget * entry_search;
-  GtkWidget * checkbox_xzoom;
-  GtkWidget * checkbox_yzoom;
-  GtkWidget * checkbox_scale_radix;
-  GtkWidget * checkbox_scale_radius;
   GtkWidget * grid;
   GtkWidget * checkbox_legend;
   GtkWidget * checkbox_status;
@@ -349,11 +344,38 @@ typedef struct dv_view_interface {
   GtkWidget * checkbox_color_remarked_only;
 } dv_view_interface_t;
 
+typedef struct dv_view_toolbox {
+  dv_view_t * V;
+  GtkWidget * window;
+
+  GtkWidget * combobox_lt;
+  GtkWidget * combobox_nc;
+  GtkWidget * combobox_sdt;
+  GtkWidget * entry_radix;
+  GtkWidget * checkbox_scale_radix;
+  GtkWidget * combobox_cm;
+  GtkWidget * combobox_hm;
+  GtkWidget * checkbox_legend;
+  GtkWidget * checkbox_status;
+  GtkWidget * entry_remark;
+  GtkWidget * checkbox_remain_inner;
+  GtkWidget * checkbox_color_remarked_only;
+
+  GtkWidget * entry_search;
+  GtkWidget * checkbox_xzoom;
+  GtkWidget * checkbox_yzoom;
+  GtkWidget * checkbox_scale_radius;  
+  GtkWidget * combobox_frombt;
+  GtkWidget * combobox_et;
+  GtkWidget * togg_eaffix;
+} dv_view_toolbox_t;
+
 typedef struct dv_view {
   dv_dag_t * D; /* DV DAG */
   dv_view_status_t S[1]; /* layout/drawing attributes */
   dv_view_interface_t * I[DV_MAX_VIEWPORT]; /* interfaces to viewports */
   dv_viewport_t * mainVP; /* main VP that this V is assosiated with */
+  dv_view_toolbox_t T[1];
 } dv_view_t;
 
 typedef struct dv_viewport {
@@ -556,7 +578,7 @@ dv_view_t * dv_view_create_new_with_dag(dv_dag_t *);
 void * dv_view_interface_set_values(dv_view_t *, dv_view_interface_t *);
 dv_view_interface_t * dv_view_interface_create_new(dv_view_t *, dv_viewport_t *);
 void dv_view_interface_destroy(dv_view_interface_t *);
-void dv_view_interface_open_attribute_dialog(dv_view_interface_t *);
+void dv_view_open_toolbox_window(dv_view_interface_t *);
 void dv_view_change_mainvp(dv_view_t *, dv_viewport_t *);
 void dv_view_add_viewport(dv_view_t *, dv_viewport_t *);
 void dv_view_remove_viewport(dv_view_t *, dv_viewport_t *);
