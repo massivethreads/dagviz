@@ -298,6 +298,8 @@ typedef struct dv_view_status {
   int cm; /* click mode */
   long ndh; /* number of nodes including hidden ones */
   int focused;
+  long nl; /* number of nodes laid-out */
+  long ntr; /* number of nodes travered */
 
   /* drawing parameters */
   char do_zoomfit;     /* flag to do zoomfit when drawing view */
@@ -309,6 +311,7 @@ typedef struct dv_view_status {
   int do_zoom_y;
   int do_scale_radix;
   int do_scale_radius;
+  int always_zoomfit;
 
   /* moving animation */
   dv_motion_t m[1];
@@ -323,26 +326,6 @@ typedef struct dv_view_status {
 
 typedef struct dv_viewport dv_viewport_t;
 typedef struct dv_view dv_view_t;
-
-typedef struct dv_view_interface {
-  dv_view_t * V;
-  dv_viewport_t * VP;
-  GtkWidget * toolbar;
-  GtkWidget * togg_focused;
-  GtkWidget * combobox_lt;
-  GtkWidget * combobox_nc;
-  GtkWidget * combobox_sdt;
-  GtkWidget * entry_radix;
-  GtkWidget * combobox_frombt;
-  GtkWidget * combobox_et;
-  GtkWidget * togg_eaffix;
-  GtkWidget * grid;
-  GtkWidget * checkbox_legend;
-  GtkWidget * checkbox_status;
-  GtkWidget * entry_remark;
-  GtkWidget * checkbox_remain_inner;
-  GtkWidget * checkbox_color_remarked_only;
-} dv_view_interface_t;
 
 typedef struct dv_view_toolbox {
   dv_view_t * V;
@@ -373,10 +356,16 @@ typedef struct dv_view_toolbox {
 typedef struct dv_view {
   dv_dag_t * D; /* DV DAG */
   dv_view_status_t S[1]; /* layout/drawing attributes */
-  dv_view_interface_t * I[DV_MAX_VIEWPORT]; /* interfaces to viewports */
   dv_viewport_t * mainVP; /* main VP that this V is assosiated with */
   dv_view_toolbox_t T[1];
+  int mVP[DV_MAX_VIEWPORT]; /* mark VPs on which this V is displayed */
 } dv_view_t;
+
+typedef struct dv_viewport_toolbox {
+  GtkWidget * toolbar;
+  //GtkWidget * togg_focused;
+  GtkWidget * label;
+} dv_viewport_toolbox_t;
 
 typedef struct dv_viewport {
   int split; /* split into two nested paned viewports or not */
@@ -389,8 +378,10 @@ typedef struct dv_viewport {
   /* No split */
   GtkWidget * box; /* contains toolbars and darea */
   GtkWidget * darea; /* drawing area */
-  dv_view_interface_t * I[DV_MAX_VIEW]; /* interfaces to view */
   double vpw, vph;  /* viewport's size */
+  int mV[DV_MAX_VIEW]; /* mark Vs that this VP contains */
+  dv_view_t * mainV;
+  dv_viewport_toolbox_t T[1];
 } dv_viewport_t;
 
 typedef struct dv_btsample_viewer {
@@ -560,6 +551,8 @@ void dv_queue_draw(dv_view_t *);
 void dv_queue_draw_d(dv_view_t *);
 void dv_queue_draw_d_p(dv_view_t *);
 
+void dv_view_do_zoomfit_based_on_lt(dv_view_t *);
+
 void dv_view_clip(dv_view_t *, cairo_t *);
 double dv_view_clip_get_bound_left(dv_view_t *);
 double dv_view_clip_get_bound_right(dv_view_t *);
@@ -575,20 +568,14 @@ void dv_view_status_init(dv_view_t *, dv_view_status_t *);
 
 void dv_view_init(dv_view_t *);
 dv_view_t * dv_view_create_new_with_dag(dv_dag_t *);
-void * dv_view_interface_set_values(dv_view_t *, dv_view_interface_t *);
-dv_view_interface_t * dv_view_interface_create_new(dv_view_t *, dv_viewport_t *);
-void dv_view_interface_destroy(dv_view_interface_t *);
-void dv_view_open_toolbox_window(dv_view_interface_t *);
+void dv_view_open_toolbox_window(dv_view_t *);
 void dv_view_change_mainvp(dv_view_t *, dv_viewport_t *);
 void dv_view_add_viewport(dv_view_t *, dv_viewport_t *);
 void dv_view_remove_viewport(dv_view_t *, dv_viewport_t *);
 void dv_view_switch_viewport(dv_view_t *, dv_viewport_t *, dv_viewport_t *);
-dv_view_interface_t * dv_view_get_interface_to_viewport(dv_view_t *, dv_viewport_t *);
-
 void dv_viewport_init(dv_viewport_t *);
-void dv_viewport_add_interface(dv_viewport_t *, dv_view_interface_t *);
-void dv_viewport_remove_interface(dv_viewport_t *, dv_view_interface_t *);
-dv_view_interface_t * dv_viewport_get_interface_to_view(dv_viewport_t *, dv_view_t *);
+void dv_viewport_add_view(dv_viewport_t *, dv_view_t *);
+void dv_viewport_remove_view(dv_viewport_t *, dv_view_t *);
 
 void dv_signal_handler(int);
 

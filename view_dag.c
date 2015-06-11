@@ -5,6 +5,7 @@
 
 static void
 dv_view_layout_dag_node(dv_view_t * V, dv_dag_node_t * node) {
+  V->S->nl++;
   int lt = 0;
   dv_node_coordinate_t * nodeco = &node->c[lt];
   /* Calculate inward */

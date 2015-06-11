@@ -394,7 +394,7 @@ dv_histogram_reset(dv_histogram_t * H) {
 
 static void
 dv_view_layout_paraprof_node(dv_view_t * V, dv_dag_node_t * node) {
-  V->S->ndh++;
+  V->S->nl++;
   int lt = 4;
   dv_node_coordinate_t * nodeco = &node->c[lt];
   dv_dag_t * D = V->D;
@@ -412,7 +412,7 @@ dv_view_layout_paraprof_node(dv_view_t * V, dv_dag_node_t * node) {
     if (dv_is_expanded(node) || dv_is_expanding(node)) {
       dv_view_layout_paraprof_node(V, node->head);
     } else {
-      V->S->nd++;
+      //V->S->nd++;
       if (node->d > D->cur_d)
         D->cur_d = node->d;
       if (dv_is_union(node) && dv_is_inner_loaded(node)
@@ -422,7 +422,7 @@ dv_view_layout_paraprof_node(dv_view_t * V, dv_dag_node_t * node) {
       dv_histogram_add_node(V->D->H, node);
     }
   } else {
-    V->S->nd++;
+    //V->S->nd++;
     if (node->d > D->cur_d)
       D->cur_d = node->d;
     if (dv_is_union(node) && dv_is_inner_loaded(node)

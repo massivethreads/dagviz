@@ -4,6 +4,7 @@
 
 static void
 dv_view_layout_timeline2_node(dv_view_t * V, dv_dag_node_t * node) {
+  V->S->nl++;
   int lt = 3;
   dv_node_coordinate_t * nodeco = &node->c[lt];
   dv_dag_t * D = V->D;

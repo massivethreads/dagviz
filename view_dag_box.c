@@ -125,6 +125,7 @@ dv_layout_node_get_last_tail_xp_r(dv_view_t * V, dv_dag_node_t * node) {
 
 static void
 dv_view_layout_dagbox_node(dv_view_t * V, dv_dag_node_t * node) {
+  V->S->nl++;
   int lt = 1;
   dv_node_coordinate_t * nodeco = &node->c[lt];
   /* Calculate inward */

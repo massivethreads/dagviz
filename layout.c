@@ -49,6 +49,7 @@ dv_view_layout(dv_view_t * V) {
   }
   */
 
+  V->S->nl = 0;
   dv_view_layout_with_type(V, V->S->lt);
   int lt;
   for (lt=0; lt<DV_NUM_LAYOUT_TYPES; lt++)
@@ -144,10 +145,17 @@ static gboolean dv_animation_tick(gpointer data) {
   }
   */
   dv_view_layout(a->V);
+  if (a->V->S->always_zoomfit)
+    dv_view_do_zoomfit_based_on_lt(a->V);
   dv_queue_draw_d(a->V);
   // stop timer when there is no moving node 
   if (dv_llist_size(a->movings) == 0) {
     dv_animation_stop(a);
+    a->V->S->always_zoomfit = 0;
+    //if (a->V->S->do_zoomfit) {
+    //dv_view_do_zoomfit_based_on_lt(a->V);
+    //a->V->S->do_zoomfit = 0;
+    //}
     return 0;
   } else {
     return 1;
