@@ -156,6 +156,9 @@ typedef struct dv_llist {
 #define DV_STAT_DISTRIBUTION_OUTPUT_DEFAULT_NAME "00dv_stat_distribution.gpl"
 #define DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME "00dv_stat_breakdown.gpl"
 
+#define DV_VIEW_AUTO_ZOOMFIT_INIT 4 /* 0:none, 1:hor, 2:ver, 3:based, 4:full */
+#define DV_VIEW_ADJUST_AUTO_ZOOMFIT_INIT 1
+
 /*-----------------Data Structures-----------------*/
 
 /* a single record of backtrace */
@@ -311,7 +314,8 @@ typedef struct dv_view_status {
   int do_zoom_y;
   int do_scale_radix;
   int do_scale_radius;
-  int always_zoomfit;
+  int auto_zoomfit; /* 0:none, 1:hor, 2:ver, 3:based, 4:full */
+  int adjust_auto_zoomfit;
 
   /* moving animation */
   dv_motion_t m[1];
@@ -331,6 +335,7 @@ typedef struct dv_view_toolbox {
   dv_view_t * V;
   GtkWidget * window;
 
+  /* Common */
   GtkWidget * combobox_lt;
   GtkWidget * combobox_nc;
   GtkWidget * combobox_sdt;
@@ -340,10 +345,15 @@ typedef struct dv_view_toolbox {
   GtkWidget * combobox_hm;
   GtkWidget * checkbox_legend;
   GtkWidget * checkbox_status;
+  GtkWidget * combobox_azf;
+  GtkWidget * checkbox_azf;
+
+  /* Advance */
   GtkWidget * entry_remark;
   GtkWidget * checkbox_remain_inner;
   GtkWidget * checkbox_color_remarked_only;
 
+  /* Developer */
   GtkWidget * entry_search;
   GtkWidget * checkbox_xzoom;
   GtkWidget * checkbox_yzoom;
@@ -551,7 +561,12 @@ void dv_queue_draw(dv_view_t *);
 void dv_queue_draw_d(dv_view_t *);
 void dv_queue_draw_d_p(dv_view_t *);
 
+void dv_view_get_zoomfit_hor(dv_view_t *, double *, double *, double *, double *);
+void dv_do_zoomfit_hor(dv_view_t *);
+void dv_view_get_zoomfit_ver(dv_view_t *, double *, double *, double *, double *);
+void dv_do_zoomfit_ver(dv_view_t *);
 void dv_view_do_zoomfit_based_on_lt(dv_view_t *);
+void dv_do_zoomfit_full(dv_view_t *);
 
 void dv_view_clip(dv_view_t *, cairo_t *);
 double dv_view_clip_get_bound_left(dv_view_t *);
@@ -563,6 +578,8 @@ double dv_view_cairo_coordinate_bound_left(dv_view_t *);
 double dv_view_cairo_coordinate_bound_right(dv_view_t *);
 double dv_view_cairo_coordinate_bound_up(dv_view_t *);
 double dv_view_cairo_coordinate_bound_down(dv_view_t *);
+
+void dv_view_change_azf(dv_view_t *, int);
 
 void dv_view_status_init(dv_view_t *, dv_view_status_t *);
 

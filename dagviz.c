@@ -180,8 +180,8 @@ dv_do_zooming(dv_view_t * V, double new_zrx, double new_zry, double posx, double
   dv_queue_draw(V);
 }
 
-static void
-dv_do_zoomfit_hor_(dv_view_t * V) {
+void
+dv_view_get_zoomfit_hor(dv_view_t * V, double * zrx, double * zry, double * myx, double * myy) {
   dv_dag_t * D = V->D;
   dv_view_status_t * S = V->S;
   double w = S->vpw;
@@ -243,19 +243,19 @@ dv_do_zoomfit_hor_(dv_view_t * V) {
   default:
     dv_check(0);
   }
-  S->zoom_ratio_x = S->zoom_ratio_y  = zoom_ratio;
-  S->x = x;
-  S->y = y;
+  *zrx = *zry  = zoom_ratio;
+  *myx = x;
+  *myy = y;
 }
 
-static void
+void
 dv_do_zoomfit_hor(dv_view_t * V) {
-  dv_do_zoomfit_hor_(V);
+  dv_view_get_zoomfit_hor(V, &V->S->zoom_ratio_x, &V->S->zoom_ratio_y, &V->S->x, &V->S->y);
   dv_queue_draw(V);
 }
 
-static void
-dv_do_zoomfit_ver_(dv_view_t * V) {
+void
+dv_view_get_zoomfit_ver(dv_view_t * V, double * zrx, double * zry, double * myx, double * myy) {
   dv_dag_t * D = V->D;
   dv_view_status_t * S = V->S;
   double w = S->vpw;
@@ -310,14 +310,56 @@ dv_do_zoomfit_ver_(dv_view_t * V) {
   default:
     dv_check(0);
   }
+  *zrx = *zry = zoom_ratio;
+  *myx = x;
+  *myy = y;
   S->zoom_ratio_x = S->zoom_ratio_y = zoom_ratio;
   S->x = x;
   S->y = y;
 }
 
-static void
+void
 dv_do_zoomfit_ver(dv_view_t * V) {
-  dv_do_zoomfit_ver_(V);
+  dv_view_get_zoomfit_ver(V, &V->S->zoom_ratio_x, &V->S->zoom_ratio_y, &V->S->x, &V->S->y);
+  dv_queue_draw(V);
+}
+
+void
+dv_view_do_zoomfit_based_on_lt(dv_view_t * V) {
+  switch (V->S->lt) {
+  case 0:
+  case 1:
+  case 2:
+    dv_do_zoomfit_ver(V);
+    break;
+  case 3:
+    dv_do_zoomfit_hor(V);
+    break;
+  case 4:
+    dv_do_zoomfit_hor(V);
+    break;
+  default:
+    dv_do_zoomfit_ver(V);
+    break;
+  }
+}
+
+void
+dv_do_zoomfit_full(dv_view_t * V) {
+  double h_zrx, h_zry, h_x, h_y;
+  dv_view_get_zoomfit_hor(V, &h_zrx, &h_zry, &h_x, &h_y);
+  double v_zrx, v_zry, v_x, v_y;
+  dv_view_get_zoomfit_ver(V, &v_zrx, &v_zry, &v_x, &v_y);
+  if (v_zrx < h_zrx) {
+    h_zrx = v_zrx;
+    h_zry = v_zry;
+    h_x = v_x;
+    h_y = v_y;
+  }
+  V->S->zoom_ratio_x = h_zrx;
+  V->S->zoom_ratio_y = h_zry;
+  V->S->x = h_x;
+  V->S->y = h_y;
   dv_queue_draw(V);
 }
 
@@ -377,26 +419,6 @@ dv_view_change_nc(dv_view_t * V, int new_nc) {
     if (GTK_IS_WIDGET(V->T->combobox_nc)) {
       gtk_combo_box_set_active(GTK_COMBO_BOX(V->T->combobox_nc), new_nc);
     }
-  }
-}
-
-void
-dv_view_do_zoomfit_based_on_lt(dv_view_t * V) {
-  switch (V->S->lt) {
-  case 0:
-  case 1:
-  case 2:
-    dv_do_zoomfit_ver(V);
-    break;
-  case 3:
-    dv_do_zoomfit_hor(V);
-    break;
-  case 4:
-    dv_do_zoomfit_hor(V);
-    break;
-  default:
-    dv_do_zoomfit_ver(V);
-    break;
   }
 }
 
@@ -828,15 +850,9 @@ on_draw_event(GtkWidget * widget, cairo_t * cr, gpointer user_data) {
 }
 
 static void
-on_btn_zoomfit_hor_clicked(GtkToolButton * toolbtn, gpointer user_data) {
+on_btn_zoomfit_full_clicked(GtkToolButton * toolbtn, gpointer user_data) {
   dv_viewport_t * VP = (dv_viewport_t *) user_data;
-  dv_do_zoomfit_hor(VP->mainV);
-}
-
-static void
-on_btn_zoomfit_ver_clicked(GtkToolButton * toolbtn, gpointer user_data) {
-  dv_viewport_t * VP = (dv_viewport_t *) user_data;
-  dv_do_zoomfit_ver(VP->mainV);
+  dv_do_zoomfit_full(VP->mainV);
 }
 
 static void
@@ -853,6 +869,8 @@ on_btn_expand_clicked(GtkToolButton * toolbtn, gpointer user_data) {
 
 static void
 dv_do_scrolling(dv_view_t * V, GdkEventScroll * event) {
+  if (V->S->adjust_auto_zoomfit)
+    dv_view_change_azf(V, 0);
   double factor = 1.0;
   
   if (V->S->do_scale_radix || V->S->do_scale_radius) {
@@ -923,6 +941,8 @@ on_scroll_event(GtkWidget * widget, GdkEventScroll * event, gpointer user_data) 
 
 static void
 dv_do_button_event(dv_view_t * V, GdkEventButton * event) {
+  if (V->S->adjust_auto_zoomfit)
+    dv_view_change_azf(V, 0);
   dv_dag_t * D = V->D;
   dv_llist_t * itl = D->P->itl;
   dv_view_status_t * S = V->S;
@@ -1329,6 +1349,20 @@ on_combobox_hm_changed(GtkComboBox * widget, gpointer user_data) {
   return TRUE;
 }
 
+void
+dv_view_change_azf(dv_view_t * V, int new_azf) {
+  V->S->auto_zoomfit = new_azf;
+  gtk_combo_box_set_active(GTK_COMBO_BOX(V->T->combobox_azf), new_azf);
+}
+
+static gboolean
+on_combobox_azf_changed(GtkComboBox * widget, gpointer user_data) {
+  dv_view_t * V = (dv_view_t *) user_data;
+  int new_val = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+  dv_view_change_azf(V, new_val);
+  return TRUE;
+}
+
 static gboolean
 on_darea_configure_event(GtkWidget * widget, GdkEventConfigure * event, gpointer user_data) {
   dv_viewport_t * VP = (dv_viewport_t *) user_data;
@@ -1360,16 +1394,27 @@ on_window_key_event(GtkWidget * widget, GdkEvent * event, gpointer user_data) {
   //printf("key: %d\n", e->keyval);
   switch (e->keyval) {
   case 120: /* X */
+  case 43: /* + */
     dv_do_expanding_one(aV);    
     return TRUE;
   case 99: /* C */
+  case 45: /* - */
     dv_do_collapsing_one(aV);
     return TRUE;
   case 104: /* H */
+    if (aV->S->adjust_auto_zoomfit)
+      dv_view_change_azf(aV, 1);
     dv_do_zoomfit_hor(aV);
     return TRUE;
   case 118: /* V */
+    if (aV->S->adjust_auto_zoomfit)
+      dv_view_change_azf(aV, 2);
     dv_do_zoomfit_ver(aV);
+    return TRUE;
+  case 102: /* F */
+    if (aV->S->adjust_auto_zoomfit)
+      dv_view_change_azf(aV, 4);
+    dv_do_zoomfit_full(aV);
     return TRUE;
   case 49: /* Ctrl + 1 */
     if ((e->state & modifiers) == GDK_CONTROL_MASK) {
@@ -1586,10 +1631,28 @@ on_checkbox_scale_radius_toggled(GtkWidget * widget, gpointer user_data) {
 }
 
 static void
+on_checkbox_azf_toggled(GtkWidget * widget, gpointer user_data) {
+  dv_view_t * V = (dv_view_t *) user_data;
+  V->S->adjust_auto_zoomfit = 1 - V->S->adjust_auto_zoomfit;
+}
+
+static void
 on_btn_run_dag_scan_clicked(GtkButton * button, gpointer user_data) {
   dv_view_t * V = (dv_view_t *) user_data;
   dv_view_scan(V);
   dv_queue_draw_d(V);
+}
+
+static void
+on_btn_zoomfit_hor_clicked(GtkToolButton * toolbtn, gpointer user_data) {
+  dv_view_t * V = (dv_view_t *) user_data;
+  dv_do_zoomfit_hor(V);
+}
+
+static void
+on_btn_zoomfit_ver_clicked(GtkToolButton * toolbtn, gpointer user_data) {
+  dv_view_t * V = (dv_view_t *) user_data;
+  dv_do_zoomfit_ver(V);
 }
 
 
@@ -1622,7 +1685,8 @@ dv_view_status_init(dv_view_t * V, dv_view_status_t * S) {
   S->do_zoom_y = 1;
   S->do_scale_radix = 0;
   S->do_scale_radius = 0;
-  S->always_zoomfit = 0;
+  S->auto_zoomfit = DV_VIEW_AUTO_ZOOMFIT_INIT;
+  S->adjust_auto_zoomfit = DV_VIEW_ADJUST_AUTO_ZOOMFIT_INIT;
   
   dv_motion_init(S->m, V);
   S->last_hovered_node = NULL;
@@ -1699,7 +1763,24 @@ dv_view_toolbox_init(dv_view_toolbox_t * T, dv_view_t * V) {
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(T->combobox_hm), "collapse", "Colapse");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(T->combobox_hm), "expcoll", "Expand/Collapse");
   gtk_combo_box_set_active(GTK_COMBO_BOX(T->combobox_hm), V->S->hm);
-  g_signal_connect(G_OBJECT(T->combobox_hm), "changed", G_CALLBACK(on_combobox_hm_changed), (void *) V);  
+  g_signal_connect(G_OBJECT(T->combobox_hm), "changed", G_CALLBACK(on_combobox_hm_changed), (void *) V);
+
+  /* combobox_azf */
+  T->combobox_azf = gtk_combo_box_text_new();
+  gtk_widget_set_tooltip_text(GTK_WIDGET(T->combobox_azf), "Auto zoom DAG fitly");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(T->combobox_azf), "none", "None");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(T->combobox_azf), "hor", "Horizontal");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(T->combobox_azf), "ver", "Vertical");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(T->combobox_azf), "based", "based on view type");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(T->combobox_azf), "full", "Full");  
+  gtk_combo_box_set_active(GTK_COMBO_BOX(T->combobox_azf), V->S->auto_zoomfit);
+  g_signal_connect(G_OBJECT(T->combobox_azf), "changed", G_CALLBACK(on_combobox_azf_changed), (void *) V);
+
+  /* checkbox_azf */
+  T->checkbox_azf = gtk_check_button_new();
+  gtk_widget_set_tooltip_text(GTK_WIDGET(T->checkbox_scale_radius), "Auto adjust auto zoom fit based on context");
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(T->checkbox_azf), V->S->adjust_auto_zoomfit);
+  g_signal_connect(G_OBJECT(T->checkbox_azf), "toggled", G_CALLBACK(on_checkbox_azf_toggled), (void *) V);
 }
 
 GtkWidget *
@@ -1867,7 +1948,7 @@ dv_view_toolbox_get_window(dv_view_toolbox_t * T) {
   /* Build toolbox window */
   GtkWidget * window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
   char s[30];
-  sprintf(s, "Toolbox for View %ld", T->V - CS->V);
+  sprintf(s, "Toolbox for DAG %ld", T->V - CS->V);
   gtk_window_set_title(GTK_WINDOW(window), s);
   gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_MOUSE);
   gtk_window_set_modal(GTK_WINDOW(window), 0);
@@ -1881,7 +1962,7 @@ dv_view_toolbox_get_window(dv_view_toolbox_t * T) {
   GtkWidget * tab_label;
   GtkWidget * tab_box;
 
-  /* Build tab "common" */
+  /* Build tab "Common" */
   {
     tab_label = gtk_label_new("Common");
     tab_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
@@ -1950,33 +2031,73 @@ dv_view_toolbox_get_window(dv_view_toolbox_t * T) {
     gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
 
     num = 9;
+    label = gtk_label_new("Automatically zoom fit DAG");
+    widget = T->combobox_azf;
+    gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
+
+    num = 10;
+    label = gtk_label_new("Auto adjust auto zoom fit");
+    widget = T->checkbox_azf;
+    gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
+
+    num = 11;
+    label = gtk_label_new("Zoom fit DAG horizontally");
+    widget = gtk_button_new_with_label("Zoom fit horizontal");
+    gtk_widget_set_tooltip_text(GTK_WIDGET(widget), "Zoom fit horizontally (H)");
+    g_signal_connect(G_OBJECT(widget), "clicked", G_CALLBACK(on_btn_zoomfit_hor_clicked), (void *) T->V);
+    gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
+
+    num = 12;
+    label = gtk_label_new("Zoom fit DAG vertically");
+    widget = gtk_button_new_with_label("Zoom fit vertical");
+    gtk_widget_set_tooltip_text(GTK_WIDGET(widget), "Zoom fit vertically (V)");
+    g_signal_connect(G_OBJECT(widget), "clicked", G_CALLBACK(on_btn_zoomfit_ver_clicked), (void *) T->V);
+    gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
+}
+  
+  /* Build tab "Advance" */
+  {
+    tab_label = gtk_label_new("Advance");
+    tab_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_box, tab_label);
+
+    GtkWidget * grid = gtk_grid_new();
+    gtk_box_pack_start(GTK_BOX(tab_box), grid, TRUE, TRUE, 0);
+    int num;
+    GtkWidget * label;
+    GtkWidget * widget;
+
+    num = 0;
     label = gtk_label_new("Remark");
     widget = dv_view_toolbox_get_entry_remark(T);
     gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
 
-    num = 10;
+    num = 1;
     label = gtk_label_new("Remain inner after scanning");
     widget = dv_view_toolbox_get_checkbox_remain_inner(T);
     gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
 
-    num = 11;
+    num = 2;
     label = gtk_label_new("Scan DAG");
     widget = gtk_button_new_with_label("Scan");
     g_signal_connect(G_OBJECT(widget), "clicked", G_CALLBACK(on_btn_run_dag_scan_clicked), (void *) T->V);
     gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
 
-    num = 12;
+    num = 3;
     label = gtk_label_new("Color only remarked nodes");
     widget = dv_view_toolbox_get_checkbox_color_remarked_only(T);
     gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
-    gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
-    
+    gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);    
   }
   
-  /* Build tab "developer" */
+  /* Build tab "Developer" */
   {
     tab_label = gtk_label_new("Developer");
     tab_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
@@ -2201,19 +2322,12 @@ dv_viewport_toolbox_init(dv_viewport_t * VP) {
   // Separator
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), gtk_separator_tool_item_new(), -1);
 
-  // Zoomfit-horizontally button
-  GtkToolItem *btn_zoomfit_hor = gtk_tool_button_new(NULL, NULL);
-  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_zoomfit_hor, -1);
-  gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_zoomfit_hor), "zoom-fit-best");
-  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_zoomfit_hor), "Fit horizontally (H)");
-  g_signal_connect(G_OBJECT(btn_zoomfit_hor), "clicked", G_CALLBACK(on_btn_zoomfit_hor_clicked), (void *) VP);
-
-  // Zoomfit-vertically button
-  GtkToolItem *btn_zoomfit_ver = gtk_tool_button_new(NULL, NULL);
-  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_zoomfit_ver, -1);
-  gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_zoomfit_ver), "zoom-fit-best");
-  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_zoomfit_ver), "Fit vertically (V)");
-  g_signal_connect(G_OBJECT(btn_zoomfit_ver), "clicked", G_CALLBACK(on_btn_zoomfit_ver_clicked), (void *) VP);
+  // Zoomfit-full button
+  GtkToolItem *btn_zoomfit_full = gtk_tool_button_new(NULL, NULL);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_zoomfit_full, -1);
+  gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_zoomfit_full), "zoom-fit-best");
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_zoomfit_full), "Fit full (F)");
+  g_signal_connect(G_OBJECT(btn_zoomfit_full), "clicked", G_CALLBACK(on_btn_zoomfit_full_clicked), (void *) VP);
 
   // Shrink/Expand buttons
   GtkToolItem *btn_shrink = gtk_tool_button_new(NULL, NULL);
@@ -3964,7 +4078,6 @@ main(int argc, char * argv[]) {
     V = dv_view_create_new_with_dag(D);
     // Expand
     int count = 0;
-    V->S->always_zoomfit = 1;
     while (V->S->ntr < 10 && count < 2) {
       dv_do_expanding_one(V);
       count++;
