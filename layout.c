@@ -159,7 +159,7 @@ static gboolean dv_animation_tick(gpointer data) {
     dv_view_do_zoomfit_based_on_lt(a->V);
     break;
   case 4:
-    dv_do_zoomfit_full(a->V);
+    dv_view_do_zoomfit_full(a->V);
     break;
   default:
     break;

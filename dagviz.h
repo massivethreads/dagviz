@@ -104,7 +104,7 @@ typedef struct dv_llist {
 #define DV_NUM_LAYOUT_TYPES 5
 #define DV_LAYOUT_TYPE_INIT 0 // not paraprof coz need to check H of D
 #define DV_NODE_COLOR_INIT 0 // 0:worker, 1:cpu, 2:kind, 3:code start, 4:code end, 5: code segment
-#define DV_SCALE_TYPE_INIT 2
+#define DV_SCALE_TYPE_INIT 1
 #define DV_FROMBT_INIT 0
 #define DV_EDGE_TYPE_INIT 3
 #define DV_EDGE_AFFIX_LENGTH 0//10
@@ -566,7 +566,7 @@ void dv_do_zoomfit_hor(dv_view_t *);
 void dv_view_get_zoomfit_ver(dv_view_t *, double *, double *, double *, double *);
 void dv_do_zoomfit_ver(dv_view_t *);
 void dv_view_do_zoomfit_based_on_lt(dv_view_t *);
-void dv_do_zoomfit_full(dv_view_t *);
+void dv_view_do_zoomfit_full(dv_view_t *);
 
 void dv_view_clip(dv_view_t *, cairo_t *);
 double dv_view_clip_get_bound_left(dv_view_t *);

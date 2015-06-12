@@ -345,7 +345,7 @@ dv_view_do_zoomfit_based_on_lt(dv_view_t * V) {
 }
 
 void
-dv_do_zoomfit_full(dv_view_t * V) {
+dv_view_do_zoomfit_full(dv_view_t * V) {
   double h_zrx, h_zry, h_x, h_y;
   dv_view_get_zoomfit_hor(V, &h_zrx, &h_zry, &h_x, &h_y);
   double v_zrx, v_zry, v_x, v_y;
@@ -435,7 +435,7 @@ dv_view_change_lt(dv_view_t * V, int new_lt) {
     case 1:
       dv_view_change_nc(V, 0);
       dv_view_change_eaffix(V, 0);
-      dv_view_change_sdt(V, 0);
+      //dv_view_change_sdt(V, 0);
       break;
     case 2:
     case 3:
@@ -469,7 +469,11 @@ dv_view_change_lt(dv_view_t * V, int new_lt) {
     // Re-layout
     dv_view_layout(V);
     // zoomfit
-    dv_view_do_zoomfit_based_on_lt(V);
+    if (V->S->auto_zoomfit) {
+      //dv_view_do_zoomfit_based_on_lt(V);
+      dv_view_do_zoomfit_full(V);
+    }
+    dv_queue_draw_d(V);
   }
 }
 
@@ -852,7 +856,7 @@ on_draw_event(GtkWidget * widget, cairo_t * cr, gpointer user_data) {
 static void
 on_btn_zoomfit_full_clicked(GtkToolButton * toolbtn, gpointer user_data) {
   dv_viewport_t * VP = (dv_viewport_t *) user_data;
-  dv_do_zoomfit_full(VP->mainV);
+  dv_view_do_zoomfit_full(VP->mainV);
 }
 
 static void
@@ -1128,6 +1132,8 @@ static gboolean on_combobox_sdt_changed(GtkComboBox *widget, gpointer user_data)
   dv_view_t *V = (dv_view_t *) user_data;
   dv_view_change_sdt(V, gtk_combo_box_get_active(GTK_COMBO_BOX(widget)));
   dv_view_layout(V);
+  if (V->S->auto_zoomfit)
+    dv_view_do_zoomfit_full(V);
   dv_queue_draw_d(V);
   return TRUE;
 }
@@ -1414,7 +1420,7 @@ on_window_key_event(GtkWidget * widget, GdkEvent * event, gpointer user_data) {
   case 102: /* F */
     if (aV->S->adjust_auto_zoomfit)
       dv_view_change_azf(aV, 4);
-    dv_do_zoomfit_full(aV);
+    dv_view_do_zoomfit_full(aV);
     return TRUE;
   case 49: /* Ctrl + 1 */
     if ((e->state & modifiers) == GDK_CONTROL_MASK) {
@@ -4078,7 +4084,8 @@ main(int argc, char * argv[]) {
     V = dv_view_create_new_with_dag(D);
     // Expand
     int count = 0;
-    while (V->S->ntr < 10 && count < 2) {
+    while (V->D->n < 10 && count < 2) {
+      printf("V %ld: %ld\n", V-CS->V, V->D->n);
       dv_do_expanding_one(V);
       count++;
     }
