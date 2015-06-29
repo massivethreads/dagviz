@@ -27,9 +27,9 @@ dv_view_scale_down(dv_view_t * V, double val) {
   return dv_dag_scale_down(V->D, val);
 }
 
-static double dv_view_calculate_vgap(dv_view_t *V, dv_dag_node_t *parent, dv_dag_node_t *node1, dv_dag_node_t *node2) {
-  dv_dag_t *D = V->D;
-  dv_view_status_t *S = V->S;
+static double
+dv_view_calculate_vgap(dv_view_t * V, dv_dag_node_t * parent, dv_dag_node_t * node1, dv_dag_node_t * node2) {
+  dv_dag_t * D = V->D;
   dr_pi_dag_node * pi1 = dv_pidag_get_node_by_dag_node(D->P, node1);
   dr_pi_dag_node * pi2 = dv_pidag_get_node_by_dag_node(D->P, node2);
   double rate = dv_view_calculate_rate(V, parent);
@@ -47,9 +47,9 @@ static double dv_view_calculate_vgap(dv_view_t *V, dv_dag_node_t *parent, dv_dag
   return vgap;
 }
 
-double dv_view_calculate_vsize(dv_view_t *V, dv_dag_node_t *node) {
-  dv_dag_t *D = V->D;
-  dv_view_status_t *S = V->S;
+double
+dv_view_calculate_vsize(dv_view_t * V, dv_dag_node_t * node) {
+  dv_dag_t * D = V->D;
   dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, node);
   double rate = 1.0;//dv_view_calculate_rate(V, node->parent);
   double vsize;
@@ -88,7 +88,7 @@ static dv_dag_node_t *
 dv_layout_node_get_last_finished_tail(dv_view_t * V, dv_dag_node_t * node) {
   dv_dag_node_t * ret = 0;
   dv_dag_node_t * tail = NULL;
-  while (tail = dv_dag_node_traverse_tails(node, tail)) {
+  while ( (tail = dv_dag_node_traverse_tails(node, tail)) ) {
     dr_pi_dag_node * ret_pi = dv_pidag_get_node_by_dag_node(V->D->P, ret);
     dr_pi_dag_node * tail_pi = dv_pidag_get_node_by_dag_node(V->D->P, tail);
     if (!ret || ret_pi->info.end.t < tail_pi->info.end.t)
@@ -306,7 +306,6 @@ dv_view_draw_dagbox_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
   dv_view_status_t * S = V->S;
   int lt = 1;
   dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, node);
-  dr_dag_node_kind_t kind = pi->info.kind;
   dv_node_coordinate_t * nodeco = &node->c[lt];
   double x = nodeco->x;
   double y = nodeco->y;
@@ -444,7 +443,7 @@ dv_view_draw_dagbox_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
   }
   /* Call link-along */
   dv_dag_node_t * x = NULL;
-  while (x = dv_dag_node_traverse_nexts(node, x)) {
+  while ( (x = dv_dag_node_traverse_nexts(node, x)) ) {
     dv_view_draw_dagbox_node_r(V, cr, x);
   }
 }
@@ -464,7 +463,7 @@ dv_view_draw_dagbox_edge_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
   }
   /* Call link-along */
   dv_dag_node_t * next = NULL;
-  while (next = dv_dag_node_traverse_nexts(node, next)) {
+  while ( (next = dv_dag_node_traverse_nexts(node, next)) ) {
     
     if (dv_is_single(node)) {
       
@@ -476,7 +475,7 @@ dv_view_draw_dagbox_edge_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
     } else {
 
       dv_dag_node_t * tail = NULL;
-      while (tail = dv_dag_node_traverse_tails(node, tail)) {
+      while ( (tail = dv_dag_node_traverse_tails(node, tail)) ) {
           dv_dag_node_t * last = dv_dag_node_get_single_last(tail);
 
           if (dv_is_single(next))
@@ -494,7 +493,6 @@ dv_view_draw_dagbox_edge_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
 
 void dv_view_draw_dagbox(dv_view_t *V, cairo_t *cr) {
   cairo_set_line_width(cr, DV_NODE_LINE_WIDTH);
-  int i;
   // Draw nodes
   dv_llist_init(V->D->itl);
   dv_view_draw_dagbox_node_r(V, cr, V->D->rt);

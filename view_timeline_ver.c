@@ -157,7 +157,7 @@ dv_view_draw_timeline_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) 
   }
   /* Call link-along */
   dv_dag_node_t * next = NULL;
-  while (next = dv_dag_node_traverse_nexts(node, next)) {
+  while ( (next = dv_dag_node_traverse_nexts(node, next)) ) {
     dv_view_draw_timeline_node_r(V, cr, next);
   }
 }

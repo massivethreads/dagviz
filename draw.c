@@ -204,7 +204,6 @@ dv_get_color_radial_pattern(double radius, double alpha) {
   int n = DV_RADIAL_PATTERN_STOPS_NUM;
   cairo_pattern_t * pat = cairo_pattern_create_radial(0.0, 0.0, 0.0, 0.0, 0.0, radius);
   double step = 1.0 / (n - 1);
-  double r, g, b, a;
   int i;
   for (i = 0; i < n; i++) {
     GdkRGBA color;
@@ -248,7 +247,8 @@ dv_view_draw_edge_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * u, dv_dag_node_
     return;
   
   /* Get alpha */
-  double alpha = 1.0;
+  /*
+  double alpha;
   if ((!u->parent || dv_is_shrinking(u->parent))
       //&& (!v->parent || dv_is_shrinking(v->parent))
       && (u->parent == v->parent))
@@ -257,6 +257,7 @@ dv_view_draw_edge_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * u, dv_dag_node_
            //&& (!v->parent || dv_is_expanding(v->parent))
            && (u->parent == v->parent))
     alpha = dv_view_get_alpha_fading_in(V, u->parent);
+  */
 
   /* Draw edge */
   dr_pi_dag_node * pi;
@@ -343,7 +344,7 @@ dv_view_draw_status(dv_view_t * V, cairo_t * cr, int count) {
   cairo_show_text(cr, s);
 
   // Node pool
-  sprintf(s, "pool:%ld/%ld(%ldMB), ", CS->pool->n, CS->pool->N, CS->pool->sz / (1 << 20));
+  sprintf(s, "pool:%ld/%ld(%ldMB), ", CS->pool->N - CS->pool->n, CS->pool->N, CS->pool->sz / (1 << 20));
   x -= strlen(s) * char_width;
   cairo_move_to(cr, x, y);
   cairo_show_text(cr, s);
@@ -414,14 +415,17 @@ dv_view_draw_infotag_1(dv_view_t * V, cairo_t * cr, cairo_matrix_t * mt, dv_dag_
   xx = c->x + c->rw + 2 * padding;
   yy = c->y - 2 * padding;
   //cairo_matrix_transform_point(mt, &xx, &yy);
+  (void)mt;
   yy -= line_height * (n - 1);
   double width = 450.0;
   double height = n * line_height + upper_padding + lower_padding;
-  
+
+  /*
   double cairo_bound_left = dv_view_cairo_coordinate_bound_left(V);
   double cairo_bound_right = dv_view_cairo_coordinate_bound_right(V);
   double cairo_bound_up = dv_view_cairo_coordinate_bound_up(V);
   double cairo_bound_down = dv_view_cairo_coordinate_bound_down(V);
+  */
   /*
   if (xx - padding < cairo_bound_left || xx - padding + width >= cairo_bound_right
       || yy -line_height - padding < cairo_bound_up || yy -line_height - padding + height >= cairo_bound_down) {
@@ -571,7 +575,7 @@ dv_view_draw_infotag_1(dv_view_t * V, cairo_t * cr, cairo_matrix_t * mt, dv_dag_
 void
 dv_view_draw_infotags(dv_view_t * V, cairo_t * cr, cairo_matrix_t * mt) {
   dv_dag_node_t * node = NULL;
-  while (node = (dv_dag_node_t *) dv_llist_pop(V->D->itl)) {
+  while ( (node = (dv_dag_node_t *) dv_llist_pop(V->D->itl)) ) {
     dv_view_draw_infotag_1(V, cr, mt, node);
   }  
 }
@@ -600,9 +604,9 @@ dv_view_draw(dv_view_t * V, cairo_t * cr) {
     dv_view_draw_timeline2(V, cr);
     break;
   case 4: {
-    double start = dv_get_time();
+    //double start = dv_get_time();
     dv_view_draw_paraprof(V, cr);
-    double end = dv_get_time();
+    //double end = dv_get_time();
     //fprintf(stderr, "draw time: %lf\n", end - start);
     break;
   }
@@ -637,10 +641,7 @@ dv_viewport_draw_label(dv_viewport_t * VP, cairo_t * cr) {
 
 void
 dv_view_draw_legend(dv_view_t * V, cairo_t * cr) {
-  dv_dag_t * D = V->D;
-  dv_view_status_t * S = V->S;
-  
-  switch (S->lt) {
+  switch (V->S->lt) {
   case 0:
     dv_view_draw_legend_dag(V, cr);
     break;

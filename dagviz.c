@@ -30,7 +30,8 @@ const int DV_RADIAL_PATTERN_STOPS_NUM = 2;
 
 /*---------------Environment Variables-----*/
 
-static int dv_get_env_int(char * s, int * t) {
+_static_unused_ int
+dv_get_env_int(char * s, int * t) {
   char * v = getenv(s);
   if (v) {
     *t = atoi(v);
@@ -39,7 +40,8 @@ static int dv_get_env_int(char * s, int * t) {
   return 0;
 }
 
-static int dv_get_env_long(char * s, long * t) {
+_static_unused_ int
+dv_get_env_long(char * s, long * t) {
   char * v = getenv(s);
   if (v) {
     *t = atol(v);
@@ -48,7 +50,8 @@ static int dv_get_env_long(char * s, long * t) {
   return 0;
 }
 
-static int dv_get_env_string(char * s, char ** t) {
+_static_unused_ int
+dv_get_env_string(char * s, char ** t) {
   char * v = getenv(s);
   if (v) {
     *t = strdup(v);
@@ -57,7 +60,8 @@ static int dv_get_env_string(char * s, char ** t) {
   return 0;
 }
 
-static void dv_get_env() {
+_static_unused_ void
+dv_get_env() {
   //dv_get_env_int("DV_DEPTH", &S->cur_d);
 }
 
@@ -146,6 +150,7 @@ dv_queue_draw_d_p(dv_view_t * V) {
       dv_queue_draw(&CS->V[i]);
 }
 
+/*
 static void
 dv_do_zooming_x(dv_view_t * V, double new_zrx, double posx) {
   dv_view_status_t * S = V->S;
@@ -165,6 +170,7 @@ dv_do_zooming_y(dv_view_t * V, double new_zry, double posy) {
   S->zoom_ratio_y = new_zry;
   dv_queue_draw(V);
 }
+*/
 
 static void
 dv_do_zooming(dv_view_t * V, double new_zrx, double new_zry, double posx, double posy) {
@@ -368,7 +374,6 @@ dv_view_set_entry_radix_text(dv_view_t * V) {
   char str[DV_ENTRY_RADIX_MAX_LENGTH];
   double radix = dv_dag_get_radix(V->D);
   sprintf(str, "%lf", radix);
-  int i;
   if (GTK_IS_WIDGET(V->T->entry_radix)) {
     gtk_entry_set_width_chars(GTK_ENTRY(V->T->entry_radix), strlen(str));
     gtk_entry_set_text(GTK_ENTRY(V->T->entry_radix), str);
@@ -565,14 +570,12 @@ dv_view_prepare_drawing(dv_view_t * V, cairo_t * cr) {
 static void
 dv_viewport_draw(dv_viewport_t * VP, cairo_t * cr) {
   dv_view_t * V;
-  dv_dag_t * D;
   dv_view_status_t * S;
   int count = 0;
   int i;
   for (i=0; i<CS->nV; i++)
     if (VP->mV[i]) {
       V = CS->V + i;
-      D = V->D;
       S = V->S;
       switch (S->lt) {
       case 0:
@@ -662,7 +665,7 @@ dv_do_expanding_one_r(dv_view_t * V, dv_dag_node_t * node) {
   
   /* Call link-along */
   dv_dag_node_t * x = NULL;
-  while (x = dv_dag_node_traverse_nexts(node, x)) {
+  while ( (x = dv_dag_node_traverse_nexts(node, x)) ) {
     dv_do_expanding_one_r(V, x);
   }
 }
@@ -720,7 +723,7 @@ dv_do_collapsing_one_r(dv_view_t * V, dv_dag_node_t * node) {
     int has_expanded_node = 0;
     /* Traverse all children */
     dv_dag_node_t * x = NULL;
-    while (x = dv_dag_node_traverse_children(node, x)) {
+    while ( (x = dv_dag_node_traverse_children(node, x)) ) {
       if (dv_is_union(x) && dv_is_inner_loaded(x)
           && (dv_is_expanded(x) || dv_is_expanding(x))
           && !dv_is_shrinking(x)) {
@@ -739,7 +742,7 @@ dv_do_collapsing_one_r(dv_view_t * V, dv_dag_node_t * node) {
   
   /* Call link-along */
   dv_dag_node_t * x = NULL;
-  while (x = dv_dag_node_traverse_nexts(node, x)) {
+  while ( (x = dv_dag_node_traverse_nexts(node, x)) ) {
     dv_do_collapsing_one_r(V, x);
   }
 }
@@ -799,7 +802,7 @@ dv_do_finding_clicked_node_r(dv_view_t * V, double x, double y, dv_dag_node_t * 
   }
   /* Call link-along */
   dv_dag_node_t * next = NULL;
-  while (next = dv_dag_node_traverse_nexts(node, next)) {
+  while ( (next = dv_dag_node_traverse_nexts(node, next)) ) {
     ret = dv_do_finding_clicked_node_r(V, x, y, next);
     if (ret)
       return ret;
@@ -832,8 +835,8 @@ dv_do_set_focused_view(dv_view_t * V, int focused) {
     if (V == dv_global_state_get_active_view())
       dv_global_state_set_active_view(NULL);
     V->S->focused = 0;
-    int i;
     /*
+    int i;
     for (i = 0; i < CS->nVP; i++)
       if (V->mVP[i])
         gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(CS->VP[i].T->togg_focused), FALSE);
@@ -847,26 +850,26 @@ dv_do_set_focused_view(dv_view_t * V, int focused) {
 /*-----------------VIEW's functions-----------------*/
 
 static gboolean
-on_draw_event(GtkWidget * widget, cairo_t * cr, gpointer user_data) {
+on_draw_event(_unused_ GtkWidget * widget, cairo_t * cr, gpointer user_data) {
   dv_viewport_t * VP = (dv_viewport_t *) user_data;
   dv_viewport_draw(VP, cr);
   return FALSE;
 }
 
 static void
-on_btn_zoomfit_full_clicked(GtkToolButton * toolbtn, gpointer user_data) {
+on_btn_zoomfit_full_clicked(_unused_ GtkToolButton * toolbtn, gpointer user_data) {
   dv_viewport_t * VP = (dv_viewport_t *) user_data;
   dv_view_do_zoomfit_full(VP->mainV);
 }
 
 static void
-on_btn_shrink_clicked(GtkToolButton * toolbtn, gpointer user_data) {
+on_btn_shrink_clicked(_unused_ GtkToolButton * toolbtn, gpointer user_data) {
   dv_viewport_t * VP = (dv_viewport_t *) user_data;
   dv_do_collapsing_one(VP->mainV);
 }
 
 static void
-on_btn_expand_clicked(GtkToolButton * toolbtn, gpointer user_data) {
+on_btn_expand_clicked(_unused_ GtkToolButton * toolbtn, gpointer user_data) {
   dv_viewport_t * VP = (dv_viewport_t *) user_data;
   dv_do_expanding_one(VP->mainV);
 }
@@ -930,7 +933,7 @@ dv_do_scrolling(dv_view_t * V, GdkEventScroll * event) {
 }
 
 static gboolean
-on_scroll_event(GtkWidget * widget, GdkEventScroll * event, gpointer user_data) {
+on_scroll_event(_unused_ GtkWidget * widget, GdkEventScroll * event, gpointer user_data) {
   dv_viewport_t * VP = (dv_viewport_t *) user_data;
   if ( VP->mV[ CS->activeV - CS->V ] ) {
     dv_do_scrolling(CS->activeV, event);
@@ -1018,7 +1021,7 @@ dv_do_button_event(dv_view_t * V, GdkEventButton * event) {
 }
 
 static gboolean
-on_button_event(GtkWidget * widget, GdkEventButton * event, gpointer user_data) {
+on_button_event(_unused_ GtkWidget * widget, GdkEventButton * event, gpointer user_data) {
   dv_viewport_t * VP = (dv_viewport_t *) user_data;
   if ( VP->mV[ CS->activeV - CS->V ] ) {
     dv_do_button_event(CS->activeV, event);
@@ -1098,7 +1101,7 @@ dv_do_motion_event(dv_view_t * V, GdkEventMotion * event) {
 }
 
 static gboolean
-on_motion_event(GtkWidget * widget, GdkEventMotion * event, gpointer user_data) {
+on_motion_event(_unused_ GtkWidget * widget, GdkEventMotion * event, gpointer user_data) {
   dv_viewport_t * VP = (dv_viewport_t *) user_data;
   if ( VP->mV[ CS->activeV - CS->V ] ) {
     dv_do_motion_event(CS->activeV, event);
@@ -1199,7 +1202,7 @@ static dv_dag_node_t * dv_find_node_with_pii_r(dv_view_t *V, long pii, dv_dag_no
   }
   /* Call link-along */
   dv_dag_node_t * x = NULL;
-  while (x = dv_dag_node_traverse_nexts(node, x)) {
+  while ( (x = dv_dag_node_traverse_nexts(node, x)) ) {
     ret = dv_find_node_with_pii_r(V, pii, x);
     if (ret)
       return ret;
@@ -1322,7 +1325,7 @@ static gboolean on_combobox_et_changed(GtkComboBox *widget, gpointer user_data) 
 }
 
 static void
-on_togg_eaffix_toggled(GtkWidget * widget, gpointer user_data) {
+on_togg_eaffix_toggled(_unused_ GtkWidget * widget, gpointer user_data) {
   dv_view_t * V = (dv_view_t *) user_data;
   if (gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget))) {
     dv_view_change_eaffix(V, 1);
@@ -1334,7 +1337,7 @@ on_togg_eaffix_toggled(GtkWidget * widget, gpointer user_data) {
 
 /*
 static void
-on_togg_focused_toggled(GtkWidget * widget, gpointer user_data) {
+on_togg_focused_toggled(_unused_ GtkWidget * widget, gpointer user_data) {
   dv_viewport_t * VP = (dv_viewport_t *) user_data;
   int focused = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
   dv_do_set_focused_view(VP->mainV, focused);
@@ -1370,7 +1373,7 @@ on_combobox_azf_changed(GtkComboBox * widget, gpointer user_data) {
 }
 
 static gboolean
-on_darea_configure_event(GtkWidget * widget, GdkEventConfigure * event, gpointer user_data) {
+on_darea_configure_event(_unused_ GtkWidget * widget, GdkEventConfigure * event, gpointer user_data) {
   dv_viewport_t * VP = (dv_viewport_t *) user_data;
   VP->vpw = event->width;
   VP->vph = event->height;
@@ -1388,7 +1391,7 @@ on_darea_configure_event(GtkWidget * widget, GdkEventConfigure * event, gpointer
 }
 
 static gboolean
-on_window_key_event(GtkWidget * widget, GdkEvent * event, gpointer user_data) {
+on_window_key_event(_unused_ GtkWidget * widget, GdkEvent * event, _unused_ gpointer user_data) {
   dv_view_t * aV = dv_global_state_get_active_view();
   if (!aV)
     return FALSE;
@@ -1497,12 +1500,13 @@ on_window_key_event(GtkWidget * widget, GdkEvent * event, gpointer user_data) {
 }
 
 static void
-on_viewport_tool_icon_clicked(GtkToolButton * toolbtn, gpointer user_data) {
+on_viewport_tool_icon_clicked(_unused_ GtkToolButton * toolbtn, gpointer user_data) {
   dv_viewport_t * VP = (dv_viewport_t *) user_data;
   dv_view_open_toolbox_window(VP->mainV);
 }
 
-static void on_btn_choose_bt_file_clicked(GtkToolButton *toolbtn, gpointer user_data) {
+static void
+on_btn_choose_bt_file_clicked(_unused_ GtkToolButton * toolbtn, gpointer user_data) {
   dv_btsample_viewer_t * btviewer = (dv_btsample_viewer_t *) user_data;
 
   // Build dialog
@@ -1527,7 +1531,8 @@ static void on_btn_choose_bt_file_clicked(GtkToolButton *toolbtn, gpointer user_
   gtk_widget_destroy(dialog);  
 }
 
-static void on_btn_choose_binary_file_clicked(GtkToolButton *toolbtn, gpointer user_data) {
+static void
+on_btn_choose_binary_file_clicked(_unused_ GtkToolButton * toolbtn, gpointer user_data) {
   dv_btsample_viewer_t * btviewer = (dv_btsample_viewer_t *) user_data;
 
   // Build dialog
@@ -1552,7 +1557,8 @@ static void on_btn_choose_binary_file_clicked(GtkToolButton *toolbtn, gpointer u
   gtk_widget_destroy(dialog);  
 }
 
-static void on_btn_find_node_clicked(GtkToolButton *toolbtn, gpointer user_data) {
+static void
+on_btn_find_node_clicked(_unused_ GtkToolButton * toolbtn, gpointer user_data) {
   dv_btsample_viewer_t * btviewer = (dv_btsample_viewer_t *) user_data;
   long pii = atol(gtk_entry_get_text(GTK_ENTRY(btviewer->entry_node_id)));
   //dv_dag_node_t *node = dv_find_node_with_pii_r(CS->activeV, pii, CS->activeV->D->rt);
@@ -1571,7 +1577,8 @@ static void on_btn_find_node_clicked(GtkToolButton *toolbtn, gpointer user_data)
   }
 }
 
-static void on_btn_run_view_bt_samples_clicked(GtkToolButton *toolbtn, gpointer user_data) {
+static void
+on_btn_run_view_bt_samples_clicked(_unused_ GtkToolButton * toolbtn, gpointer user_data) {
   dv_btsample_viewer_t * btviewer = (dv_btsample_viewer_t *) user_data;
 
   int worker = gtk_combo_box_get_active(GTK_COMBO_BOX(btviewer->combobox_worker));
@@ -1586,77 +1593,77 @@ static void on_btn_run_view_bt_samples_clicked(GtkToolButton *toolbtn, gpointer 
 }
 
 static void
-on_checkbox_xzoom_toggled(GtkWidget * widget, gpointer user_data) {
+on_checkbox_xzoom_toggled(_unused_ GtkWidget * widget, gpointer user_data) {
   dv_view_t * V = (dv_view_t *) user_data;
   V->S->do_zoom_x = 1 - V->S->do_zoom_x;
 }
 
 static void
-on_checkbox_yzoom_toggled(GtkWidget * widget, gpointer user_data) {
+on_checkbox_yzoom_toggled(_unused_ GtkWidget * widget, gpointer user_data) {
   dv_view_t * V = (dv_view_t *) user_data;
   V->S->do_zoom_y = 1 - V->S->do_zoom_y;
 }
 
 static void
-on_checkbox_scale_radix_toggled(GtkWidget * widget, gpointer user_data) {
+on_checkbox_scale_radix_toggled(_unused_ GtkWidget * widget, gpointer user_data) {
   dv_view_t * V = (dv_view_t *) user_data;
   V->S->do_scale_radix = 1 - V->S->do_scale_radix;
 }
 
 static void
-on_checkbox_legend_toggled(GtkWidget * widget, gpointer user_data) {
+on_checkbox_legend_toggled(_unused_ GtkWidget * widget, gpointer user_data) {
   dv_view_t * V = (dv_view_t *) user_data;
   V->S->show_legend = 1 - V->S->show_legend;
   dv_queue_draw(V);
 }
 
 static void
-on_checkbox_status_toggled(GtkWidget * widget, gpointer user_data) {
+on_checkbox_status_toggled(_unused_ GtkWidget * widget, gpointer user_data) {
   dv_view_t * V = (dv_view_t *) user_data;
   V->S->show_status = 1 - V->S->show_status;
   dv_queue_draw(V);
 }
 
 static void
-on_checkbox_remain_inner_toggled(GtkWidget * widget, gpointer user_data) {
+on_checkbox_remain_inner_toggled(_unused_ GtkWidget * widget, gpointer user_data) {
   dv_view_t * V = (dv_view_t *) user_data;
   V->S->remain_inner = 1 - V->S->remain_inner;
 }
 
 static void
-on_checkbox_color_remarked_only_toggled(GtkWidget * widget, gpointer user_data) {
+on_checkbox_color_remarked_only_toggled(_unused_ GtkWidget * widget, gpointer user_data) {
   dv_view_t * V = (dv_view_t *) user_data;
   V->S->color_remarked_only = 1 - V->S->color_remarked_only;
   dv_queue_draw(V);
 }
 
 static void
-on_checkbox_scale_radius_toggled(GtkWidget * widget, gpointer user_data) {
+on_checkbox_scale_radius_toggled(_unused_ GtkWidget * widget, gpointer user_data) {
   dv_view_t * V = (dv_view_t *) user_data;
   V->S->show_legend = 1 - V->S->show_legend;
 }
 
 static void
-on_checkbox_azf_toggled(GtkWidget * widget, gpointer user_data) {
+on_checkbox_azf_toggled(_unused_ GtkWidget * widget, gpointer user_data) {
   dv_view_t * V = (dv_view_t *) user_data;
   V->S->adjust_auto_zoomfit = 1 - V->S->adjust_auto_zoomfit;
 }
 
 static void
-on_btn_run_dag_scan_clicked(GtkButton * button, gpointer user_data) {
+on_btn_run_dag_scan_clicked(_unused_ GtkButton * button, gpointer user_data) {
   dv_view_t * V = (dv_view_t *) user_data;
   dv_view_scan(V);
   dv_queue_draw_d(V);
 }
 
 static void
-on_btn_zoomfit_hor_clicked(GtkToolButton * toolbtn, gpointer user_data) {
+on_btn_zoomfit_hor_clicked(_unused_ GtkToolButton * toolbtn, gpointer user_data) {
   dv_view_t * V = (dv_view_t *) user_data;
   dv_do_zoomfit_hor(V);
 }
 
 static void
-on_btn_zoomfit_ver_clicked(GtkToolButton * toolbtn, gpointer user_data) {
+on_btn_zoomfit_ver_clicked(_unused_ GtkToolButton * toolbtn, gpointer user_data) {
   dv_view_t * V = (dv_view_t *) user_data;
   dv_do_zoomfit_ver(V);
 }
@@ -1941,7 +1948,7 @@ dv_view_toolbox_get_checkbox_color_remarked_only(dv_view_toolbox_t * T) {
 }
 
 //gboolean
-//on_view_toolbox_window_closed(GtkWidget * widget, GdkEvent * event, gpointer user_data) {
+//on_view_toolbox_window_closed(_unused_ GtkWidget * widget, GdkEvent * event, gpointer user_data) {
 //  dv_view_t * V = (dv_view_t *) user_data;
 //  gtk_widget_hide(V->T->window);
 //}
@@ -2266,9 +2273,6 @@ dv_viewport_toolbox_init(dv_viewport_t * VP) {
   char s[10];
   sprintf(s, "DAG %ld", VP->mainV - CS->V);
 
-  dv_view_t * V = VP->mainV;
-  dv_view_status_t * S = V->S;
-  
   // White color
   GdkRGBA white[1];
   gdk_rgba_parse(white, "white");
@@ -2490,7 +2494,7 @@ dv_viewport_change_mainv(dv_viewport_t * VP, dv_view_t * V) {
     sprintf(s, "None");
   } else {
     sprintf(s, "DAG %ld", V - CS->V);
-    V->S->do_zoomfit = 1;
+    //V->S->do_zoomfit = 1;
   }
   gtk_label_set_text(GTK_LABEL(VP->T->label), s);
 } 
@@ -2509,6 +2513,16 @@ dv_viewport_remove_view(dv_viewport_t * VP, dv_view_t * V) {
   int idx = V - CS->V;
   dv_check(VP->mV[idx]);
   VP->mV[idx] = 0;
+  if (VP->mainV == V) {
+    dv_view_t * new_main_v = NULL;
+    int i;
+    for (i = 0; i < CS->nV; i++)
+      if (VP->mV[i]) {
+        new_main_v = &CS->V[i];
+        break;
+      }
+    dv_viewport_change_mainv(VP, new_main_v);
+  }
 }
 
 static GtkWidget *
@@ -2531,7 +2545,7 @@ static void dv_viewport_redraw_configure_box();
 static void dv_alternate_menubar();
 
 static gboolean
-on_viewport_options_split_changed(GtkWidget * widget, gpointer user_data) {
+on_viewport_options_split_changed(_unused_ GtkWidget * widget, gpointer user_data) {
   dv_viewport_t * VP = (dv_viewport_t *) user_data;
   int active = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
   if (active == 0) {
@@ -2556,7 +2570,7 @@ on_viewport_options_split_changed(GtkWidget * widget, gpointer user_data) {
 }
 
 static gboolean
-on_viewport_options_orientation_changed(GtkWidget * widget, gpointer user_data) {
+on_viewport_options_orientation_changed(_unused_ GtkWidget * widget, gpointer user_data) {
   dv_viewport_t * vp = (dv_viewport_t *) user_data;
   int active = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
   if (active == 0) {
@@ -2658,7 +2672,7 @@ dv_alternate_menubar() {
 }
 
 static void
-on_view_add_new(GtkMenuItem * menuitem, gpointer user_data) {
+on_view_add_new(_unused_ GtkMenuItem * menuitem, gpointer user_data) {
   // Create new view
   dv_dag_t * D = (dv_dag_t *) user_data;
   dv_view_t * V = dv_view_create_new_with_dag(D);
@@ -2670,7 +2684,7 @@ on_view_add_new(GtkMenuItem * menuitem, gpointer user_data) {
 }
 
 static void
-on_dag_add_new(GtkMenuItem *menuitem, gpointer user_data) {
+on_dag_add_new(_unused_ GtkMenuItem * menuitem, gpointer user_data) {
   // Create new view
   dv_pidag_t * P = (dv_pidag_t *) user_data;
   dv_dag_t * D = dv_dag_create_new_with_pidag(P);
@@ -2680,7 +2694,8 @@ on_dag_add_new(GtkMenuItem *menuitem, gpointer user_data) {
   }
 }
 
-static void on_menu_item_view_samples_clicked(GtkToolButton *toolbtn, gpointer user_data) {
+static void
+on_menu_item_view_samples_clicked(_unused_ GtkToolButton * toolbtn, _unused_ gpointer user_data) {
   dv_pidag_t * P = CS->activeV->D->P;
   CS->btviewer->P = P;
 
@@ -2786,7 +2801,7 @@ static void on_menu_item_view_samples_clicked(GtkToolButton *toolbtn, gpointer u
 }
 
 static void
-on_help_hotkeys_clicked(GtkToolButton *toolbtn, gpointer user_data) {
+on_help_hotkeys_clicked(_unused_ GtkToolButton * toolbtn, _unused_ gpointer user_data) {
   // Build dialog
   GtkWidget * dialog = gtk_dialog_new();
   gtk_window_set_title(GTK_WINDOW(dialog), "Hotkeys");
@@ -2832,7 +2847,7 @@ dv_viewport_export_to_surface(dv_viewport_t * VP, cairo_surface_t * surface) {
 }
 
 static void
-on_file_export_clicked(GtkToolButton * toolbtn, gpointer user_data) {
+on_file_export_clicked(_unused_ GtkToolButton * toolbtn, _unused_ gpointer user_data) {
   dv_view_t * V = CS->activeV;
   if (!V) {
     fprintf(stderr, "Warning: there is no active V to export.\n");
@@ -2928,7 +2943,7 @@ dv_export_viewports_to_eps_r(dv_viewport_t * VP, cairo_t * cr, double x, double 
 }
 
 static void
-on_file_export_all_clicked(GtkToolButton * toolbtn, gpointer user_data) {
+on_file_export_all_clicked(_unused_ GtkToolButton * toolbtn, _unused_ gpointer user_data) {
   double w, h;
   dv_export_viewports_get_size_r(CS->VP, &w, &h);
   cairo_surface_t * surface;
@@ -2987,7 +3002,7 @@ on_viewport_select_view(GtkCheckMenuItem * checkmenuitem, gpointer user_data) {
 }
 
 static void
-on_viewport_configure_clicked(GtkMenuItem * menuitem, gpointer user_data) {
+on_viewport_configure_clicked(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
   GtkWidget * dialog = gtk_dialog_new();
   gtk_window_set_title(GTK_WINDOW(dialog), "Configure Viewports");
   gtk_window_set_default_size(GTK_WINDOW(dialog), 800, 400);
@@ -3041,6 +3056,7 @@ on_stat_distribution_dag_changed(GtkWidget * widget, gpointer user_data) {
       dv_free(new_title, strlen(new_title) + 1);
   }
   e->dag_id = new_id;
+  return TRUE;
 }
 
 static gboolean
@@ -3048,6 +3064,7 @@ on_stat_distribution_type_changed(GtkWidget * widget, gpointer user_data) {
   long i = (long) user_data;
   int new_type = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
   CS->SD->e[i].type = new_type;
+  return TRUE;
 }
 
 static gboolean
@@ -3055,6 +3072,7 @@ on_stat_distribution_stolen_changed(GtkWidget * widget, gpointer user_data) {
   long i = (long) user_data;
   int new_stolen = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
   CS->SD->e[i].stolen = new_stolen;
+  return TRUE;
 }
 
 static gboolean
@@ -3066,43 +3084,49 @@ on_stat_distribution_title_activate(GtkWidget * widget, gpointer user_data) {
     dv_free(e->title, strlen(e->title) + 1);
   e->title = dv_malloc( sizeof(char) * (strlen(new_title) + 1) );
   strcpy(e->title, new_title);
+  return TRUE;
 }
 
 static gboolean
-on_stat_distribution_xrange_from_activate(GtkWidget * widget, gpointer user_data) {
+on_stat_distribution_xrange_from_activate(_unused_ GtkWidget * widget, _unused_ gpointer user_data) {
   long new_xrange_from = atol(gtk_entry_get_text(GTK_ENTRY(widget)));
   CS->SD->xrange_from = new_xrange_from;
+  return TRUE;
 }
 
 static gboolean
-on_stat_distribution_xrange_to_activate(GtkWidget * widget, gpointer user_data) {
+on_stat_distribution_xrange_to_activate(GtkWidget * widget, _unused_ gpointer user_data) {
   long new_xrange_to = atol(gtk_entry_get_text(GTK_ENTRY(widget)));
   CS->SD->xrange_to = new_xrange_to;
+  return TRUE;
 }
 
 static gboolean
-on_stat_distribution_granularity_activate(GtkWidget * widget, gpointer user_data) {
+on_stat_distribution_granularity_activate(GtkWidget * widget, _unused_ gpointer user_data) {
   long new_width = atoi(gtk_entry_get_text(GTK_ENTRY(widget)));
   CS->SD->bar_width = new_width;
+  return TRUE;
 }
 
 static gboolean
-on_stat_distribution_add_button_clicked(GtkWidget * widget, gpointer user_data) {
+on_stat_distribution_add_button_clicked(_unused_ GtkWidget * widget, _unused_ gpointer user_data) {
   CS->SD->ne++;
+  return TRUE;
 }
 
 static gboolean
-on_stat_distribution_output_filename_activate(GtkWidget * widget, gpointer user_data) {
+on_stat_distribution_output_filename_activate(GtkWidget * widget, _unused_ gpointer user_data) {
   const char * new_output = gtk_entry_get_text(GTK_ENTRY(widget));
   if (strcmp(CS->SD->fn, DV_STAT_DISTRIBUTION_OUTPUT_DEFAULT_NAME) != 0) {
     dv_free(CS->SD->fn, strlen(CS->SD->fn) + 1);
   }
   CS->SD->fn = (char *) dv_malloc( sizeof(char) * ( strlen(new_output) + 1) );
   strcpy(CS->SD->fn, new_output);
+  return TRUE;
 }
 
 static gboolean
-on_stat_distribution_show_button_clicked(GtkWidget * widget, gpointer user_data) {
+on_stat_distribution_show_button_clicked(_unused_ GtkWidget * widget, _unused_ gpointer user_data) {
   char * filename;
   FILE * out;
   
@@ -3110,7 +3134,7 @@ on_stat_distribution_show_button_clicked(GtkWidget * widget, gpointer user_data)
   filename = CS->SD->fn;
   if (!filename || strlen(filename) == 0) {
     fprintf(stderr, "Error: no file name to output.");
-    return;
+    return FALSE;
   }
   out = fopen(filename, "w");
   dv_check(out);
@@ -3182,16 +3206,17 @@ on_stat_distribution_show_button_clicked(GtkWidget * widget, gpointer user_data)
   if (!ret) {
     fprintf(stderr, "g_spawn_async_with_pipes() failed.\n");
   }
+  return TRUE;
 }
 
 static gboolean
-on_stat_distribution_open_stat_button_clicked(GtkWidget * widget, gpointer user_data) {
+on_stat_distribution_open_stat_button_clicked(_unused_ GtkWidget * widget, gpointer user_data) {
   dv_dag_t * D = (dv_dag_t *) user_data;
   int n = strlen(D->P->fn);
   char * filename = (char *) dv_malloc( sizeof(char) * (n + 2) );
   strcpy(filename, D->P->fn);
   if (strcmp(filename + n - 3, "dag") != 0)
-    return;
+    return FALSE;
   filename[n-3] = 's';
   filename[n-2] = 't';
   filename[n-1] = 'a';
@@ -3211,16 +3236,17 @@ on_stat_distribution_open_stat_button_clicked(GtkWidget * widget, gpointer user_
     fprintf(stderr, "g_spawn_async_with_pipes() failed.\n");
   }
   dv_free(filename, strlen(filename) + 1);
+  return TRUE;
 }
 
 static gboolean
-on_stat_distribution_open_pp_button_clicked(GtkWidget * widget, gpointer user_data) {
+on_stat_distribution_open_pp_button_clicked(_unused_ GtkWidget * widget, gpointer user_data) {
   dv_dag_t * D = (dv_dag_t *) user_data;
   int n = strlen(D->P->fn);
   char * filename = (char *) dv_malloc( sizeof(char) * (n + 1) );
   strcpy(filename, D->P->fn);
   if (strcmp(filename + n - 3, "dag") != 0)
-    return;
+    return FALSE;
   filename[n-3] = 'g';
   filename[n-2] = 'p';
   filename[n-1] = 'l';
@@ -3239,30 +3265,34 @@ on_stat_distribution_open_pp_button_clicked(GtkWidget * widget, gpointer user_da
     fprintf(stderr, "g_spawn_async_with_pipes() failed.\n");
   }
   dv_free(filename, strlen(filename) + 1);
+  return TRUE;
 }
 
 static gboolean
-on_stat_distribution_expand_dag_button_clicked(GtkWidget * widget, gpointer user_data) {
+on_stat_distribution_expand_dag_button_clicked(_unused_ GtkWidget * widget, gpointer user_data) {
   dv_dag_t * D = (dv_dag_t *) user_data;
   dv_dag_expand_implicitly(D);
   dv_dag_set_status_label(D, CS->SD->dag_status_labels[D - CS->D]);
   dv_dag_node_pool_set_status_label(CS->pool, CS->SD->node_pool_label);
+  return TRUE;
 }
 
 static gboolean
-on_stat_breakdown_dag_checkbox_toggled(GtkWidget * widget, gpointer user_data) {
+on_stat_breakdown_dag_checkbox_toggled(_unused_ GtkWidget * widget, gpointer user_data) {
   long i = (long) user_data;
   CS->SBG->D[i] = 1 - CS->SBG->D[i];
+  return TRUE;
 }
 
 static gboolean
-on_stat_breakdown_output_filename_activate(GtkWidget * widget, gpointer user_data) {
+on_stat_breakdown_output_filename_activate(GtkWidget * widget, _unused_ gpointer user_data) {
   const char * new_output = gtk_entry_get_text(GTK_ENTRY(widget));
   if (strcmp(CS->SBG->fn, DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME) != 0) {
     dv_free(CS->SBG->fn, strlen(CS->SBG->fn) + 1);
   }
   CS->SBG->fn = (char *) dv_malloc( sizeof(char) * ( strlen(new_output) + 1) );
   strcpy(CS->SBG->fn, new_output);
+  return TRUE;
 }
 
 typedef struct {
@@ -3414,12 +3444,14 @@ dr_basic_stat_init(dr_basic_stat * bs, dr_pi_dag * G) {
   bs->t = 0;			/* time of the last event */
 }
 
+/*
 static void
 dr_basic_stat_destroy(dr_basic_stat * bs, dr_pi_dag * G) {
   long nw = G->num_workers;
   dr_free(bs->edge_counts, 
 	  sizeof(long) * dr_dag_edge_kind_max * (nw + 1) * (nw + 1));
 }
+*/
 
 static void 
 dr_basic_stat_process_event(chronological_traverser * ct, 
@@ -3480,7 +3512,7 @@ dr_basic_stat_process_event(chronological_traverser * ct,
 
 
 static gboolean
-on_stat_breakdown_show_button_clicked(GtkWidget * widget, gpointer user_data) {
+on_stat_breakdown_show_button_clicked(_unused_ GtkWidget * widget, _unused_ gpointer user_data) {
   char * filename;
   FILE * out;
   
@@ -3488,7 +3520,7 @@ on_stat_breakdown_show_button_clicked(GtkWidget * widget, gpointer user_data) {
   filename = CS->SBG->fn;
   if (!filename || strlen(filename) == 0) {
     fprintf(stderr, "Error: no file name to output.");
-    return;
+    return FALSE;
   }
   out = fopen(filename, "w");
   dv_check(out);
@@ -3567,6 +3599,7 @@ on_stat_breakdown_show_button_clicked(GtkWidget * widget, gpointer user_data) {
   if (!ret) {
     fprintf(stderr, "g_spawn_async_with_pipes() failed.\n");
   }
+  return TRUE;
 }
 
 static void
@@ -3576,7 +3609,6 @@ dv_open_statistics_dialog() {
   if (!V) {
     V = &CS->V[0];
   }
-  dv_dag_t * D = V->D;
   
   /* Build dialog */
   GtkWidget * dialog = gtk_dialog_new();
@@ -3770,7 +3802,6 @@ dv_open_statistics_dialog() {
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_box, tab_label);
     long i;
     for (i = 0; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
       GtkWidget * dag_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
       gtk_box_pack_start(GTK_BOX(tab_box), dag_box, FALSE, FALSE, 0);
       char str[20];
@@ -3808,7 +3839,7 @@ dv_open_statistics_dialog() {
 }
 
 static void
-on_file_statistics_clicked(GtkMenuItem * menuitem, gpointer user_data) {
+on_file_statistics_clicked(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
   dv_open_statistics_dialog();
 }
 
@@ -3953,7 +3984,7 @@ dv_create_menubar() {
   GtkWidget * statistics = gtk_menu_item_new_with_mnemonic("_Statistics");
   gtk_menu_shell_append(GTK_MENU_SHELL(tools_menu), statistics);
   g_signal_connect(G_OBJECT(statistics), "activate", G_CALLBACK(on_file_statistics_clicked), NULL);
-  GtkWidget * samplebt = gtk_menu_item_new_with_mnemonic("_Samples");
+  GtkWidget * samplebt = gtk_menu_item_new_with_mnemonic("S_amples");
   gtk_menu_shell_append(GTK_MENU_SHELL(tools_menu), samplebt);
   GtkWidget * samplebt_menu = gtk_menu_new();
   gtk_menu_item_set_submenu(GTK_MENU_ITEM(samplebt), samplebt_menu);
@@ -3974,7 +4005,7 @@ dv_create_menubar() {
 }
 
 static int
-open_gui(int argc, char * argv[]) {
+open_gui(_unused_ int argc, _unused_ char * argv[]) {
   // Initialize
   CS->window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
   CS->vbox0 = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
@@ -4034,11 +4065,14 @@ open_gui(int argc, char * argv[]) {
   return 1;
 }
 
-static void dv_alarm_set() {
+
+_static_unused_ void
+dv_alarm_set() {
   alarm(3);
 }
 
-void dv_signal_handler(int signo) {
+_unused_ void
+dv_signal_handler(int signo) {
   if (signo == SIGALRM) {
     fprintf(stderr, "received SIGALRM\n");
     dv_get_callpath_by_libunwind();
@@ -4048,12 +4082,14 @@ void dv_signal_handler(int signo) {
   dv_alarm_set();
 }
 
-static void dv_alarm_init() {
+_static_unused_ void
+dv_alarm_init() {
   if (signal(SIGALRM, dv_signal_handler) == SIG_ERR)
     fprintf(stderr, "cannot catch SIGALRM\n");
   else
     dv_alarm_set();
 }
+
 
 int
 main(int argc, char * argv[]) {

@@ -37,7 +37,7 @@ dv_dag_collect_delays_r(dv_dag_t * D, dv_dag_node_t * node, FILE * out, dv_stat_
   }
 
   dv_dag_node_t * next = NULL;
-  while (next = dv_dag_node_traverse_nexts(node, next)) {
+  while ( (next = dv_dag_node_traverse_nexts(node, next)) ) {
     dv_dag_collect_delays_r(D, next, out, e);
   }
 }
@@ -54,7 +54,7 @@ dv_dag_collect_sync_delays_r(dv_dag_t * D, dv_dag_node_t * node, FILE * out, dv_
       if (pi_) {
         dr_clock_t last_t = 0;
         dv_dag_node_t * x = NULL;
-        while (x = dv_dag_node_traverse_tails(node, x)) {
+        while ( (x = dv_dag_node_traverse_tails(node, x)) ) {
           dr_pi_dag_node * x_pi = dv_pidag_get_node_by_dag_node(D->P, x);
           if (x_pi->info.end.t > last_t)
             last_t = x_pi->info.end.t;
@@ -67,7 +67,7 @@ dv_dag_collect_sync_delays_r(dv_dag_t * D, dv_dag_node_t * node, FILE * out, dv_
   }
 
   dv_dag_node_t * next = NULL;
-  while (next = dv_dag_node_traverse_nexts(node, next)) {
+  while ( (next = dv_dag_node_traverse_nexts(node, next)) ) {
     dv_dag_collect_sync_delays_r(D, next, out, e);
   }
 }
@@ -85,7 +85,7 @@ dv_dag_collect_intervals_r(dv_dag_t * D, dv_dag_node_t * node, FILE * out, dv_st
   }
 
   dv_dag_node_t * next = NULL;
-  while (next = dv_dag_node_traverse_nexts(node, next)) {
+  while ( (next = dv_dag_node_traverse_nexts(node, next)) ) {
     dv_dag_collect_intervals_r(D, next, out, e);
   }
 }
@@ -112,7 +112,7 @@ dv_dag_expand_implicitly_r(dv_dag_t * D, dv_dag_node_t * node) {
   
   /* Call link-along */
   dv_dag_node_t * next = NULL;
-  while (next = dv_dag_node_traverse_nexts(node, next)) {
+  while ( (next = dv_dag_node_traverse_nexts(node, next)) ) {
     dv_dag_expand_implicitly_r(D, next);
   }
 }

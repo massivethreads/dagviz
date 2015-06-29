@@ -20,7 +20,7 @@ dv_pidag_read_new_file(char * filename) {
   printf("PI DAG: %s\n"
          "  n = %ld\n"
          "  m = %ld\n"
-         "  sc = %ld\n"
+         "  sc = %llu\n"
          "  nw = %ld\n", DAG_RECORDER_HEADER, P->n, P->m, P->start_clock, P->num_workers);
   
   P->T = G->T;
@@ -94,7 +94,6 @@ dv_pidag_read_new_file_bk(char * filename) {
   ldp++;
   nw = *ldp;
   ldp++;
-  int i;
   printf("PI DAG: %s\n"
          "  n = %ld\n"
          "  m = %ld\n"
@@ -423,6 +422,7 @@ dv_dag_build_node_inner(dv_dag_t * D, dv_dag_node_t * node) {
 
 int
 dv_dag_collapse_node_inner(dv_dag_t * D, dv_dag_node_t * node) {
+  (void)D;
   // Check flags node->f
   if (dv_is_set(node) && dv_is_union(node)
       && dv_is_inner_loaded(node)) {
@@ -464,7 +464,7 @@ dv_dag_clear_shrinked_nodes_r(dv_dag_t * D, dv_dag_node_t * node) {
       // check if node has inner_loaded node
       int has_no_innerloaded_node = 1;
       dv_dag_node_t * x = NULL;
-      while (x = dv_dag_node_traverse_children(node, x)) {
+      while ( (x = dv_dag_node_traverse_children(node, x)) ) {
         if (dv_is_set(x) && dv_is_union(x) && dv_is_inner_loaded(x)) {
           has_no_innerloaded_node = 0;
           break;
@@ -487,7 +487,7 @@ dv_dag_clear_shrinked_nodes_r(dv_dag_t * D, dv_dag_node_t * node) {
   
   /* Call link-along */
   dv_dag_node_t * x = NULL;
-  while (x = dv_dag_node_traverse_nexts(node, x)) {
+  while ( (x = dv_dag_node_traverse_nexts(node, x)) ) {
     dv_dag_clear_shrinked_nodes_r(D, x);
   }
 }
@@ -968,7 +968,7 @@ dv_view_scan_r(dv_view_t * V, dv_dag_node_t * node) {
   /* Call link-along */
   node->link_r = node->r;
   dv_dag_node_t * x = NULL;
-  while (x = dv_dag_node_traverse_nexts(node, x)) {
+  while ( (x = dv_dag_node_traverse_nexts(node, x)) ) {
     dv_view_scan_r(V, x);
     node->link_r |= x->link_r;
   }

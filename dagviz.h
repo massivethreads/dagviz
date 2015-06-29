@@ -26,7 +26,7 @@
 
 #include <execinfo.h>
 
-#ifdef DV_ENABLE_LIBUNWIND
+#ifdef DV_ENABLE_LIBWIND
 #define UNW_LOCAL_ONLY
 #include <libunwind.h>
 #endif
@@ -34,6 +34,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 #include <signal.h>
+#include <ctype.h> /* for isdigit() */
 
 #ifdef DV_ENABLE_BFD
 #include <bfd.h>
@@ -159,6 +160,9 @@ typedef struct dv_llist {
 #define DV_VIEW_AUTO_ZOOMFIT_INIT 4 /* 0:none, 1:hor, 2:ver, 3:based, 4:full */
 #define DV_VIEW_ADJUST_AUTO_ZOOMFIT_INIT 1
 
+#define _unused_ __attribute__((unused))
+#define _static_unused_ static __attribute__((unused))
+
 /*-----------------Data Structures-----------------*/
 
 /* a single record of backtrace */
@@ -172,7 +176,7 @@ typedef struct {
 typedef struct dv_pidag {
   long n;			/* length of T */
   long m;			/* length of E */
-  long start_clock;             /* absolute clock time of start */
+  unsigned long long start_clock;             /* absolute clock time of start */
   long num_workers;		/* number of workers */
   dr_pi_dag_node * T;		/* all nodes in a contiguous array */
   dr_pi_dag_edge * E;		/* all edges in a contiguous array */
@@ -764,10 +768,11 @@ dv_dag_node_t * dv_dag_node_pool_pop_contiguous(dv_dag_node_pool_t *, long);
 
 /*-----------------Inlines-----------------*/
 
-static void * dv_malloc(size_t);
-static void dv_free(void *, size_t);
+_static_unused_ void * dv_malloc(size_t);
+_static_unused_ void dv_free(void *, size_t);
 
-static void dv_get_callpath_by_backtrace() {
+_static_unused_ void
+dv_get_callpath_by_backtrace() {
   fprintf(stderr, "Call path by backtrace:\n");
   
   int len = 15;
@@ -779,7 +784,8 @@ static void dv_get_callpath_by_backtrace() {
     fprintf(stderr, " %d: %s\n", i, ss[i]);
 }
 
-static void dv_get_callpath_by_libunwind() {
+_static_unused_ void
+dv_get_callpath_by_libunwind() {
 #ifdef ENABLE_LIBUNWIND
   fprintf(stderr, "Call path by libunwind:\n");
   
@@ -802,7 +808,8 @@ static void dv_get_callpath_by_libunwind() {
 #endif  
 }
 
-static int dv_check_(int condition, const char * condition_s, 
+_static_unused_ int
+dv_check_(int condition, const char * condition_s, 
                      const char * __file__, int __line__, 
                      const char * func) {
   if (!condition) {
@@ -817,13 +824,15 @@ static int dv_check_(int condition, const char * condition_s,
 
 #define dv_check(x) (dv_check_(((x)?1:0), #x, __FILE__, __LINE__, __func__))
 
-static void * dv_malloc(size_t sz) {
+_static_unused_ void *
+dv_malloc(size_t sz) {
   void * a = malloc(sz);
   dv_check(a);
   return a;
 }
 
-static void dv_free(void * a, size_t sz) {
+_static_unused_ void
+dv_free(void * a, size_t sz) {
   if (a) {
     free(a);
   } else {
@@ -831,61 +840,73 @@ static void dv_free(void * a, size_t sz) {
   }
 }
 
-static void dv_node_flag_init(char *f) {
+_static_unused_ void
+dv_node_flag_init(char * f) {
   *f = DV_NODE_FLAG_NONE;
 }
 
-static int dv_node_flag_check(char *f, char t) {
+_static_unused_ int
+dv_node_flag_check(char * f, char t) {
   int ret = ((*f & t) == t);
   return ret;
 }
 
-static void dv_node_flag_set(char *f, char t) {
+_static_unused_ void
+dv_node_flag_set(char * f, char t) {
   if (!dv_node_flag_check(f,t))
     *f += t;
 }
 
-static int dv_node_flag_remove(char *f, char t) {
+_static_unused_ void
+dv_node_flag_remove(char * f, char t) {
   if (dv_node_flag_check(f,t))
     *f -= t;
 }
 
-static int dv_is_set(dv_dag_node_t *node) {
+_static_unused_ int
+dv_is_set(dv_dag_node_t * node) {
   if (!node) return 0;
   return dv_node_flag_check(node->f, DV_NODE_FLAG_SET);
 }
 
-static int dv_is_union(dv_dag_node_t *node) {
+_static_unused_ int
+dv_is_union(dv_dag_node_t * node) {
   if (!node) return 0;
   return dv_node_flag_check(node->f, DV_NODE_FLAG_UNION);
 }
 
-static int dv_is_inner_loaded(dv_dag_node_t *node) {
+_static_unused_ int
+dv_is_inner_loaded(dv_dag_node_t * node) {
   if (!node) return 0;
   return dv_node_flag_check(node->f, DV_NODE_FLAG_INNER_LOADED);
 }
 
-static int dv_is_shrinked(dv_dag_node_t *node) {
+_static_unused_ int
+dv_is_shrinked(dv_dag_node_t * node) {
   if (!node) return 0;
   return dv_node_flag_check(node->f, DV_NODE_FLAG_SHRINKED);
 }
 
-static int dv_is_expanded(dv_dag_node_t *node) {
+_static_unused_ int
+dv_is_expanded(dv_dag_node_t * node) {
   if (!node) return 0;
   return !dv_is_shrinked(node);
 }
 
-static int dv_is_expanding(dv_dag_node_t *node) {
+_static_unused_ int
+dv_is_expanding(dv_dag_node_t * node) {
   if (!node) return 0;
   return dv_node_flag_check(node->f, DV_NODE_FLAG_EXPANDING);
 }
 
-static int dv_is_shrinking(dv_dag_node_t *node) {
+_static_unused_ int
+dv_is_shrinking(dv_dag_node_t * node) {
   if (!node) return 0;
   return dv_node_flag_check(node->f, DV_NODE_FLAG_SHRINKING);
 }
 
-static int dv_is_single(dv_dag_node_t *node) {
+_static_unused_ int
+dv_is_single(dv_dag_node_t * node) {
   if (!node) return 0;
   if (!dv_is_set(node)
       || !dv_is_union(node) || !dv_is_inner_loaded(node)
@@ -895,7 +916,8 @@ static int dv_is_single(dv_dag_node_t *node) {
   return 0;
 }
 
-static int dv_is_visible(dv_dag_node_t *node) {
+_static_unused_ int
+dv_is_visible(dv_dag_node_t * node) {
   if (!node) return 0;
   dv_check(dv_is_set(node));
   if (!node->parent || dv_is_expanded(node->parent)) {
@@ -905,7 +927,8 @@ static int dv_is_visible(dv_dag_node_t *node) {
   return 0;
 }
 
-static int dv_is_inward_callable(dv_dag_node_t *node) {
+_static_unused_ int
+dv_is_inward_callable(dv_dag_node_t * node) {
   if (!node) return 0;
   dv_check(dv_is_set(node));
   if (dv_is_union(node) && dv_is_inner_loaded(node)
@@ -914,14 +937,15 @@ static int dv_is_inward_callable(dv_dag_node_t *node) {
   return 0;
 }
 
-static int dv_log_set_error(int err) {
+_static_unused_ int
+dv_log_set_error(int err) {
   CS->err = err;
   fprintf(stderr, "CS->err = %d\n", err);
   return err;
 }
 
 
-static void
+_static_unused_ void
 dv_longlong_init(long long * w) {
   int i;
   for (i=0; i<64; i++) {
@@ -931,21 +955,21 @@ dv_longlong_init(long long * w) {
   }
 }
 
-static void
+_static_unused_ void
 dv_set_bit(long long * w, int v) {
   long long vv = 1 << v;
   if ((*w & vv) != vv)
     *w += vv;
 }
 
-static int
+_static_unused_ int
 dv_get_bit(long long w, int v) {
   long long vv = 1 << v;
   return ((w & vv) == vv);
 }
 
 
-static int
+_static_unused_ int
 dv_get_color_pool_index(int t, int v0, int v1, int v2, int v3) {
   int n = CS->CP_sizes[t];
   int i;

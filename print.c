@@ -125,6 +125,7 @@ void dv_print_pi_string_table(dr_pi_string_table * stp, int i) {
 }
 
 
+/*
 static void print_dvdag_node(dv_dag_t *D, dv_dag_node_t *node, int i) {
   dr_pi_dag_node *pi = dv_pidag_get_node_by_dag_node(D->P, node);
   int kind = pi->info.kind;
@@ -134,6 +135,7 @@ static void print_dvdag_node(dv_dag_t *D, dv_dag_node_t *node, int i) {
          kind,
          dv_get_node_kind_name(kind));
 }
+*/
 
 void dv_print_dvdag(dv_dag_t *D) {
   printf(
@@ -144,8 +146,8 @@ void dv_print_dvdag(dv_dag_t *D) {
          D->P->num_workers);
 }
 
+/*
 static void print_layout_node(dv_dag_t *D, dv_dag_node_t *node, int i) {
-  /*
   dr_pi_dag_node *pi = dv_pidag_get_node_by_dag_node(D->P, node);
   int kind = pi->info.kind;
   printf(
@@ -165,8 +167,8 @@ static void print_layout_node(dv_dag_t *D, dv_dag_node_t *node, int i) {
          node->x, node->y,
          node->lw, node->rw, node->dw,
          node->link_lw, node->link_rw, node->link_dw);
-  */
 }
+*/
 
 void dv_print_layout(dv_dag_t *D) {
   printf(
@@ -254,6 +256,7 @@ void dv_print_dag_file(char * filename) {
 }
 
 void dv_check_layout(dv_dag_t *G) {
+  (void)G;
   /*int i;
   for (i=0; i<G->n; i++) {
     dv_dag_node_t *node = G->T + i;

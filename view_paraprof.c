@@ -4,13 +4,17 @@
 
 static void
 dv_histogram_piece_pool_init(dv_histogram_piece_pool_t * ppool) {
+  (void)ppool;
+#if DV_HISTOGRAM_DIVIDE_TO_PIECES    
   ppool->sz = DV_HISTOGRAM_PIECE_POOL_SIZE;
   ppool->n = 0;
   int i;
   for (i=0; i<ppool->sz; i++)
     ppool->avail[i] = 1;
+#endif /* DV_HISTOGRAM_DIVIDE_TO_PIECES */
 }
 
+#if DV_HISTOGRAM_DIVIDE_TO_PIECES    
 static int
 dv_histogram_piece_pool_is_empty(dv_histogram_piece_pool_t * ppool) {
   return (ppool->n == ppool->sz);
@@ -41,6 +45,7 @@ static long
 dv_histogram_piece_pool_avail(dv_histogram_piece_pool_t * ppool) {
   return (ppool->sz - ppool->n);
 }
+#endif /* DV_HISTOGRAM_DIVIDE_TO_PIECES */
 
 /*-----------end of Histogram Piece Pool----------------------*/
 
@@ -56,7 +61,7 @@ dv_histogram_entry_pool_init(dv_histogram_entry_pool_t * epool) {
     epool->avail[i]= 1;
 }
 
-static int
+_static_unused_ int
 dv_histogram_entry_pool_is_empty(dv_histogram_entry_pool_t * epool) {
   return (epool->n == epool->sz);
 }
@@ -74,7 +79,7 @@ dv_histogram_entry_pool_pop(dv_histogram_entry_pool_t * epool) {
   }
 }
 
-static void
+_static_unused_ void
 dv_histogram_entry_pool_push(dv_histogram_entry_pool_t * epool, dv_histogram_entry_t * e) {
   int i = e - epool->T;
   dv_check(i < epool->sz && !epool->avail[i]);
@@ -82,7 +87,7 @@ dv_histogram_entry_pool_push(dv_histogram_entry_pool_t * epool, dv_histogram_ent
   epool->n--;
 }
 
-static long
+_static_unused_ long
 dv_histogram_entry_pool_avail(dv_histogram_entry_pool_t * epool) {
   return (epool->sz - epool->n);
 }
@@ -103,7 +108,7 @@ dv_histogram_init(dv_histogram_t * H) {
   H->max_e = NULL;
 }
 
-static void
+_static_unused_ void
 dv_histogram_piece_init(dv_histogram_piece_t * p) {
   p->e = NULL;
   p->h = 0.0;
@@ -193,6 +198,8 @@ dv_histogram_insert_entry(dv_histogram_t * H, double t) {
 
 static void
 dv_histogram_pile_entry(dv_histogram_t * H, dv_histogram_entry_t * e, dv_histogram_layer_t layer, double thick, dv_dag_node_t * node) {
+  (void)H;
+  (void)node;
   count_pile_entry++;
 #if DV_HISTOGRAM_DIVIDE_TO_PIECES    
   dv_histogram_piece_t * p = e->pieces[layer];
@@ -271,6 +278,7 @@ dv_histogram_add_node(dv_histogram_t * H, dv_dag_node_t * node) {
                     pi->info.t_1 / dt);
 }
 
+/*
 static void
 dv_histogram_draw_test(dv_view_t * V, cairo_t * cr) {
   // Transform
@@ -309,8 +317,9 @@ dv_histogram_draw_test(dv_view_t * V, cairo_t * cr) {
   // Un-transform
   cairo_restore(cr);
 }
+*/
 
-static double
+_static_unused_ double
 dv_histogram_draw_piece(dv_histogram_t * H, dv_histogram_piece_t * p, cairo_t * cr, double x, double w, double y, int layer) {
   cairo_save(cr);
   double h = p->h;
@@ -333,6 +342,7 @@ dv_histogram_draw_piece(dv_histogram_t * H, dv_histogram_piece_t * p, cairo_t * 
 
 static double
 dv_histogram_draw_piece2(dv_histogram_t * H, cairo_t * cr, double x, double w, double y, double h, int layer) {
+  (void)H;
   cairo_save(cr);
   // Color
   GdkRGBA color;
@@ -579,7 +589,7 @@ dv_view_draw_paraprof_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) 
   }
   /* Call link-along */
   dv_dag_node_t * next = NULL;
-  while (next = dv_dag_node_traverse_nexts(node, next)) {
+  while ( (next = dv_dag_node_traverse_nexts(node, next)) ) {
     dv_view_draw_paraprof_node_r(V, cr, next);
   }
 }

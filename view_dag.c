@@ -361,7 +361,7 @@ dv_view_draw_dag_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
   }
   /* Call link-along */
   dv_dag_node_t * x = NULL;
-  while (x = dv_dag_node_traverse_nexts(node, x)) {
+  while ( (x = dv_dag_node_traverse_nexts(node, x)) ) {
     dv_view_draw_dag_node_r(V, cr, x);
   }
 }
@@ -381,7 +381,7 @@ dv_view_draw_dag_edge_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
   }
   /* Call link-along */
   dv_dag_node_t * next = NULL;
-  while (next = dv_dag_node_traverse_nexts(node, next)) {
+  while ( (next = dv_dag_node_traverse_nexts(node, next)) ) {
     
     if (dv_is_single(node)) {
       
@@ -393,7 +393,7 @@ dv_view_draw_dag_edge_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
     } else {
 
       dv_dag_node_t * tail = NULL;
-      while (tail = dv_dag_node_traverse_tails(node, tail)) {
+      while ( (tail = dv_dag_node_traverse_tails(node, tail)) ) {
           dv_dag_node_t * last = dv_dag_node_get_single_last(tail);
         
           if (dv_is_single(next))
@@ -412,7 +412,6 @@ dv_view_draw_dag_edge_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
 void
 dv_view_draw_dag(dv_view_t * V, cairo_t * cr) {
   cairo_set_line_width(cr, DV_NODE_LINE_WIDTH);
-  int i;
   // Draw nodes
   dv_llist_init(V->D->itl);
   dv_view_draw_dag_node_r(V, cr, V->D->rt);
@@ -553,7 +552,7 @@ dv_view_draw_legend_dag(dv_view_t * V, cairo_t * cr) {
   cairo_fill(cr);
   
   /* many workers */
-  sprintf(s, "many workers");
+  sprintf(s, "multiple workers");
   y += line_height;
   cairo_move_to(cr, x, y);
   cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
