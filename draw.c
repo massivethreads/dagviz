@@ -598,18 +598,21 @@ dv_view_draw(dv_view_t * V, cairo_t * cr) {
     dv_view_draw_dagbox(V, cr);
     break;
   case 2:
-    dv_view_draw_timeline(V, cr);
+    dv_view_draw_timeline_ver(V, cr);
     break;
   case 3:
-    dv_view_draw_timeline2(V, cr);
+    dv_view_draw_timeline(V, cr);
     break;
-  case 4: {
-    //double start = dv_get_time();
-    dv_view_draw_paraprof(V, cr);
-    //double end = dv_get_time();
-    //fprintf(stderr, "draw time: %lf\n", end - start);
+  case 4:
+    if (V->D->H) {
+      double start = dv_get_time();
+      dv_view_draw_paraprof(V, cr);
+      double end = dv_get_time();
+      fprintf(stderr, "draw time: %lf\n", end - start);
+    } else {
+      fprintf(stderr, "Warning: trying to draw type 4 without H.\n");
+    }
     break;
-  }
   default:
     dv_check(0);
   }
@@ -649,10 +652,10 @@ dv_view_draw_legend(dv_view_t * V, cairo_t * cr) {
     //dv_view_draw_legend_dagbox(V, cr);
     break;
   case 2:
-    //dv_view_draw_legend_timeline(V, cr);
+    //dv_view_draw_legend_timeline_ver(V, cr);
     break;
   case 3:
-    //dv_view_draw_legend_timeline2(V, cr);
+    //dv_view_draw_legend_timeline(V, cr);
     break;
   case 4: {
     //dv_view_draw_legend_paraprof(V, cr);

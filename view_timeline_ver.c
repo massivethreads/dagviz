@@ -3,7 +3,7 @@
 /*-----------Timeline layout functions----------------------*/
 
 static void
-dv_view_layout_timeline_node(dv_view_t * V, dv_dag_node_t * node) {
+dv_view_layout_timeline_ver_node(dv_view_t * V, dv_dag_node_t * node) {
   V->S->nl++;
   int lt = 2;
   dv_node_coordinate_t * nodeco = &node->c[lt];
@@ -20,7 +20,7 @@ dv_view_layout_timeline_node(dv_view_t * V, dv_dag_node_t * node) {
   if (dv_is_union(node) && dv_is_inner_loaded(node)) {
     // Recursive call
     if (dv_is_expanded(node))
-      dv_view_layout_timeline_node(V, node->head);
+      dv_view_layout_timeline_ver_node(V, node->head);
   }
     
   /* Calculate link-along */
@@ -31,14 +31,14 @@ dv_view_layout_timeline_node(dv_view_t * V, dv_dag_node_t * node) {
   case 1:
     u = node->next;
     // Recursive call
-    dv_view_layout_timeline_node(V, u);
+    dv_view_layout_timeline_ver_node(V, u);
     break;
   case 2:
     u = node->next;  // cont node
     v = node->spawn; // task node
     // Recursive call
-    dv_view_layout_timeline_node(V, u);
-    dv_view_layout_timeline_node(V, v);
+    dv_view_layout_timeline_ver_node(V, u);
+    dv_view_layout_timeline_ver_node(V, v);
     break;
   default:
     dv_check(0);
@@ -48,10 +48,10 @@ dv_view_layout_timeline_node(dv_view_t * V, dv_dag_node_t * node) {
 }
 
 void
-dv_view_layout_timeline(dv_view_t * V) {
+dv_view_layout_timeline_ver(dv_view_t * V) {
 
   // Absolute coord
-  dv_view_layout_timeline_node(V, V->D->rt);
+  dv_view_layout_timeline_ver_node(V, V->D->rt);
 
   // Check
   //print_layout(G);  
@@ -64,7 +64,7 @@ dv_view_layout_timeline(dv_view_t * V) {
 /*-----------------TIMELINE Drawing functions-----------*/
 
 static void
-dv_view_draw_timeline_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
+dv_view_draw_timeline_ver_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
   dv_dag_t * D = V->D;
   dv_view_status_t * S = V->S;
   int lt = 2;
@@ -143,7 +143,7 @@ dv_view_draw_timeline_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) 
 }
 
 static void
-dv_view_draw_timeline_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
+dv_view_draw_timeline_ver_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
   // Count node
   V->S->ndh++;
   if (!node || !dv_is_set(node))
@@ -151,25 +151,25 @@ dv_view_draw_timeline_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) 
   /* Call inward */
   if (dv_is_union(node)) {
     if (dv_is_inner_loaded(node) && !dv_is_shrinked(node))
-      dv_view_draw_timeline_node_r(V, cr, node->head);
+      dv_view_draw_timeline_ver_node_r(V, cr, node->head);
   } else {
-    dv_view_draw_timeline_node_1(V, cr, node);
+    dv_view_draw_timeline_ver_node_1(V, cr, node);
   }
   /* Call link-along */
   dv_dag_node_t * next = NULL;
   while ( (next = dv_dag_node_traverse_nexts(node, next)) ) {
-    dv_view_draw_timeline_node_r(V, cr, next);
+    dv_view_draw_timeline_ver_node_r(V, cr, next);
   }
 }
 
-void dv_view_draw_timeline(dv_view_t *V, cairo_t *cr) {
+void dv_view_draw_timeline_ver(dv_view_t *V, cairo_t *cr) {
   // Set adaptive line width
   double line_width = dv_min(DV_NODE_LINE_WIDTH, DV_NODE_LINE_WIDTH / dv_min(V->S->zoom_ratio_x, V->S->zoom_ratio_y));
   cairo_set_line_width(cr, line_width);
   int i;
   // Draw nodes
   dv_llist_init(V->D->itl);
-  dv_view_draw_timeline_node_r(V, cr, V->D->rt);
+  dv_view_draw_timeline_ver_node_r(V, cr, V->D->rt);
   // Draw worker numbers
   cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
   cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);

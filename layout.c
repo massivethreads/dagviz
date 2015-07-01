@@ -12,14 +12,13 @@ dv_view_layout_with_type(dv_view_t * V, int lt) {
     dv_view_layout_dagbox(V);
     break;
   case 2:
-    dv_view_layout_timeline(V);
+    dv_view_layout_timeline_ver(V);
     break;
   case 3:
-    dv_view_layout_timeline2(V);
+    dv_view_layout_timeline(V);
     break;
   case 4:
     if (V->D->H) {
-      dv_histogram_reset(V->D->H);
       double start = dv_get_time();
       dv_view_layout_paraprof(V);
       double end = dv_get_time();
@@ -35,20 +34,6 @@ dv_view_layout_with_type(dv_view_t * V, int lt) {
 
 void
 dv_view_layout(dv_view_t * V) {
-  /*
-  dv_view_layout_dag(V);
-  dv_view_layout_dagbox(V);
-  dv_view_layout_timeline(V);
-  dv_view_layout_timeline2(V);
-  if (V - CS->V == 0) {
-    dv_histogram_init(CS->H);
-    CS->H->V = V;
-    dv_view_layout_paraprof(V, CS->H);
-  } else {
-    dv_view_layout_paraprof(V, NULL);
-  }
-  */
-
   V->S->nl = 0;
   dv_view_layout_with_type(V, V->S->lt);
   int lt;
@@ -93,13 +78,6 @@ double dv_view_calculate_reverse_rate(dv_view_t *V, dv_dag_node_t *node) {
 /*-----end of Common functions-----*/
 
 /*-----------Animation functions----------------------*/
-
-double dv_get_time() {
-  /* millisecond */
-  struct timeval tv;
-  gettimeofday(&tv, NULL);
-  return tv.tv_sec * 1.0E3 + ((double)tv.tv_usec) / 1.0E3;
-}
 
 void dv_animation_init(dv_view_t *V, dv_animation_t *a) {
   a->on = 0;

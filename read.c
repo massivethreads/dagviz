@@ -151,127 +151,6 @@ dv_pidag_get_node_by_offset(dv_pidag_t * P, dr_pi_dag_node * pi, long offset) {
 
 /*---------DAG's functions---------------*/
 
-/*
-void dv_dag_node_pool_init(dv_dag_t *D) {
-  if (!D) return;
-  if (D->T) return;
-  D->Tsz = DV_DAG_NODE_POOL_SIZE;
-  D->T = (dv_dag_node_t *) dv_malloc( sizeof(dv_dag_node_t) * D->Tsz );  
-  D->To = (char *) dv_malloc( sizeof(char) * D->Tsz );
-  int i;
-  for (i=0; i<D->Tsz; i++)
-    D->To[i] = 0;
-  D->Tn = 0;
-}
-
-int dv_dag_node_pool_is_empty(dv_dag_t *D) {
-  return (D->Tn >= D->Tsz);
-}
-*/
-
-/*
-static dv_dag_node_t *
-dv_dag_node_pool_pop_binary_r(dv_dag_t * D, long low, long high) {
-  dv_dag_node_t * ret = NULL;
-  if (high == low) {
-    if (!D->To[low]) {
-      D->To[low] = 1;
-      D->Tn++;
-      return D->T + i;
-    }
-    return NULL;    
-  }
-  long mid = (high - low + 1) / 2 + low;
-  if (D->To[mid]) {
-    dv_dag_node_pool_pop_binary_r(D, mid, high);
-  } else {
-    dv_dag_node_pool_pop_binary_r(D, low, mid - 1);
-  }
-  if (!ret)
-    
-  
-  return ret;
-  }*/
-
-/*
-dv_dag_node_t *
-dv_dag_node_pool_pop(dv_dag_t * D) {
-  if (dv_dag_node_pool_is_empty(D)) {
-    dv_dag_clear_shrinked_nodes(D);
-    if (dv_dag_node_pool_is_empty(D))
-      return NULL;
-  }
-  int i;
-  for (i=0; i<D->Tsz; i++)
-    if (!D->To[i]) {
-      D->To[i] = 1;
-      D->Tn++;
-      return D->T + i;
-    }
-  return NULL;
-}
-
-void
-dv_dag_node_pool_push(dv_dag_t * D, dv_dag_node_t * node) {
-  int i = node - D->T;
-  dv_check(i >=0 && i < D->Tsz);
-  dv_check(D->To[i]);
-  D->To[i] = 0;
-  D->Tn--;
-}
-
-long dv_dag_node_pool_avail(dv_dag_t *D) {
-  return D->Tsz - D->Tn;
-}
-
-dv_dag_node_t * dv_dag_node_pool_pop_contiguous(dv_dag_t *D, long num) {
-  // Try searching
-  long i, j;
-  int ok;
-  for (i=0; i<D->Tsz-num+1; i++) {
-    ok = 1;
-    for (j=i; j<i+num; j++)
-      if (D->To[j]) {
-        ok = 0;
-        break;
-      }
-    if (ok) {
-      for (j=i; j<i+num; j++)
-        D->To[j] = 1;
-      D->Tn += num;
-      return D->T + i;
-    }
-  }
-  // If there is not, clear shrinked nodes
-  long avail, new_avail;
-  avail = -1;
-  new_avail = dv_dag_node_pool_avail(D);
-  while (new_avail > avail) {
-    avail = new_avail;
-    dv_dag_clear_shrinked_nodes(D);
-    new_avail = dv_dag_node_pool_avail(D);
-  }
-  if (dv_dag_node_pool_avail(D) < num)
-    return NULL;
-  // Try searching again
-  for (i=0; i<D->Tsz-num+1; i++) {
-    ok = 1;
-    for (j=i; j<i+num; j++)
-      if (D->To[j]) {
-        ok = 0;
-        break;
-      }
-    if (ok) {
-      for (j=i; j<i+num; j++)
-        D->To[j] = 1;
-      D->Tn += num;
-      return D->T + i;
-    }
-  }
-  return NULL;
-}
-*/
-
 static void
 dv_node_coordinate_init(dv_node_coordinate_t * c) {
   c->x = 0.0;
@@ -517,6 +396,7 @@ dv_dag_init(dv_dag_t * D, dv_pidag_t * P) {
   D->frombt = DV_FROMBT_INIT;
   D->radius = DV_RADIUS;
   dv_llist_init(D->itl);
+  D->H = NULL;
   int i;
   for (i=0; i<DV_NUM_LAYOUT_TYPES; i++)
     D->tolayout[i] = 0;

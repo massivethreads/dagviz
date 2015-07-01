@@ -416,3 +416,71 @@ dv_dag_node_pool_pop_contiguous(dv_dag_node_pool_t * pool, long num) {
 
 
 
+/*----------HISTOGRAM Entry Pool------------------------------*/
+
+void
+dv_histogram_entry_pool_init(dv_histogram_entry_pool_t * pool) {
+  pool->head = NULL;
+  pool->tail = NULL;
+  pool->pages = NULL;
+  pool->sz = 0;
+  pool->N = 0;
+  pool->n = 0;
+}
+
+static dv_histogram_entry_t *
+dv_histogram_entry_pool_add_page(dv_histogram_entry_pool_t * pool) {
+  /* allocate page */
+  size_t sz_ = DV_DEFAULT_PAGE_SIZE;
+  size_t sz = (sz_ >= sizeof(dv_histogram_entry_page_t) ? sz_ : sizeof(dv_histogram_entry_page_t));
+  dv_histogram_entry_page_t * page = (dv_histogram_entry_page_t *) dv_malloc(sz);
+  /* initialize page */
+  page->sz = sz;
+  long n = ( sz - sizeof(dv_histogram_entry_page_t) ) / sizeof(dv_histogram_entry_t) + DV_DEFAULT_PAGE_MIN_ENTRIES;
+  long i;
+  for (i = 0; i < n - 1; i++) {
+    page->entries[i].next = &page->entries[i+1];
+  }
+  page->entries[n-1].next = NULL;
+  /* append page */
+  page->next = pool->pages;
+  pool->pages = page;
+  pool->sz += page->sz;
+  /* append nodes */
+  if (!pool->head)
+    pool->head = &page->entries[0];
+  else
+    pool->tail->next = &page->entries[0];
+  pool->tail = &page->entries[n-1];
+  pool->N += n;
+  pool->n += n;
+  //fprintf(stderr, "allocated %ld bytes (%ld nodes), total %ld (%ld)\n", sz, n, pool->sz, pool->N);
+  return pool->head;
+}
+
+dv_histogram_entry_t *
+dv_histogram_entry_pool_pop(dv_histogram_entry_pool_t * pool) {
+  dv_histogram_entry_t * ret = pool->head;
+  if (!ret)
+    ret = dv_histogram_entry_pool_add_page(pool);
+  dv_check(ret);
+  pool->head = ret->next;
+  if (!pool->head)
+    pool->tail = NULL;
+  ret->next = NULL;
+  pool->n--;
+  return ret;
+}
+
+void
+dv_histogram_entry_pool_push(dv_histogram_entry_pool_t * pool, dv_histogram_entry_t * node) {
+  node->next = pool->head;
+  pool->head = node;
+  if (!pool->tail)
+    pool->tail = node;
+  pool->n++;
+}
+
+
+/*----------end of HISTOGRAM Entry Pool-----------------------*/
+

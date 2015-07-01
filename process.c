@@ -134,6 +134,13 @@ dv_dag_set_status_label(dv_dag_t * D, GtkWidget * label) {
 static void
 dv_dag_node_pool_set_status_label(dv_dag_node_pool_t * pool, GtkWidget * label) {
   char str[100];
-  sprintf(str, "Node Pool: %ld / %ld (%ldMB)", pool->n, pool->N, pool->sz / (1 << 20) );
+  sprintf(str, "Node Pool: %ld / %ld (%ldMB)", pool->N - pool->n, pool->N, pool->sz / (1 << 20) );
+  gtk_label_set_text(GTK_LABEL(label), str);
+}
+
+static void
+dv_histogram_entry_pool_set_status_label(dv_histogram_entry_pool_t * pool, GtkWidget * label) {
+  char str[100];
+  sprintf(str, "Entry Pool: %ld / %ld (%ldMB)", pool->N - pool->n, pool->N, pool->sz / (1 << 20) );
   gtk_label_set_text(GTK_LABEL(label), str);
 }

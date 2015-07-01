@@ -86,8 +86,8 @@ dv_global_state_init(dv_global_state_t * CS) {
     CS->CP_sizes[i] = 0;
   dv_btsample_viewer_init(CS->btviewer);
   CS->box_viewport_configure = NULL;
-  CS->nH = 0;
   dv_dag_node_pool_init(CS->pool);
+  dv_histogram_entry_pool_init(CS->epool);
   CS->SD->ne = 0;
   for (i = 0; i < DV_MAX_DISTRIBUTION; i++) {
     CS->SD->e[i].dag_id = -1; /* none */
@@ -102,6 +102,7 @@ dv_global_state_init(dv_global_state_t * CS) {
     CS->SD->dag_status_labels[i] = NULL;
   }
   CS->SD->node_pool_label = NULL;
+  CS->SD->entry_pool_label = NULL;
   CS->SD->fn = DV_STAT_DISTRIBUTION_OUTPUT_DEFAULT_NAME;
   CS->SD->bar_width = 20;
   for (i = 0; i < DV_MAX_DAG; i++) {
@@ -453,15 +454,15 @@ dv_view_change_lt(dv_view_t * V, int new_lt) {
     }
     // Paraprof: check H structure
     if (new_lt == 4) {
-      if (!V->D->H && CS->nH < DV_MAX_HISTOGRAM) {
-        V->D->H = &CS->H[CS->nH];
+      if (!V->D->H) {
+        V->D->H = dv_malloc( sizeof(dv_histogram_t) );
         dv_histogram_init(V->D->H);
         V->D->H->D = V->D;
-        CS->nH++;
-      } else if (!V->D->H) {
-        fprintf(stderr, "Error: run out of CS->H to allocate.\n");
-        return;
-      }      
+      } else {
+        dv_histogram_fini(V->D->H);
+        V->D->H->D = V->D;
+      }
+      dv_histogram_reset(V->D->H);
     }
     // Change lt
     V->D->tolayout[old_lt]--;
@@ -618,8 +619,6 @@ dv_do_expanding_one_1(dv_view_t * V, dv_dag_node_t * node) {
   switch (S->lt) {
   case 0:
   case 1:
-  case 2:
-  case 3:
     // add to animation
     if (dv_is_shrinking(node)) {
       dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKING);
@@ -631,6 +630,8 @@ dv_do_expanding_one_1(dv_view_t * V, dv_dag_node_t * node) {
       dv_animation_add(S->a, node);
     }
     break;
+  case 2:
+  case 3:
   case 4:
     if (dv_is_shrinking(node)) {
       dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKING);
@@ -638,6 +639,14 @@ dv_do_expanding_one_1(dv_view_t * V, dv_dag_node_t * node) {
       dv_node_flag_remove(node->f, DV_NODE_FLAG_EXPANDING);
     }
     dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKED);
+    // Histogram
+    if (V->D->H) {
+      dv_histogram_remove_node(V->D->H, node);
+      dv_dag_node_t * x = NULL;
+      while ( (x = dv_dag_node_traverse_children(node, x)) ) {
+        dv_histogram_add_node(V->D->H, x);
+      }
+    }
     break;
   default:
     dv_check(0);
@@ -673,7 +682,10 @@ dv_do_expanding_one_r(dv_view_t * V, dv_dag_node_t * node) {
 static void
 dv_do_expanding_one(dv_view_t * V) {
   V->S->ntr = 0;
+  double start = dv_get_time();
   dv_do_expanding_one_r(V, V->D->rt);
+  double end = dv_get_time();
+  fprintf(stderr, "traverse time: %lf\n", end - start);
   if (!V->S->a->on) {
     dv_view_layout(V);
     dv_queue_draw_d(V);
@@ -686,8 +698,6 @@ dv_do_collapsing_one_1(dv_view_t * V, dv_dag_node_t * node) {
   switch (S->lt) {
   case 0:
   case 1:
-  case 2:
-  case 3:
     // add to animation
     if (dv_is_expanding(node)) {
       dv_node_flag_remove(node->f, DV_NODE_FLAG_EXPANDING);
@@ -699,6 +709,8 @@ dv_do_collapsing_one_1(dv_view_t * V, dv_dag_node_t * node) {
       dv_animation_add(S->a, node);
     }
     break;
+  case 2:
+  case 3:
   case 4:
     if (dv_is_expanding(node)) {
       dv_node_flag_remove(node->f, DV_NODE_FLAG_EXPANDING);
@@ -706,6 +718,14 @@ dv_do_collapsing_one_1(dv_view_t * V, dv_dag_node_t * node) {
       dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKING);
     }
     dv_node_flag_set(node->f, DV_NODE_FLAG_SHRINKED);
+    // Histogram
+    if (V->D->H) {
+      dv_dag_node_t * x = NULL;
+      while ( (x = dv_dag_node_traverse_children(node, x)) ) {
+        dv_histogram_remove_node(V->D->H, x);
+      }
+      dv_histogram_add_node(V->D->H, node);
+    }
     break;
   default:
     dv_check(0);
@@ -749,7 +769,10 @@ dv_do_collapsing_one_r(dv_view_t * V, dv_dag_node_t * node) {
 
 static void
 dv_do_collapsing_one(dv_view_t * V) {
+  double start = dv_get_time();
   dv_do_collapsing_one_r(V, V->D->rt);
+  double end = dv_get_time();
+  fprintf(stderr, "traverse time: %lf\n", end - start);
   if (!V->S->a->on) {
     dv_view_layout(V);
     dv_queue_draw_d(V);
@@ -2813,8 +2836,8 @@ on_help_hotkeys_clicked(_unused_ GtkToolButton * toolbtn, _unused_ gpointer user
                                     "Tab : switch control between VIEWs\n"
                                     "Ctrl + 1 : dag view\n"
                                     "Ctrl + 2 : dagbox view\n"
-                                    "Ctrl + 3 : timeline view\n"
-                                    "Ctrl + 4 : timeline2 (horizontal) view\n"
+                                    "Ctrl + 3 : vertical timeline view\n"
+                                    "Ctrl + 4 : horizontal timeline view\n"
                                     "X : expand\n"
                                     "C : collapse\n"
                                     "H : horizontal fit\n"
@@ -3274,6 +3297,7 @@ on_stat_distribution_expand_dag_button_clicked(_unused_ GtkWidget * widget, gpoi
   dv_dag_expand_implicitly(D);
   dv_dag_set_status_label(D, CS->SD->dag_status_labels[D - CS->D]);
   dv_dag_node_pool_set_status_label(CS->pool, CS->SD->node_pool_label);
+  dv_histogram_entry_pool_set_status_label(CS->epool, CS->SD->entry_pool_label);
   return TRUE;
 }
 
@@ -3793,6 +3817,13 @@ dv_open_statistics_dialog() {
     gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
     CS->SD->node_pool_label = label;
     dv_dag_node_pool_set_status_label(CS->pool, label);
+    /* Entry Pool's status */
+    hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_box_pack_start(GTK_BOX(tab_box), hbox, FALSE, FALSE, 0);
+    label = gtk_label_new("");
+    gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
+    CS->SD->entry_pool_label = label;
+    dv_histogram_entry_pool_set_status_label(CS->epool, label);
   }
 
   /* Build breakdown graphs tab */

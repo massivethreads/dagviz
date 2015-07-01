@@ -128,7 +128,6 @@ typedef struct dv_llist {
 #define DV_MAX_DAG 10
 #define DV_MAX_VIEW 10
 #define DV_MAX_VIEWPORT 10
-#define DV_MAX_HISTOGRAM 5
 
 #define DV_OK 0
 #define DV_ERROR_OONP 1 /* out of node pool */
@@ -151,6 +150,7 @@ typedef struct dv_llist {
 
 #define DV_DEFAULT_PAGE_SIZE 1 << 20 // 1 MB
 #define DV_DEFAULT_PAGE_MIN_NODES 2
+#define DV_DEFAULT_PAGE_MIN_ENTRIES 2
 
 #define DV_MAX_DISTRIBUTION 10
 
@@ -162,6 +162,8 @@ typedef struct dv_llist {
 
 #define _unused_ __attribute__((unused))
 #define _static_unused_ static __attribute__((unused))
+
+#define DV_PARAPROF_MIN_ENTRY_INTERVAL 100000
 
 /*-----------------Data Structures-----------------*/
 
@@ -271,7 +273,7 @@ typedef struct dv_animation {
   double duration; /* milliseconds */
   double step; /* milliseconds */
   dv_llist_t movings[1]; /* list of moving nodes */
-  dv_view_t *V; /* view that possesses this animation */
+  dv_view_t * V; /* view that possesses this animation */
 } dv_animation_t;
 
 typedef struct dv_motion {
@@ -421,40 +423,14 @@ typedef enum {
   dv_histogram_layer_max,
 } dv_histogram_layer_t;
 
-typedef struct dv_histogram_entry dv_histogram_entry_t;
-
-typedef struct dv_histogram_piece {
-  dv_histogram_entry_t * e;
-  double h;
-  struct dv_histogram_piece * next;
-  dv_dag_node_t * node;
-} dv_histogram_piece_t;
-
-typedef struct dv_histogram_piece_pool {
-  dv_histogram_piece_t T[DV_HISTOGRAM_PIECE_POOL_SIZE];
-  char avail[DV_HISTOGRAM_PIECE_POOL_SIZE];
-  long sz;
-  long n;
-} dv_histogram_piece_pool_t;
-
 typedef struct dv_histogram_entry {
   double t;
-  dv_histogram_piece_t * pieces[dv_histogram_layer_max];
   struct dv_histogram_entry * next;
   double h[dv_histogram_layer_max];
   double sum_h;
 } dv_histogram_entry_t;
 
-typedef struct dv_histogram_entry_pool {
-  dv_histogram_entry_t T[DV_HISTOGRAM_ENTRY_POOL_SIZE];
-  char avail[DV_HISTOGRAM_ENTRY_POOL_SIZE];
-  long sz;
-  long n;
-} dv_histogram_entry_pool_t;
-
 typedef struct dv_histogram {
-  dv_histogram_entry_pool_t epool[1];
-  dv_histogram_piece_pool_t ppool[1];
   dv_histogram_entry_t * head_e;
   dv_histogram_entry_t * tail_e;
   long n_e;
@@ -462,6 +438,20 @@ typedef struct dv_histogram {
   dv_histogram_entry_t * max_e;
 } dv_histogram_t;
 
+typedef struct dv_histogram_entry_page {
+  struct dv_histogram_entry_page * next;
+  long sz;
+  dv_histogram_entry_t entries[DV_DEFAULT_PAGE_MIN_ENTRIES];
+} dv_histogram_entry_page_t;
+
+typedef struct dv_histogram_entry_pool {
+  dv_histogram_entry_t * head;
+  dv_histogram_entry_t * tail;
+  dv_histogram_entry_page_t * pages;
+  long sz; /* size in bytes */
+  long N;  /* total number of entries */
+  long n;  /* number of free entries */
+} dv_histogram_entry_pool_t;
 
 
 typedef struct dv_dag_node_page {
@@ -494,6 +484,7 @@ typedef struct dv_stat_distribution {
   long xrange_from, xrange_to;
   GtkWidget * dag_status_labels[DV_MAX_DAG];
   GtkWidget * node_pool_label;
+  GtkWidget * entry_pool_label;
   char * fn;
   int bar_width;
 } dv_stat_distribution_t;
@@ -507,7 +498,7 @@ typedef struct dv_stat_breakdown_graph {
 typedef struct dv_global_state {
   /* DAG */
   dv_pidag_t P[DV_MAX_DAG_FILE];
-  dv_dag_t  D[DV_MAX_DAG];
+  dv_dag_t D[DV_MAX_DAG];
   dv_view_t V[DV_MAX_VIEW];
   int nP;
   int nD;
@@ -531,12 +522,9 @@ typedef struct dv_global_state {
   dv_btsample_viewer_t btviewer[1];
   GtkWidget * box_viewport_configure;
 
-  /* Histograms */
-  dv_histogram_t H[DV_MAX_HISTOGRAM];
-  int nH;
-
-  /* Node Pool */
+  /* Memory Pools */
   dv_dag_node_pool_t pool[1];
+  dv_histogram_entry_pool_t epool[1];
 
   /* Statistics */
   dv_stat_distribution_t SD[1];
@@ -618,15 +606,6 @@ dv_pidag_t *     dv_pidag_read_new_file(char *);
 dr_pi_dag_node * dv_pidag_get_node_by_id(dv_pidag_t *, long);
 dr_pi_dag_node * dv_pidag_get_node_by_dag_node(dv_pidag_t *, dv_dag_node_t *);
 
-/*
-void            dv_dag_node_pool_init(dv_dag_t *);
-int             dv_dag_node_pool_is_empty(dv_dag_t *);
-dv_dag_node_t * dv_dag_node_pool_pop(dv_dag_t *);
-void            dv_dag_node_pool_push(dv_dag_t *, dv_dag_node_t *);
-long            dv_dag_node_pool_avail(dv_dag_t *);
-dv_dag_node_t * dv_dag_node_pool_pop_contiguous(dv_dag_t *, long);
-*/
-
 void dv_dag_node_init(dv_dag_node_t *, dv_dag_node_t *, long);
 int dv_dag_node_set(dv_dag_t *, dv_dag_node_t *);
 int dv_dag_build_node_inner(dv_dag_t *, dv_dag_node_t *);
@@ -657,7 +636,6 @@ void dv_view_scan(dv_view_t *);
 void dv_view_layout(dv_view_t *);
 double dv_view_calculate_rate(dv_view_t *, dv_dag_node_t *);
 double dv_view_calculate_reverse_rate(dv_view_t *, dv_dag_node_t *);
-double dv_get_time();
 void dv_animation_init(dv_view_t *V, dv_animation_t *);
 void dv_animation_start(dv_animation_t *);
 void dv_animation_stop(dv_animation_t *);
@@ -710,18 +688,20 @@ void dv_view_draw_dagbox(dv_view_t *, cairo_t *);
 
 
 /* view_timeline.c */
-void dv_view_layout_timeline2(dv_view_t *);
-void dv_view_draw_timeline2(dv_view_t *, cairo_t *);
+void dv_view_layout_timeline(dv_view_t *);
+void dv_view_draw_timeline(dv_view_t *, cairo_t *);
 
 
 /* view_timeline_ver.c */
-void dv_view_layout_timeline(dv_view_t *);
-void dv_view_draw_timeline(dv_view_t *, cairo_t *);
+void dv_view_layout_timeline_ver(dv_view_t *);
+void dv_view_draw_timeline_ver(dv_view_t *, cairo_t *);
 
 
 /* view_paraprof.c */
 void dv_histogram_init(dv_histogram_t *);
 void dv_histogram_add_node(dv_histogram_t *, dv_dag_node_t *);
+void dv_histogram_remove_node(dv_histogram_t *, dv_dag_node_t *);
+void dv_histogram_fini(dv_histogram_t *);
 void dv_histogram_draw(dv_histogram_t *, cairo_t *);
 void dv_histogram_reset(dv_histogram_t *);
 
@@ -763,6 +743,10 @@ void dv_dag_node_pool_init(dv_dag_node_pool_t *);
 dv_dag_node_t * dv_dag_node_pool_pop(dv_dag_node_pool_t *);
 void dv_dag_node_pool_push(dv_dag_node_pool_t *, dv_dag_node_t *);
 dv_dag_node_t * dv_dag_node_pool_pop_contiguous(dv_dag_node_pool_t *, long);
+
+void dv_histogram_entry_pool_init(dv_histogram_entry_pool_t *);
+dv_histogram_entry_t * dv_histogram_entry_pool_pop(dv_histogram_entry_pool_t *);
+void dv_histogram_entry_pool_push(dv_histogram_entry_pool_t *, dv_histogram_entry_t *);
 
 
 
@@ -985,6 +969,14 @@ dv_get_color_pool_index(int t, int v0, int v1, int v2, int v3) {
   CS->CP[t][n][3] = v3;
   CS->CP_sizes[t]++;
   return n;
+}
+
+_static_unused_ double
+dv_get_time() {
+  /* millisecond */
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  return tv.tv_sec * 1.0E3 + ((double)tv.tv_usec) / 1.0E3;
 }
 
 
