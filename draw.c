@@ -582,15 +582,8 @@ dv_view_draw_infotags(dv_view_t * V, cairo_t * cr, cairo_matrix_t * mt) {
 
 void
 dv_view_draw(dv_view_t * V, cairo_t * cr) {
-  dv_dag_t * D = V->D;
-  dv_view_status_t * S = V->S;
-  
   // Draw DAG
-  S->nd = 0;
-  S->ndh = 0;
-  D->cur_d = 0;
-  D->cur_d_ex = D->dmax;
-  switch (S->lt) {
+  switch (V->S->lt) {
   case 0:
     dv_view_draw_dag(V, cr);
     break;

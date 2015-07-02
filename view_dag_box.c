@@ -126,6 +126,8 @@ dv_layout_node_get_last_tail_xp_r(dv_view_t * V, dv_dag_node_t * node) {
 static void
 dv_view_layout_dagbox_node(dv_view_t * V, dv_dag_node_t * node) {
   V->S->nl++;
+  if (dv_is_shrinking(node) && (V->D->collapsing_d == 0 || node->d < V->D->collapsing_d))
+    V->D->collapsing_d = node->d;
   int lt = 1;
   dv_node_coordinate_t * nodeco = &node->c[lt];
   /* Calculate inward */
@@ -280,6 +282,7 @@ void dv_view_layout_dagbox(dv_view_t *V) {
   dv_node_coordinate_t *rtco = &D->rt->c[lt];
 
   // Relative coord
+  V->D->collapsing_d = 0;
   rtco->xpre = 0.0; // pre-based
   rtco->y = 0.0;
   dv_view_layout_dagbox_node(V, D->rt);
@@ -491,10 +494,15 @@ dv_view_draw_dagbox_edge_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
   }
 }
 
-void dv_view_draw_dagbox(dv_view_t *V, cairo_t *cr) {
+void
+dv_view_draw_dagbox(dv_view_t * V, cairo_t * cr) {
   cairo_set_line_width(cr, DV_NODE_LINE_WIDTH);
   // Draw nodes
   dv_llist_init(V->D->itl);
+  V->S->nd = 0;
+  V->S->ndh = 0;
+  V->D->cur_d = 0;
+  V->D->cur_d_ex = V->D->dmax;
   dv_view_draw_dagbox_node_r(V, cr, V->D->rt);
   // Draw edges
   cairo_save(cr);

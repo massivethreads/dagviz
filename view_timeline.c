@@ -5,6 +5,8 @@
 static void
 dv_view_layout_timeline_node(dv_view_t * V, dv_dag_node_t * node) {
   V->S->nl++;
+  if (dv_is_shrinking(node) && (V->D->collapsing_d == 0 || node->d < V->D->collapsing_d))
+    V->D->collapsing_d = node->d;
   int lt = 3;
   dv_node_coordinate_t * nodeco = &node->c[lt];
   dv_dag_t * D = V->D;
@@ -49,6 +51,7 @@ dv_view_layout_timeline_node(dv_view_t * V, dv_dag_node_t * node) {
 
 void
 dv_view_layout_timeline(dv_view_t * V) {
+  V->D->collapsing_d = 0;
   dv_view_layout_timeline_node(V, V->D->rt);
 }
 
@@ -137,6 +140,59 @@ dv_view_draw_timeline_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) 
 }
 
 static void
+dv_view_draw_timeline_node_ubi(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
+  int lt = 3;
+  dv_node_coordinate_t * nodeco = &node->c[lt];
+
+  // Node color
+  double c[4] = { 0.15, 0.15, 0.15, 0.2 };
+  /* Draw */
+  cairo_save(cr);
+  cairo_new_path(cr);
+  
+  // Ubiquitous box
+  double x = nodeco->x;
+  double xx, yy, w, h;
+  xx = x;
+  yy = 0.0;
+  w = nodeco->rw;
+  h = V->D->P->num_workers * (2 * V->D->radius);
+  double bound_left = dv_view_clip_get_bound_left(V);
+  double bound_right = dv_view_clip_get_bound_right(V);
+  double bound_up = dv_view_clip_get_bound_up(V);
+  double bound_down = dv_view_clip_get_bound_down(V);
+  if (xx < bound_right && xx + w > bound_left &&
+      yy < bound_down && yy + h > bound_up) {
+    if (xx < bound_left) {
+      w -= (bound_left - xx);
+      xx = bound_left;
+    }
+    if (xx + w > bound_right)
+      w = bound_right - xx;
+    if (yy < bound_up) {
+      h -= (bound_up - yy);
+      yy = bound_up;
+    }
+    if (yy + h > bound_down)
+      h = bound_down - yy;
+    // Draw path
+    cairo_move_to(cr, xx, yy);
+    cairo_line_to(cr, xx + w, yy);
+    cairo_line_to(cr, xx + w, yy + h);
+    cairo_line_to(cr, xx, yy + h);
+    cairo_close_path(cr);
+    // Draw node
+    cairo_set_source_rgba(cr, c[0], c[1], c[2], c[3]);
+    cairo_fill(cr);
+  }
+  // Flag to draw infotag
+  if (dv_llist_has(V->D->P->itl, (void *) node->pii)) {
+    dv_llist_add(V->D->itl, (void *) node);
+  }
+  cairo_restore(cr);
+}
+
+static void
 dv_view_draw_timeline_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
   // Count node
   V->S->ndh++;
@@ -146,6 +202,8 @@ dv_view_draw_timeline_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) 
   if (dv_is_union(node)) {
     if (dv_is_inner_loaded(node) && !dv_is_shrinked(node))
       dv_view_draw_timeline_node_r(V, cr, node->head);
+    else
+      dv_view_draw_timeline_node_ubi(V, cr, node);
   } else {
     dv_view_draw_timeline_node_1(V, cr, node);
   }
@@ -179,6 +237,10 @@ dv_view_draw_timeline(dv_view_t * V, cairo_t * cr) {
   */
   // Draw nodes
   dv_llist_init(V->D->itl);
+  V->S->nd = 0;
+  V->S->ndh = 0;
+  V->D->cur_d = 0;
+  V->D->cur_d_ex = V->D->dmax;
   dv_view_draw_timeline_node_r(V, cr, V->D->rt);
   // Draw worker numbers
   cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);

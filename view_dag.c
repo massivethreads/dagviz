@@ -6,6 +6,8 @@
 static void
 dv_view_layout_dag_node(dv_view_t * V, dv_dag_node_t * node) {
   V->S->nl++;
+  if (dv_is_shrinking(node) && (V->D->collapsing_d == 0 || node->d < V->D->collapsing_d))
+    V->D->collapsing_d = node->d;
   int lt = 0;
   dv_node_coordinate_t * nodeco = &node->c[lt];
   /* Calculate inward */
@@ -154,6 +156,7 @@ dv_view_layout_dag(dv_view_t * V) {
   dv_node_coordinate_t * rtco = &D->rt->c[lt];
 
   // Relative coord
+  V->D->collapsing_d = 0;
   rtco->xpre = 0.0; // pre-based
   rtco->y = 0.0;
   dv_view_layout_dag_node(V, D->rt);
@@ -185,12 +188,14 @@ dv_view_draw_dag_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
   
   /* Count drawn node */
   S->nd++;
-  if (node->d > D->cur_d)
+  if (node->d > D->cur_d) {
     D->cur_d = node->d;
+  }
   if (dv_is_union(node) && dv_is_inner_loaded(node)
       && dv_is_shrinked(node)
-      && node->d < D->cur_d_ex)
+      && node->d < D->cur_d_ex) {
     D->cur_d_ex = node->d;
+  }
   
   /* Alpha, Margin */
   double alpha = 1.0;
@@ -414,6 +419,10 @@ dv_view_draw_dag(dv_view_t * V, cairo_t * cr) {
   cairo_set_line_width(cr, DV_NODE_LINE_WIDTH);
   // Draw nodes
   dv_llist_init(V->D->itl);
+  V->S->nd = 0;
+  V->S->ndh = 0;
+  V->D->cur_d = 0;
+  V->D->cur_d_ex = V->D->dmax;
   dv_view_draw_dag_node_r(V, cr, V->D->rt);
   // Draw edges
   cairo_save(cr);

@@ -248,6 +248,7 @@ typedef struct dv_dag {
   /* expansion state */
   int cur_d; /* current depth */
   int cur_d_ex; /* current depth of extensible union nodes */
+  int collapsing_d; /* current depth excluding children of collapsing nodes */
 
   /* layout parameters */
   int sdt; /* scale down type: 0 (log), 1 (power), 2 (linear) */

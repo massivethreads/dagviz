@@ -5,6 +5,8 @@
 static void
 dv_view_layout_timeline_ver_node(dv_view_t * V, dv_dag_node_t * node) {
   V->S->nl++;
+  if (dv_is_shrinking(node) && (V->D->collapsing_d == 0 || node->d < V->D->collapsing_d))
+    V->D->collapsing_d = node->d;
   int lt = 2;
   dv_node_coordinate_t * nodeco = &node->c[lt];
   dv_dag_t * D = V->D;
@@ -51,6 +53,7 @@ void
 dv_view_layout_timeline_ver(dv_view_t * V) {
 
   // Absolute coord
+  V->D->collapsing_d = 0;
   dv_view_layout_timeline_ver_node(V, V->D->rt);
 
   // Check
@@ -162,13 +165,18 @@ dv_view_draw_timeline_ver_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * no
   }
 }
 
-void dv_view_draw_timeline_ver(dv_view_t *V, cairo_t *cr) {
+void
+dv_view_draw_timeline_ver(dv_view_t * V, cairo_t * cr) {
   // Set adaptive line width
   double line_width = dv_min(DV_NODE_LINE_WIDTH, DV_NODE_LINE_WIDTH / dv_min(V->S->zoom_ratio_x, V->S->zoom_ratio_y));
   cairo_set_line_width(cr, line_width);
   int i;
   // Draw nodes
   dv_llist_init(V->D->itl);
+  V->S->nd = 0;
+  V->S->ndh = 0;
+  V->D->cur_d = 0;
+  V->D->cur_d_ex = V->D->dmax;
   dv_view_draw_timeline_ver_node_r(V, cr, V->D->rt);
   // Draw worker numbers
   cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);

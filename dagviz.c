@@ -768,9 +768,45 @@ dv_do_collapsing_one_r(dv_view_t * V, dv_dag_node_t * node) {
 }
 
 static void
+dv_do_collapsing_one_depth_r(dv_view_t * V, dv_dag_node_t * node, int depth) {
+  if (!dv_is_set(node))
+    return;
+  if (dv_is_union(node) && dv_is_inner_loaded(node)
+      && !dv_is_shrinking(node)
+      && (dv_is_expanded(node) || dv_is_expanding(node))) {
+    // check if node has expanded node, excluding shrinking nodes
+    int has_expanded_node = 0;
+    /* Traverse all children */
+    dv_dag_node_t * x = NULL;
+    while ( (x = dv_dag_node_traverse_children(node, x)) ) {
+      if (dv_is_union(x) && dv_is_inner_loaded(x)
+          && (dv_is_expanded(x) || dv_is_expanding(x))
+          && !dv_is_shrinking(x)) {
+        has_expanded_node = 1;
+        break;
+      }
+    }
+    if (!has_expanded_node && node->d >= depth) {
+      // collapsing node's parent
+      dv_do_collapsing_one_1(V, node);
+    } else {
+      /* Call inward */
+      dv_do_collapsing_one_depth_r(V, node->head, depth);
+    }
+  }
+  
+  /* Call link-along */
+  dv_dag_node_t * x = NULL;
+  while ( (x = dv_dag_node_traverse_nexts(node, x)) ) {
+    dv_do_collapsing_one_depth_r(V, x, depth);
+  }
+}
+
+static void
 dv_do_collapsing_one(dv_view_t * V) {
   double start = dv_get_time();
-  dv_do_collapsing_one_r(V, V->D->rt);
+  //dv_do_collapsing_one_r(V, V->D->rt);
+  dv_do_collapsing_one_depth_r(V, V->D->rt, V->D->collapsing_d - 1);
   double end = dv_get_time();
   fprintf(stderr, "traverse time: %lf\n", end - start);
   if (!V->S->a->on) {
