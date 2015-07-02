@@ -7,8 +7,8 @@ dv_view_layout_timeline_node(dv_view_t * V, dv_dag_node_t * node) {
   V->S->nl++;
   if (node->d > V->D->collapsing_d)
     V->D->collapsing_d = node->d;
-  int lt = 3;
-  dv_node_coordinate_t * nodeco = &node->c[lt];
+  int coord = 3;
+  dv_node_coordinate_t * nodeco = &node->c[coord];
   dv_dag_t * D = V->D;
   dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, node);
   /* Calculate inward */
@@ -64,8 +64,8 @@ static void
 dv_view_draw_timeline_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
   dv_dag_t * D = V->D;
   dv_view_status_t * S = V->S;
-  int lt = 3;
-  dv_node_coordinate_t * nodeco = &node->c[lt];
+  int coord = 3;
+  dv_node_coordinate_t * nodeco = &node->c[coord];
   // Count node drawn
   S->nd++;
   if (node->d > D->cur_d)
@@ -141,8 +141,8 @@ dv_view_draw_timeline_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) 
 
 static void
 dv_view_draw_timeline_node_ubi(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
-  int lt = 3;
-  dv_node_coordinate_t * nodeco = &node->c[lt];
+  int coord = 3;
+  dv_node_coordinate_t * nodeco = &node->c[coord];
 
   // Node color
   double c[4] = { 0.15, 0.15, 0.15, 0.2 };
@@ -185,10 +185,6 @@ dv_view_draw_timeline_node_ubi(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node
     cairo_set_source_rgba(cr, c[0], c[1], c[2], c[3]);
     cairo_fill(cr);
   }
-  // Flag to draw infotag
-  if (dv_llist_has(V->D->P->itl, (void *) node->pii)) {
-    dv_llist_add(V->D->itl, (void *) node);
-  }
   cairo_restore(cr);
 }
 
@@ -230,7 +226,7 @@ dv_view_draw_timeline(dv_view_t * V, cairo_t * cr) {
   cairo_set_source_rgb(cr, grey->red, grey->green, grey->blue);
   cairo_paint(cr);
   cairo_set_source_rgb(cr, white->red, white->green, white->blue);
-  double width = V->D->rt->c[V->S->lt].rw;
+  double width = V->D->rt->c[V->S->coord].rw;
   double height = V->D->P->num_workers * (2 * V->D->radius);
   cairo_rectangle(cr, 0.0, 0.0, width, height);
   cairo_fill(cr);

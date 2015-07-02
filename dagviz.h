@@ -303,6 +303,7 @@ typedef struct dv_view_status {
   dv_animation_t a[1]; /* animation struct */
   long nd; /* number of nodes drawn */
   int lt; /* layout type */
+  int coord; /* index of coordinate to use in node structure's c array */
   int et; /* edge type */
   int edge_affix; /* edge affix length */
   int cm; /* click mode */
@@ -574,6 +575,7 @@ double dv_view_cairo_coordinate_bound_down(dv_view_t *);
 
 void dv_view_change_azf(dv_view_t *, int);
 
+void dv_view_status_set_coord(dv_view_status_t *);
 void dv_view_status_init(dv_view_t *, dv_view_status_t *);
 
 void dv_view_init(dv_view_t *);

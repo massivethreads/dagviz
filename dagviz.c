@@ -197,7 +197,7 @@ dv_view_get_zoomfit_hor(dv_view_t * V, double * zrx, double * zry, double * myx,
   double x = 0.0;
   double y = 0.0;
   double d1, d2, dw;
-  dv_node_coordinate_t *rtco = &D->rt->c[S->lt];
+  dv_node_coordinate_t *rtco = &D->rt->c[S->coord];
   switch (S->lt) {
   case 0:
     // DAG
@@ -271,7 +271,7 @@ dv_view_get_zoomfit_ver(dv_view_t * V, double * zrx, double * zry, double * myx,
   double x = 0.0;
   double y = 0.0;
   double d1, d2;
-  dv_node_coordinate_t * rtco = &D->rt->c[S->lt];
+  dv_node_coordinate_t * rtco = &D->rt->c[S->coord];
   switch (S->lt) {
   case 0:
     d1 = rtco->dw;
@@ -468,6 +468,7 @@ dv_view_change_lt(dv_view_t * V, int new_lt) {
     V->D->tolayout[old_lt]--;
     V->S->lt = new_lt;
     V->D->tolayout[new_lt]++;
+    dv_view_status_set_coord(V->S);
     // Update T
     if (GTK_IS_WIDGET(V->T->combobox_lt)) {
       gtk_combo_box_set_active(GTK_COMBO_BOX(V->T->combobox_lt), new_lt);
@@ -830,7 +831,7 @@ dv_do_collapsing_one(dv_view_t * V) {
 static dv_dag_node_t *
 dv_do_finding_clicked_node_1(dv_view_t * V, double x, double y, dv_dag_node_t * node) {
   dv_dag_node_t * ret = NULL;
-  dv_node_coordinate_t * c = &node->c[V->S->lt];
+  dv_node_coordinate_t * c = &node->c[V->S->coord];
   double vc, hc;
   switch (V->S->lt) {
   case 0:
@@ -883,7 +884,10 @@ dv_do_finding_clicked_node_r(dv_view_t * V, double x, double y, dv_dag_node_t * 
 
 static dv_dag_node_t *
 dv_do_finding_clicked_node(dv_view_t * V, double x, double y) {
-  return dv_do_finding_clicked_node_r(V, x, y, V->D->rt);
+  dv_dag_node_t * ret = dv_do_finding_clicked_node_r(V, x, y, V->D->rt);
+  if (ret)
+    printf("node %ld clicked\n", ret->pii);
+  return ret;
 }
 
 static void
@@ -1291,7 +1295,7 @@ static gboolean on_entry_search_activate(GtkEntry *entry, gpointer user_data) {
   if (!node)
     return TRUE;
   // Get target zoom ratio, x, y
-  dv_node_coordinate_t *co = &node->c[S->lt];
+  dv_node_coordinate_t *co = &node->c[S->coord];
   double zoom_ratio = 1.0;
   double x = 0.0;
   double y = 0.0;
@@ -1739,7 +1743,28 @@ on_btn_zoomfit_ver_clicked(_unused_ GtkToolButton * toolbtn, gpointer user_data)
   dv_do_zoomfit_ver(V);
 }
 
-
+void
+dv_view_status_set_coord(dv_view_status_t * S) {
+  switch (S->lt) {
+  case 0:
+    S->coord = 0;
+    break;
+  case 1:
+    S->coord = 1;
+    break;
+  case 2:
+    S->coord = 2;
+    break;
+  case 3:
+    S->coord = 3;
+    break;
+  case 4:
+    S->coord = 3;
+    break;
+  default:
+    dv_check(0);
+  }  
+}
 
 void
 dv_view_status_init(dv_view_t * V, dv_view_status_t * S) {
@@ -1751,6 +1776,7 @@ dv_view_status_init(dv_view_t * V, dv_view_status_t * S) {
   dv_animation_init(V, S->a);
   S->nd = 0;
   S->lt = DV_LAYOUT_TYPE_INIT;
+  dv_view_status_set_coord(S);
   S->et = DV_EDGE_TYPE_INIT;
   S->edge_affix = DV_EDGE_AFFIX_LENGTH;
   S->cm = DV_CLICK_MODE_INIT;

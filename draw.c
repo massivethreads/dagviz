@@ -237,8 +237,8 @@ dv_view_draw_edge_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * u, dv_dag_node_
   
   /* Get coordinates */
   double x1, y1, x2, y2;
-  dv_node_coordinate_t * uc = &u->c[S->lt];
-  dv_node_coordinate_t * vc = &v->c[S->lt];
+  dv_node_coordinate_t * uc = &u->c[S->coord];
+  dv_node_coordinate_t * vc = &v->c[S->coord];
   x1 = uc->x;
   y1 = uc->y + uc->dw;
   x2 = vc->x;
@@ -411,7 +411,7 @@ dv_view_draw_infotag_1(dv_view_t * V, cairo_t * cr, cairo_matrix_t * mt, dv_dag_
   
   // Get coordinates
   double xx, yy;
-  dv_node_coordinate_t * c = &node->c[S->lt];
+  dv_node_coordinate_t * c = &node->c[S->coord];
   xx = c->x + c->rw + 2 * padding;
   yy = c->y - 2 * padding;
   //cairo_matrix_transform_point(mt, &xx, &yy);

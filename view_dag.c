@@ -8,13 +8,13 @@ dv_view_layout_dag_node(dv_view_t * V, dv_dag_node_t * node) {
   V->S->nl++;
   if (dv_is_shrinking(node) && (V->D->collapsing_d == 0 || node->d < V->D->collapsing_d))
     V->D->collapsing_d = node->d;
-  int lt = 0;
-  dv_node_coordinate_t * nodeco = &node->c[lt];
+  int coord = 0;
+  dv_node_coordinate_t * nodeco = &node->c[coord];
   /* Calculate inward */
   if (dv_is_inward_callable(node)) {
     dv_check(node->head);
     // node's head's outward
-    dv_node_coordinate_t *headco = &node->head->c[lt];
+    dv_node_coordinate_t *headco = &node->head->c[coord];
     headco->xpre = 0.0;
     headco->y = nodeco->y;
     // Recursive call
@@ -43,7 +43,7 @@ dv_view_layout_dag_node(dv_view_t * V, dv_dag_node_t * node) {
     break;
   case 1:
     u = node->next;
-    uco = &u->c[lt];
+    uco = &u->c[coord];
     // node & u's rate
     rate = dv_view_calculate_rate(V, node->parent);
     // node's linked u's outward
@@ -60,8 +60,8 @@ dv_view_layout_dag_node(dv_view_t * V, dv_dag_node_t * node) {
   case 2:
     u = node->next;  // cont node
     v = node->spawn; // task node
-    uco = &u->c[lt];
-    vco = &v->c[lt];
+    uco = &u->c[coord];
+    vco = &v->c[coord];
     // node & u,v's rate
     rate = dv_view_calculate_rate(V, node->parent);
     // node's linked u,v's outward
@@ -77,7 +77,7 @@ dv_view_layout_dag_node(dv_view_t * V, dv_dag_node_t * node) {
     // u
     uco->xpre = (uco->link_lw - V->D->radius) + hgap;
     if (u->spawn)
-      uco->xpre = - u->spawn->c[lt].xpre;
+      uco->xpre = - u->spawn->c[coord].xpre;
     // v
     vco->xpre = (vco->link_rw - V->D->radius) + hgap;
     double left_push = 0.0;
@@ -100,13 +100,13 @@ dv_view_layout_dag_node(dv_view_t * V, dv_dag_node_t * node) {
 
 static void
 dv_view_layout_dag_node_2nd(dv_dag_node_t * node) {
-  int lt = 0;
-  dv_node_coordinate_t * nodeco = &node->c[lt];
+  int coord = 0;
+  dv_node_coordinate_t * nodeco = &node->c[coord];
   /* Calculate inward */
   if (dv_is_inward_callable(node)) {
     dv_check(node->head);
     // node's head's outward
-    dv_node_coordinate_t * headco = &node->head->c[lt];
+    dv_node_coordinate_t * headco = &node->head->c[coord];
     headco->xp = 0.0;
     headco->x = nodeco->x;
     // Recursive call
@@ -121,23 +121,23 @@ dv_view_layout_dag_node_2nd(dv_dag_node_t * node) {
     break;
   case 1:
     u = node->next;
-    uco = &u->c[lt];
+    uco = &u->c[coord];
     // node's linked u's outward
     uco->xp = uco->xpre + nodeco->xp;
-    uco->x = uco->xp + u->parent->c[lt].x;
+    uco->x = uco->xp + u->parent->c[coord].x;
     // Recursive call
     dv_view_layout_dag_node_2nd(u);
     break;
   case 2:
     u = node->next;  // cont node
     v = node->spawn; // task node
-    uco = &u->c[lt];
-    vco = &v->c[lt];
+    uco = &u->c[coord];
+    vco = &v->c[coord];
     // node's linked u,v's outward
     uco->xp = uco->xpre + nodeco->xp;
-    uco->x = uco->xp + u->parent->c[lt].x;
+    uco->x = uco->xp + u->parent->c[coord].x;
     vco->xp = vco->xpre + nodeco->xp;
-    vco->x = vco->xp + v->parent->c[lt].x;
+    vco->x = vco->xp + v->parent->c[coord].x;
     // Recursive call
     dv_view_layout_dag_node_2nd(u);
     dv_view_layout_dag_node_2nd(v);
@@ -152,8 +152,8 @@ dv_view_layout_dag_node_2nd(dv_dag_node_t * node) {
 void
 dv_view_layout_dag(dv_view_t * V) {
   dv_dag_t * D = V->D;
-  int lt = 0;
-  dv_node_coordinate_t * rtco = &D->rt->c[lt];
+  int coord = 0;
+  dv_node_coordinate_t * rtco = &D->rt->c[coord];
 
   // Relative coord
   V->D->collapsing_d = 0;
@@ -179,10 +179,10 @@ dv_view_draw_dag_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
   /* Get inputs */
   dv_dag_t * D = V->D;
   dv_view_status_t * S = V->S;
-  int lt = 0;
+  int coord = 0;
   dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, node);
   dr_dag_node_kind_t kind = pi->info.kind;
-  dv_node_coordinate_t * nodeco = &node->c[lt];
+  dv_node_coordinate_t * nodeco = &node->c[coord];
   double x = nodeco->x;
   double y = nodeco->y;
   
