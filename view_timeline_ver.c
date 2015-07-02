@@ -5,7 +5,7 @@
 static void
 dv_view_layout_timeline_ver_node(dv_view_t * V, dv_dag_node_t * node) {
   V->S->nl++;
-  if (dv_is_shrinking(node) && (V->D->collapsing_d == 0 || node->d < V->D->collapsing_d))
+  if (node->d > V->D->collapsing_d)
     V->D->collapsing_d = node->d;
   int lt = 2;
   dv_node_coordinate_t * nodeco = &node->c[lt];

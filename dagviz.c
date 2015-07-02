@@ -632,6 +632,12 @@ dv_do_expanding_one_1(dv_view_t * V, dv_dag_node_t * node) {
     break;
   case 2:
   case 3:
+    if (dv_is_shrinking(node)) {
+      dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKING);
+    } else if (dv_is_expanding(node)) {
+      dv_node_flag_remove(node->f, DV_NODE_FLAG_EXPANDING);
+    }
+    dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKED);
   case 4:
     if (dv_is_shrinking(node)) {
       dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKING);
@@ -711,6 +717,12 @@ dv_do_collapsing_one_1(dv_view_t * V, dv_dag_node_t * node) {
     break;
   case 2:
   case 3:
+    if (dv_is_expanding(node)) {
+      dv_node_flag_remove(node->f, DV_NODE_FLAG_EXPANDING);
+    } else if (dv_is_shrinking(node)) {
+      dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKING);
+    }
+    dv_node_flag_set(node->f, DV_NODE_FLAG_SHRINKED);
   case 4:
     if (dv_is_expanding(node)) {
       dv_node_flag_remove(node->f, DV_NODE_FLAG_EXPANDING);
