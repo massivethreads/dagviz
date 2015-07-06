@@ -776,7 +776,7 @@ process_one_sample(int c, const char *bin_file, const char *target, bt_sample_t 
 #endif /* DV_ENABLE_BFD */
 
 int
-dv_btsample_viewer_extract_interval(dv_btsample_viewer_t * btviewer, int worker, unsigned long long from, unsigned long long to) {
+dv_btsample_viewer_extract_interval(dv_btsample_viewer_t * btviewer, _unused_ int worker, _unused_ unsigned long long from, _unused_ unsigned long long to) {
 #ifdef DV_ENABLE_BFD  
   const char * binary_file = gtk_entry_get_text(GTK_ENTRY(btviewer->entry_binary_file_name));
   const char * btsample_file = gtk_entry_get_text(GTK_ENTRY(btviewer->entry_bt_file_name));

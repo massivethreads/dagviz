@@ -3297,7 +3297,7 @@ on_stat_distribution_show_button_clicked(_unused_ GtkWidget * widget, _unused_ g
   argv[2] = filename;
   argv[3] = NULL;
   int ret = g_spawn_async_with_pipes(NULL, argv, NULL,
-                                     G_SPAWN_DEFAULT | G_SPAWN_SEARCH_PATH,
+                                     G_SPAWN_SEARCH_PATH, //G_SPAWN_DEFAULT | G_SPAWN_SEARCH_PATH,
                                      NULL, NULL, &pid,
                                      NULL, NULL, NULL, NULL);
   if (!ret) {
@@ -3326,7 +3326,7 @@ on_stat_distribution_open_stat_button_clicked(_unused_ GtkWidget * widget, gpoin
   argv[1] = filename;
   argv[2] = NULL;
   int ret = g_spawn_async_with_pipes(NULL, argv, NULL,
-                                     G_SPAWN_DEFAULT | G_SPAWN_SEARCH_PATH,
+                                     G_SPAWN_SEARCH_PATH, //G_SPAWN_DEFAULT | G_SPAWN_SEARCH_PATH,
                                      NULL, NULL, &pid,
                                      NULL, NULL, NULL, NULL);
   if (!ret) {
@@ -3355,7 +3355,7 @@ on_stat_distribution_open_pp_button_clicked(_unused_ GtkWidget * widget, gpointe
   argv[2] = filename;
   argv[3] = NULL;
   int ret = g_spawn_async_with_pipes(NULL, argv, NULL,
-                                     G_SPAWN_DEFAULT | G_SPAWN_SEARCH_PATH,
+                                     G_SPAWN_SEARCH_PATH, //G_SPAWN_DEFAULT | G_SPAWN_SEARCH_PATH,
                                      NULL, NULL, &pid,
                                      NULL, NULL, NULL, NULL);
   if (!ret) {
@@ -3691,7 +3691,7 @@ on_stat_breakdown_show_button_clicked(_unused_ GtkWidget * widget, _unused_ gpoi
   argv[2] = filename;
   argv[3] = NULL;
   int ret = g_spawn_async_with_pipes(NULL, argv, NULL,
-                                     G_SPAWN_DEFAULT | G_SPAWN_SEARCH_PATH,
+                                     G_SPAWN_SEARCH_PATH, //G_SPAWN_DEFAULT | G_SPAWN_SEARCH_PATH,
                                      NULL, NULL, &pid,
                                      NULL, NULL, NULL, NULL);
   if (!ret) {
