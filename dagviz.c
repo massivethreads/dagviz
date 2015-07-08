@@ -2971,6 +2971,12 @@ on_file_export_clicked(_unused_ GtkToolButton * toolbtn, _unused_ gpointer user_
   fprintf(stdout, "Exported viewport %ld to 00dv.eps\n", VP - CS->VP);
   cairo_surface_destroy(surface);
 
+  /* SVG */
+  surface = cairo_svg_surface_create("00dv.svg", VP->vpw, VP->vph);
+  dv_viewport_export_to_surface(VP, surface);
+  fprintf(stdout, "Exported viewport %ld to 00dv.svg\n", VP - CS->VP);
+  cairo_surface_destroy(surface);
+
   return;  
 }
 
@@ -3040,10 +3046,33 @@ dv_export_viewports_to_eps_r(dv_viewport_t * VP, cairo_t * cr, double x, double 
 }
 
 static void
+dv_export_viewports_to_svg_r(dv_viewport_t * VP, cairo_t * cr, double x, double y) {
+  if (!VP) {
+    return;
+  } else if (!VP->split) {
+    cairo_save(cr);
+    cairo_translate(cr, x, y);
+    dv_viewport_draw(VP, cr);
+    cairo_restore(cr);
+  } else {
+    double w1, h1;
+    dv_export_viewports_get_size_r(VP->vp1, &w1, &h1);
+    if (VP->orientation == GTK_ORIENTATION_HORIZONTAL) {
+      dv_export_viewports_to_svg_r(VP->vp1, cr, x, y);
+      dv_export_viewports_to_svg_r(VP->vp2, cr, x + w1, y);
+    } else {
+      dv_export_viewports_to_svg_r(VP->vp1, cr, x, y);
+      dv_export_viewports_to_svg_r(VP->vp2, cr, x, y + h1);
+    }
+  }
+}
+
+static void
 on_file_export_all_clicked(_unused_ GtkToolButton * toolbtn, _unused_ gpointer user_data) {
   double w, h;
   dv_export_viewports_get_size_r(CS->VP, &w, &h);
   cairo_surface_t * surface;
+  cairo_t * cr;
   
   /* PNG */
   surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, w, h);
@@ -3052,17 +3081,29 @@ on_file_export_all_clicked(_unused_ GtkToolButton * toolbtn, _unused_ gpointer u
   fprintf(stdout, "Exported all viewports to 00dv.png\n");
   cairo_surface_destroy(surface);
   
+  GdkRGBA white[1];
+  gdk_rgba_parse(white, "white");
+
   /* EPS */
   surface = cairo_ps_surface_create("00dv.eps", w, h);
   cairo_ps_surface_set_eps(surface, TRUE);
-  cairo_t * cr = cairo_create(surface);
+  cr = cairo_create(surface);
   // Whiten background
-  GdkRGBA white[1];
-  gdk_rgba_parse(white, "white");
   cairo_set_source_rgba(cr, white->red, white->green, white->blue, white->alpha);
   cairo_paint(cr);
   dv_export_viewports_to_eps_r(CS->VP, cr, 0.0, 0.0);
   fprintf(stdout, "Exported all viewports to 00dv.eps\n");
+  cairo_destroy(cr);
+  cairo_surface_destroy(surface);
+  
+  /* EPS */
+  surface = cairo_svg_surface_create("00dv.svg", w, h);
+  cr = cairo_create(surface);
+  // Whiten background
+  cairo_set_source_rgba(cr, white->red, white->green, white->blue, white->alpha);
+  cairo_paint(cr);
+  dv_export_viewports_to_svg_r(CS->VP, cr, 0.0, 0.0);
+  fprintf(stdout, "Exported all viewports to 00dv.svg\n");
   cairo_destroy(cr);
   cairo_surface_destroy(surface);
   

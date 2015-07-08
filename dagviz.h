@@ -15,6 +15,7 @@
 #include <gtk/gtk.h>
 #include <cairo.h>
 #include <cairo-ps.h>
+#include <cairo-svg.h>
 
 #include <fcntl.h>
 #include <sys/mman.h>
