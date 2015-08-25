@@ -445,7 +445,7 @@ dv_view_draw_legend_dag(dv_view_t * V, cairo_t * cr) {
   double box_h = 20;
   double box_dis = 12;
   double box_down_margin = 2;
-  char s[L];
+  char s[DV_STRING_LENGTH];
   const double char_width = 7;
   const double line_height = 27;
   double x = V->S->vpw  - DV_STATUS_PADDING - L * char_width;

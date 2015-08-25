@@ -321,7 +321,7 @@ dv_view_draw_status(dv_view_t * V, cairo_t * cr, int count) {
   cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
   cairo_set_font_size(cr, 12);
 
-  char s[50];
+  char s[DV_STRING_LENGTH];
   const double char_width = 7;
   const double line_height = 15;
   double x = S->vpw  - DV_STATUS_PADDING;
@@ -454,7 +454,7 @@ dv_view_draw_infotag_1(dv_view_t * V, cairo_t * cr, cairo_matrix_t * mt, dv_dag_
   // Line 1
   /* TODO: adaptable string length */
   dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, node);
-  char * s = (char *) dv_malloc( DV_STRING_LENGTH * sizeof(char) );
+  char s[DV_STRING_LENGTH];
   sprintf(s, "[%ld] %s d=%d f=%d%d%d%d%d%d n=%ld/%ld/%ld",
           pi - D->P->T,
           dv_get_node_kind_name(pi->info.kind),
@@ -501,7 +501,7 @@ dv_view_draw_infotag_1(dv_view_t * V, cairo_t * cr, cairo_matrix_t * mt, dv_dag_
   yy += line_height;
 
   // Line 3
-  sprintf(s, "T=%llu/%llu,nodes=%ld/%ld/%ld/%ld,edges=%ld/%ld/%ld/%ld/%ld",
+  sprintf(s, "t_1/inf=%llu/%llu,nodes=%ld/%ld/%ld/%ld,edges=%ld/%ld/%ld/%ld/%ld",
           pi->info.t_1, 
           pi->info.t_inf,
           pi->info.logical_node_counts[dr_dag_node_kind_create_task],
@@ -547,9 +547,7 @@ dv_view_draw_infotag_1(dv_view_t * V, cairo_t * cr, cairo_matrix_t * mt, dv_dag_
   yy += line_height;
 
   // Line 5
-  dv_free(s, DV_STRING_LENGTH * sizeof(char));
   const char * ss = D->P->S->C + D->P->S->I[pi->info.start.pos.file_idx];
-  s = (char *) dv_malloc( strlen(ss) + 10 );
   sprintf(s, "%s:%ld",
           ss,
           pi->info.start.pos.line);
@@ -558,9 +556,7 @@ dv_view_draw_infotag_1(dv_view_t * V, cairo_t * cr, cairo_matrix_t * mt, dv_dag_
   yy += line_height;
 
   // Line 6
-  dv_free(s, strlen(ss) + 10);
   ss = D->P->S->C + D->P->S->I[pi->info.end.pos.file_idx];
-  s = (char *) dv_malloc( strlen(ss) + 10 );  
   sprintf(s, "%s:%ld",
           ss,
           pi->info.end.pos.line);
@@ -598,10 +594,10 @@ dv_view_draw(dv_view_t * V, cairo_t * cr) {
     break;
   case 4:
     if (V->D->H) {
-      double start = dv_get_time();
+      //double start = dv_get_time();
       dv_view_draw_paraprof(V, cr);
-      double end = dv_get_time();
-      fprintf(stderr, "draw time: %lf\n", end - start);
+      //double end = dv_get_time();
+      //fprintf(stderr, "draw time: %lf\n", end - start);
     } else {
       fprintf(stderr, "Warning: trying to draw type 4 without H.\n");
     }
@@ -620,7 +616,7 @@ dv_viewport_draw_label(dv_viewport_t * VP, cairo_t * cr) {
   cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
   cairo_set_font_size(cr, 12);
 
-  char s[20];
+  char s[DV_STRING_LENGTH];
   //const double char_width = 8;
   //const double line_height = 18;
   double x = DV_STATUS_PADDING;

@@ -4,7 +4,7 @@ prefix ?= $(parallel2_dir)/sys/inst/$(platform)
 
 CC := gcc
 
-cflags_1 ?= -Wall -Wextra -g -fno-stack-protector
+cflags_1 ?= -Wall -Wextra -g #-fno-stack-protector
 cflags_2 ?= #-DDV_ENABLE_LIBUNWIND
 cflags_3 ?= #-DDV_ENABLE_BFD
 
@@ -35,7 +35,7 @@ exe := dagviz
 compile_done : $(exe)
 	touch $@
 
-$(exe) : dagviz.h dagviz.c read.c layout.c draw.c utils.c print.c view_dag.c view_dag_box.c view_timeline.c view_timeline_ver.c view_paraprof.c process.c
+$(exe) : dagviz.h dagviz.c read.c layout.c draw.c utils.c print.c view_dag.c view_dag_box.c view_timeline.c view_timeline_ver.c view_paraprof.c process.c control.c
 	$(CC) $(CFLAGS) dagviz.c read.c layout.c draw.c utils.c print.c view_dag.c view_dag_box.c view_timeline.c view_timeline_ver.c view_paraprof.c $(LDFLAGS) -o $@
 
 install_done: compile_done

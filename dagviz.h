@@ -89,7 +89,7 @@ typedef struct dv_llist {
 
 #define DV_ZOOM_TO_FIT_MARGIN 15
 #define DV_ZOOM_TO_FIT_MARGIN_DOWN 20
-#define DV_STRING_LENGTH 100
+#define DV_STRING_LENGTH 1000
 #define DV_STATUS_PADDING 7
 #define DV_SAFE_CLICK_RANGE 1
 #define DV_UNION_NODE_MARGIN 6
@@ -439,6 +439,7 @@ typedef struct dv_histogram {
   long n_e;
   dv_dag_t * D;
   dv_histogram_entry_t * max_e;
+  double work, delay, nowork;
 } dv_histogram_t;
 
 typedef struct dv_histogram_entry_page {

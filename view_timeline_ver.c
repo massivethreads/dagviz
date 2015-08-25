@@ -182,7 +182,7 @@ dv_view_draw_timeline_ver(dv_view_t * V, cairo_t * cr) {
   cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
   cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);
   cairo_set_font_size(cr, 12);
-  char *s = (char *) dv_malloc( DV_STRING_LENGTH * sizeof(char) );
+  char s[DV_STRING_LENGTH];
   double xx, yy;
   xx = V->D->radius;
   yy = -4;
