@@ -241,31 +241,34 @@ dv_histogram_draw_entry(dv_histogram_t * H, dv_histogram_entry_t * e, cairo_t * 
 
 static void
 dv_histogram_cal_work_delay_nowork(dv_histogram_t * H) {
-  double work = 0.0;
-  double delay = 0.0;
-  double nowork = 0.0;
+  H->work = H->delay = H->nowork = 0.0;
+  double work_p, delay_p, nowork_p;
+  double p_bound = H->D->P->num_workers * 2 * H->D->radius;
   dv_histogram_entry_t * e = H->head_e;
   while (e != NULL && e->next) {
-    work += e->h[dv_histogram_layer_running];
     int layer = dv_histogram_layer_running;
+    work_p = e->h[layer];
     double p = 0.0;
     while (layer < dv_histogram_layer_max) {
       p += e->h[layer++];
     }
-    double p_bound = H->D->P->num_workers * 2 * H->D->radius;
     if (p < p_bound) {
-      nowork += p_bound - p;
-      delay += p - e->h[dv_histogram_layer_running];
+      nowork_p = p_bound - p;
+      delay_p = p - work_p;
     } else {
-      delay += p_bound - e->h[dv_histogram_layer_running];
+      nowork_p = 0.0;
+      delay_p = p_bound - work_p;
     }
-    double interval = e->next->t - e->t;
-    H->work = dv_dag_scale_down(H->D, interval * ( work / (2 * H->D->radius) )) / H->D->P->num_workers;
-    H->delay = dv_dag_scale_down(H->D, interval * ( delay / (2 * H->D->radius) )) / H->D->P->num_workers;
-    H->nowork = dv_dag_scale_down(H->D, interval * ( nowork / (2 * H->D->radius) )) / H->D->P->num_workers;
+    double interval = (e->next->t - e->t) / H->D->linear_radix;
+    H->work += interval * ( work_p / (2 * H->D->radius) );
+    H->delay += interval * ( delay_p / (2 * H->D->radius) );
+    H->nowork += interval * ( nowork_p / (2 * H->D->radius) );
     e = e->next;
   }
-  printf("  work = %lf\n delay = %lf\nnowork = %lf\n", H->work, H->delay, H->nowork);
+  H->work /= H->D->P->num_workers;
+  H->delay /= H->D->P->num_workers;
+  H->nowork /= H->D->P->num_workers;
+  //printf("  work,delay,nowork = %10lf, %10lf, %10lf\n", H->work, H->delay, H->nowork);
 }
 
 void
