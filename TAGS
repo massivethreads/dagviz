@@ -1,0 +1,460 @@
+
+control.c,1398
+on_draw_event(5,92
+on_btn_zoomfit_full_clicked(12,282
+on_btn_shrink_clicked(18,471
+on_btn_expand_clicked(24,651
+on_scroll_event(30,834
+on_button_event(44,1216
+on_motion_event(58,1606
+on_combobox_lt_changed(72,1996
+on_combobox_nc_changed(81,2295
+on_combobox_sdt_changed(89,2532
+on_entry_radix_activate(100,2852
+on_entry_remark_activate(110,3131
+static gboolean on_entry_search_activate(146,3982
+static gboolean on_combobox_frombt_changed(245,7611
+static gboolean on_combobox_et_changed(253,7866
+on_togg_eaffix_toggled(261,8102
+on_combobox_cm_changed(281,8671
+on_combobox_hm_changed(288,8877
+on_combobox_azf_changed(295,9083
+on_darea_configure_event(303,9327
+on_window_key_event(321,9783
+on_viewport_tool_icon_clicked(430,12399
+on_btn_choose_bt_file_clicked(436,12594
+on_btn_choose_binary_file_clicked(462,13772
+on_btn_find_node_clicked(488,14962
+on_btn_run_view_bt_samples_clicked(508,15960
+on_checkbox_xzoom_toggled(523,16622
+on_checkbox_yzoom_toggled(529,16798
+on_checkbox_scale_radix_toggled(535,16974
+on_checkbox_legend_toggled(541,17166
+on_checkbox_status_toggled(548,17367
+on_checkbox_remain_inner_toggled(555,17568
+on_checkbox_color_remarked_only_toggled(561,17757
+on_checkbox_scale_radius_toggled(568,17987
+on_checkbox_azf_toggled(574,18174
+on_btn_run_dag_scan_clicked(580,18368
+on_btn_zoomfit_hor_clicked(587,18546
+on_btn_zoomfit_ver_clicked(593,18711
+
+dagviz.c,6761
+dv_global_state_t  CS[CS3,21
+const char * const DV_COLORS[DV_COLORS5,48
+const char * const DV_HISTOGRAM_COLORS[DV_HISTOGRAM_COLORS14,570
+const int DV_LINEAR_PATTERN_STOPS_NUM 17,674
+const char * const DV_LINEAR_PATTERN_STOPS[DV_LINEAR_PATTERN_STOPS18,717
+const char * const DV_RADIAL_PATTERN_STOPS[DV_RADIAL_PATTERN_STOPS26,985
+const int DV_RADIAL_PATTERN_STOPS_NUM 29,1055
+dv_get_env_int(34,1166
+dv_get_env_long(44,1308
+dv_get_env_string(54,1452
+dv_get_env(64,1602
+dv_global_state_init(75,1776
+void dv_global_state_set_active_view(114,2837
+dv_view_t * dv_global_state_get_active_view(118,2912
+dv_queue_draw(129,3109
+dv_queue_draw_d(137,3250
+dv_queue_draw_d_p(146,3407
+dv_do_zooming(177,4109
+dv_view_get_zoomfit_hor(191,4523
+dv_do_zoomfit_hor(259,6320
+dv_view_get_zoomfit_ver(265,6475
+dv_do_zoomfit_ver(329,8307
+dv_view_do_zoomfit_based_on_lt(335,8462
+dv_view_do_zoomfit_full(355,8753
+dv_view_set_entry_radix_text(374,9200
+dv_view_set_entry_remark_text(385,9550
+dv_view_change_radix(393,9806
+dv_view_change_sdt(399,9941
+dv_view_change_eaffix(407,10101
+dv_view_change_nc(421,10491
+dv_view_change_lt(432,10755
+dv_view_clip(488,12076
+dv_view_clip_get_bound_left(494,12307
+dv_view_clip_get_bound_right(499,12444
+dv_view_clip_get_bound_up(504,12596
+dv_view_clip_get_bound_down(509,12731
+dv_view_cairo_coordinate_bound_left(514,12882
+dv_view_cairo_coordinate_bound_right(519,13021
+dv_view_cairo_coordinate_bound_up(524,13161
+dv_view_cairo_coordinate_bound_down(529,13298
+dv_view_prepare_drawing(534,13442
+dv_viewport_draw(573,14753
+dv_do_expanding_one_1(616,15811
+dv_do_expanding_one_r(664,17265
+dv_do_expanding_one(690,17906
+dv_do_collapsing_one_1(703,18210
+dv_do_collapsing_one_r(749,19567
+dv_do_collapsing_one_depth_r(784,20589
+dv_do_collapsing_one(819,21674
+dv_do_finding_clicked_node_1(832,22045
+dv_do_finding_clicked_node_r(863,22733
+dv_do_finding_clicked_node(886,23438
+dv_do_set_focused_view(894,23659
+dv_view_toolbox_init(932,24561
+dv_view_toolbox_get_combobox_lt(1018,29608
+dv_view_toolbox_get_combobox_nc(1034,30547
+dv_view_toolbox_get_combobox_sdt(1051,31551
+dv_view_toolbox_get_entry_radix(1065,32293
+dv_view_toolbox_get_combobox_frombt(1076,32739
+dv_view_toolbox_get_combobox_et(1089,33453
+dv_view_toolbox_get_togg_eaffix(1104,34258
+dv_view_toolbox_get_checkbox_legend(1118,34939
+dv_view_toolbox_get_checkbox_status(1128,35354
+dv_view_toolbox_get_entry_remark(1138,35769
+dv_view_toolbox_get_checkbox_remain_inner(1149,36253
+dv_view_toolbox_get_checkbox_color_remarked_only(1159,36711
+dv_view_toolbox_get_window(1175,37422
+    tab_label 1295,42197
+    tab_box 1296,42239
+    GtkWidget * grid 1299,42370
+    int num;1301,42472
+    GtkWidget * label;1302,42485
+    GtkWidget * widget;1303,42508
+    num 1305,42533
+    label 1306,42546
+    widget 1307,42583
+    num 1311,42751
+    label 1312,42764
+    widget 1313,42822
+    num 1317,42999
+    label 1318,43012
+    widget 1319,43051
+    num 1324,43324
+    label 1325,43337
+    widget 1326,43393
+    tab_label 1333,43621
+    tab_box 1334,43665
+    GtkWidget * grid 1337,43796
+    int num;1339,43898
+    GtkWidget * label;1340,43911
+    GtkWidget * widget;1341,43934
+    num 1343,43959
+    label 1344,43972
+    widget 1345,44023
+    num 1349,44173
+    label 1350,44186
+    widget 1351,44237
+    num 1355,44387
+    label 1356,44400
+    widget 1357,44462
+    num 1361,44623
+    label 1362,44636
+    widget 1363,44676
+    num 1367,44824
+    label 1368,44837
+    widget 1369,44889
+    num 1373,45060
+    label 1374,45073
+    widget 1375,45129
+    num 1379,45296
+    label 1380,45309
+    widget 1381,45366
+  T->window window1386,45537
+dv_view_init(1392,45588
+dv_view_t * dv_view_create_new_with_dag(1403,45792
+dv_view_open_toolbox_window(1417,46034
+dv_view_change_mainvp(1423,46191
+dv_view_add_viewport(1433,46359
+dv_view_remove_viewport(1444,46583
+dv_view_switch_viewport(1463,46984
+dv_viewport_create_new(1481,47453
+dv_viewport_toolbox_init(1490,47608
+dv_viewport_init(1574,51581
+dv_viewport_show_children(1619,53498
+dv_viewport_show(1637,53926
+dv_viewport_change_split(1655,54468
+dv_viewport_change_orientation(1687,55227
+dv_viewport_change_mainv(1706,55810
+dv_viewport_add_view(1721,56127
+dv_viewport_remove_view(1730,56316
+dv_viewport_create_frame(1747,56697
+on_viewport_options_split_changed(1766,57316
+on_viewport_options_orientation_changed(1791,57984
+dv_viewport_update_configure_box(1814,58733
+dv_viewport_redraw_configure_box(1869,61295
+dv_alternate_menubar(1884,61668
+on_view_add_new(1893,61966
+on_dag_add_new(1905,62255
+on_menu_item_view_samples_clicked(1916,62524
+on_help_hotkeys_clicked(2022,68096
+dv_viewport_export_to_surface(2054,69483
+on_file_export_clicked(2068,69875
+dv_export_viewports_get_size_r(2106,71083
+dv_export_viewports_to_img_r(2128,71601
+dv_export_viewports_to_eps_r(2148,72342
+dv_export_viewports_to_svg_r(2170,72993
+on_file_export_all_clicked(2192,73644
+on_viewport_select_view(2236,75043
+on_viewport_configure_clicked(2264,75870
+on_stat_distribution_dag_changed(2293,76714
+on_stat_distribution_type_changed(2320,77634
+on_stat_distribution_stolen_changed(2328,77871
+on_stat_distribution_title_activate(2336,78116
+on_stat_distribution_xrange_from_activate(2348,78541
+on_stat_distribution_xrange_to_activate(2355,78788
+on_stat_distribution_granularity_activate(2362,79018
+on_stat_distribution_add_button_clicked(2369,79242
+on_stat_distribution_output_filename_activate(2375,79392
+on_stat_distribution_show_button_clicked(2386,79831
+on_stat_distribution_open_stat_button_clicked(2470,82397
+on_stat_distribution_open_pp_button_clicked(2500,83376
+on_stat_distribution_expand_dag_button_clicked(2529,84332
+on_stat_breakdown_dag_checkbox_toggled(2539,84757
+on_stat_breakdown_output_filename_activate(2546,84947
+  void (*process_event)process_event2557,85386
+  dr_pi_dag * G;2558,85455
+  dr_clock_t cum_running;2559,85472
+  dr_clock_t cum_delay;2560,85498
+  dr_clock_t cum_no_work;2561,85522
+  dr_clock_t t;2562,85548
+  long n_running;2563,85564
+  long n_ready;2564,85582
+  long n_workers;2565,85598
+  dr_clock_t total_elapsed;2566,85616
+  dr_clock_t total_t_1;2567,85644
+  long * edge_counts;2568,85668
+} dr_basic_stat;2569,85706
+dr_calc_inner_delay(2576,85831
+dr_calc_edges(2615,86983
+#define EDGE_COUNTS(2627,87440
+#undef EDGE_COUNTS2688,89234
+dr_basic_stat_init(2693,89293
+dr_basic_stat_process_event(2715,89916
+on_stat_breakdown_show_button_clicked(2773,91238
+dv_open_statistics_dialog(2864,93931
+on_file_statistics_clicked(3107,105750
+dv_create_menubar(3118,106011
+open_gui(3273,113192
+dv_alarm_set(3335,115069
+dv_signal_handler(3340,115115
+dv_alarm_init(3351,115388
+main(3360,115541
+
+draw.c,740
+void dv_draw_text(5,79
+void dv_draw_rounded_rectangle(25,528
+dv_draw_path_isosceles_triangle(49,1304
+dv_draw_path_isosceles_triangle_upside_down(59,1572
+dv_draw_path_rectangle(69,1846
+dv_draw_path_rounded_rectangle(80,2126
+dv_draw_path_circle(97,2650
+dv_lookup_color_value(109,2890
+dv_lookup_color(139,3436
+dv_create_color_linear_pattern(145,3638
+dv_get_color_linear_pattern(161,4092
+dv_get_color_radial_pattern(202,5293
+double dv_view_get_alpha_fading_out(216,5789
+double dv_view_get_alpha_fading_in(224,6024
+dv_view_draw_edge_1(233,6248
+dv_view_draw_status(316,8155
+dv_view_draw_infotag_1(402,10297
+dv_view_draw_infotags(572,15312
+dv_view_draw(580,15541
+dv_viewport_draw_label(613,16232
+dv_view_draw_legend(635,16811
+
+layout.c,538
+dv_view_layout_with_type(6,96
+dv_view_layout(36,707
+dv_view_calculate_rate(50,1046
+double dv_view_calculate_reverse_rate(66,1488
+void dv_animation_init(82,1906
+static gboolean dv_animation_tick(90,2091
+void dv_animation_start(155,3865
+void dv_animation_stop(160,3974
+void dv_animation_add(164,4034
+void dv_animation_remove(172,4229
+void dv_animation_reverse(176,4336
+dv_motion_reset(191,4783
+dv_motion_init(201,4984
+dv_motion_tick(210,5169
+dv_motion_reset_target(230,5776
+dv_motion_start(244,6139
+dv_motion_stop(251,6360
+
+print.c,431
+char * dv_get_node_kind_name(3,21
+char * dv_get_edge_kind_name(22,455
+void dv_print_pidag_node(41,899
+void dv_print_pidag_edge(91,2498
+void dv_print_pi_string_table(105,2782
+void dv_print_dvdag(140,3518
+void dv_print_layout(173,4454
+static void * read_pi_dag_node(180,4563
+static void * read_pi_dag_edge(186,4708
+static void * read_pi_string_table(192,4853
+void dv_print_dag_file(201,5097
+void dv_check_layout(258,6243
+
+process.c,579
+dv_filename_get_short_name(6,114
+dv_dag_collect_delays_r(21,454
+dv_dag_collect_sync_delays_r(48,1349
+dv_dag_collect_intervals_r(78,2384
+dv_dag_expand_implicitly_r(96,3001
+dv_dag_expand_implicitly(123,3644
+dv_dag_set_status_label(128,3740
+dv_dag_node_pool_set_status_label(138,4167
+dv_histogram_entry_pool_set_status_label(145,4425
+dv_do_scrolling(152,4698
+dv_do_button_event(210,6198
+dv_do_motion_event(284,8493
+static dv_dag_node_t * dv_find_node_with_pii_r(349,10296
+dv_view_change_azf(372,10927
+dv_view_status_set_coord(378,11088
+dv_view_status_init(401,11393
+
+read.c,1529
+dv_pidag_read_new_file(6,88
+dv_pidag_read_new_file_bk(50,1054
+dv_pidag_get_node_id(120,2653
+dv_pidag_get_node_id_with_offset(125,2748
+dv_pidag_get_node_by_id(130,2884
+dv_pidag_get_node_by_dag_node(137,3038
+dv_pidag_get_node_by_offset(143,3209
+dv_node_coordinate_init(155,3537
+dv_dag_node_init(169,3764
+dv_dag_node_set(192,4287
+dv_dag_build_node_inner(217,4954
+dv_dag_collapse_node_inner(303,7488
+dv_dag_clear_shrinked_nodes_1(330,8170
+dv_dag_clear_shrinked_nodes_r(335,8292
+dv_dag_clear_shrinked_nodes(375,9370
+dv_dag_init(380,9465
+dv_dag_create_new_with_pidag(408,10080
+dv_dag_get_radix(435,10695
+dv_dag_set_radix(454,10972
+dv_pidag_node_lookup_value(471,11224
+dv_dag_node_lookup_value(505,12146
+dv_dag_node_traverse_children(511,12348
+dv_dag_node_traverse_children_inorder(527,12697
+dv_dag_node_traverse_tails(549,13156
+dv_dag_node_traverse_nexts(571,13535
+dv_dag_node_count_nexts(581,13744
+dv_dag_node_get_next(591,13930
+dv_dag_node_get_single_head(597,14041
+dv_dag_node_get_single_last(607,14238
+void dv_btsample_viewer_init(622,14538
+static asymbol **syms;syms642,15368
+static bfd_vma pc;643,15422
+static const char *filename;filename644,15441
+static const char *functionname;functionname645,15470
+static unsigned int line;646,15503
+static bfd_boolean found;647,15529
+slurp_symtab(656,15887
+find_address_in_section(677,16412
+translate_addresses(702,17052
+process_one_sample(738,18146
+dv_btsample_viewer_extract_interval(779,19088
+dv_view_scan_r(814,20179
+dv_view_scan(859,21288
+
+utils.c,1321
+#define DV_STACK_CELL_SZ 3,21
+#define DV_LLIST_CELL_SZ 4,48
+dv_linked_list_t * dv_linked_list_create(9,117
+void dv_linked_list_destroy(14,262
+void dv_linked_list_init(18,357
+void * dv_linked_list_remove(24,453
+void dv_linked_list_add(47,869
+void dv_stack_init(67,1273
+void dv_stack_fini(72,1346
+static dv_stack_cell_t * dv_stack_ensure_freelist(85,1666
+void dv_stack_push(100,2014
+void * dv_stack_pop(109,2212
+void dv_llist_init(124,2484
+void dv_llist_fini(129,2550
+dv_llist_t * dv_llist_create(141,2749
+void dv_llist_destroy(147,2884
+int dv_llist_is_empty(152,2986
+static dv_llist_cell_t * dv_llist_ensure_freelist(159,3076
+void dv_llist_add(179,3519
+void * dv_llist_pop(193,3782
+void * dv_llist_get(207,4013
+void * dv_llist_get_top(222,4279
+void * dv_llist_remove(226,4352
+int dv_llist_has(255,4857
+void * dv_llist_iterate_next(268,5057
+int dv_llist_size(284,5370
+const char * dv_convert_char_to_binary(295,5579
+double dv_max(305,5757
+double dv_min(312,5850
+dv_dag_node_pool_init(328,6077
+dv_dag_node_pool_add_page(338,6264
+dv_dag_node_pool_pop(368,7218
+dv_dag_node_pool_push(382,7499
+dv_dag_node_pool_pop_contiguous(391,7694
+dv_histogram_entry_pool_init(422,8290
+dv_histogram_entry_pool_add_page(432,8498
+dv_histogram_entry_pool_pop(462,9529
+dv_histogram_entry_pool_push(476,9838
+
+view_dag_box.c,556
+dv_dag_scale_down(6,85
+dv_view_scale_down(26,404
+dv_view_calculate_vgap(31,508
+dv_view_calculate_vsize(51,1227
+dv_layout_node_get_last_finished_tail(88,2393
+dv_layout_node_get_xp_by_accumulating_xpre(101,2853
+dv_layout_node_get_last_tail_xp_r(113,3079
+dv_view_layout_dagbox_node(127,3469
+dv_view_layout_dagbox_node_2nd(229,6787
+void dv_view_layout_dagbox(279,8120
+dv_view_draw_dagbox_node_1(306,8677
+dv_view_draw_dagbox_node_r(433,12210
+dv_view_draw_dagbox_edge_1(455,12818
+dv_view_draw_dagbox_edge_r(460,12977
+dv_view_draw_dagbox(498,14022
+
+view_dag.c,298
+dv_view_layout_dag_node(7,88
+dv_view_layout_dag_node_2nd(102,2923
+dv_view_layout_dag(153,4242
+dv_view_draw_dag_node_1(178,4748
+dv_view_draw_dag_node_r(353,9955
+dv_view_draw_dag_edge_1(375,10551
+dv_view_draw_dag_edge_r(380,10707
+dv_view_draw_dag(418,11751
+dv_view_draw_legend_dag(437,12216
+
+view_paraprof.c,739
+dv_histogram_init(6,74
+dv_histogram_entry_init(16,257
+static long int count_insert_entry;26,439
+static long int count_pile_entry;27,475
+static long int count_pile;28,509
+static long int count_add_node;29,537
+dv_histogram_insert_entry(32,600
+dv_histogram_pile_entry(70,1471
+dv_histogram_pile(79,1714
+dv_histogram_add_node(95,2281
+dv_histogram_unpile_entry(132,3871
+dv_histogram_unpile(140,4094
+dv_histogram_remove_node(156,4665
+dv_histogram_fini(192,6279
+dv_histogram_draw_piece(211,6645
+dv_histogram_draw_entry(226,7074
+dv_histogram_cal_work_delay_nowork(243,7569
+dv_histogram_draw(275,8631
+dv_histogram_reset_node(285,8874
+dv_histogram_reset(322,9729
+dv_view_layout_paraprof(335,9994
+dv_view_draw_paraprof(345,10205
+
+view_timeline.c,218
+dv_view_layout_timeline_node(6,97
+dv_view_layout_timeline(53,1407
+dv_view_draw_timeline_node_1(64,1666
+dv_view_draw_timeline_node_ubi(143,3854
+dv_view_draw_timeline_node_r(192,5182
+dv_view_draw_timeline(214,5799
+
+view_timeline_ver.c,197
+dv_view_layout_timeline_ver_node(6,97
+dv_view_layout_timeline_ver(53,1436
+dv_view_draw_timeline_ver_node_1(70,1760
+dv_view_draw_timeline_ver_node_r(149,3973
+dv_view_draw_timeline_ver(169,4546
