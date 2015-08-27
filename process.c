@@ -206,6 +206,68 @@ dv_do_scrolling(dv_view_t * V, GdkEventScroll * event) {
   }
 }
 
+static dv_dag_node_t *
+dv_do_finding_clicked_node_1(dv_view_t * V, double x, double y, dv_dag_node_t * node) {
+  dv_dag_node_t * ret = NULL;
+  dv_node_coordinate_t * c = &node->c[V->S->coord];
+  double vc, hc;
+  switch (V->S->lt) {
+  case 0:
+    // DAG
+    vc = c->x;
+    hc = c->y;
+    if (vc - V->D->radius < x && x < vc + V->D->radius
+        && hc < y && y < hc + 2 * V->D->radius) {
+      ret = node;
+    }
+    break;
+  case 1:
+  case 2:
+  case 3:
+  case 4:
+    // dagbox/timeline_ver/timeline/paraprof layouts
+    if (c->x - c->lw < x && x < c->x + c->rw
+        && c->y < y && y < c->y + c->dw) {
+      ret = node;
+    }
+    break;
+  default:
+    dv_check(0);
+  }
+  return ret;
+}
+
+static dv_dag_node_t *
+dv_do_finding_clicked_node_r(dv_view_t * V, double x, double y, dv_dag_node_t * node) {
+  dv_dag_node_t * ret = NULL;
+  /* Call inward */
+  if (dv_is_union(node) && dv_is_inner_loaded(node)
+      && !dv_is_shrinking(node)
+      && (dv_is_expanded(node) || dv_is_expanding(node))) {
+    ret = dv_do_finding_clicked_node_r(V, x, y, node->head);
+    if (ret)
+      return ret;
+  } else if (dv_do_finding_clicked_node_1(V, x, y, node)) {
+      return node;
+  }
+  /* Call link-along */
+  dv_dag_node_t * next = NULL;
+  while ( (next = dv_dag_node_traverse_nexts(node, next)) ) {
+    ret = dv_do_finding_clicked_node_r(V, x, y, next);
+    if (ret)
+      return ret;
+  }
+  return NULL;
+}
+
+static dv_dag_node_t *
+dv_do_finding_clicked_node(dv_view_t * V, double x, double y) {
+  dv_dag_node_t * ret = dv_do_finding_clicked_node_r(V, x, y, V->D->rt);
+  if (ret)
+    printf("node %ld clicked\n", ret->pii);
+  return ret;
+}
+
 static void
 dv_do_button_event(dv_view_t * V, GdkEventButton * event) {
   if (V->S->adjust_auto_zoomfit)

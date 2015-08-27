@@ -564,7 +564,6 @@ dv_view_draw_infotag_1(dv_view_t * V, cairo_t * cr, cairo_matrix_t * mt, dv_dag_
   cairo_show_text(cr, s);
   yy += line_height;
   
-  dv_free(s, strlen(ss) + 10);
   cairo_restore(cr);
 }
 
