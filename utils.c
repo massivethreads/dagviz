@@ -375,6 +375,7 @@ dv_dag_node_pool_pop(dv_dag_node_pool_t * pool) {
     pool->tail = NULL;
   ret->next = NULL;
   pool->n--;
+  dv_statusbar_update_pool_status();
   return ret;
 }
 
@@ -385,6 +386,7 @@ dv_dag_node_pool_push(dv_dag_node_pool_t * pool, dv_dag_node_t * node) {
   if (!pool->tail)
     pool->tail = node;
   pool->n++;
+  dv_statusbar_update_pool_status();
 }
 
 dv_dag_node_t *
@@ -407,6 +409,7 @@ dv_dag_node_pool_pop_contiguous(dv_dag_node_pool_t * pool, long num) {
     pool->tail = NULL;
   ret_->next = NULL;
   pool->n -= num;
+  dv_statusbar_update_pool_status();
   return ret;
 }
 
@@ -469,6 +472,7 @@ dv_histogram_entry_pool_pop(dv_histogram_entry_pool_t * pool) {
     pool->tail = NULL;
   ret->next = NULL;
   pool->n--;
+  dv_statusbar_update_pool_status();
   return ret;
 }
 
@@ -479,6 +483,7 @@ dv_histogram_entry_pool_push(dv_histogram_entry_pool_t * pool, dv_histogram_entr
   if (!pool->tail)
     pool->tail = node;
   pool->n++;
+  dv_statusbar_update_pool_status();
 }
 
 

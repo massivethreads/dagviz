@@ -36,7 +36,7 @@ compile_done : $(exe)
 	touch $@
 
 $(exe) : dagviz.h dagviz.c read.c layout.c draw.c utils.c print.c view_dag.c view_dag_box.c view_timeline.c view_timeline_ver.c view_paraprof.c process.c control.c
-	$(CC) $(CFLAGS) dagviz.c read.c layout.c draw.c utils.c print.c view_dag.c view_dag_box.c view_timeline.c view_timeline_ver.c view_paraprof.c $(LDFLAGS) -o $@
+	$(CC) $(CFLAGS) dagviz.c read.c layout.c draw.c utils.c print.c view_dag.c view_dag_box.c view_timeline.c view_timeline_ver.c view_paraprof.c process.c $(LDFLAGS) -o $@
 
 install_done: compile_done
 	mkdir -p $(prefix)/bin

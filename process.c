@@ -2,7 +2,7 @@
 
 /******************Statistical Process**************************************/
 
-static char *
+char *
 dv_filename_get_short_name(char * fn) {
   char * p_from = strrchr(fn, '/');
   char * p_to = strrchr(fn, '.');
@@ -17,7 +17,7 @@ dv_filename_get_short_name(char * fn) {
   return ret;
 }
 
-static void
+void
 dv_dag_collect_delays_r(dv_dag_t * D, dv_dag_node_t * node, FILE * out, dv_stat_distribution_entry_t * e) {
   if (!node)
     dv_check(node);
@@ -44,7 +44,7 @@ dv_dag_collect_delays_r(dv_dag_t * D, dv_dag_node_t * node, FILE * out, dv_stat_
   }
 }
 
-static void
+void
 dv_dag_collect_sync_delays_r(dv_dag_t * D, dv_dag_node_t * node, FILE * out, dv_stat_distribution_entry_t * e) {
   if (!node)
     dv_check(node);
@@ -74,7 +74,7 @@ dv_dag_collect_sync_delays_r(dv_dag_t * D, dv_dag_node_t * node, FILE * out, dv_
   }
 }
 
-static void
+void
 dv_dag_collect_intervals_r(dv_dag_t * D, dv_dag_node_t * node, FILE * out, dv_stat_distribution_entry_t * e) {
   if (!node)
     dv_check(node);
@@ -119,12 +119,12 @@ dv_dag_expand_implicitly_r(dv_dag_t * D, dv_dag_node_t * node) {
   }
 }
 
-static void
+void
 dv_dag_expand_implicitly(dv_dag_t * D) {
   dv_dag_expand_implicitly_r(D, D->rt);
 }
 
-static void
+void
 dv_dag_set_status_label(dv_dag_t * D, GtkWidget * label) {
   char str[100];
   dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, D->rt);
@@ -134,21 +134,385 @@ dv_dag_set_status_label(dv_dag_t * D, GtkWidget * label) {
 
 /******************end of Statistical Process**************************************/
 
-static void
+void
 dv_dag_node_pool_set_status_label(dv_dag_node_pool_t * pool, GtkWidget * label) {
   char str[100];
   sprintf(str, "Node Pool: %ld / %ld (%ldMB)", pool->N - pool->n, pool->N, pool->sz / (1 << 20) );
   gtk_label_set_text(GTK_LABEL(label), str);
 }
 
-static void
+void
 dv_histogram_entry_pool_set_status_label(dv_histogram_entry_pool_t * pool, GtkWidget * label) {
   char str[100];
   sprintf(str, "Entry Pool: %ld / %ld (%ldMB)", pool->N - pool->n, pool->N, pool->sz / (1 << 20) );
   gtk_label_set_text(GTK_LABEL(label), str);
 }
 
+
+
+void
+dv_view_get_zoomfit_hor(dv_view_t * V, double * zrx, double * zry, double * myx, double * myy) {
+  dv_dag_t * D = V->D;
+  dv_view_status_t * S = V->S;
+  double w = S->vpw;
+  double h = S->vph;
+  double zoom_ratio = 1.0;
+  double x = 0.0;
+  double y = 0.0;
+  double d1, d2, dw;
+  dv_node_coordinate_t *rtco = &D->rt->c[S->coord];
+  switch (S->lt) {
+  case 0:
+    // DAG
+    d1 = rtco->lw + rtco->rw;
+    d2 = w - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    if (d1 > d2)
+      zoom_ratio = d2 / d1;
+    x -= (rtco->rw - rtco->lw) * 0.5 * zoom_ratio;
+    break;
+  case 1:
+    // DAG with Boxes
+    d1 = rtco->lw + rtco->rw;
+    d2 = w - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    if (d1 > d2)
+      zoom_ratio = d2 / d1;
+    x -= (rtco->rw - rtco->lw) * 0.5 * zoom_ratio;
+    break;
+  case 2:
+    // Vertical Timeline
+    d1 = 2 * D->radius + (D->P->num_workers - 1) * DV_HDIS;
+    d2 = w - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    if (d1 > d2)
+      zoom_ratio = d2 / d1;
+    break;
+  case 3:
+    // Horizontal Timeline
+    d1 = 10 + rtco->rw;
+    d2 = w - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    if (d1 > d2)
+      zoom_ratio = d2 / d1;
+    dw = D->P->num_workers * (D->radius * 2);
+    y += (h - dw * zoom_ratio) * 0.4;
+    break;
+  case 4:
+    // Parallelism profile
+    d1 = dv_dag_scale_down(V->D, V->D->et - V->D->bt);
+    d2 = w - 2 * DV_HISTOGRAM_MARGIN;
+    if (d1 > d2)
+      zoom_ratio = d2 / d1;
+    y -= V->D->P->num_workers * 2 * V->D->radius * zoom_ratio;
+    double dy = (h - DV_HISTOGRAM_MARGIN_DOWN
+                 - DV_HISTOGRAM_MARGIN
+                 - zoom_ratio
+                 * (D->P->num_workers * 2 * D->radius
+                    + D->H->max_e->sum_h)
+                 ) / 2.0;
+    if (dy > 0)
+      y -= dy;
+    break;
+  default:
+    dv_check(0);
+  }
+  *zrx = *zry  = zoom_ratio;
+  *myx = x;
+  *myy = y;
+}
+
+void
+dv_do_zoomfit_hor(dv_view_t * V) {
+  dv_view_get_zoomfit_hor(V, &V->S->zoom_ratio_x, &V->S->zoom_ratio_y, &V->S->x, &V->S->y);
+  dv_queue_draw(V);
+}
+
+void
+dv_view_get_zoomfit_ver(dv_view_t * V, double * zrx, double * zry, double * myx, double * myy) {
+  dv_dag_t * D = V->D;
+  dv_view_status_t * S = V->S;
+  double w = S->vpw;
+  double h = S->vph;
+  double zoom_ratio = 1.0;
+  double x = 0.0;
+  double y = 0.0;
+  double d1, d2;
+  dv_node_coordinate_t * rtco = &D->rt->c[S->coord];
+  switch (S->lt) {
+  case 0:
+    d1 = rtco->dw;
+    d2 = h - DV_ZOOM_TO_FIT_MARGIN - DV_ZOOM_TO_FIT_MARGIN_DOWN;
+    if (d1 > d2)
+      zoom_ratio = d2 / d1;
+    x -= (rtco->rw - rtco->lw) * 0.5 * zoom_ratio;
+    break;
+  case 1:
+    d1 = rtco->dw;
+    d2 = h - DV_ZOOM_TO_FIT_MARGIN - DV_ZOOM_TO_FIT_MARGIN_DOWN;
+    if (d1 > d2)
+      zoom_ratio = d2 / d1;    
+    x -= (rtco->rw - rtco->lw) * 0.5 * zoom_ratio;
+    break;
+  case 2:
+    // Vertical Timeline
+    d1 = 10 + rtco->dw;
+    d2 = h - DV_ZOOM_TO_FIT_MARGIN - DV_ZOOM_TO_FIT_MARGIN_DOWN;
+    if (d1 > d2)
+      zoom_ratio = d2 / d1;
+    double lrw = 2 * D->radius + (D->P->num_workers - 1) * DV_HDIS;
+    x += (w - lrw * zoom_ratio) * 0.5;
+    break;
+  case 3:
+    // Horizontal Timeline
+    d1 = D->P->num_workers * (D->radius * 2);
+    d2 = h - DV_ZOOM_TO_FIT_MARGIN - DV_ZOOM_TO_FIT_MARGIN_DOWN;
+    if (d1 > d2)
+      zoom_ratio = d2 / d1;
+    break;
+  case 4:
+    // Parallelism profile
+    d1 = D->P->num_workers * (2 * D->radius) + D->H->max_e->sum_h;
+    d2 = h - DV_HISTOGRAM_MARGIN - DV_HISTOGRAM_MARGIN_DOWN;
+    if (d1 > d2)
+      zoom_ratio = d2 / d1;
+    y -= D->P->num_workers * (2 * D->radius) * zoom_ratio;
+    double dx = (w - 2 * DV_HISTOGRAM_MARGIN - zoom_ratio * dv_dag_scale_down(V->D, V->D->et - V->D->bt)) / 2.0;
+    if (dx > 0)
+      x += dx;
+    break;
+  default:
+    dv_check(0);
+  }
+  *zrx = *zry = zoom_ratio;
+  *myx = x;
+  *myy = y;
+  S->zoom_ratio_x = S->zoom_ratio_y = zoom_ratio;
+  S->x = x;
+  S->y = y;
+}
+
+void
+dv_do_zoomfit_ver(dv_view_t * V) {
+  dv_view_get_zoomfit_ver(V, &V->S->zoom_ratio_x, &V->S->zoom_ratio_y, &V->S->x, &V->S->y);
+  dv_queue_draw(V);
+}
+
+void
+dv_view_do_zoomfit_based_on_lt(dv_view_t * V) {
+  switch (V->S->lt) {
+  case 0:
+  case 1:
+  case 2:
+    dv_do_zoomfit_ver(V);
+    break;
+  case 3:
+    dv_do_zoomfit_hor(V);
+    break;
+  case 4:
+    dv_do_zoomfit_hor(V);
+    break;
+  default:
+    dv_do_zoomfit_ver(V);
+    break;
+  }
+}
+
+void
+dv_view_do_zoomfit_full(dv_view_t * V) {
+  double h_zrx, h_zry, h_x, h_y;
+  dv_view_get_zoomfit_hor(V, &h_zrx, &h_zry, &h_x, &h_y);
+  double v_zrx, v_zry, v_x, v_y;
+  dv_view_get_zoomfit_ver(V, &v_zrx, &v_zry, &v_x, &v_y);
+  if (v_zrx < h_zrx) {
+    h_zrx = v_zrx;
+    h_zry = v_zry;
+    h_x = v_x;
+    h_y = v_y;
+  }
+  V->S->zoom_ratio_x = h_zrx;
+  V->S->zoom_ratio_y = h_zry;
+  V->S->x = h_x;
+  V->S->y = h_y;
+  dv_queue_draw(V);
+}
+
+void
+dv_view_change_radix(dv_view_t * V, double radix) {
+  dv_dag_set_radix(V->D, radix);
+  dv_view_set_entry_radix_text(V);
+}
+
+void
+dv_view_set_entry_radix_text(dv_view_t * V) {
+  char str[DV_ENTRY_RADIX_MAX_LENGTH];
+  double radix = dv_dag_get_radix(V->D);
+  sprintf(str, "%lf", radix);
+  if (GTK_IS_WIDGET(V->T->entry_radix)) {
+    gtk_entry_set_width_chars(GTK_ENTRY(V->T->entry_radix), strlen(str));
+    gtk_entry_set_text(GTK_ENTRY(V->T->entry_radix), str);
+  }
+}
+
+void
+dv_view_set_entry_remark_text(dv_view_t * V, char * str) {
+  if (GTK_IS_WIDGET(V->T->entry_remark)) {
+    gtk_entry_set_width_chars(GTK_ENTRY(V->T->entry_remark), strlen(str));
+    gtk_entry_set_text(GTK_ENTRY(V->T->entry_remark), str);
+  }
+}
+
+void
+dv_view_change_sdt(dv_view_t * V, int new_sdt) {
+  if (new_sdt != V->D->sdt) {
+    V->D->sdt = new_sdt;
+    dv_view_set_entry_radix_text(V);
+  }
+}
+
+void
+dv_view_change_eaffix(dv_view_t * V, int active) {
+  if (active)
+    V->S->edge_affix = DV_EDGE_AFFIX_LENGTH;
+  else
+    V->S->edge_affix = 0;
+  if (GTK_IS_WIDGET(V->T->togg_eaffix)) {
+    if (active)
+      gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(V->T->togg_eaffix), TRUE);
+    else
+      gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(V->T->togg_eaffix), FALSE);
+  }
+}
+
+void
+dv_view_change_nc(dv_view_t * V, int new_nc) {
+  int old_nc = V->S->nc;
+  if (new_nc != old_nc) {
+    V->S->nc = new_nc;
+    if (GTK_IS_WIDGET(V->T->combobox_nc)) {
+      gtk_combo_box_set_active(GTK_COMBO_BOX(V->T->combobox_nc), new_nc);
+    }
+  }
+}
+
+void
+dv_view_change_lt(dv_view_t * V, int new_lt) {
+  int old_lt = V->S->lt;
+  if (new_lt != old_lt) {
+    // edge affix, sdt
+    switch (new_lt) {
+    case 0:
+      dv_view_change_nc(V, 0);
+      dv_view_change_eaffix(V, 0);
+      break;
+    case 1:
+      dv_view_change_nc(V, 0);
+      dv_view_change_eaffix(V, 0);
+      //dv_view_change_sdt(V, 0);
+      break;
+    case 2:
+    case 3:
+    case 4:
+      dv_view_change_sdt(V, 2);
+      dv_view_change_nc(V, 2); // node kind
+      break;
+    default:
+      break;
+    }
+    // Paraprof: check H structure
+    if (new_lt == 4) {
+      if (!V->D->H) {
+        V->D->H = dv_malloc( sizeof(dv_histogram_t) );
+        dv_histogram_init(V->D->H);
+        V->D->H->D = V->D;
+      } else {
+        dv_histogram_fini(V->D->H);
+        V->D->H->D = V->D;
+      }
+      dv_histogram_reset(V->D->H);
+    }
+    // Change lt
+    V->D->tolayout[old_lt]--;
+    V->S->lt = new_lt;
+    V->D->tolayout[new_lt]++;
+    dv_view_status_set_coord(V->S);
+    // Update T
+    if (GTK_IS_WIDGET(V->T->combobox_lt)) {
+      gtk_combo_box_set_active(GTK_COMBO_BOX(V->T->combobox_lt), new_lt);
+    }
+    // Re-layout
+    dv_view_layout(V);
+    // zoomfit
+    if (V->S->auto_zoomfit) {
+      //dv_view_do_zoomfit_based_on_lt(V);
+      dv_view_do_zoomfit_full(V);
+    }
+    dv_queue_draw_d(V);
+  }
+}
+
+void
+dv_do_set_focused_view(dv_view_t * V, int focused) {
+  if (!V)
+    return;
+  if (focused) {
+    dv_global_state_set_active_view(V);
+    V->S->focused = 1;
+    int i;
+    /*
+    for (i = 0; i < CS->nVP; i++)
+      if (V->mVP[i])
+        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(CS->VP[i].T->togg_focused), TRUE);
+    */
+    for (i=0; i<CS->nV; i++)
+      if (V != CS->V + i)
+        dv_do_set_focused_view(CS->V + i, 0);
+  } else {
+    if (V == dv_global_state_get_active_view())
+      dv_global_state_set_active_view(NULL);
+    V->S->focused = 0;
+    /*
+    int i;
+    for (i = 0; i < CS->nVP; i++)
+      if (V->mVP[i])
+        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(CS->VP[i].T->togg_focused), FALSE);
+    */
+  }
+}
+
+/*
 static void
+dv_do_zooming_x(dv_view_t * V, double new_zrx, double posx) {
+  dv_view_status_t * S = V->S;
+  posx -= S->basex + S->x;
+  double deltax = posx / S->zoom_ratio_x * new_zrx - posx;
+  S->x -= deltax;
+  S->zoom_ratio_x = new_zrx;
+  dv_queue_draw(V);
+}
+
+static void
+dv_do_zooming_y(dv_view_t * V, double new_zry, double posy) {
+  dv_view_status_t * S = V->S;
+  posy -= S->basey + S->y;
+  double deltay = posy / S->zoom_ratio_y * new_zry - posy;
+  S->y -= deltay;
+  S->zoom_ratio_y = new_zry;
+  dv_queue_draw(V);
+}
+*/
+
+static void
+dv_do_zooming(dv_view_t * V, double new_zrx, double new_zry, double posx, double posy) {
+  dv_view_status_t * S = V->S;
+  posx -= S->basex + S->x;
+  posy -= S->basey + S->y;
+  double deltax = posx / S->zoom_ratio_x * new_zrx - posx;
+  double deltay = posy / S->zoom_ratio_y * new_zry - posy;
+  S->x -= deltax;
+  S->y -= deltay;
+  S->zoom_ratio_x = new_zrx;
+  S->zoom_ratio_y = new_zry;
+  dv_queue_draw(V);
+}
+
+void
 dv_do_scrolling(dv_view_t * V, GdkEventScroll * event) {
   if (V->S->adjust_auto_zoomfit)
     dv_view_change_azf(V, 0);
@@ -204,6 +568,81 @@ dv_do_scrolling(dv_view_t * V, GdkEventScroll * event) {
     dv_do_zooming(V, zoomx, zoomy, event->x, event->y);
     
   }
+}
+
+void
+dv_statusbar_update(int statusbar_id, int context_id, char * s) {
+  GtkWidget * statusbar = NULL;
+  switch (statusbar_id) {
+  case 1:
+    statusbar = CS->statusbar1;
+    break;
+  case 2:
+    statusbar = CS->statusbar2;
+    break;
+  case 3:
+    statusbar = CS->statusbar3;
+    break;
+  default:
+    break;
+  }
+  if (statusbar) {
+    gtk_statusbar_push(GTK_STATUSBAR(statusbar), context_id, s);
+  }
+}
+
+void
+dv_statusbar_remove(int statusbar_id, int context_id) {
+  GtkWidget * statusbar = NULL;
+  switch (statusbar_id) {
+  case 1:
+    statusbar = CS->statusbar1;
+    break;
+  case 2:
+    statusbar = CS->statusbar2;
+    break;
+  case 3:
+    statusbar = CS->statusbar3;
+    break;
+  default:
+    break;
+  }
+  if (statusbar) {
+    gtk_statusbar_pop(GTK_STATUSBAR(statusbar), context_id);
+  }
+}
+
+void
+dv_statusbar_update_selection_status() {
+  if (!CS->activeV) {
+    dv_statusbar_remove(2, 0);
+    return;
+  }
+  char s[DV_STRING_LENGTH];
+  dv_view_t * V = CS->activeV;
+  sprintf(s, "DAG %ld: %ld/%ld/%ld (depth:%d/%d)",
+          V->D - CS->D,
+          V->S->nd, V->S->ndh, V->D->P->n,
+          V->D->cur_d, V->D->dmax);
+  dv_statusbar_update(2, 0, s);
+  sprintf(s, "Currently focused DAG: %s (change by tab key)", V->D->P->fn);
+  if (CS->statusbar2)
+    gtk_widget_set_tooltip_text(GTK_WIDGET(CS->statusbar2), s);
+}
+
+void
+dv_statusbar_update_pool_status() {
+  char s[DV_STRING_LENGTH];
+  sprintf(s, "Pools: nodes:%ld/%ld(%ldMB)",
+          CS->pool->N - CS->pool->n,
+          CS->pool->N,
+          CS->pool->sz / (1 << 20));
+  sprintf(s, "%s, entries:%ld/%ld(%ldMB)",
+          s,
+          CS->epool->N - CS->epool->n,
+          CS->epool->N,
+          CS->epool->sz / (1 << 20));
+  dv_statusbar_update(3, 0, s);
 }
 
 static dv_dag_node_t *
@@ -263,12 +702,233 @@ dv_do_finding_clicked_node_r(dv_view_t * V, double x, double y, dv_dag_node_t * 
 static dv_dag_node_t *
 dv_do_finding_clicked_node(dv_view_t * V, double x, double y) {
   dv_dag_node_t * ret = dv_do_finding_clicked_node_r(V, x, y, V->D->rt);
-  if (ret)
-    printf("node %ld clicked\n", ret->pii);
+  if (ret) {
+    char s[DV_STRING_LENGTH];
+    sprintf(s, "Node %ld", ret->pii);
+    dv_statusbar_update(1, 0, s);
+  } else {
+    dv_statusbar_remove(1, 0);
+  }
   return ret;
 }
 
 static void
+dv_do_expanding_one_1(dv_view_t * V, dv_dag_node_t * node) {
+  if (!dv_is_inner_loaded(node))
+    if (dv_dag_build_node_inner(V->D, node) != DV_OK) return;
+  dv_view_status_t * S = V->S;
+  switch (S->lt) {
+  case 0:
+  case 1:
+    // add to animation
+    if (dv_is_shrinking(node)) {
+      dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKING);
+      dv_node_flag_set(node->f, DV_NODE_FLAG_SHRINKED);
+      dv_node_flag_set(node->f, DV_NODE_FLAG_EXPANDING);
+      dv_animation_reverse(S->a, node);
+    } else {
+      dv_node_flag_set(node->f, DV_NODE_FLAG_EXPANDING);
+      dv_animation_add(S->a, node);
+    }
+    break;
+  case 2:
+  case 3:
+    if (dv_is_shrinking(node)) {
+      dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKING);
+    } else if (dv_is_expanding(node)) {
+      dv_node_flag_remove(node->f, DV_NODE_FLAG_EXPANDING);
+    }
+    dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKED);
+  case 4:
+    if (dv_is_shrinking(node)) {
+      dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKING);
+    } else if (dv_is_expanding(node)) {
+      dv_node_flag_remove(node->f, DV_NODE_FLAG_EXPANDING);
+    }
+    dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKED);
+    // Histogram
+    if (V->D->H) {
+      dv_histogram_remove_node(V->D->H, node);
+      dv_dag_node_t * x = NULL;
+      while ( (x = dv_dag_node_traverse_children(node, x)) ) {
+        dv_histogram_add_node(V->D->H, x);
+      }
+    }
+    break;
+  default:
+    dv_check(0);
+  }
+}
+
+static void
+dv_do_expanding_one_r(dv_view_t * V, dv_dag_node_t * node) {
+  V->S->ntr++;
+  if (!dv_is_set(node))
+    dv_dag_node_set(V->D, node);
+  if (dv_is_union(node)) {
+    if ((!dv_is_inner_loaded(node)
+         || dv_is_shrinked(node)
+         || dv_is_shrinking(node))
+        && !dv_is_expanding(node)) {
+      // expand node
+      dv_do_expanding_one_1(V, node);
+    } else {
+      /* Call inward */
+      dv_check(node->head);
+      dv_do_expanding_one_r(V, node->head);
+    }
+  }
+  
+  /* Call link-along */
+  dv_dag_node_t * x = NULL;
+  while ( (x = dv_dag_node_traverse_nexts(node, x)) ) {
+    dv_do_expanding_one_r(V, x);
+  }
+}
+
+void
+dv_do_expanding_one(dv_view_t * V) {
+  V->S->ntr = 0;
+  //double start = dv_get_time();
+  dv_do_expanding_one_r(V, V->D->rt);
+  //double end = dv_get_time();
+  //fprintf(stderr, "traverse time: %lf\n", end - start);
+  if (!V->S->a->on) {
+    dv_view_layout(V);
+    dv_queue_draw_d(V);
+  }
+}
+
+static void
+dv_do_collapsing_one_1(dv_view_t * V, dv_dag_node_t * node) {
+  dv_view_status_t * S = V->S;
+  switch (S->lt) {
+  case 0:
+  case 1:
+    // add to animation
+    if (dv_is_expanding(node)) {
+      dv_node_flag_remove(node->f, DV_NODE_FLAG_EXPANDING);
+      dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKED);
+      dv_node_flag_set(node->f, DV_NODE_FLAG_SHRINKING);
+      dv_animation_reverse(S->a, node);
+    } else {
+      dv_node_flag_set(node->f, DV_NODE_FLAG_SHRINKING);
+      dv_animation_add(S->a, node);
+    }
+    break;
+  case 2:
+  case 3:
+    if (dv_is_expanding(node)) {
+      dv_node_flag_remove(node->f, DV_NODE_FLAG_EXPANDING);
+    } else if (dv_is_shrinking(node)) {
+      dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKING);
+    }
+    dv_node_flag_set(node->f, DV_NODE_FLAG_SHRINKED);
+  case 4:
+    if (dv_is_expanding(node)) {
+      dv_node_flag_remove(node->f, DV_NODE_FLAG_EXPANDING);
+    } else if (dv_is_shrinking(node)) {
+      dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKING);
+    }
+    dv_node_flag_set(node->f, DV_NODE_FLAG_SHRINKED);
+    // Histogram
+    if (V->D->H) {
+      dv_dag_node_t * x = NULL;
+      while ( (x = dv_dag_node_traverse_children(node, x)) ) {
+        dv_histogram_remove_node(V->D->H, x);
+      }
+      dv_histogram_add_node(V->D->H, node);
+    }
+    break;
+  default:
+    dv_check(0);
+  }
+}
+
+_static_unused_ void
+dv_do_collapsing_one_r(dv_view_t * V, dv_dag_node_t * node) {
+  if (!dv_is_set(node))
+    return;
+  if (dv_is_union(node) && dv_is_inner_loaded(node)
+      && !dv_is_shrinking(node)
+      && (dv_is_expanded(node) || dv_is_expanding(node))) {
+    // check if node has expanded node, excluding shrinking nodes
+    int has_expanded_node = 0;
+    /* Traverse all children */
+    dv_dag_node_t * x = NULL;
+    while ( (x = dv_dag_node_traverse_children(node, x)) ) {
+      if (dv_is_union(x) && dv_is_inner_loaded(x)
+          && (dv_is_expanded(x) || dv_is_expanding(x))
+          && !dv_is_shrinking(x)) {
+        has_expanded_node = 1;
+        break;
+      }
+    }
+    if (!has_expanded_node) {
+      // collapsing node's parent
+      dv_do_collapsing_one_1(V, node);
+    } else {
+      /* Call inward */
+      dv_do_collapsing_one_r(V, node->head);
+    }
+  }
+  
+  /* Call link-along */
+  dv_dag_node_t * x = NULL;
+  while ( (x = dv_dag_node_traverse_nexts(node, x)) ) {
+    dv_do_collapsing_one_r(V, x);
+  }
+}
+
+static void
+dv_do_collapsing_one_depth_r(dv_view_t * V, dv_dag_node_t * node, int depth) {
+  if (!dv_is_set(node))
+    return;
+  if (dv_is_union(node) && dv_is_inner_loaded(node)
+      && !dv_is_shrinking(node)
+      && (dv_is_expanded(node) || dv_is_expanding(node))) {
+    // check if node has expanded node, excluding shrinking nodes
+    int has_expanded_node = 0;
+    /* Traverse all children */
+    dv_dag_node_t * x = NULL;
+    while ( (x = dv_dag_node_traverse_children(node, x)) ) {
+      if (dv_is_union(x) && dv_is_inner_loaded(x)
+          && (dv_is_expanded(x) || dv_is_expanding(x))
+          && !dv_is_shrinking(x)) {
+        has_expanded_node = 1;
+        break;
+      }
+    }
+    if (!has_expanded_node && node->d >= depth) {
+      // collapsing node's parent
+      dv_do_collapsing_one_1(V, node);
+    } else {
+      /* Call inward */
+      dv_do_collapsing_one_depth_r(V, node->head, depth);
+    }
+  }
+  
+  /* Call link-along */
+  dv_dag_node_t * x = NULL;
+  while ( (x = dv_dag_node_traverse_nexts(node, x)) ) {
+    dv_do_collapsing_one_depth_r(V, x, depth);
+  }
+}
+
+void
+dv_do_collapsing_one(dv_view_t * V) {
+  //double start = dv_get_time();
+  //dv_do_collapsing_one_r(V, V->D->rt);
+  dv_do_collapsing_one_depth_r(V, V->D->rt, V->D->collapsing_d - 1);
+  //double end = dv_get_time();
+  //fprintf(stderr, "traverse time: %lf\n", end - start);
+  if (!V->S->a->on) {
+    dv_view_layout(V);
+    dv_queue_draw_d(V);
+  }
+}
+
+void
 dv_do_button_event(dv_view_t * V, GdkEventButton * event) {
   if (V->S->adjust_auto_zoomfit)
     dv_view_change_azf(V, 0);
@@ -342,7 +1002,7 @@ dv_do_button_event(dv_view_t * V, GdkEventButton * event) {
   }
 }
 
-static void
+void
 dv_do_motion_event(dv_view_t * V, GdkEventMotion * event) {
   dv_view_status_t * S = V->S;
   /* Dragging */
@@ -408,7 +1068,8 @@ dv_do_motion_event(dv_view_t * V, GdkEventMotion * event) {
     S->last_hovered_node = NULL;
 }
 
-static dv_dag_node_t * dv_find_node_with_pii_r(dv_view_t *V, long pii, dv_dag_node_t *node) {
+dv_dag_node_t *
+dv_find_node_with_pii_r(dv_view_t * V, long pii, dv_dag_node_t * node) {
   if (node->pii == pii)
     return node;
   dv_dag_node_t * ret = NULL;

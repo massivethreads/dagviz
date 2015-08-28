@@ -113,7 +113,7 @@ typedef struct dv_llist {
 #define DV_CLICK_MODE_INIT 2 // 0:none, 1:info, 2:expand/collapse
 #define DV_HOVER_MODE_INIT 0 // 0:none, 1:info, 2:expand, 3:collapse, 4:expand/collapse
 #define DV_SHOW_LEGEND_INIT 0
-#define DV_SHOW_STATUS_INIT 1
+#define DV_SHOW_STATUS_INIT 0
 #define DV_REMAIN_INNER_INIT 1
 #define DV_COLOR_REMARKED_ONLY 1
 
@@ -522,6 +522,11 @@ typedef struct dv_global_state {
   dv_viewport_t VP[DV_MAX_VIEWPORT];
   int nVP;
 
+  /* Status bars */
+  GtkWidget * statusbar1; // interaction statuses
+  GtkWidget * statusbar2; // selection statuses
+  GtkWidget * statusbar3; // pool status
+
   /* Dialogs */
   dv_btsample_viewer_t btviewer[1];
   GtkWidget * box_viewport_configure;
@@ -557,13 +562,6 @@ void dv_queue_draw(dv_view_t *);
 void dv_queue_draw_d(dv_view_t *);
 void dv_queue_draw_d_p(dv_view_t *);
 
-void dv_view_get_zoomfit_hor(dv_view_t *, double *, double *, double *, double *);
-void dv_do_zoomfit_hor(dv_view_t *);
-void dv_view_get_zoomfit_ver(dv_view_t *, double *, double *, double *, double *);
-void dv_do_zoomfit_ver(dv_view_t *);
-void dv_view_do_zoomfit_based_on_lt(dv_view_t *);
-void dv_view_do_zoomfit_full(dv_view_t *);
-
 void dv_view_clip(dv_view_t *, cairo_t *);
 double dv_view_clip_get_bound_left(dv_view_t *);
 double dv_view_clip_get_bound_right(dv_view_t *);
@@ -574,11 +572,6 @@ double dv_view_cairo_coordinate_bound_left(dv_view_t *);
 double dv_view_cairo_coordinate_bound_right(dv_view_t *);
 double dv_view_cairo_coordinate_bound_up(dv_view_t *);
 double dv_view_cairo_coordinate_bound_down(dv_view_t *);
-
-void dv_view_change_azf(dv_view_t *, int);
-
-void dv_view_status_set_coord(dv_view_status_t *);
-void dv_view_status_init(dv_view_t *, dv_view_status_t *);
 
 void dv_view_init(dv_view_t *);
 dv_view_t * dv_view_create_new_with_dag(dv_dag_t *);
@@ -592,6 +585,50 @@ void dv_viewport_add_view(dv_viewport_t *, dv_view_t *);
 void dv_viewport_remove_view(dv_viewport_t *, dv_view_t *);
 
 void dv_signal_handler(int);
+
+
+/* process.c */
+char * dv_filename_get_short_name(char *);
+void dv_dag_collect_delays_r(dv_dag_t *, dv_dag_node_t *, FILE *, dv_stat_distribution_entry_t *);
+void dv_dag_collect_sync_delays_r(dv_dag_t *, dv_dag_node_t *, FILE *, dv_stat_distribution_entry_t *);
+void dv_dag_collect_intervals_r(dv_dag_t *, dv_dag_node_t *, FILE *, dv_stat_distribution_entry_t *);
+void dv_dag_expand_implicitly(dv_dag_t *);
+void dv_dag_set_status_label(dv_dag_t *, GtkWidget *);
+
+void dv_dag_node_pool_set_status_label(dv_dag_node_pool_t *, GtkWidget *);
+void dv_histogram_entry_pool_set_status_label(dv_histogram_entry_pool_t *, GtkWidget *);
+
+void dv_view_get_zoomfit_hor(dv_view_t *, double *, double *, double *, double *);
+void dv_do_zoomfit_hor(dv_view_t *);
+void dv_view_get_zoomfit_ver(dv_view_t *, double *, double *, double *, double *);
+void dv_do_zoomfit_ver(dv_view_t *);
+void dv_view_do_zoomfit_based_on_lt(dv_view_t *);
+void dv_view_do_zoomfit_full(dv_view_t *);
+void dv_view_change_radix(dv_view_t *, double);
+void dv_view_set_entry_radix_text(dv_view_t *);
+void dv_view_set_entry_remark_text(dv_view_t *, char *);
+void dv_view_change_sdt(dv_view_t *, int);
+void dv_view_change_eaffix(dv_view_t *, int);
+void dv_view_change_nc(dv_view_t *, int);
+void dv_view_change_lt(dv_view_t *, int);
+void dv_do_set_focused_view(dv_view_t *, int);
+
+void dv_do_scrolling(dv_view_t *, GdkEventScroll *);
+void dv_statusbar_update(int, int, char *);
+void dv_statusbar_remove(int, int);
+void dv_statusbar_update_selection_status();
+void dv_statusbar_update_pool_status();
+
+void dv_do_expanding_one(dv_view_t *);
+void dv_do_collapsing_one(dv_view_t *);
+void dv_do_button_event(dv_view_t *, GdkEventButton *);
+void dv_do_motion_event(dv_view_t *, GdkEventMotion *);
+dv_dag_node_t * dv_find_node_with_pii_r(dv_view_t *, long, dv_dag_node_t *);
+
+void dv_view_change_azf(dv_view_t *, int);
+
+void dv_view_status_set_coord(dv_view_status_t *);
+void dv_view_status_init(dv_view_t *, dv_view_status_t *);
 
 
 /* print.c */
