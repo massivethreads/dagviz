@@ -2690,7 +2690,30 @@ open_gui(_unused_ int argc, _unused_ char * argv[]) {
 
   /* Toolbar */
   GtkWidget * toolbar = CS->gui->toolbar;
-  //GtkToolItem * btn_attrs = gtk_tool_button_new();
+  GtkToolItem * btn_settings = gtk_menu_tool_button_new(NULL, NULL);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_settings, -1);
+  gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_settings), "preferences-system");
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_settings), "Open settings window of the focused DAG (Ctrl-T)");
+  g_signal_connect(G_OBJECT(btn_settings), "clicked", G_CALLBACK(on_toolbar_settings_button_clicked), NULL);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), gtk_separator_tool_item_new(), -1);
+
+  GtkToolItem * btn_zoomfit = gtk_menu_tool_button_new(NULL, NULL);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_zoomfit, -1);
+  gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_zoomfit), "zoom-fit-best");
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_zoomfit), "Zoom DAG fitly (H, V, F)");
+  g_signal_connect(G_OBJECT(btn_zoomfit), "clicked", G_CALLBACK(on_toolbar_zoomfit_button_clicked), NULL);
+
+  GtkToolItem * btn_shrink = gtk_tool_button_new(NULL, NULL);
+  GtkToolItem * btn_expand = gtk_tool_button_new(NULL, NULL);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_shrink, -1);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_expand, -1);
+  gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_shrink), "zoom-out");
+  gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_expand), "zoom-in");
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_shrink), "Collapse one depth (C)"); 
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_expand), "Expand one depth (X)");
+  g_signal_connect(G_OBJECT(btn_shrink), "clicked", G_CALLBACK(on_toolbar_shrink_button_clicked), NULL);  
+  g_signal_connect(G_OBJECT(btn_expand), "clicked", G_CALLBACK(on_toolbar_expand_button_clicked), NULL);
+
 
   /* Viewports */
   dv_viewport_t * vp0 = CS->VP;

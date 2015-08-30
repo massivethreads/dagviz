@@ -595,5 +595,25 @@ on_btn_zoomfit_ver_clicked(_unused_ GtkToolButton * toolbtn, gpointer user_data)
   dv_do_zoomfit_ver(V);
 }
 
+static void
+on_toolbar_settings_button_clicked(_unused_ GtkToolButton * toolbtn, _unused_ gpointer user_data) {
+  
+}
+
+static void
+on_toolbar_zoomfit_button_clicked(_unused_ GtkToolButton * toolbtn, _unused_ gpointer user_data) {
+  
+}
+
+static void
+on_toolbar_shrink_button_clicked(_unused_ GtkToolButton * toolbtn, _unused_ gpointer user_data) {
+  
+}
+
+static void
+on_toolbar_expand_button_clicked(_unused_ GtkToolButton * toolbtn, _unused_ gpointer user_data) {
+  
+}
+
 /****************** end of GUI Callbacks **************************************/
 
