@@ -2690,12 +2690,42 @@ open_gui(_unused_ int argc, _unused_ char * argv[]) {
 
   /* Toolbar */
   GtkWidget * toolbar = CS->gui->toolbar;
+  
+  GtkToolItem * toolitem_divisions = gtk_tool_item_new();
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), toolitem_divisions, -1);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), gtk_separator_tool_item_new(), -1);
+  GtkWidget * btn_divisions = gtk_menu_button_new();
+  gtk_container_add(GTK_CONTAINER(toolitem_divisions), btn_divisions);
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_divisions), "Viewport divisions");
+
+  GtkWidget * menu = gtk_menu_new();
+  GtkWidget * menu_d0 = gtk_menu_item_new_with_label("DAG 0");
+  gtk_menu_shell_append(GTK_MENU_SHELL(menu), menu_d0);
+  GtkWidget * menu_d1 = gtk_menu_item_new_with_label("DAG 1");
+  gtk_menu_shell_append(GTK_MENU_SHELL(menu), menu_d1);
+  GtkWidget * menu_d2 = gtk_menu_item_new_with_label("DAG 2");
+  gtk_menu_shell_append(GTK_MENU_SHELL(menu), menu_d2);
+  gtk_menu_button_set_popup(GTK_MENU_BUTTON(btn_divisions), menu);
+  gtk_widget_show_all(menu);
+
+  
   GtkToolItem * btn_settings = gtk_menu_tool_button_new(NULL, NULL);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_settings, -1);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), gtk_separator_tool_item_new(), -1);
   gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_settings), "preferences-system");
   gtk_widget_set_tooltip_text(GTK_WIDGET(btn_settings), "Open settings window of the focused DAG (Ctrl-T)");
   g_signal_connect(G_OBJECT(btn_settings), "clicked", G_CALLBACK(on_toolbar_settings_button_clicked), NULL);
-  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), gtk_separator_tool_item_new(), -1);
+
+  GtkWidget * menu2 = gtk_menu_new();
+  GtkWidget * menu2_d0 = gtk_menu_item_new_with_label("DAG 0");
+  gtk_menu_shell_append(GTK_MENU_SHELL(menu2), menu2_d0);
+  GtkWidget * menu2_d1 = gtk_menu_item_new_with_label("DAG 1");
+  gtk_menu_shell_append(GTK_MENU_SHELL(menu2), menu2_d1);
+  GtkWidget * menu2_d2 = gtk_menu_item_new_with_label("DAG 2");
+  gtk_menu_shell_append(GTK_MENU_SHELL(menu2), menu2_d2);
+  gtk_menu_tool_button_set_menu(GTK_MENU_TOOL_BUTTON(btn_settings), menu2);
+  gtk_widget_show_all(menu2);
+  
 
   GtkToolItem * btn_zoomfit = gtk_menu_tool_button_new(NULL, NULL);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_zoomfit, -1);
