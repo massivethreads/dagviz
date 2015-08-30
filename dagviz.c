@@ -78,7 +78,6 @@ dv_global_state_init(dv_global_state_t * CS) {
   CS->nV = 0;
   CS->nVP = 0;
   CS->FL = NULL;
-  CS->window = NULL;
   CS->activeV = NULL;
   CS->err = DV_OK;
   int i;
@@ -543,7 +542,7 @@ dv_view_toolbox_get_window(dv_view_toolbox_t * T) {
   gtk_window_set_title(GTK_WINDOW(window), s);
   gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_MOUSE);
   gtk_window_set_modal(GTK_WINDOW(window), 0);
-  gtk_window_set_transient_for(GTK_WINDOW(window), GTK_WINDOW(CS->window));
+  gtk_window_set_transient_for(GTK_WINDOW(window), GTK_WINDOW(CS->gui->window));
   g_signal_connect(G_OBJECT(window), "delete-event", G_CALLBACK(gtk_widget_hide_on_delete), NULL);
   GtkWidget * window_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
   gtk_container_add(GTK_CONTAINER(window), window_box);
@@ -1242,11 +1241,11 @@ static GtkWidget * dv_create_menubar();
 
 static void
 dv_alternate_menubar() {
-  gtk_container_remove(GTK_CONTAINER(CS->vbox0), CS->menubar);
-  CS->menubar = dv_create_menubar();
-  gtk_box_pack_start(GTK_BOX(CS->vbox0), CS->menubar, FALSE, FALSE, 0);
-  gtk_widget_show_all(CS->menubar);
-  gtk_widget_queue_draw(GTK_WIDGET(CS->menubar));
+  gtk_container_remove(GTK_CONTAINER(CS->gui->vbox0), CS->gui->menubar);
+  CS->gui->menubar = dv_create_menubar();
+  gtk_box_pack_start(GTK_BOX(CS->gui->vbox0), CS->gui->menubar, FALSE, FALSE, 0);
+  gtk_widget_show_all(CS->gui->menubar);
+  gtk_widget_queue_draw(GTK_WIDGET(CS->gui->menubar));
 }
 
 static void
@@ -2629,18 +2628,45 @@ dv_create_menubar() {
   return menubar;
 }
 
+static void
+dv_gui_init(dv_gui_t * gui) {
+  gui->window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+  gui->vbox0 = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+  gui->menubar = dv_create_menubar();
+  gui->toolbar = gtk_toolbar_new();
+  gui->statusbar1 = gtk_statusbar_new();
+  gui->statusbar2 = gtk_statusbar_new();
+  gui->statusbar3 = gtk_statusbar_new();  
+
+  gtk_container_add(GTK_CONTAINER(gui->window), gui->vbox0);
+  gtk_box_pack_start(GTK_BOX(gui->vbox0), gui->menubar, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(gui->vbox0), gui->toolbar, FALSE, FALSE, 0);
+  
+  GtkWidget * statusbar_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+  gtk_box_pack_end(GTK_BOX(gui->vbox0), statusbar_box, FALSE, FALSE, 0);
+  GtkWidget * statusbar_box_2 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+  gtk_box_pack_start(GTK_BOX(statusbar_box), statusbar_box_2, TRUE, TRUE, 0);
+  gtk_box_set_homogeneous(GTK_BOX(statusbar_box_2), TRUE);
+  gtk_box_pack_start(GTK_BOX(statusbar_box_2), gui->statusbar1, TRUE, TRUE, 0);
+  GtkWidget * statusbar_box_3 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+  gtk_box_pack_start(GTK_BOX(statusbar_box_2), statusbar_box_3, TRUE, TRUE, 0);
+  gtk_box_pack_start(GTK_BOX(statusbar_box_3), gtk_separator_new(GTK_ORIENTATION_VERTICAL), FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(statusbar_box_3), gui->statusbar2, TRUE, TRUE, 0);
+  gtk_box_pack_end(GTK_BOX(statusbar_box), gui->statusbar3, FALSE, FALSE, 0);
+  gtk_box_pack_end(GTK_BOX(statusbar_box), gtk_separator_new(GTK_ORIENTATION_VERTICAL), FALSE, FALSE, 0);
+  
+  gtk_widget_set_tooltip_text(GTK_WIDGET(gui->statusbar1), "Interaction status");
+  gtk_widget_set_tooltip_text(GTK_WIDGET(gui->statusbar2), "Selection status");
+  gtk_widget_set_tooltip_text(GTK_WIDGET(gui->statusbar3), "Memory pool status");
+}
+
 static int
 open_gui(_unused_ int argc, _unused_ char * argv[]) {
-  // Initialize
-  CS->window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
-  CS->vbox0 = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-  CS->menubar = dv_create_menubar();
-  CS->statusbar1 = gtk_statusbar_new();
-  CS->statusbar2 = gtk_statusbar_new();
-  CS->statusbar3 = gtk_statusbar_new();
+  /* Initialize GUI widgets */
+  dv_gui_init(CS->gui);
 
-  // Window
-  GtkWidget * window = CS->window;
+  /* Window */
+  GtkWidget * window = CS->gui->window;
   //gtk_window_fullscreen(GTK_WINDOW(window));
   //gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
   gtk_window_set_default_size(GTK_WINDOW(window), 1000, 700);
@@ -2648,7 +2674,7 @@ open_gui(_unused_ int argc, _unused_ char * argv[]) {
   //gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
   gtk_window_set_title(GTK_WINDOW(window), "DAG Visualizer");
   g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
-  g_signal_connect(G_OBJECT(CS->window), "key-press-event", G_CALLBACK(on_window_key_event), NULL);
+  g_signal_connect(G_OBJECT(CS->gui->window), "key-press-event", G_CALLBACK(on_window_key_event), NULL);
 
   // Set icon
   /*
@@ -2662,54 +2688,22 @@ open_gui(_unused_ int argc, _unused_ char * argv[]) {
   }
   */
 
-  // vbox0
-  GtkWidget * vbox0 = CS->vbox0;
-  gtk_container_add(GTK_CONTAINER(window), vbox0);
+  /* Toolbar */
+  GtkWidget * toolbar = CS->gui->toolbar;
+  //GtkToolItem * btn_attrs = gtk_tool_button_new();
 
-  // menubar
-  GtkWidget * menubar = CS->menubar;
-  gtk_box_pack_start(GTK_BOX(vbox0), menubar, FALSE, FALSE, 0);
-
-  // viewport
+  /* Viewports */
   dv_viewport_t * vp0 = CS->VP;
-  gtk_box_pack_start(GTK_BOX(vbox0), vp0->frame, TRUE, TRUE, 0);
+  gtk_box_pack_start(GTK_BOX(CS->gui->vbox0), vp0->frame, TRUE, TRUE, 0);
   dv_viewport_show(vp0);
-  //GtkWidget *hbox = CS->hbox;
-  //gtk_box_pack_end(GTK_BOX(vbox0), hbox, TRUE, TRUE, 0);
-  //gtk_box_set_homogeneous(GTK_BOX(hbox), TRUE);
-  /*
-  int i;
-  for (i=0; i<CS->nVP; i++) {
-    dv_viewport_t *VP = &CS->VP[i];
-    if (!VP->hide)
-      gtk_container_add(GTK_CONTAINER(hbox), VP->box);
-  }
-  */
 
-  // statusbar
-  GtkWidget * statusbar_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-  gtk_box_pack_end(GTK_BOX(vbox0), statusbar_box, FALSE, FALSE, 0);
-  gtk_widget_set_tooltip_text(GTK_WIDGET(CS->statusbar1), "Interaction status");
-  gtk_widget_set_tooltip_text(GTK_WIDGET(CS->statusbar2), "Selection status");
-  gtk_widget_set_tooltip_text(GTK_WIDGET(CS->statusbar3), "Memory pool status");
-  
-  gtk_box_pack_start(GTK_BOX(statusbar_box), CS->statusbar1, TRUE, TRUE, 0);
-  gtk_box_pack_start(GTK_BOX(statusbar_box), gtk_separator_new(GTK_ORIENTATION_VERTICAL), FALSE, FALSE, 0);
-  gtk_box_pack_start(GTK_BOX(statusbar_box), CS->statusbar2, TRUE, TRUE, 0);
-
-  gtk_box_pack_end(GTK_BOX(statusbar_box), CS->statusbar3, FALSE, FALSE, 0);
-  gtk_box_pack_end(GTK_BOX(statusbar_box), gtk_separator_new(GTK_ORIENTATION_VERTICAL), FALSE, FALSE, 0);
-  
-  //gtk_statusbar_push(GTK_STATUSBAR(CS->statusbar2), 0, "hello");
-  //gtk_statusbar_push(GTK_STATUSBAR(CS->statusbar3), 0, "entry pool");
-  //gtk_statusbar_push(GTK_STATUSBAR(CS->statusbar4), 0, "node pool");
+  /* Status bars */
   dv_statusbar_update_selection_status();
   dv_statusbar_update_pool_status();
 
-  // Run main loop
+  /* Run main loop */
   gtk_widget_show_all(window);
   gtk_main();
-
   return 1;
 }
 

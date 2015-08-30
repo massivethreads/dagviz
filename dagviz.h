@@ -499,6 +499,18 @@ typedef struct dv_stat_breakdown_graph {
 } dv_stat_breakdown_graph_t;
 
 
+typedef struct dv_gui {
+  GtkWidget * window;
+  GtkWidget * vbox0;
+  GtkWidget * menubar;
+  GtkWidget * toolbar;
+  
+  /* Status bars */
+  GtkWidget * statusbar1; // interaction statuses
+  GtkWidget * statusbar2; // selection statuses
+  GtkWidget * statusbar3; // pool status
+} dv_gui_t;
+
 typedef struct dv_global_state {
   /* DAG */
   dv_pidag_t P[DV_MAX_DAG_FILE];
@@ -516,16 +528,9 @@ typedef struct dv_global_state {
   int CP_sizes[DV_NUM_COLOR_POOLS];
   
   /* GUI */
-  GtkWidget * window;
-  GtkWidget * vbox0;
-  GtkWidget * menubar;
   dv_viewport_t VP[DV_MAX_VIEWPORT];
   int nVP;
-
-  /* Status bars */
-  GtkWidget * statusbar1; // interaction statuses
-  GtkWidget * statusbar2; // selection statuses
-  GtkWidget * statusbar3; // pool status
+  dv_gui_t gui[1];
 
   /* Dialogs */
   dv_btsample_viewer_t btviewer[1];
