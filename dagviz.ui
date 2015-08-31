@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <object class="GtkWindow" id="window">
+    <property name="title">DAG Visualizer</property>
+    <child>
+      <object class="GtkBox" id="vbox0">
+        <property name="orientation">GTK_ORIENTATION_VERTICAL</property>
+        <child>
+          <object class="GtkBox" id="box_viewport">
+          </object>
+        </child>
+        <child>
+          <object class="GtkStatusbar" id="statusbar">
+          </object>
+        </child>
+      </object>
+    </child>
+  </object>
+</interface>

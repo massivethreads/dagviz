@@ -969,7 +969,7 @@ dv_viewport_init(dv_viewport_t * VP) {
   // vpw, vph
   VP->vpw = VP->vph = 0.0;
   dv_viewport_toolbox_init(VP);
-  gtk_box_pack_start(GTK_BOX(VP->box), VP->T->toolbar, FALSE, FALSE, 0);
+  //gtk_box_pack_start(GTK_BOX(VP->box), VP->T->toolbar, FALSE, FALSE, 0);
 }
 
 void dv_viewport_show(dv_viewport_t * vp);
@@ -2610,18 +2610,18 @@ dv_create_menubar() {
   g_signal_connect(G_OBJECT(statistics), "activate", G_CALLBACK(on_file_statistics_clicked), NULL);
   GtkWidget * samplebt = gtk_menu_item_new_with_mnemonic("S_amples");
   gtk_menu_shell_append(GTK_MENU_SHELL(tools_menu), samplebt);
-  GtkWidget * samplebt_menu = gtk_menu_new();
-  gtk_menu_item_set_submenu(GTK_MENU_ITEM(samplebt), samplebt_menu);
-  GtkWidget * samplebt_open = gtk_menu_item_new_with_mnemonic("_View Backtrace Samples");
-  gtk_menu_shell_append(GTK_MENU_SHELL(samplebt_menu), samplebt_open);
-  g_signal_connect(G_OBJECT(samplebt_open), "activate", G_CALLBACK(on_menu_item_view_samples_clicked), (void *) 0);
+  //GtkWidget * samplebt_menu = gtk_menu_new();
+  //gtk_menu_item_set_submenu(GTK_MENU_ITEM(samplebt), samplebt_menu);
+  //GtkWidget * samplebt_open = gtk_menu_item_new_with_mnemonic("_View Backtrace Samples");
+  //gtk_menu_shell_append(GTK_MENU_SHELL(samplebt_menu), samplebt_open);
+  g_signal_connect(G_OBJECT(samplebt), "activate", G_CALLBACK(on_menu_item_view_samples_clicked), (void *) 0);
 
   // submenu Help
   GtkWidget * help = gtk_menu_item_new_with_mnemonic("_Help");
   gtk_menu_shell_append(GTK_MENU_SHELL(menubar), help);
   GtkWidget * help_menu = gtk_menu_new();
   gtk_menu_item_set_submenu(GTK_MENU_ITEM(help), help_menu);  
-  GtkWidget * hotkeys = gtk_menu_item_new_with_mnemonic("List of available hot_keys");
+  GtkWidget * hotkeys = gtk_menu_item_new_with_mnemonic("Hot_keys");
   gtk_menu_shell_append(GTK_MENU_SHELL(help_menu), hotkeys);
   g_signal_connect(G_OBJECT(hotkeys), "activate", G_CALLBACK(on_help_hotkeys_clicked), NULL);
   
@@ -2636,7 +2636,13 @@ dv_gui_init(dv_gui_t * gui) {
   gui->toolbar = gtk_toolbar_new();
   gui->statusbar1 = gtk_statusbar_new();
   gui->statusbar2 = gtk_statusbar_new();
-  gui->statusbar3 = gtk_statusbar_new();  
+  gui->statusbar3 = gtk_statusbar_new();
+
+  /*
+  GtkBuilder * builder = gtk_builder_new_from_file("menubar.ui");
+  gui->menubar = (GtkWidget *) gtk_builder_get_object(builder, "menubar");
+  gtk_widget_show_all(gui->menubar);
+  */
 
   gtk_container_add(GTK_CONTAINER(gui->window), gui->vbox0);
   gtk_box_pack_start(GTK_BOX(gui->vbox0), gui->menubar, FALSE, FALSE, 0);
@@ -2660,7 +2666,24 @@ dv_gui_init(dv_gui_t * gui) {
   gtk_widget_set_tooltip_text(GTK_WIDGET(gui->statusbar3), "Memory pool status");
 }
 
-static int
+_static_unused_ int
+open_gui_1(_unused_ int argc, _unused_ char * argv[]) {
+  GtkBuilder * builder = gtk_builder_new_from_file("dagviz.ui");
+  
+  /* Window */
+  GtkWidget * window = (GtkWidget *) gtk_builder_get_object(builder, "window");
+  gtk_window_set_default_size(GTK_WINDOW(window), 1000, 700);
+  gtk_window_maximize(GTK_WINDOW(window));
+  g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
+  g_signal_connect(G_OBJECT(CS->gui->window), "key-press-event", G_CALLBACK(on_window_key_event), NULL);
+
+  /* Run main loop */
+  gtk_widget_show_all(window);
+  gtk_main();
+  return 1;
+}
+
+_static_unused_ int
 open_gui(_unused_ int argc, _unused_ char * argv[]) {
   /* Initialize GUI widgets */
   dv_gui_init(CS->gui);
@@ -2691,11 +2714,14 @@ open_gui(_unused_ int argc, _unused_ char * argv[]) {
   /* Toolbar */
   GtkWidget * toolbar = CS->gui->toolbar;
   
-  GtkToolItem * toolitem_divisions = gtk_tool_item_new();
-  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), toolitem_divisions, -1);
+  //GtkToolItem * toolitem_divisions = gtk_tool_item_new();
+  //gtk_toolbar_insert(GTK_TOOLBAR(toolbar), toolitem_divisions, -1);
+  //GtkWidget * btn_divisions = gtk_menu_button_new();
+  //gtk_container_add(GTK_CONTAINER(toolitem_divisions), btn_divisions);
+  GtkToolItem * btn_divisions = gtk_menu_tool_button_new(NULL, NULL);
+  gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_divisions, -1);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), gtk_separator_tool_item_new(), -1);
-  GtkWidget * btn_divisions = gtk_menu_button_new();
-  gtk_container_add(GTK_CONTAINER(toolitem_divisions), btn_divisions);
+  gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_divisions), "video-display");
   gtk_widget_set_tooltip_text(GTK_WIDGET(btn_divisions), "Viewport divisions");
 
   GtkWidget * menu = gtk_menu_new();
@@ -2705,7 +2731,7 @@ open_gui(_unused_ int argc, _unused_ char * argv[]) {
   gtk_menu_shell_append(GTK_MENU_SHELL(menu), menu_d1);
   GtkWidget * menu_d2 = gtk_menu_item_new_with_label("DAG 2");
   gtk_menu_shell_append(GTK_MENU_SHELL(menu), menu_d2);
-  gtk_menu_button_set_popup(GTK_MENU_BUTTON(btn_divisions), menu);
+  gtk_menu_tool_button_set_menu(GTK_MENU_TOOL_BUTTON(btn_divisions), menu);
   gtk_widget_show_all(menu);
 
   
