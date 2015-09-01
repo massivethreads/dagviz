@@ -236,7 +236,7 @@ dv_view_prepare_drawing(dv_view_t * V, cairo_t * cr) {
   cairo_restore(cr);
 }
 
-static void
+void
 dv_viewport_draw(dv_viewport_t * VP, cairo_t * cr) {
   dv_view_t * V;
   dv_view_status_t * S;
@@ -647,7 +647,7 @@ dv_view_toolbox_get_window(dv_view_toolbox_t * T) {
     g_signal_connect(G_OBJECT(widget), "clicked", G_CALLBACK(on_btn_zoomfit_ver_clicked), (void *) T->V);
     gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
-}
+  }
   
   /* Build tab "Advance" */
   {
@@ -1241,11 +1241,13 @@ static GtkWidget * dv_create_menubar();
 
 static void
 dv_alternate_menubar() {
+  /*
   gtk_container_remove(GTK_CONTAINER(CS->gui->vbox0), CS->gui->menubar);
   CS->gui->menubar = dv_create_menubar();
   gtk_box_pack_start(GTK_BOX(CS->gui->vbox0), CS->gui->menubar, FALSE, FALSE, 0);
   gtk_widget_show_all(CS->gui->menubar);
   gtk_widget_queue_draw(GTK_WIDGET(CS->gui->menubar));
+  */
 }
 
 static void
@@ -1269,325 +1271,6 @@ on_dag_add_new(_unused_ GtkMenuItem * menuitem, gpointer user_data) {
     // Alternate menubar
     dv_alternate_menubar();
   }
-}
-
-static void
-on_menu_item_view_samples_clicked(_unused_ GtkToolButton * toolbtn, _unused_ gpointer user_data) {
-  dv_pidag_t * P = CS->activeV->D->P;
-  CS->btviewer->P = P;
-
-  // Build dialog
-  GtkWidget * dialog = gtk_dialog_new();
-  gtk_window_set_title(GTK_WINDOW(dialog), "View Backtrace Samples");
-  gtk_window_set_default_size(GTK_WINDOW(dialog), 800, 700);
-  GtkWidget * dialog_vbox = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-  gtk_box_set_spacing(GTK_BOX(dialog_vbox), 5);
-
-  // HBox 1: dag file
-  GtkWidget * hbox1 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-  gtk_box_pack_start(GTK_BOX(dialog_vbox), hbox1, FALSE, FALSE, 0);
-  GtkWidget * hbox1_label = gtk_label_new("DAG File:");
-  gtk_box_pack_start(GTK_BOX(hbox1), hbox1_label, FALSE, FALSE, 0);
-  GtkWidget * hbox1_filename = CS->btviewer->label_dag_file_name;
-  gtk_box_pack_start(GTK_BOX(hbox1), hbox1_filename, TRUE, TRUE, 0);
-  gtk_label_set_text(GTK_LABEL(hbox1_filename), P->fn);
-  
-  // HBox 2: bt file
-  GtkWidget * hbox2 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-  gtk_box_pack_start(GTK_BOX(dialog_vbox), hbox2, FALSE, FALSE, 0);
-  GtkWidget * hbox2_label = gtk_label_new("        BT File:");
-  gtk_box_pack_start(GTK_BOX(hbox2), hbox2_label, FALSE, FALSE, 0);
-  GtkWidget * hbox2_filename = CS->btviewer->entry_bt_file_name;
-  gtk_box_pack_start(GTK_BOX(hbox2), hbox2_filename, TRUE, TRUE, 0);
-  GtkWidget * hbox2_btn = gtk_button_new_with_label("Choose file");
-  gtk_box_pack_start(GTK_BOX(hbox2), hbox2_btn, FALSE, FALSE, 0);
-  g_signal_connect(G_OBJECT(hbox2_btn), "clicked", G_CALLBACK(on_btn_choose_bt_file_clicked), (void *) CS->btviewer);
-  
-  // HBox 3: binary file
-  GtkWidget * hbox3 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-  gtk_box_pack_start(GTK_BOX(dialog_vbox), hbox3, FALSE, FALSE, 0);
-  GtkWidget * hbox3_label = gtk_label_new("Binary File:");
-  gtk_box_pack_start(GTK_BOX(hbox3), hbox3_label, FALSE, FALSE, 0);
-  GtkWidget * hbox3_filename = CS->btviewer->entry_binary_file_name;
-  gtk_box_pack_start(GTK_BOX(hbox3), hbox3_filename, TRUE, TRUE, 0);
-  GtkWidget * hbox3_btn = gtk_button_new_with_label("Choose file");
-  gtk_box_pack_start(GTK_BOX(hbox3), hbox3_btn, FALSE, FALSE, 0);
-  g_signal_connect(G_OBJECT(hbox3_btn), "clicked", G_CALLBACK(on_btn_choose_binary_file_clicked), (void *) CS->btviewer);
-
-  // HBox 4: node ID
-  GtkWidget * hbox4 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-  gtk_box_pack_start(GTK_BOX(dialog_vbox), hbox4, FALSE, FALSE, 0);
-  GtkWidget * hbox4_label = gtk_label_new("Node ID:");
-  gtk_box_pack_start(GTK_BOX(hbox4), hbox4_label, FALSE, FALSE, 0);
-  GtkWidget * hbox4_nodeid = CS->btviewer->entry_node_id;
-  gtk_box_pack_start(GTK_BOX(hbox4), hbox4_nodeid, FALSE, FALSE, 0);
-  gtk_entry_set_max_length(GTK_ENTRY(hbox4_nodeid), 10);
-  GtkWidget * hbox4_btn = gtk_button_new_with_label("Find node");
-  gtk_box_pack_start(GTK_BOX(hbox4), hbox4_btn, FALSE, FALSE, 0);
-  g_signal_connect(G_OBJECT(hbox4_btn), "clicked", G_CALLBACK(on_btn_find_node_clicked), (void *) CS->btviewer);
-
-  // HBox 5: worker & time interval
-  GtkWidget * hbox5 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-  gtk_box_pack_start(GTK_BOX(dialog_vbox), hbox5, FALSE, FALSE, 0);
-  GtkWidget * hbox5_label = gtk_label_new("On worker");
-  gtk_box_pack_start(GTK_BOX(hbox5), hbox5_label, FALSE, FALSE, 0);
-  GtkWidget * hbox5_combo = CS->btviewer->combobox_worker;
-  gtk_box_pack_start(GTK_BOX(hbox5), hbox5_combo, FALSE, FALSE, 0);
-  gtk_combo_box_text_remove_all(GTK_COMBO_BOX_TEXT(hbox5_combo));
-  int i;
-  char str[10];
-  for (i=0; i<P->num_workers; i++) {
-    sprintf(str, "%d", i);
-    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(hbox5_combo), str, str);
-  }
-  GtkWidget * hbox5_label2 = gtk_label_new("from clock");
-  gtk_box_pack_start(GTK_BOX(hbox5), hbox5_label2, FALSE, FALSE, 0);
-  GtkWidget * hbox5_from = CS->btviewer->entry_time_from;
-  gtk_box_pack_start(GTK_BOX(hbox5), hbox5_from, TRUE, TRUE, 0);
-  GtkWidget * hbox5_label3 = gtk_label_new("to clock");
-  gtk_box_pack_start(GTK_BOX(hbox5), hbox5_label3, FALSE, FALSE, 0);
-  GtkWidget * hbox5_to = CS->btviewer->entry_time_to;
-  gtk_box_pack_start(GTK_BOX(hbox5), hbox5_to, TRUE, TRUE, 0);
-
-  // HBox 6: run button
-  GtkWidget * hbox6 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-  gtk_box_pack_start(GTK_BOX(dialog_vbox), hbox6, FALSE, FALSE, 0);
-  GtkWidget * hbox6_btn = gtk_button_new_with_label("Run");
-  gtk_box_pack_end(GTK_BOX(hbox6), hbox6_btn, FALSE, FALSE, 0);
-  g_signal_connect(G_OBJECT(hbox6_btn), "clicked", G_CALLBACK(on_btn_run_view_bt_samples_clicked), (void *) CS->btviewer);
-
-  // Text view
-  GtkWidget *scrolledwindow = gtk_scrolled_window_new(NULL, NULL);
-  gtk_box_pack_end(GTK_BOX(dialog_vbox), scrolledwindow, TRUE, TRUE, 0);
-  gtk_container_add(GTK_CONTAINER(scrolledwindow), CS->btviewer->text_view);
-
-  // Run
-  gtk_widget_show_all(dialog_vbox);
-  gtk_dialog_run(GTK_DIALOG(dialog));
-
-  // Destroy
-  gtk_container_remove(GTK_CONTAINER(hbox1), CS->btviewer->label_dag_file_name);
-  gtk_container_remove(GTK_CONTAINER(hbox2), CS->btviewer->entry_bt_file_name);
-  gtk_container_remove(GTK_CONTAINER(hbox3), CS->btviewer->entry_binary_file_name);
-  gtk_container_remove(GTK_CONTAINER(hbox4), CS->btviewer->entry_node_id);
-  gtk_container_remove(GTK_CONTAINER(hbox5), CS->btviewer->combobox_worker);
-  gtk_container_remove(GTK_CONTAINER(hbox5), CS->btviewer->entry_time_from);
-  gtk_container_remove(GTK_CONTAINER(hbox5), CS->btviewer->entry_time_to);
-  gtk_container_remove(GTK_CONTAINER(scrolledwindow), CS->btviewer->text_view);
-  gtk_widget_destroy(dialog);
-}
-
-static void
-on_help_hotkeys_clicked(_unused_ GtkToolButton * toolbtn, _unused_ gpointer user_data) {
-  // Build dialog
-  GtkWidget * dialog = gtk_dialog_new();
-  gtk_window_set_title(GTK_WINDOW(dialog), "Hotkeys");
-  gtk_window_set_default_size(GTK_WINDOW(dialog), 300, 170);
-  GtkWidget * dialog_vbox = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
-
-  // Label
-  GtkWidget * label = gtk_label_new("\n"
-                                    "Tab : switch control between VIEWs\n"
-                                    "Ctrl + 1 : dag view\n"
-                                    "Ctrl + 2 : dagbox view\n"
-                                    "Ctrl + 3 : vertical timeline view\n"
-                                    "Ctrl + 4 : horizontal timeline view\n"
-                                    "X : expand\n"
-                                    "C : collapse\n"
-                                    "H : horizontal fit\n"
-                                    "V : vertical fit\n"
-                                    "A : open view configuration dialog\n"
-                                    "Alt + [some key] : access menu\n"
-                                    "Arrow Keys : move around\n");
-  gtk_box_pack_start(GTK_BOX(dialog_vbox), label, TRUE, FALSE, 0);
-
-  // Run
-  gtk_widget_show_all(dialog_vbox);
-  gtk_dialog_run(GTK_DIALOG(dialog));
-
-  // Destroy
-  gtk_widget_destroy(dialog);  
-}
-
-static void
-dv_viewport_export_to_surface(dv_viewport_t * VP, cairo_surface_t * surface) {
-  cairo_t * cr = cairo_create(surface);
-  // Whiten background
-  GdkRGBA white[1];
-  gdk_rgba_parse(white, "white");
-  cairo_set_source_rgba(cr, white->red, white->green, white->blue, white->alpha);
-  cairo_paint(cr);
-  // Draw viewport
-  dv_viewport_draw(VP, cr);
-  // Finish
-  cairo_destroy(cr);
-}
-
-static void
-on_file_export_clicked(_unused_ GtkToolButton * toolbtn, _unused_ gpointer user_data) {
-  dv_view_t * V = CS->activeV;
-  if (!V) {
-    fprintf(stderr, "Warning: there is no active V to export.\n");
-    return;
-  }
-  dv_viewport_t * VP = V->mainVP;
-  if (!VP) {
-    fprintf(stderr, "Warning: there is no main VP for the active V.\n");
-    return;
-  }
-  cairo_surface_t * surface;
-
-  /* PNG */
-  surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, VP->vpw, VP->vph);
-  dv_viewport_export_to_surface(VP, surface);
-  cairo_surface_write_to_png(surface, "00dv.png");
-  fprintf(stdout, "Exported viewport %ld to 00dv.png\n", VP - CS->VP);
-  cairo_surface_destroy(surface);
-
-  /* EPS */
-  surface = cairo_ps_surface_create("00dv.eps", VP->vpw, VP->vph);
-  cairo_ps_surface_set_eps(surface, TRUE);
-  dv_viewport_export_to_surface(VP, surface);
-  fprintf(stdout, "Exported viewport %ld to 00dv.eps\n", VP - CS->VP);
-  cairo_surface_destroy(surface);
-
-  /* SVG */
-  surface = cairo_svg_surface_create("00dv.svg", VP->vpw, VP->vph);
-  dv_viewport_export_to_surface(VP, surface);
-  fprintf(stdout, "Exported viewport %ld to 00dv.svg\n", VP - CS->VP);
-  cairo_surface_destroy(surface);
-
-  return;  
-}
-
-
-static void
-dv_export_viewports_get_size_r(dv_viewport_t * VP, double * w, double * h) {
-  if (!VP) {
-    *w = 0.0;
-    *h = 0.0;
-  } else if (!VP->split) {
-    *w = VP->vpw;
-    *h = VP->vph;
-  } else {
-    double w1, h1, w2, h2;
-    dv_export_viewports_get_size_r(VP->vp1, &w1, &h1);
-    dv_export_viewports_get_size_r(VP->vp2, &w2, &h2);
-    if (VP->orientation == GTK_ORIENTATION_HORIZONTAL) {
-      *w = w1 + w2;
-      *h = dv_max(h1, h2);
-    } else {
-      *w = dv_max(w1, w2);
-      *h = h1 + h2;
-    }
-  }
-}
-
-static void
-dv_export_viewports_to_img_r(dv_viewport_t * VP, cairo_surface_t * surface, double x, double y) {
-  if (!VP) {
-    return;
-  } else if (!VP->split) {
-    cairo_surface_t * surface_child = cairo_surface_create_for_rectangle(surface, x, y, VP->vpw, VP->vph);
-    dv_viewport_export_to_surface(VP, surface_child);
-  } else {
-    double w1, h1;
-    dv_export_viewports_get_size_r(VP->vp1, &w1, &h1);
-    if (VP->orientation == GTK_ORIENTATION_HORIZONTAL) {
-      dv_export_viewports_to_img_r(VP->vp1, surface, x, y);
-      dv_export_viewports_to_img_r(VP->vp2, surface, x + w1, y);
-    } else {
-      dv_export_viewports_to_img_r(VP->vp1, surface, x, y);
-      dv_export_viewports_to_img_r(VP->vp2, surface, x, y + h1);
-    }
-  }
-}
-
-static void
-dv_export_viewports_to_eps_r(dv_viewport_t * VP, cairo_t * cr, double x, double y) {
-  if (!VP) {
-    return;
-  } else if (!VP->split) {
-    cairo_save(cr);
-    cairo_translate(cr, x, y);
-    dv_viewport_draw(VP, cr);
-    cairo_restore(cr);
-  } else {
-    double w1, h1;
-    dv_export_viewports_get_size_r(VP->vp1, &w1, &h1);
-    if (VP->orientation == GTK_ORIENTATION_HORIZONTAL) {
-      dv_export_viewports_to_eps_r(VP->vp1, cr, x, y);
-      dv_export_viewports_to_eps_r(VP->vp2, cr, x + w1, y);
-    } else {
-      dv_export_viewports_to_eps_r(VP->vp1, cr, x, y);
-      dv_export_viewports_to_eps_r(VP->vp2, cr, x, y + h1);
-    }
-  }
-}
-
-static void
-dv_export_viewports_to_svg_r(dv_viewport_t * VP, cairo_t * cr, double x, double y) {
-  if (!VP) {
-    return;
-  } else if (!VP->split) {
-    cairo_save(cr);
-    cairo_translate(cr, x, y);
-    dv_viewport_draw(VP, cr);
-    cairo_restore(cr);
-  } else {
-    double w1, h1;
-    dv_export_viewports_get_size_r(VP->vp1, &w1, &h1);
-    if (VP->orientation == GTK_ORIENTATION_HORIZONTAL) {
-      dv_export_viewports_to_svg_r(VP->vp1, cr, x, y);
-      dv_export_viewports_to_svg_r(VP->vp2, cr, x + w1, y);
-    } else {
-      dv_export_viewports_to_svg_r(VP->vp1, cr, x, y);
-      dv_export_viewports_to_svg_r(VP->vp2, cr, x, y + h1);
-    }
-  }
-}
-
-static void
-on_file_export_all_clicked(_unused_ GtkToolButton * toolbtn, _unused_ gpointer user_data) {
-  double w, h;
-  dv_export_viewports_get_size_r(CS->VP, &w, &h);
-  cairo_surface_t * surface;
-  cairo_t * cr;
-  
-  /* PNG */
-  surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, w, h);
-  dv_export_viewports_to_img_r(CS->VP, surface, 0.0, 0.0);
-  cairo_surface_write_to_png(surface, "00dv.png");
-  fprintf(stdout, "Exported all viewports to 00dv.png\n");
-  cairo_surface_destroy(surface);
-  
-  GdkRGBA white[1];
-  gdk_rgba_parse(white, "white");
-
-  /* EPS */
-  surface = cairo_ps_surface_create("00dv.eps", w, h);
-  cairo_ps_surface_set_eps(surface, TRUE);
-  cr = cairo_create(surface);
-  // Whiten background
-  cairo_set_source_rgba(cr, white->red, white->green, white->blue, white->alpha);
-  cairo_paint(cr);
-  dv_export_viewports_to_eps_r(CS->VP, cr, 0.0, 0.0);
-  fprintf(stdout, "Exported all viewports to 00dv.eps\n");
-  cairo_destroy(cr);
-  cairo_surface_destroy(surface);
-  
-  /* EPS */
-  surface = cairo_svg_surface_create("00dv.svg", w, h);
-  cr = cairo_create(surface);
-  // Whiten background
-  cairo_set_source_rgba(cr, white->red, white->green, white->blue, white->alpha);
-  cairo_paint(cr);
-  dv_export_viewports_to_svg_r(CS->VP, cr, 0.0, 0.0);
-  fprintf(stdout, "Exported all viewports to 00dv.svg\n");
-  cairo_destroy(cr);
-  cairo_surface_destroy(surface);
-  
-  return;
 }
 
 
@@ -1619,8 +1302,8 @@ on_viewport_select_view(GtkCheckMenuItem * checkmenuitem, gpointer user_data) {
   gtk_widget_queue_draw(GTK_WIDGET(vp->frame));
 }
 
-static void
-on_viewport_configure_clicked(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
+G_MODULE_EXPORT void
+on_menubar_manage_viewports_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
   GtkWidget * dialog = gtk_dialog_new();
   gtk_window_set_title(GTK_WINDOW(dialog), "Configure Viewports");
   gtk_window_set_default_size(GTK_WINDOW(dialog), 800, 400);
@@ -1647,6 +1330,12 @@ on_viewport_configure_clicked(_unused_ GtkMenuItem * menuitem, _unused_ gpointer
   gtk_container_remove(GTK_CONTAINER(vbox), box);
   gtk_widget_destroy(dialog);
 }
+
+/*----------------- end of Menubar functions -----------------*/
+
+
+
+/*----------------- Statistics functions -----------------*/
 
 static gboolean
 on_stat_distribution_dag_changed(GtkWidget * widget, gpointer user_data) {
@@ -2219,7 +1908,7 @@ on_stat_breakdown_show_button_clicked(_unused_ GtkWidget * widget, _unused_ gpoi
   return TRUE;
 }
 
-static void
+void
 dv_open_statistics_dialog() {
   /* Get default DAG */
   dv_view_t * V = CS->activeV;
@@ -2462,12 +2151,7 @@ dv_open_statistics_dialog() {
   gtk_widget_destroy(dialog);
 }
 
-static void
-on_file_statistics_clicked(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
-  dv_open_statistics_dialog();
-}
-
-/*-----------------end of Menubar functions-----------------*/
+/*----------------- end of Statistics functions -----------------*/
 
 
 
@@ -2485,10 +2169,10 @@ dv_create_menubar() {
   gtk_menu_item_set_submenu(GTK_MENU_ITEM(file), file_menu);
   GtkWidget * export = gtk_menu_item_new_with_mnemonic("E_xport focused viewport");
   gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), export);
-  g_signal_connect(G_OBJECT(export), "activate", G_CALLBACK(on_file_export_clicked), NULL);
+  g_signal_connect(G_OBJECT(export), "activate", G_CALLBACK(on_menubar_export_activated), NULL);
   GtkWidget * exportall = gtk_menu_item_new_with_mnemonic("Export _all viewports");
   gtk_menu_shell_append(GTK_MENU_SHELL(file_menu), exportall);
-  g_signal_connect(G_OBJECT(exportall), "activate", G_CALLBACK(on_file_export_all_clicked), NULL);
+  g_signal_connect(G_OBJECT(exportall), "activate", G_CALLBACK(on_menubar_export_all_activated), NULL);
 
   
   // submenu Viewports
@@ -2499,7 +2183,7 @@ dv_create_menubar() {
   GtkWidget * viewport, * viewport_menu;
   viewport = gtk_menu_item_new_with_mnemonic("_Configure");
   gtk_menu_shell_append(GTK_MENU_SHELL(viewports_menu), viewport);
-  g_signal_connect(G_OBJECT(viewport), "activate", G_CALLBACK(on_viewport_configure_clicked), NULL);
+  g_signal_connect(G_OBJECT(viewport), "activate", G_CALLBACK(on_menubar_manage_viewports_activated), NULL);
   GSList * group;
   GtkWidget * item;
   char s[DV_STRING_LENGTH];
@@ -2607,14 +2291,14 @@ dv_create_menubar() {
   gtk_menu_item_set_submenu(GTK_MENU_ITEM(tools), tools_menu);
   GtkWidget * statistics = gtk_menu_item_new_with_mnemonic("_Statistics");
   gtk_menu_shell_append(GTK_MENU_SHELL(tools_menu), statistics);
-  g_signal_connect(G_OBJECT(statistics), "activate", G_CALLBACK(on_file_statistics_clicked), NULL);
+  g_signal_connect(G_OBJECT(statistics), "activate", G_CALLBACK(on_menubar_statistics_activated), NULL);
   GtkWidget * samplebt = gtk_menu_item_new_with_mnemonic("S_amples");
   gtk_menu_shell_append(GTK_MENU_SHELL(tools_menu), samplebt);
   //GtkWidget * samplebt_menu = gtk_menu_new();
   //gtk_menu_item_set_submenu(GTK_MENU_ITEM(samplebt), samplebt_menu);
   //GtkWidget * samplebt_open = gtk_menu_item_new_with_mnemonic("_View Backtrace Samples");
   //gtk_menu_shell_append(GTK_MENU_SHELL(samplebt_menu), samplebt_open);
-  g_signal_connect(G_OBJECT(samplebt), "activate", G_CALLBACK(on_menu_item_view_samples_clicked), (void *) 0);
+  g_signal_connect(G_OBJECT(samplebt), "activate", G_CALLBACK(on_menubar_view_samples_activated), (void *) 0);
 
   // submenu Help
   GtkWidget * help = gtk_menu_item_new_with_mnemonic("_Help");
@@ -2623,26 +2307,35 @@ dv_create_menubar() {
   gtk_menu_item_set_submenu(GTK_MENU_ITEM(help), help_menu);  
   GtkWidget * hotkeys = gtk_menu_item_new_with_mnemonic("Hot_keys");
   gtk_menu_shell_append(GTK_MENU_SHELL(help_menu), hotkeys);
-  g_signal_connect(G_OBJECT(hotkeys), "activate", G_CALLBACK(on_help_hotkeys_clicked), NULL);
+  g_signal_connect(G_OBJECT(hotkeys), "activate", G_CALLBACK(on_menubar_hotkeys_activated), NULL);
   
   return menubar;
 }
 
 static void
-dv_gui_init(dv_gui_t * gui) {
-  gui->window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+dv_gui_init(dv_gui_t * gui, _unused_ GtkApplication * app) {
+  //  if (app)
+  //gui->window = gtk_application_window_new(app);
+    //  else
+        gui->window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+  
   gui->vbox0 = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-  gui->menubar = dv_create_menubar();
+  //gui->menubar = dv_create_menubar();
   gui->toolbar = gtk_toolbar_new();
   gui->statusbar1 = gtk_statusbar_new();
   gui->statusbar2 = gtk_statusbar_new();
   gui->statusbar3 = gtk_statusbar_new();
 
-  /*
-  GtkBuilder * builder = gtk_builder_new_from_file("menubar.ui");
+  GtkBuilder * builder = gtk_builder_new();
+  GError * gerr = NULL;
+  gtk_builder_add_from_file(builder, "gtk/menubar.ui", &gerr);
+  if (gerr) {
+    g_error("ERROR: %s\n", gerr->message);
+    exit(1);
+  }
+  gtk_builder_connect_signals(builder, NULL);
   gui->menubar = (GtkWidget *) gtk_builder_get_object(builder, "menubar");
   gtk_widget_show_all(gui->menubar);
-  */
 
   gtk_container_add(GTK_CONTAINER(gui->window), gui->vbox0);
   gtk_box_pack_start(GTK_BOX(gui->vbox0), gui->menubar, FALSE, FALSE, 0);
@@ -2666,9 +2359,9 @@ dv_gui_init(dv_gui_t * gui) {
   gtk_widget_set_tooltip_text(GTK_WIDGET(gui->statusbar3), "Memory pool status");
 }
 
-_static_unused_ int
+_static_unused_ void
 open_gui_1(_unused_ int argc, _unused_ char * argv[]) {
-  GtkBuilder * builder = gtk_builder_new_from_file("dagviz.ui");
+  GtkBuilder * builder = gtk_builder_new_from_file("gtk/dagviz.ui");
   
   /* Window */
   GtkWidget * window = (GtkWidget *) gtk_builder_get_object(builder, "window");
@@ -2679,14 +2372,12 @@ open_gui_1(_unused_ int argc, _unused_ char * argv[]) {
 
   /* Run main loop */
   gtk_widget_show_all(window);
-  gtk_main();
-  return 1;
 }
 
-_static_unused_ int
-open_gui(_unused_ int argc, _unused_ char * argv[]) {
+_static_unused_ void
+open_gui(_unused_ int argc, _unused_ char * argv[], GtkApplication * app) {
   /* Initialize GUI widgets */
-  dv_gui_init(CS->gui);
+  dv_gui_init(CS->gui, app);
 
   /* Window */
   GtkWidget * window = CS->gui->window;
@@ -2696,6 +2387,7 @@ open_gui(_unused_ int argc, _unused_ char * argv[]) {
   gtk_window_maximize(GTK_WINDOW(window));
   //gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
   gtk_window_set_title(GTK_WINDOW(window), "DAG Visualizer");
+  //gtk_window_set_icon_name(GTK_WINDOW(window), "applications-graphics");
   g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
   g_signal_connect(G_OBJECT(CS->gui->window), "key-press-event", G_CALLBACK(on_window_key_event), NULL);
 
@@ -2782,8 +2474,6 @@ open_gui(_unused_ int argc, _unused_ char * argv[]) {
 
   /* Run main loop */
   gtk_widget_show_all(window);
-  gtk_main();
-  return 1;
 }
 
 
@@ -2811,24 +2501,89 @@ dv_alarm_init() {
     dv_alarm_set();
 }
 
+static void
+on_application_activate(GApplication * app, _unused_ gpointer user_data) {
+  open_gui(0, NULL, GTK_APPLICATION(app));
+}
 
 int
-main(int argc, char * argv[]) {
-  /* General initialization */
+main_usegtkapplication(int argc, char * argv[]) {
+  /* Initialization */
+
+  /* GTK */
   gtk_init(&argc, &argv);
-  dv_global_state_init(CS);
-  //dv_get_env();
-  //if (argc > 1)  print_dag_file(argv[1]);
-  //dv_alarm_init();
   
-  /* PIDAG initialization */
+  /* CS */
+  dv_global_state_init(CS);
+  
+  /* PIDAG */
   int i;
   if (argc > 1) {
     for (i=1; i<argc; i++)
       dv_pidag_read_new_file(argv[i]);
   }
   
-  /* Viewport initialization */
+  /* Viewport */
+  dv_viewport_t * VP = dv_viewport_create_new();
+  dv_viewport_init(VP);
+
+  /* DAG -> VIEW <- Viewport initialization */
+  dv_dag_t * D;
+  dv_view_t * V;
+  for (i=0; i<CS->nP; i++) {
+    D = dv_dag_create_new_with_pidag(&CS->P[i]);
+    //print_dvdag(D);
+    V = dv_view_create_new_with_dag(D);
+    // Expand
+    int count = 0;
+    while (V->D->n < 10 && count < 2) {
+      printf("V %ld: %ld\n", V-CS->V, V->D->n);
+      dv_do_expanding_one(V);
+      count++;
+    }
+  }
+  if (CS->nV == 1) {
+    V = CS->V;
+    dv_view_add_viewport(V, VP);
+    //dv_view_change_lt(V, 4);
+  } else if (CS->nV >= 2) {
+    dv_viewport_change_split(VP, 1);
+    dv_view_add_viewport(&CS->V[0], VP->vp1);
+    dv_view_add_viewport(&CS->V[1], VP->vp2);
+  }  
+  dv_do_set_focused_view(CS->V, 1);
+
+  /* Open Gtk GUI */
+  GtkApplication * app = gtk_application_new("com.github.zanton.dagviz", 0);
+  g_signal_connect(G_OBJECT(app), "activate", G_CALLBACK(on_application_activate), NULL);
+  int status = g_application_run(G_APPLICATION(app), argc, argv);
+  g_object_unref(app);
+
+  return status;
+}
+
+int
+main(int argc, char * argv[]) {
+  /* Initialization */
+  
+  /* GTK */
+  gtk_init(&argc, &argv);
+
+  /* CS */
+  dv_global_state_init(CS);
+  
+  //dv_get_env();
+  //if (argc > 1)  print_dag_file(argv[1]);
+  //dv_alarm_init();
+  
+  /* PIDAG */
+  int i;
+  if (argc > 1) {
+    for (i=1; i<argc; i++)
+      dv_pidag_read_new_file(argv[i]);
+  }
+  
+  /* Viewport */
   dv_viewport_t * VP = dv_viewport_create_new();
   dv_viewport_init(VP);
 
@@ -2856,11 +2611,12 @@ main(int argc, char * argv[]) {
     dv_view_add_viewport(&CS->V[0], VP->vp1);
     dv_view_add_viewport(&CS->V[1], VP->vp2);
   }
-  
   dv_do_set_focused_view(CS->V, 1);
   
   /* Open GUI */
-  return open_gui(argc, argv);
+  open_gui(argc, argv, NULL);
+  gtk_main();
+  return 1;
 }
 
 /*-----------------Main ends-------------------*/

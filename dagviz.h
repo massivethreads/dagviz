@@ -578,6 +578,10 @@ double dv_view_cairo_coordinate_bound_right(dv_view_t *);
 double dv_view_cairo_coordinate_bound_up(dv_view_t *);
 double dv_view_cairo_coordinate_bound_down(dv_view_t *);
 
+void dv_viewport_draw(dv_viewport_t *, cairo_t *);
+
+void dv_view_toolbox_init(dv_view_toolbox_t *, dv_view_t *);
+
 void dv_view_init(dv_view_t *);
 dv_view_t * dv_view_create_new_with_dag(dv_dag_t *);
 void dv_view_open_toolbox_window(dv_view_t *);
@@ -588,6 +592,8 @@ void dv_view_switch_viewport(dv_view_t *, dv_viewport_t *, dv_viewport_t *);
 void dv_viewport_init(dv_viewport_t *);
 void dv_viewport_add_view(dv_viewport_t *, dv_view_t *);
 void dv_viewport_remove_view(dv_viewport_t *, dv_view_t *);
+
+void dv_open_statistics_dialog();
 
 void dv_signal_handler(int);
 
@@ -634,6 +640,9 @@ void dv_view_change_azf(dv_view_t *, int);
 
 void dv_view_status_set_coord(dv_view_status_t *);
 void dv_view_status_init(dv_view_t *, dv_view_status_t *);
+
+void dv_export_viewport();
+void dv_export_all_viewports();
 
 
 /* print.c */

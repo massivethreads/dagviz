@@ -13,6 +13,7 @@ CFLAGS += -I$(prefix)/include
 CFLAGS += -DDAG_RECORDER=2 -DDAG_RECORDER_INLINE_INSTRUMENTATION
 CFLAGS += $(cflags_2)
 CFLAGS += $(cflags_3)
+CFLAGS += -Wl,--export-dynamic
 
 ldflags_1 ?=
 ldflags_2 ?= #-lunwind

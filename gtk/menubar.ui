@@ -1,0 +1,110 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <object class="GtkMenuBar" id="menubar">
+    
+    <child>  
+      <object class="GtkMenuItem" id="file">
+        <property name="use-underline">TRUE</property>
+        <property name="label">_File</property>
+        <child type="submenu">
+          <object class="GtkMenu" id="file_menu">
+            
+            <child>
+              <object class="GtkMenuItem" id="export_viewport">
+                <property name="use-underline">TRUE</property>
+                <property name="label">E_xport focused viewport</property>
+                <signal name="activate" handler="on_menubar_export_activated"/>
+              </object>
+            </child>
+            
+            <child>
+              <object class="GtkMenuItem" id="export_all">
+                <property name="use-underline">TRUE</property>
+                <property name="label">Export _all viewports</property>
+                <signal name="activate" handler="on_menubar_export_all_activated"/>
+              </object>
+            </child>
+            
+          </object>
+        </child>
+      </object>
+    </child>
+    
+    <child>
+      <object class="GtkMenuItem" id="edit">
+        <property name="use-underline">TRUE</property>
+        <property name="label">_Edit</property>
+        <child type="submenu">
+          <object class="GtkMenu" id="edit_menu">
+            
+            <child>
+              <object class="GtkMenuItem" id="manage_viewports">
+                <property name="use-underline">TRUE</property>
+                <property name="label">Manage _viewports</property>
+                <signal name="activate" handler="on_menubar_manage_viewports_activated"/>
+              </object>
+            </child>
+            
+            <child>
+              <object class="GtkMenuItem" id="manage_dags">
+                <property name="use-underline">TRUE</property>
+                <property name="label">Manage _DAGs</property>
+                <signal name="activate" handler="on_menubar_manage_dags_activated"/>
+              </object>
+            </child>
+            
+          </object>
+        </child>
+      </object>
+    </child>
+    
+    <child>
+      <object class="GtkMenuItem" id="tools">
+        <property name="use-underline">TRUE</property>
+        <property name="label">_Tools</property>
+        <child type="submenu">
+          <object class="GtkMenu" id="tools_menu">
+            
+            <child>
+              <object class="GtkMenuItem" id="statistics">
+                <property name="use-underline">TRUE</property>
+                <property name="label">_Statistics</property>
+                <signal name="activate" handler="on_menubar_statistics_activated"/>
+              </object>
+            </child>
+            
+            <child>
+              <object class="GtkMenuItem" id="samples">
+                <property name="use-underline">TRUE</property>
+                <property name="label">_Backtrace samples</property>
+                <signal name="activate" handler="on_menubar_view_samples_activated"/>
+              </object>
+            </child>
+            
+          </object>
+        </child>
+      </object>
+    </child>
+    
+    <child>
+      <object class="GtkMenuItem" id="help">
+        <property name="use-underline">TRUE</property>
+        <property name="label">_Help</property>
+        <child type="submenu">
+          <object class="GtkMenu" id="help_menu">
+            
+            <child>
+              <object class="GtkMenuItem" id="hotkeys">
+                <property name="use-underline">TRUE</property>
+                <property name="label">Hot_keys</property>
+                <signal name="activate" handler="on_menubar_hotkeys_activated"/>
+              </object>
+            </child>
+            
+          </object>
+        </child>
+      </object>
+    </child>
+    
+  </object>
+</interface>

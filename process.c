@@ -1163,3 +1163,187 @@ dv_view_status_init(dv_view_t * V, dv_view_status_t * S) {
 
 
 
+/******************** Export ******************************/
+
+static void
+dv_viewport_export_to_surface(dv_viewport_t * VP, cairo_surface_t * surface) {
+  cairo_t * cr = cairo_create(surface);
+  // Whiten background
+  GdkRGBA white[1];
+  gdk_rgba_parse(white, "white");
+  cairo_set_source_rgba(cr, white->red, white->green, white->blue, white->alpha);
+  cairo_paint(cr);
+  // Draw viewport
+  dv_viewport_draw(VP, cr);
+  // Finish
+  cairo_destroy(cr);
+}
+
+void
+dv_export_viewport() {
+  dv_view_t * V = CS->activeV;
+  if (!V) {
+    fprintf(stderr, "Warning: there is no active V to export.\n");
+    return;
+  }
+  dv_viewport_t * VP = V->mainVP;
+  if (!VP) {
+    fprintf(stderr, "Warning: there is no main VP for the active V.\n");
+    return;
+  }
+  cairo_surface_t * surface;
+
+  /* PNG */
+  surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, VP->vpw, VP->vph);
+  dv_viewport_export_to_surface(VP, surface);
+  cairo_surface_write_to_png(surface, "00dv.png");
+  fprintf(stdout, "Exported viewport %ld to 00dv.png\n", VP - CS->VP);
+  cairo_surface_destroy(surface);
+
+  /* EPS */
+  surface = cairo_ps_surface_create("00dv.eps", VP->vpw, VP->vph);
+  cairo_ps_surface_set_eps(surface, TRUE);
+  dv_viewport_export_to_surface(VP, surface);
+  fprintf(stdout, "Exported viewport %ld to 00dv.eps\n", VP - CS->VP);
+  cairo_surface_destroy(surface);
+
+  /* SVG */
+  surface = cairo_svg_surface_create("00dv.svg", VP->vpw, VP->vph);
+  dv_viewport_export_to_surface(VP, surface);
+  fprintf(stdout, "Exported viewport %ld to 00dv.svg\n", VP - CS->VP);
+  cairo_surface_destroy(surface);
+
+  return;  
+}
+
+static void
+dv_export_viewports_get_size_r(dv_viewport_t * VP, double * w, double * h) {
+  if (!VP) {
+    *w = 0.0;
+    *h = 0.0;
+  } else if (!VP->split) {
+    *w = VP->vpw;
+    *h = VP->vph;
+  } else {
+    double w1, h1, w2, h2;
+    dv_export_viewports_get_size_r(VP->vp1, &w1, &h1);
+    dv_export_viewports_get_size_r(VP->vp2, &w2, &h2);
+    if (VP->orientation == GTK_ORIENTATION_HORIZONTAL) {
+      *w = w1 + w2;
+      *h = dv_max(h1, h2);
+    } else {
+      *w = dv_max(w1, w2);
+      *h = h1 + h2;
+    }
+  }
+}
+
+static void
+dv_export_viewports_to_img_r(dv_viewport_t * VP, cairo_surface_t * surface, double x, double y) {
+  if (!VP) {
+    return;
+  } else if (!VP->split) {
+    cairo_surface_t * surface_child = cairo_surface_create_for_rectangle(surface, x, y, VP->vpw, VP->vph);
+    dv_viewport_export_to_surface(VP, surface_child);
+  } else {
+    double w1, h1;
+    dv_export_viewports_get_size_r(VP->vp1, &w1, &h1);
+    if (VP->orientation == GTK_ORIENTATION_HORIZONTAL) {
+      dv_export_viewports_to_img_r(VP->vp1, surface, x, y);
+      dv_export_viewports_to_img_r(VP->vp2, surface, x + w1, y);
+    } else {
+      dv_export_viewports_to_img_r(VP->vp1, surface, x, y);
+      dv_export_viewports_to_img_r(VP->vp2, surface, x, y + h1);
+    }
+  }
+}
+
+static void
+dv_export_viewports_to_eps_r(dv_viewport_t * VP, cairo_t * cr, double x, double y) {
+  if (!VP) {
+    return;
+  } else if (!VP->split) {
+    cairo_save(cr);
+    cairo_translate(cr, x, y);
+    dv_viewport_draw(VP, cr);
+    cairo_restore(cr);
+  } else {
+    double w1, h1;
+    dv_export_viewports_get_size_r(VP->vp1, &w1, &h1);
+    if (VP->orientation == GTK_ORIENTATION_HORIZONTAL) {
+      dv_export_viewports_to_eps_r(VP->vp1, cr, x, y);
+      dv_export_viewports_to_eps_r(VP->vp2, cr, x + w1, y);
+    } else {
+      dv_export_viewports_to_eps_r(VP->vp1, cr, x, y);
+      dv_export_viewports_to_eps_r(VP->vp2, cr, x, y + h1);
+    }
+  }
+}
+
+static void
+dv_export_viewports_to_svg_r(dv_viewport_t * VP, cairo_t * cr, double x, double y) {
+  if (!VP) {
+    return;
+  } else if (!VP->split) {
+    cairo_save(cr);
+    cairo_translate(cr, x, y);
+    dv_viewport_draw(VP, cr);
+    cairo_restore(cr);
+  } else {
+    double w1, h1;
+    dv_export_viewports_get_size_r(VP->vp1, &w1, &h1);
+    if (VP->orientation == GTK_ORIENTATION_HORIZONTAL) {
+      dv_export_viewports_to_svg_r(VP->vp1, cr, x, y);
+      dv_export_viewports_to_svg_r(VP->vp2, cr, x + w1, y);
+    } else {
+      dv_export_viewports_to_svg_r(VP->vp1, cr, x, y);
+      dv_export_viewports_to_svg_r(VP->vp2, cr, x, y + h1);
+    }
+  }
+}
+
+void
+dv_export_all_viewports() {
+  double w, h;
+  dv_export_viewports_get_size_r(CS->VP, &w, &h);
+  cairo_surface_t * surface;
+  cairo_t * cr;
+  
+  /* PNG */
+  surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, w, h);
+  dv_export_viewports_to_img_r(CS->VP, surface, 0.0, 0.0);
+  cairo_surface_write_to_png(surface, "00dv.png");
+  fprintf(stdout, "Exported all viewports to 00dv.png\n");
+  cairo_surface_destroy(surface);
+  
+  GdkRGBA white[1];
+  gdk_rgba_parse(white, "white");
+
+  /* EPS */
+  surface = cairo_ps_surface_create("00dv.eps", w, h);
+  cairo_ps_surface_set_eps(surface, TRUE);
+  cr = cairo_create(surface);
+  // Whiten background
+  cairo_set_source_rgba(cr, white->red, white->green, white->blue, white->alpha);
+  cairo_paint(cr);
+  dv_export_viewports_to_eps_r(CS->VP, cr, 0.0, 0.0);
+  fprintf(stdout, "Exported all viewports to 00dv.eps\n");
+  cairo_destroy(cr);
+  cairo_surface_destroy(surface);
+  
+  /* EPS */
+  surface = cairo_svg_surface_create("00dv.svg", w, h);
+  cr = cairo_create(surface);
+  // Whiten background
+  cairo_set_source_rgba(cr, white->red, white->green, white->blue, white->alpha);
+  cairo_paint(cr);
+  dv_export_viewports_to_svg_r(CS->VP, cr, 0.0, 0.0);
+  fprintf(stdout, "Exported all viewports to 00dv.svg\n");
+  cairo_destroy(cr);
+  cairo_surface_destroy(surface);
+  
+  return;
+}
+
+/******************** end of Export ******************************/
+
