@@ -773,8 +773,54 @@ on_menubar_statistics_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpoint
 }
 
 G_MODULE_EXPORT void
+on_menubar_manage_viewports_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
+  GtkWidget * management_window = dv_gui_get_management_window(GUI);  
+  gtk_widget_show_all(management_window);
+}
+
+G_MODULE_EXPORT void
 on_menubar_manage_dags_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
+  /*
+  GtkWidget * management_window = dv_gui_get_management_window(GUI);  
+  gtk_widget_show_all(management_window);
+  */
+}
+
+static gboolean
+on_management_window_viewport_options_split_changed(_unused_ GtkWidget * widget, gpointer user_data) {
+  dv_viewport_t * VP = (dv_viewport_t *) user_data;
+  int active = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+  dv_viewport_change_split(VP, active);
+
+  /* Redraw viewports */
+  gtk_widget_show_all(GTK_WIDGET(VP->frame));
+  gtk_widget_queue_draw(GTK_WIDGET(VP->frame));
+  /* Redraw management window */
+  gtk_widget_show_all(GTK_WIDGET(VP->mini_frame));
+  gtk_widget_queue_draw(GTK_WIDGET(VP->mini_frame));
+  gtk_widget_show_all(GTK_WIDGET(VP->mini_frame_2));
+  gtk_widget_queue_draw(GTK_WIDGET(VP->mini_frame_2));
   
+  return TRUE;
+}
+
+static gboolean
+on_management_window_viewport_options_orientation_changed(_unused_ GtkWidget * widget, gpointer user_data) {
+  dv_viewport_t * VP = (dv_viewport_t *) user_data;
+  int active = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+  GtkOrientation o = (active==0)?GTK_ORIENTATION_HORIZONTAL:GTK_ORIENTATION_VERTICAL;
+  dv_viewport_change_orientation(VP, o);
+
+  /* Redraw viewports */
+  gtk_widget_show_all(GTK_WIDGET(VP->frame));
+  gtk_widget_queue_draw(GTK_WIDGET(VP->frame));
+  /* Redraw management window */
+  gtk_widget_show_all(GTK_WIDGET(VP->mini_frame));
+  gtk_widget_queue_draw(GTK_WIDGET(VP->mini_frame));
+  gtk_widget_show_all(GTK_WIDGET(VP->mini_frame_2));
+  gtk_widget_queue_draw(GTK_WIDGET(VP->mini_frame_2));
+  
+  return TRUE;
 }
 
 

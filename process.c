@@ -575,13 +575,13 @@ dv_statusbar_update(int statusbar_id, int context_id, char * s) {
   GtkWidget * statusbar = NULL;
   switch (statusbar_id) {
   case 1:
-    statusbar = CS->gui->statusbar1;
+    statusbar = GUI->statusbar1;
     break;
   case 2:
-    statusbar = CS->gui->statusbar2;
+    statusbar = GUI->statusbar2;
     break;
   case 3:
-    statusbar = CS->gui->statusbar3;
+    statusbar = GUI->statusbar3;
     break;
   default:
     break;
@@ -596,13 +596,13 @@ dv_statusbar_remove(int statusbar_id, int context_id) {
   GtkWidget * statusbar = NULL;
   switch (statusbar_id) {
   case 1:
-    statusbar = CS->gui->statusbar1;
+    statusbar = GUI->statusbar1;
     break;
   case 2:
-    statusbar = CS->gui->statusbar2;
+    statusbar = GUI->statusbar2;
     break;
   case 3:
-    statusbar = CS->gui->statusbar3;
+    statusbar = GUI->statusbar3;
     break;
   default:
     break;
@@ -626,8 +626,8 @@ dv_statusbar_update_selection_status() {
           V->D->cur_d, V->D->dmax);
   dv_statusbar_update(2, 0, s);
   sprintf(s, "Currently focused DAG: %s (change by tab key)", V->D->P->fn);
-  if (CS->gui->statusbar2)
-    gtk_widget_set_tooltip_text(GTK_WIDGET(CS->gui->statusbar2), s);
+  if (GUI->statusbar2)
+    gtk_widget_set_tooltip_text(GTK_WIDGET(GUI->statusbar2), s);
 }
 
 void

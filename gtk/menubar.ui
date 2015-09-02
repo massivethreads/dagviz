@@ -38,6 +38,14 @@
           <object class="GtkMenu" id="edit_menu">
             
             <child>
+              <object class="GtkMenuItem" id="manage_viewports_old">
+                <property name="use-underline">TRUE</property>
+                <property name="label">Manage viewports (_old)</property>
+                <signal name="activate" handler="on_menubar_manage_viewports_activated_old"/>
+              </object>
+            </child>
+            
+            <child>
               <object class="GtkMenuItem" id="manage_viewports">
                 <property name="use-underline">TRUE</property>
                 <property name="label">Manage _viewports</property>

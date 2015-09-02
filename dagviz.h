@@ -389,11 +389,13 @@ typedef struct dv_viewport_toolbox {
 typedef struct dv_viewport {
   int split; /* split into two nested paned viewports or not */
   GtkWidget * frame; /* contains [paned | box]*/
+  
   /* Split */
   GtkWidget * paned; /* GtkPaned */
   GtkOrientation orientation; /* split orientation */
   struct dv_viewport * vp1; /* first child viewport */
   struct dv_viewport * vp2; /* second child viewport */
+  
   /* No split */
   GtkWidget * box; /* contains toolbars and darea */
   GtkWidget * darea; /* drawing area */
@@ -401,6 +403,17 @@ typedef struct dv_viewport {
   int mV[DV_MAX_VIEW]; /* mark Vs that this VP contains */
   dv_view_t * mainV;
   dv_viewport_toolbox_t T[1];
+
+  /* Viewport management window */
+  /* left */
+  GtkWidget * mini_frame;
+  GtkWidget * mini_paned;  
+  /* right */
+  GtkWidget * mini_frame_2;
+  GtkWidget * mini_frame_2_box;
+  GtkWidget * split_combobox;
+  GtkWidget * orient_combobox;
+  GtkWidget * dag_menubutton;
 } dv_viewport_t;
 
 typedef struct dv_btsample_viewer {
@@ -500,6 +513,7 @@ typedef struct dv_stat_breakdown_graph {
 
 
 typedef struct dv_gui {
+  /* Main window */
   GtkWidget * window;
   GtkWidget * vbox0;
   GtkWidget * menubar;
@@ -509,6 +523,9 @@ typedef struct dv_gui {
   GtkWidget * statusbar1; // interaction statuses
   GtkWidget * statusbar2; // selection statuses
   GtkWidget * statusbar3; // pool status
+
+  /* Additional windows */
+  GtkWidget * management_window;
 } dv_gui_t;
 
 typedef struct dv_global_state {
@@ -530,7 +547,6 @@ typedef struct dv_global_state {
   /* GUI */
   dv_viewport_t VP[DV_MAX_VIEWPORT];
   int nVP;
-  dv_gui_t gui[1];
 
   /* Dialogs */
   dv_btsample_viewer_t btviewer[1];
@@ -549,6 +565,7 @@ extern const char * const DV_COLORS[];
 extern const char * const DV_HISTOGRAM_COLORS[];
 
 extern dv_global_state_t  CS[]; /* global common state */
+extern dv_gui_t GUI[];
 
 extern const char * const DV_LINEAR_PATTERN_STOPS[];
 extern const int DV_LINEAR_PATTERN_STOPS_NUM;
@@ -589,11 +606,21 @@ void dv_view_change_mainvp(dv_view_t *, dv_viewport_t *);
 void dv_view_add_viewport(dv_view_t *, dv_viewport_t *);
 void dv_view_remove_viewport(dv_view_t *, dv_viewport_t *);
 void dv_view_switch_viewport(dv_view_t *, dv_viewport_t *, dv_viewport_t *);
+
 void dv_viewport_init(dv_viewport_t *);
+void dv_viewport_miniver2_show(dv_viewport_t *);
+void dv_viewport_miniver_show(dv_viewport_t *);
+void dv_viewport_show(dv_viewport_t *);
+void dv_viewport_change_split(dv_viewport_t *, int);
+void dv_viewport_change_orientation(dv_viewport_t *, GtkOrientation);
+void dv_viewport_change_mainv(dv_viewport_t *, dv_view_t *);
 void dv_viewport_add_view(dv_viewport_t *, dv_view_t *);
 void dv_viewport_remove_view(dv_viewport_t *, dv_view_t *);
 
 void dv_open_statistics_dialog();
+
+void dv_gui_init(dv_gui_t *);
+GtkWidget * dv_gui_get_management_window(dv_gui_t *);
 
 void dv_signal_handler(int);
 

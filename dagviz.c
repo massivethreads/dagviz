@@ -1,6 +1,7 @@
 #include "dagviz.h"
 
 dv_global_state_t  CS[1];
+dv_gui_t GUI[1];
 
 const char * const DV_COLORS[] =
   {"orange", "gold", "cyan", "azure", "green",
@@ -542,7 +543,7 @@ dv_view_toolbox_get_window(dv_view_toolbox_t * T) {
   gtk_window_set_title(GTK_WINDOW(window), s);
   gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_MOUSE);
   gtk_window_set_modal(GTK_WINDOW(window), 0);
-  gtk_window_set_transient_for(GTK_WINDOW(window), GTK_WINDOW(CS->gui->window));
+  gtk_window_set_transient_for(GTK_WINDOW(window), GTK_WINDOW(GUI->window));
   g_signal_connect(G_OBJECT(window), "delete-event", G_CALLBACK(gtk_widget_hide_on_delete), NULL);
   GtkWidget * window_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
   gtk_container_add(GTK_CONTAINER(window), window_box);
@@ -931,25 +932,30 @@ dv_viewport_toolbox_init(dv_viewport_t * VP) {
 
 void
 dv_viewport_init(dv_viewport_t * VP) {
+  char s[DV_STRING_LENGTH];
+  sprintf(s, "Viewport %ld", VP - CS->VP);
+  GdkRGBA white[1];
+  gdk_rgba_parse(white, "white");
+
+  /* Split */
   VP->split = 0;
-  // Frame
-  //char s[DV_STRING_LENGTH];
-  //sprintf(s, "Viewport %ld", VP - CS->VP);
+
+  /* Frame */
   VP->frame = gtk_frame_new(NULL);
   g_object_ref(G_OBJECT(VP->frame));
-  // Paned
+
+  /* Paned */
   VP->paned = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
   g_object_ref(G_OBJECT(VP->paned));
   VP->orientation = GTK_ORIENTATION_HORIZONTAL;
   VP->vp1 = VP->vp2 = NULL;
-  // White color
-  GdkRGBA white[1];
-  gdk_rgba_parse(white, "white");
-  // Box
+  
+  /* Box */
   VP->box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
   g_object_ref(G_OBJECT(VP->box));
   gtk_container_add(GTK_CONTAINER(VP->frame), GTK_WIDGET(VP->box));
-  // Drawing Area
+  
+  /* Drawing Area */
   VP->darea = gtk_drawing_area_new();
   g_object_ref(G_OBJECT(VP->darea));
   gtk_box_pack_end(GTK_BOX(VP->box), VP->darea, TRUE, TRUE, 0);
@@ -962,33 +968,115 @@ dv_viewport_init(dv_viewport_t * VP) {
   g_signal_connect(G_OBJECT(darea), "button-release-event", G_CALLBACK(on_button_event), (void *) VP);
   g_signal_connect(G_OBJECT(darea), "motion-notify-event", G_CALLBACK(on_motion_event), (void *) VP);
   g_signal_connect(G_OBJECT(darea), "configure-event", G_CALLBACK(on_darea_configure_event), (void *) VP);
-  // VP <-> V
+  
+  /* VP <-> V */
   int i;
   for (i = 0; i < DV_MAX_VIEW; i++)
     VP->mV[i] = 0;
-  // vpw, vph
+  
+  /* width, height */
   VP->vpw = VP->vph = 0.0;
+
+  /* Viewport toolbox */
   dv_viewport_toolbox_init(VP);
   //gtk_box_pack_start(GTK_BOX(VP->box), VP->T->toolbar, FALSE, FALSE, 0);
+
+  
+  /* Management window */
+
+  /* Mini frame */
+  VP->mini_frame = gtk_frame_new(s);
+  g_object_ref(G_OBJECT(VP->mini_frame));
+  gtk_container_set_border_width(GTK_CONTAINER(VP->mini_frame), 5);
+  VP->mini_paned = gtk_paned_new(GTK_ORIENTATION_HORIZONTAL);
+  g_object_ref(G_OBJECT(VP->mini_paned));
+
+  /* Mini frame 2 */
+  VP->mini_frame_2 = gtk_frame_new(s);
+  g_object_ref(G_OBJECT(VP->mini_frame_2));
+  gtk_container_set_border_width(GTK_CONTAINER(VP->mini_frame_2), 5);
+  VP->mini_frame_2_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+  g_object_ref(G_OBJECT(VP->mini_frame_2_box));
+  gtk_container_add(GTK_CONTAINER(VP->mini_frame_2), VP->mini_frame_2_box);
+  gtk_container_set_border_width(GTK_CONTAINER(VP->mini_frame_2_box), 5);
+  
+  GtkWidget * hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
+  gtk_box_pack_start(GTK_BOX(VP->mini_frame_2_box), hbox, FALSE, FALSE, 3);
+  
+  /* Split combobox */
+  GtkWidget * split_combobox = VP->split_combobox = gtk_combo_box_text_new();
+  gtk_box_pack_start(GTK_BOX(hbox), split_combobox, FALSE, FALSE, 0);
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(split_combobox), "nosplit", "No split");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(split_combobox), "split", "Split");
+  gtk_combo_box_set_active(GTK_COMBO_BOX(split_combobox), VP->split);
+  g_signal_connect(G_OBJECT(split_combobox), "changed", G_CALLBACK(on_management_window_viewport_options_split_changed), (void *) VP);
+
+  /* Orientation combobox */
+  GtkWidget * orient_combobox = VP->orient_combobox = gtk_combo_box_text_new();
+  gtk_box_pack_start(GTK_BOX(hbox), orient_combobox, FALSE, FALSE, 0);
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(orient_combobox), "horizontal", "Horizontally");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(orient_combobox), "vertical", "Vertically");
+  gtk_combo_box_set_active(GTK_COMBO_BOX(orient_combobox), VP->orientation);
+  g_signal_connect(G_OBJECT(orient_combobox), "changed", G_CALLBACK(on_management_window_viewport_options_orientation_changed), (void *) VP);
+
+  /* DAG menubutton */
+  GtkWidget * dag_menubutton = VP->dag_menubutton = gtk_menu_button_new();
+  gtk_box_pack_start(GTK_BOX(hbox), dag_menubutton, FALSE, FALSE, 0);
+  GtkWidget * dag_menubutton_menu = gtk_menu_new();
+  gtk_menu_button_set_popup(GTK_MENU_BUTTON(dag_menubutton), dag_menubutton_menu);
+  
 }
 
-void dv_viewport_show(dv_viewport_t * vp);
+void
+dv_viewport_miniver2_show(dv_viewport_t * VP) {
+  GList * children = gtk_container_get_children(GTK_CONTAINER(VP->mini_frame_2_box));
+  GList * child = children;
+  int exist_1 = 0;
+  int exist_2 = 0;
+  while (child) {
+    GtkWidget * widget = GTK_WIDGET(child->data);
+    if (VP->vp1 && widget == VP->vp1->mini_frame_2)
+      exist_1 = 1;
+    if (VP->vp2 && widget == VP->vp2->mini_frame_2)
+      exist_2 = 1;
+    child = child->next;
+  }
+  if (VP->split) {
+    gtk_widget_set_sensitive(GTK_WIDGET(VP->dag_menubutton), FALSE);
+    if (!exist_1)
+      gtk_box_pack_start(GTK_BOX(VP->mini_frame_2_box), VP->vp1->mini_frame_2, FALSE, FALSE, 0);
+    if (!exist_2)
+      gtk_box_pack_start(GTK_BOX(VP->mini_frame_2_box), VP->vp2->mini_frame_2, FALSE, FALSE, 0);
+    dv_viewport_miniver2_show(VP->vp1);
+    dv_viewport_miniver2_show(VP->vp2);
+  } else {
+    gtk_widget_set_sensitive(GTK_WIDGET(VP->dag_menubutton), TRUE);
+    if (exist_1)
+      gtk_container_remove(GTK_CONTAINER(VP->mini_frame_2_box), VP->vp1->mini_frame_2);
+    if (exist_2)
+      gtk_container_remove(GTK_CONTAINER(VP->mini_frame_2_box), VP->vp2->mini_frame_2);
+  }
+}
 
 void
-dv_viewport_show_children(dv_viewport_t * vp) {
-  dv_check(vp->split);
-  dv_check(vp->paned);
-  // Child 1
-  if (vp->vp1) {
-    dv_viewport_t * vp1 = vp->vp1;
-    gtk_paned_pack1(GTK_PANED(vp->paned), vp1->frame, TRUE, TRUE);
-    dv_viewport_show(vp1);
-  }
-  // Child 2
-  if (vp->vp2) {
-    dv_viewport_t * vp2 = vp->vp2;
-    gtk_paned_pack2(GTK_PANED(vp->paned), vp2->frame, TRUE, TRUE);
-    dv_viewport_show(vp2);
+dv_viewport_miniver_show(dv_viewport_t * VP) {
+  GtkWidget * child = gtk_bin_get_child(GTK_BIN(VP->mini_frame));
+  if (VP->split) {
+    if (!child)
+      gtk_container_add(GTK_CONTAINER(VP->mini_frame), VP->mini_paned);
+    else
+      dv_check(child == VP->mini_paned);
+    if (VP->vp1) {
+      gtk_paned_pack1(GTK_PANED(VP->mini_paned), VP->vp1->mini_frame, TRUE, TRUE);
+      dv_viewport_miniver_show(VP->vp1);
+    }
+    if (VP->vp2) {
+      gtk_paned_pack2(GTK_PANED(VP->mini_paned), VP->vp2->mini_frame, TRUE, TRUE);
+      dv_viewport_miniver_show(VP->vp2);
+    }
+  } else {
+    if (child)
+      gtk_container_remove(GTK_CONTAINER(VP->mini_frame), child);    
   }
 }
 
@@ -996,11 +1084,21 @@ void
 dv_viewport_show(dv_viewport_t * VP) {
   GtkWidget * child = gtk_bin_get_child(GTK_BIN(VP->frame));
   if (VP->split) {
-    if (child != VP->paned) {
-      if (child) gtk_container_remove(GTK_CONTAINER(VP->frame), child);
-      dv_check(VP->paned);
+    if (!child)
       gtk_container_add(GTK_CONTAINER(VP->frame), VP->paned);
-      dv_viewport_show_children(VP);
+    else if (child != VP->paned) {
+      gtk_container_remove(GTK_CONTAINER(VP->frame), child);
+      gtk_container_add(GTK_CONTAINER(VP->frame), VP->paned);
+    }
+    // Child 1
+    if (VP->vp1) {
+      gtk_paned_pack1(GTK_PANED(VP->paned), VP->vp1->frame, TRUE, TRUE);
+      dv_viewport_show(VP->vp1);
+    }
+    // Child 2
+    if (VP->vp2) {
+      gtk_paned_pack2(GTK_PANED(VP->paned), VP->vp2->frame, TRUE, TRUE);
+      dv_viewport_show(VP->vp2);
     }
   } else {
     if (child != VP->box) {
@@ -1040,25 +1138,46 @@ dv_viewport_change_split(dv_viewport_t * VP, int new_split) {
   }
   VP->split = new_split;
   dv_viewport_show(VP);
+  dv_viewport_miniver_show(VP);
+  dv_viewport_miniver2_show(VP);
 }
 
 void
-dv_viewport_change_orientation(dv_viewport_t * vp, GtkOrientation o) {
+dv_viewport_change_orientation(dv_viewport_t * VP, GtkOrientation o) {
+  if (o == VP->orientation) return;
   GtkWidget * child1 = NULL;
   GtkWidget * child2 = NULL;
-  if (vp->paned) {
-    child1 = gtk_paned_get_child1(GTK_PANED(vp->paned));
+  
+  /* Real one */
+  if (VP->paned) {
+    child1 = gtk_paned_get_child1(GTK_PANED(VP->paned));
     if (child1)
-      gtk_container_remove(GTK_CONTAINER(vp->paned), child1);
-    child2 = gtk_paned_get_child2(GTK_PANED(vp->paned));
+      gtk_container_remove(GTK_CONTAINER(VP->paned), child1);
+    child2 = gtk_paned_get_child2(GTK_PANED(VP->paned));
     if (child2)
-      gtk_container_remove(GTK_CONTAINER(vp->paned), child2);
-    gtk_widget_destroy(GTK_WIDGET(vp->paned));
+      gtk_container_remove(GTK_CONTAINER(VP->paned), child2);
+    gtk_widget_destroy(GTK_WIDGET(VP->paned));
   }
-  vp->paned = gtk_paned_new(o);
-  g_object_ref(vp->paned);
-  vp->orientation = o;
-  dv_viewport_show(vp);
+  VP->paned = gtk_paned_new(o);
+  g_object_ref(VP->paned);
+  
+  /* Mini */
+  if (VP->mini_paned) {
+    child1 = gtk_paned_get_child1(GTK_PANED(VP->mini_paned));
+    if (child1)
+      gtk_container_remove(GTK_CONTAINER(VP->mini_paned), child1);
+    child2 = gtk_paned_get_child2(GTK_PANED(VP->mini_paned));
+    if (child2)
+      gtk_container_remove(GTK_CONTAINER(VP->mini_paned), child2);
+    gtk_widget_destroy(GTK_WIDGET(VP->mini_paned));
+  }
+  VP->mini_paned = gtk_paned_new(o);
+  g_object_ref(VP->mini_paned);
+  
+  VP->orientation = o;
+  dv_viewport_show(VP);
+  dv_viewport_miniver_show(VP);
+  dv_viewport_miniver2_show(VP);
 }
 
 void
@@ -1242,11 +1361,11 @@ static GtkWidget * dv_create_menubar();
 static void
 dv_alternate_menubar() {
   /*
-  gtk_container_remove(GTK_CONTAINER(CS->gui->vbox0), CS->gui->menubar);
-  CS->gui->menubar = dv_create_menubar();
-  gtk_box_pack_start(GTK_BOX(CS->gui->vbox0), CS->gui->menubar, FALSE, FALSE, 0);
-  gtk_widget_show_all(CS->gui->menubar);
-  gtk_widget_queue_draw(GTK_WIDGET(CS->gui->menubar));
+  gtk_container_remove(GTK_CONTAINER(GUI->vbox0), GUI->menubar);
+  GUI->menubar = dv_create_menubar();
+  gtk_box_pack_start(GTK_BOX(GUI->vbox0), GUI->menubar, FALSE, FALSE, 0);
+  gtk_widget_show_all(GUI->menubar);
+  gtk_widget_queue_draw(GTK_WIDGET(GUI->menubar));
   */
 }
 
@@ -1303,7 +1422,7 @@ on_viewport_select_view(GtkCheckMenuItem * checkmenuitem, gpointer user_data) {
 }
 
 G_MODULE_EXPORT void
-on_menubar_manage_viewports_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
+on_menubar_manage_viewports_activated_old(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
   GtkWidget * dialog = gtk_dialog_new();
   gtk_window_set_title(GTK_WINDOW(dialog), "Configure Viewports");
   gtk_window_set_default_size(GTK_WINDOW(dialog), 800, 400);
@@ -2183,7 +2302,7 @@ dv_create_menubar() {
   GtkWidget * viewport, * viewport_menu;
   viewport = gtk_menu_item_new_with_mnemonic("_Configure");
   gtk_menu_shell_append(GTK_MENU_SHELL(viewports_menu), viewport);
-  g_signal_connect(G_OBJECT(viewport), "activate", G_CALLBACK(on_menubar_manage_viewports_activated), NULL);
+  g_signal_connect(G_OBJECT(viewport), "activate", G_CALLBACK(on_menubar_manage_viewports_activated_old), NULL);
   GSList * group;
   GtkWidget * item;
   char s[DV_STRING_LENGTH];
@@ -2312,8 +2431,67 @@ dv_create_menubar() {
   return menubar;
 }
 
+void
+dv_gui_init(dv_gui_t * gui) {
+  gui->window = NULL;
+  gui->vbox0 = NULL;
+  gui->menubar = NULL;
+  gui->toolbar = NULL;
+  gui->statusbar1 = NULL;
+  gui->statusbar2 = NULL;
+  gui->statusbar3 = NULL;
+  gui->management_window = NULL;
+}
+
 static void
-dv_gui_init(dv_gui_t * gui, _unused_ GtkApplication * app) {
+dv_gui_build_management_window(dv_gui_t * gui) {
+  /* Build management window */
+  gui->management_window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
+  GtkWidget * window = gui->management_window;
+  char s[DV_STRING_LENGTH];
+  sprintf(s, "Management");
+  gtk_window_set_title(GTK_WINDOW(window), s);
+  gtk_window_set_default_size(GTK_WINDOW(window), 800, 600);
+  gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_MOUSE);
+  gtk_window_set_modal(GTK_WINDOW(window), 0);
+  gtk_window_set_transient_for(GTK_WINDOW(window), GTK_WINDOW(GUI->window));
+  g_signal_connect(G_OBJECT(window), "delete-event", G_CALLBACK(gtk_widget_hide_on_delete), NULL);
+  GtkWidget * window_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+  gtk_container_add(GTK_CONTAINER(window), window_box);
+  GtkWidget * notebook = gtk_notebook_new();
+  gtk_box_pack_start(GTK_BOX(window_box), notebook, TRUE, TRUE, 0);
+  
+  GtkWidget * tab_label;
+  GtkWidget * tab_box;
+
+  /* Build tab "Viewports" */
+  {
+    tab_label = gtk_label_new("Viewports");
+    tab_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
+    gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_box, tab_label); 
+    gtk_box_pack_start(GTK_BOX(tab_box), CS->VP->mini_frame, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(tab_box), gtk_separator_new(GTK_ORIENTATION_VERTICAL), FALSE, FALSE, 0);
+
+    GtkWidget * right = gtk_scrolled_window_new(NULL, NULL);
+    gtk_box_pack_start(GTK_BOX(tab_box), right, FALSE, FALSE, 0);
+    gtk_widget_set_size_request(GTK_WIDGET(right), 315, 0);
+    GtkWidget * right_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    gtk_container_add(GTK_CONTAINER(right), right_box);
+    gtk_box_pack_start(GTK_BOX(right_box), CS->VP->mini_frame_2, FALSE, FALSE, 0);
+  }
+
+}
+
+GtkWidget *
+dv_gui_get_management_window(dv_gui_t * gui) {
+  if (gui->management_window)
+    return gui->management_window;
+  dv_gui_build_management_window(gui);
+  return gui->management_window;
+}
+
+static void
+dv_gui_reset(dv_gui_t * gui, _unused_ GtkApplication * app) {
   //  if (app)
   //gui->window = gtk_application_window_new(app);
     //  else
@@ -2368,7 +2546,7 @@ open_gui_1(_unused_ int argc, _unused_ char * argv[]) {
   gtk_window_set_default_size(GTK_WINDOW(window), 1000, 700);
   gtk_window_maximize(GTK_WINDOW(window));
   g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
-  g_signal_connect(G_OBJECT(CS->gui->window), "key-press-event", G_CALLBACK(on_window_key_event), NULL);
+  g_signal_connect(G_OBJECT(GUI->window), "key-press-event", G_CALLBACK(on_window_key_event), NULL);
 
   /* Run main loop */
   gtk_widget_show_all(window);
@@ -2377,10 +2555,10 @@ open_gui_1(_unused_ int argc, _unused_ char * argv[]) {
 _static_unused_ void
 open_gui(_unused_ int argc, _unused_ char * argv[], GtkApplication * app) {
   /* Initialize GUI widgets */
-  dv_gui_init(CS->gui, app);
+  dv_gui_reset(GUI, app);
 
   /* Window */
-  GtkWidget * window = CS->gui->window;
+  GtkWidget * window = GUI->window;
   //gtk_window_fullscreen(GTK_WINDOW(window));
   //gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_CENTER);
   gtk_window_set_default_size(GTK_WINDOW(window), 1000, 700);
@@ -2389,7 +2567,7 @@ open_gui(_unused_ int argc, _unused_ char * argv[], GtkApplication * app) {
   gtk_window_set_title(GTK_WINDOW(window), "DAG Visualizer");
   //gtk_window_set_icon_name(GTK_WINDOW(window), "applications-graphics");
   g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
-  g_signal_connect(G_OBJECT(CS->gui->window), "key-press-event", G_CALLBACK(on_window_key_event), NULL);
+  g_signal_connect(G_OBJECT(GUI->window), "key-press-event", G_CALLBACK(on_window_key_event), NULL);
 
   // Set icon
   /*
@@ -2404,7 +2582,7 @@ open_gui(_unused_ int argc, _unused_ char * argv[], GtkApplication * app) {
   */
 
   /* Toolbar */
-  GtkWidget * toolbar = CS->gui->toolbar;
+  GtkWidget * toolbar = GUI->toolbar;
   
   //GtkToolItem * toolitem_divisions = gtk_tool_item_new();
   //gtk_toolbar_insert(GTK_TOOLBAR(toolbar), toolitem_divisions, -1);
@@ -2431,7 +2609,7 @@ open_gui(_unused_ int argc, _unused_ char * argv[], GtkApplication * app) {
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_settings, -1);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), gtk_separator_tool_item_new(), -1);
   gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_settings), "preferences-system");
-  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_settings), "Open settings window of the focused DAG (Ctrl-T)");
+  gtk_widget_set_tooltip_text(GTK_WIDGET(btn_settings), "Open toolbox for focused DAG (Ctrl-T)");
   g_signal_connect(G_OBJECT(btn_settings), "clicked", G_CALLBACK(on_toolbar_settings_button_clicked), NULL);
 
   GtkWidget * menu2 = gtk_menu_new();
@@ -2465,7 +2643,7 @@ open_gui(_unused_ int argc, _unused_ char * argv[], GtkApplication * app) {
 
   /* Viewports */
   dv_viewport_t * vp0 = CS->VP;
-  gtk_box_pack_start(GTK_BOX(CS->gui->vbox0), vp0->frame, TRUE, TRUE, 0);
+  gtk_box_pack_start(GTK_BOX(GUI->vbox0), vp0->frame, TRUE, TRUE, 0);
   dv_viewport_show(vp0);
 
   /* Status bars */
@@ -2569,8 +2747,9 @@ main(int argc, char * argv[]) {
   /* GTK */
   gtk_init(&argc, &argv);
 
-  /* CS */
+  /* CS, GUI */
   dv_global_state_init(CS);
+  dv_gui_init(GUI);
   
   //dv_get_env();
   //if (argc > 1)  print_dag_file(argv[1]);
