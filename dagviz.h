@@ -125,10 +125,10 @@ typedef struct dv_llist {
 
 #define DV_DAG_NODE_POOL_SIZE 50000
 
-#define DV_MAX_DAG_FILE 10
-#define DV_MAX_DAG 10
-#define DV_MAX_VIEW 10
-#define DV_MAX_VIEWPORT 10
+#define DV_MAX_DAG_FILE 100
+#define DV_MAX_DAG 100
+#define DV_MAX_VIEW 100
+#define DV_MAX_VIEWPORT 100
 
 #define DV_OK 0
 #define DV_ERROR_OONP 1 /* out of node pool */
@@ -258,6 +258,7 @@ typedef struct dv_dag {
   double linear_radix;
   int frombt;
   double radius;
+  int mV[DV_MAX_VIEW]; /* mark Vs that are bound to this D */
 
   /* other */
   dv_llist_t itl[1]; /* list of nodes that have info tag */
@@ -266,6 +267,11 @@ typedef struct dv_dag {
 
   int ar[DV_MAX_NUM_REMARKS];
   int nr;
+
+  /* DAG management window */
+  GtkWidget * mini_frame;
+  GtkWidget * views_box;
+  GtkWidget * status_label;
 } dv_dag_t;
 
 typedef struct dv_view dv_view_t;
@@ -499,7 +505,6 @@ typedef struct dv_stat_distribution {
   int ne;
   dv_stat_distribution_entry_t e[DV_MAX_DISTRIBUTION];
   long xrange_from, xrange_to;
-  GtkWidget * dag_status_labels[DV_MAX_DAG];
   GtkWidget * node_pool_label;
   GtkWidget * entry_pool_label;
   char * fn;
@@ -526,6 +531,8 @@ typedef struct dv_gui {
 
   /* Additional windows */
   GtkWidget * management_window;
+  GtkWidget * notebook;
+  GtkWidget * scrolled_box; // DAGs tab's scrolled box
 } dv_gui_t;
 
 typedef struct dv_global_state {
@@ -624,6 +631,14 @@ GtkWidget * dv_gui_get_management_window(dv_gui_t *);
 
 void dv_signal_handler(int);
 
+/* control.c */
+gboolean on_management_window_open_stat_button_clicked(GtkWidget *, gpointer);
+gboolean on_management_window_open_pp_button_clicked(GtkWidget *, gpointer);
+gboolean on_management_window_expand_dag_button_clicked(GtkWidget *, gpointer);
+void on_management_window_add_new_view_clicked(GtkMenuItem *, gpointer);
+void on_management_window_view_clicked(GtkToolButton * toolbtn, gpointer);
+void on_management_window_add_new_dag_activated(GtkMenuItem *, gpointer);
+
 
 /* process.c */
 char * dv_filename_get_short_name(char *);
@@ -631,7 +646,7 @@ void dv_dag_collect_delays_r(dv_dag_t *, dv_dag_node_t *, FILE *, dv_stat_distri
 void dv_dag_collect_sync_delays_r(dv_dag_t *, dv_dag_node_t *, FILE *, dv_stat_distribution_entry_t *);
 void dv_dag_collect_intervals_r(dv_dag_t *, dv_dag_node_t *, FILE *, dv_stat_distribution_entry_t *);
 void dv_dag_expand_implicitly(dv_dag_t *);
-void dv_dag_set_status_label(dv_dag_t *, GtkWidget *);
+void dv_dag_update_status_label(dv_dag_t *);
 
 void dv_dag_node_pool_set_status_label(dv_dag_node_pool_t *, GtkWidget *);
 void dv_histogram_entry_pool_set_status_label(dv_histogram_entry_pool_t *, GtkWidget *);

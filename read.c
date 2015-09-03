@@ -396,9 +396,14 @@ dv_dag_init(dv_dag_t * D, dv_pidag_t * P) {
   D->linear_radix = DV_RADIX_LINEAR;
   D->frombt = DV_FROMBT_INIT;
   D->radius = DV_RADIUS;
+
+  /* D <-> Vs */
+  int i;
+  for (i = 0; i < DV_MAX_VIEW; i++)
+    D->mV[i] = 0;
+  
   dv_llist_init(D->itl);
   D->H = NULL;
-  int i;
   for (i=0; i<DV_NUM_LAYOUT_TYPES; i++)
     D->tolayout[i] = 0;
   D->nr = 0;
@@ -427,6 +432,61 @@ dv_dag_create_new_with_pidag(dv_pidag_t * P) {
     p = dv_traverse_node(pi, x, p, plim, s, G);
   }
   */
+
+  /* DAG management window */
+  char s[DV_STRING_LENGTH];
+  sprintf(s, "DAG %ld", D - CS->D);
+  GtkWidget * mini_frame = D->mini_frame = gtk_frame_new(s);
+  g_object_ref(G_OBJECT(mini_frame));
+  gtk_container_set_border_width(GTK_CONTAINER(mini_frame), 5);
+  if (GUI->management_window) {
+    GtkWidget * hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_box_pack_start(GTK_BOX(GUI->scrolled_box), hbox, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(hbox), D->mini_frame, FALSE, FALSE, 0);
+  }
+  GtkWidget * mini_frame_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+  g_object_ref(G_OBJECT(mini_frame_box));
+  gtk_container_add(GTK_CONTAINER(mini_frame), mini_frame_box);
+  gtk_container_set_border_width(GTK_CONTAINER(mini_frame_box), 5);
+
+  GtkWidget * box_1;
+  box_1 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
+  gtk_box_pack_start(GTK_BOX(mini_frame_box), box_1, FALSE, FALSE, 0);
+  GtkWidget * label;
+  sprintf(s, "DAG file %ld: %s", D->P - CS->P, D->P->fn);
+  label = gtk_label_new(s);
+  gtk_box_pack_start(GTK_BOX(box_1), label, FALSE, FALSE, 0);
+
+  box_1 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
+  gtk_box_pack_start(GTK_BOX(mini_frame_box), box_1, FALSE, FALSE, 0);
+  dv_dag_update_status_label(D);
+  label = D->status_label;
+  gtk_box_pack_start(GTK_BOX(box_1), label, FALSE, FALSE, 0);
+
+  box_1 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
+  gtk_box_pack_start(GTK_BOX(mini_frame_box), box_1, FALSE, FALSE, 0);
+  label = gtk_label_new("Associated View(s):");
+  gtk_box_pack_start(GTK_BOX(box_1), label, FALSE, FALSE, 0);
+  GtkWidget * box_2;
+  box_2 = D->views_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
+  gtk_box_pack_start(GTK_BOX(box_1), box_2, FALSE, FALSE, 0);
+  
+  box_1 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
+  gtk_box_pack_start(GTK_BOX(mini_frame_box), box_1, FALSE, FALSE, 0);
+  GtkWidget * button;
+  button = gtk_button_new_with_label("Open DR's Stat");
+  gtk_box_pack_start(GTK_BOX(box_1), button, FALSE, FALSE, 0);
+  g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_management_window_open_stat_button_clicked), (void *) D);
+  button = gtk_button_new_with_label("Open DR's PP");
+  gtk_box_pack_start(GTK_BOX(box_1), button, FALSE, FALSE, 0);
+  g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_management_window_open_pp_button_clicked), (void *) D);
+  gtk_box_pack_start(GTK_BOX(box_1), gtk_separator_new(GTK_ORIENTATION_VERTICAL), FALSE, FALSE, 4);
+  button = gtk_button_new_with_label("Load Full");
+  gtk_box_pack_start(GTK_BOX(box_1), button, FALSE, FALSE, 0);
+  g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_management_window_expand_dag_button_clicked), (void *) D);
+  button = gtk_button_new_with_label("Add a new View");
+  gtk_box_pack_start(GTK_BOX(box_1), button, FALSE, FALSE, 0);  
+  g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_management_window_add_new_view_clicked), (void *) D);
 
   return D;
 }

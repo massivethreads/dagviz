@@ -774,16 +774,16 @@ on_menubar_statistics_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpoint
 
 G_MODULE_EXPORT void
 on_menubar_manage_viewports_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
-  GtkWidget * management_window = dv_gui_get_management_window(GUI);  
+  GtkWidget * management_window = dv_gui_get_management_window(GUI);
+  gtk_notebook_set_current_page(GTK_NOTEBOOK(GUI->notebook), 0);
   gtk_widget_show_all(management_window);
 }
 
 G_MODULE_EXPORT void
 on_menubar_manage_dags_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
-  /*
   GtkWidget * management_window = dv_gui_get_management_window(GUI);  
+  gtk_notebook_set_current_page(GTK_NOTEBOOK(GUI->notebook), 1);
   gtk_widget_show_all(management_window);
-  */
 }
 
 static gboolean
@@ -821,6 +821,107 @@ on_management_window_viewport_options_orientation_changed(_unused_ GtkWidget * w
   gtk_widget_queue_draw(GTK_WIDGET(VP->mini_frame_2));
   
   return TRUE;
+}
+
+gboolean
+on_management_window_open_stat_button_clicked(_unused_ GtkWidget * widget, gpointer user_data) {
+  dv_dag_t * D = (dv_dag_t *) user_data;
+  int n = strlen(D->P->fn);
+  char * filename = (char *) dv_malloc( sizeof(char) * (n + 2) );
+  strcpy(filename, D->P->fn);
+  if (strcmp(filename + n - 3, "dag") != 0)
+    return FALSE;
+  filename[n-3] = 's';
+  filename[n-2] = 't';
+  filename[n-1] = 'a';
+  filename[n]   = 't';
+  filename[n+1] = '\0';
+  /* call gnuplot */
+  GPid pid;
+  char * argv[3];
+  argv[0] = "gedit";
+  argv[1] = filename;
+  argv[2] = NULL;
+  int ret = g_spawn_async_with_pipes(NULL, argv, NULL,
+                                     G_SPAWN_SEARCH_PATH, //G_SPAWN_DEFAULT | G_SPAWN_SEARCH_PATH,
+                                     NULL, NULL, &pid,
+                                     NULL, NULL, NULL, NULL);
+  if (!ret) {
+    fprintf(stderr, "g_spawn_async_with_pipes() failed.\n");
+  }
+  dv_free(filename, strlen(filename) + 1);
+  return TRUE;
+}
+
+gboolean
+on_management_window_open_pp_button_clicked(_unused_ GtkWidget * widget, gpointer user_data) {
+  dv_dag_t * D = (dv_dag_t *) user_data;
+  int n = strlen(D->P->fn);
+  char * filename = (char *) dv_malloc( sizeof(char) * (n + 1) );
+  strcpy(filename, D->P->fn);
+  if (strcmp(filename + n - 3, "dag") != 0)
+    return FALSE;
+  filename[n-3] = 'g';
+  filename[n-2] = 'p';
+  filename[n-1] = 'l';
+  /* call gnuplot */
+  GPid pid;
+  char * argv[4];
+  argv[0] = "gnuplot";
+  argv[1] = "-persist";
+  argv[2] = filename;
+  argv[3] = NULL;
+  int ret = g_spawn_async_with_pipes(NULL, argv, NULL,
+                                     G_SPAWN_SEARCH_PATH, //G_SPAWN_DEFAULT | G_SPAWN_SEARCH_PATH,
+                                     NULL, NULL, &pid,
+                                     NULL, NULL, NULL, NULL);
+  if (!ret) {
+    fprintf(stderr, "g_spawn_async_with_pipes() failed.\n");
+  }
+  dv_free(filename, strlen(filename) + 1);
+  return TRUE;
+}
+
+gboolean
+on_management_window_expand_dag_button_clicked(_unused_ GtkWidget * widget, gpointer user_data) {
+  dv_dag_t * D = (dv_dag_t *) user_data;
+  dv_dag_expand_implicitly(D);
+  dv_dag_update_status_label(D);
+  return TRUE;
+}
+
+void
+on_management_window_add_new_view_clicked(_unused_ GtkMenuItem * menuitem, gpointer user_data) {
+  dv_dag_t * D = (dv_dag_t *) user_data;
+  dv_view_t * V = dv_view_create_new_with_dag(D);
+  if (V) {
+    dv_view_layout(V);
+    gtk_widget_show_all(GTK_WIDGET(D->mini_frame));
+    gtk_widget_queue_draw(GTK_WIDGET(D->mini_frame));
+  }
+}
+
+void
+on_management_window_view_clicked(_unused_ GtkToolButton * toolbtn, _unused_ gpointer user_data) {
+  dv_view_t * V = (dv_view_t *) user_data;
+  if (V)
+    dv_view_open_toolbox_window(V);
+}
+
+void
+on_management_window_add_new_dag_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
+  dv_pidag_t * P = (dv_pidag_t *) user_data;
+  dv_dag_t * D = dv_dag_create_new_with_pidag(P);
+  if (D) {
+    dv_view_t * V = dv_view_create_new_with_dag(D);
+    if (V) {
+      dv_view_layout(V);
+      gtk_widget_show_all(GTK_WIDGET(D->mini_frame));
+      gtk_widget_queue_draw(GTK_WIDGET(D->mini_frame));
+    }
+    gtk_widget_show_all(GTK_WIDGET(GUI->scrolled_box));
+    gtk_widget_queue_draw(GTK_WIDGET(GUI->scrolled_box));
+  }
 }
 
 
