@@ -230,6 +230,7 @@ typedef struct dv_dag_node {
 typedef struct dv_histogram dv_histogram_t;
 
 typedef struct dv_dag {
+  char * name;
   /* PIDAG */
   dv_pidag_t * P;
 
@@ -379,6 +380,7 @@ typedef struct dv_view_toolbox {
 } dv_view_toolbox_t;
 
 typedef struct dv_view {
+  char * name;
   dv_dag_t * D; /* DV DAG */
   dv_view_status_t S[1]; /* layout/drawing attributes */
   dv_viewport_t * mainVP; /* main VP that this V is assosiated with */
@@ -420,6 +422,7 @@ typedef struct dv_viewport {
   GtkWidget * split_combobox;
   GtkWidget * orient_combobox;
   GtkWidget * dag_menubutton;
+  GtkWidget * dag_menu;
 } dv_viewport_t;
 
 typedef struct dv_btsample_viewer {

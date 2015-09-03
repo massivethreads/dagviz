@@ -748,6 +748,8 @@ dv_view_toolbox_get_window(dv_view_toolbox_t * T) {
 
 void
 dv_view_init(dv_view_t * V) {
+  V->name = malloc( 10 * sizeof(char) );
+  sprintf(V->name, "View %ld", V - CS->V);
   V->D = NULL;
   dv_view_status_init(V, V->S);
   int i;
@@ -759,7 +761,7 @@ dv_view_init(dv_view_t * V) {
 
 dv_view_t *
 dv_view_create_new_with_dag(dv_dag_t * D) {
-  /* Get new VIEW */
+  /* Allocate and Initialize */
   if (CS->nV >= DV_MAX_VIEW) {
     fprintf(stderr, "Error: too many Views (%d>=%d).\n", CS->nV, DV_MAX_VIEW);
     return NULL;
@@ -767,16 +769,58 @@ dv_view_create_new_with_dag(dv_dag_t * D) {
   dv_view_t * V = &CS->V[CS->nV++];
   dv_view_init(V);
 
-  // Set values
+  /* Set values */
   V->D = D;
   D->tolayout[V->S->lt]++;
   D->mV[V - CS->V] = 1;
 
-  char s[DV_STRING_LENGTH];
-  sprintf(s, "View %ld", V - CS->V);
-  GtkWidget * button = gtk_button_new_with_label(s);
+  /* Update GUI widgets */
+  
+  /* button in D's mini_frame */
+  GtkWidget * button = gtk_button_new_with_label(V->name);
   gtk_box_pack_start(GTK_BOX(D->views_box), button, FALSE, FALSE, 0);
   g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_management_window_view_clicked), (void *) V);
+
+  /* check menu item in VP's menu */
+  int i;
+  for (i = 0; i < CS->nVP; i++) {
+    dv_viewport_t * VP = &CS->VP[i];
+    int c = 0;
+    int j;
+    for (j = 0; j < CS->nV; j++)
+      if (D->mV[j]) c++;
+    if (c <= 1) continue;
+    GtkWidget * dag_menu = GTK_WIDGET(VP->dag_menu);
+    GList * children = gtk_container_get_children(GTK_CONTAINER(dag_menu));
+    GList * child = children;
+    int pos = 0;
+    while (child) {
+      GtkWidget * widget = GTK_WIDGET(child->data);
+      const gchar * str = gtk_menu_item_get_label(GTK_MENU_ITEM(widget));
+      if (strcmp(str, D->name) == 0) {
+        if (c > 2) {
+          GtkWidget * submenu = gtk_menu_item_get_submenu(GTK_MENU_ITEM(widget));
+          GtkWidget * item = gtk_check_menu_item_new_with_label(V->name);
+          gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);
+        } else if (c == 2) {
+          gtk_container_remove(GTK_CONTAINER(dag_menu), widget);
+          GtkWidget * d_item = gtk_menu_item_new_with_label(D->name);
+          gtk_menu_shell_insert(GTK_MENU_SHELL(dag_menu), d_item, pos);
+          GtkWidget * submenu = gtk_menu_new();
+          gtk_menu_item_set_submenu(GTK_MENU_ITEM(d_item), submenu);
+          for (j = 0; j < CS->nV; j++)
+            if (D->mV[j]) {
+              GtkWidget * item = gtk_check_menu_item_new_with_label(CS->V[j].name);
+              gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);
+            }
+        }
+        break;
+      }
+      child = child->next;
+      pos++;
+    }
+    gtk_widget_show_all(CS->VP[i].dag_menu);    
+  }
 
   return V;
 }
@@ -1031,24 +1075,36 @@ dv_viewport_init(dv_viewport_t * VP) {
   g_signal_connect(G_OBJECT(orient_combobox), "changed", G_CALLBACK(on_management_window_viewport_options_orientation_changed), (void *) VP);
 
   /* DAG menubutton */
-  GtkWidget * dag_menubutton = VP->dag_menubutton = gtk_menu_button_new();
-  gtk_box_pack_start(GTK_BOX(hbox), dag_menubutton, FALSE, FALSE, 0);
-  GtkWidget * dag_menubutton_menu = gtk_menu_new();
-  gtk_menu_button_set_popup(GTK_MENU_BUTTON(dag_menubutton), dag_menubutton_menu);
+  {
+    GtkWidget * dag_menubutton = VP->dag_menubutton = gtk_menu_button_new();
+    gtk_box_pack_start(GTK_BOX(hbox), dag_menubutton, FALSE, FALSE, 0);
+    GtkWidget * dag_menu = VP->dag_menu = gtk_menu_new();
+    gtk_menu_button_set_popup(GTK_MENU_BUTTON(dag_menubutton), dag_menu);
 
-  GtkWidget * but0 = gtk_menu_item_new_with_label("DAG 0");
-  gtk_menu_shell_append(GTK_MENU_SHELL(dag_menubutton_menu), but0);
-  GtkWidget * but0_menu = gtk_menu_new();
-  gtk_menu_item_set_submenu(GTK_MENU_ITEM(but0), but0_menu);
-  GtkWidget * but0_0 = gtk_check_menu_item_new_with_label("View 0");
-  gtk_menu_shell_append(GTK_MENU_SHELL(but0_menu), but0_0);
-  GtkWidget * but0_1 = gtk_check_menu_item_new_with_label("View 1");
-  gtk_menu_shell_append(GTK_MENU_SHELL(but0_menu), but0_1);
-  
-  GtkWidget * but1 = gtk_check_menu_item_new_with_label("DAG 1");
-  gtk_menu_shell_append(GTK_MENU_SHELL(dag_menubutton_menu), but1);
-  
-  gtk_widget_show_all(dag_menubutton_menu);
+    int i, j;
+    for (i = 0; i < CS->nD; i++) {
+      dv_dag_t * D = &CS->D[i];
+      int c = 0;
+      for (j = 0; j < CS->nV; j++)
+        if (D->mV[j]) c++;
+      if (c == 1) {
+        GtkWidget * item = gtk_check_menu_item_new_with_label(D->name);
+        gtk_menu_shell_append(GTK_MENU_SHELL(dag_menu), item);
+      } else if (c > 1) {
+        GtkWidget * item = gtk_menu_item_new_with_label(D->name);
+        gtk_menu_shell_append(GTK_MENU_SHELL(dag_menu), item);
+        GtkWidget * submenu = gtk_menu_new();
+        gtk_menu_item_set_submenu(GTK_MENU_ITEM(item), submenu);
+        for (j = 0; j < CS->nV; j++)
+          if (D->mV[j]) {
+            item = gtk_check_menu_item_new_with_label(CS->V[j].name);
+            gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);
+          }
+      }
+    }
+    
+    gtk_widget_show_all(dag_menu);
+  }
   
 }
 
@@ -2254,6 +2310,7 @@ dv_gui_build_management_window(dv_gui_t * gui) {
     
     hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
     gtk_box_pack_start(GTK_BOX(scrolled_box), hbox, FALSE, FALSE, 0);
+    gtk_container_set_border_width(GTK_CONTAINER(hbox), 5);
     GtkWidget * label = gtk_label_new("Add a new DAG with ");
     gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
     GtkWidget * menubutton = gtk_menu_button_new();
@@ -2268,11 +2325,13 @@ dv_gui_build_management_window(dv_gui_t * gui) {
       g_signal_connect(G_OBJECT(menu_item), "activate", G_CALLBACK(on_management_window_add_new_dag_activated), (void *) &CS->P[i]);
     }
     gtk_widget_show_all(menu);
+    
+    gtk_box_pack_start(GTK_BOX(scrolled_box), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), FALSE, FALSE, 0);
 
     for (i = 0; i < CS->nD; i++) {
       hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
       gtk_box_pack_start(GTK_BOX(scrolled_box), hbox, FALSE, FALSE, 0);
-      gtk_box_pack_start(GTK_BOX(hbox), CS->D[i].mini_frame, FALSE, FALSE, 0);
+      gtk_box_pack_start(GTK_BOX(hbox), CS->D[i].mini_frame, TRUE, TRUE, 0);
     }
   }
 

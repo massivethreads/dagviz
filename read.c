@@ -378,6 +378,8 @@ dv_dag_clear_shrinked_nodes(dv_dag_t * D) {
 
 void
 dv_dag_init(dv_dag_t * D, dv_pidag_t * P) {
+  D->name = malloc( 10 * sizeof(char) );
+  sprintf(D->name, "DAG %ld", D - CS->D);
   D->P = P;
   D->rt = dv_dag_node_pool_pop(CS->pool);
   dv_dag_node_init(D->rt, 0, 0);
@@ -433,16 +435,16 @@ dv_dag_create_new_with_pidag(dv_pidag_t * P) {
   }
   */
 
+  /* Update GUI widgets */
+  
   /* DAG management window */
-  char s[DV_STRING_LENGTH];
-  sprintf(s, "DAG %ld", D - CS->D);
-  GtkWidget * mini_frame = D->mini_frame = gtk_frame_new(s);
+  GtkWidget * mini_frame = D->mini_frame = gtk_frame_new(D->name);
   g_object_ref(G_OBJECT(mini_frame));
   gtk_container_set_border_width(GTK_CONTAINER(mini_frame), 5);
   if (GUI->management_window) {
     GtkWidget * hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
     gtk_box_pack_start(GTK_BOX(GUI->scrolled_box), hbox, FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(hbox), D->mini_frame, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(hbox), D->mini_frame, TRUE, TRUE, 0);
   }
   GtkWidget * mini_frame_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
   g_object_ref(G_OBJECT(mini_frame_box));
@@ -453,6 +455,7 @@ dv_dag_create_new_with_pidag(dv_pidag_t * P) {
   box_1 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
   gtk_box_pack_start(GTK_BOX(mini_frame_box), box_1, FALSE, FALSE, 0);
   GtkWidget * label;
+  char s[DV_STRING_LENGTH];
   sprintf(s, "DAG file %ld: %s", D->P - CS->P, D->P->fn);
   label = gtk_label_new(s);
   gtk_box_pack_start(GTK_BOX(box_1), label, FALSE, FALSE, 0);
@@ -487,6 +490,14 @@ dv_dag_create_new_with_pidag(dv_pidag_t * P) {
   button = gtk_button_new_with_label("Add a new View");
   gtk_box_pack_start(GTK_BOX(box_1), button, FALSE, FALSE, 0);  
   g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_management_window_add_new_view_clicked), (void *) D);
+
+  /* check menu item in VP's menu */
+  int i;
+  for (i = 0; i < CS->nVP; i++) {
+    GtkWidget * item = gtk_check_menu_item_new_with_label(D->name);
+    gtk_menu_shell_append(GTK_MENU_SHELL(CS->VP[i].dag_menu), item);
+    gtk_widget_show_all(CS->VP[i].dag_menu);
+  }  
 
   return D;
 }
