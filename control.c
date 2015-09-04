@@ -916,12 +916,53 @@ on_management_window_add_new_dag_activated(_unused_ GtkMenuItem * menuitem, _unu
     dv_view_t * V = dv_view_create_new_with_dag(D);
     if (V) {
       dv_view_layout(V);
+      dv_do_expanding_one(V);
       gtk_widget_show_all(GTK_WIDGET(D->mini_frame));
       gtk_widget_queue_draw(GTK_WIDGET(D->mini_frame));
     }
     gtk_widget_show_all(GTK_WIDGET(GUI->scrolled_box));
     gtk_widget_queue_draw(GTK_WIDGET(GUI->scrolled_box));
   }
+}
+
+void
+on_management_window_viewport_dag_menu_item_toggled(GtkCheckMenuItem * checkmenuitem, gpointer user_data) {
+  dv_viewport_t * VP = (dv_viewport_t *) user_data;
+  const gchar * label_str = gtk_menu_item_get_label(GTK_MENU_ITEM(checkmenuitem));
+  /* Iterate D and V to find the V */
+  dv_view_t * V = NULL;
+  int i, j;
+  for (i = 0; i < CS->nD; i++) {
+    dv_dag_t * D = &CS->D[i];
+    if (strcmp(D->name, label_str) == 0)
+      break;
+  }
+  if (i < CS->nD) {
+    for (j = 0; j < CS->nV; j++)
+      if (CS->D[i].mV[j]) {
+        V = &CS->V[j];
+        break;
+      }    
+  } else {
+    for (j = 0; j < CS->nV; j++)
+      if (strcmp(CS->V[j].name, label_str) == 0) {
+        V = &CS->V[j];
+        break;
+      }
+  }
+  if (!V) {
+    fprintf(stderr, "viewport_dag_menu_item_toggled: could not find view (%s)\n", label_str);
+    return;
+  }
+  /* Actions */
+  gboolean active = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(checkmenuitem));
+  if (active) {
+    dv_view_add_viewport(V, VP);
+  } else {
+    dv_view_remove_viewport(V, VP);
+  }
+  gtk_widget_show_all(GTK_WIDGET(VP->frame));
+  gtk_widget_queue_draw(GTK_WIDGET(VP->frame));
 }
 
 

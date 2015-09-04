@@ -641,6 +641,7 @@ gboolean on_management_window_expand_dag_button_clicked(GtkWidget *, gpointer);
 void on_management_window_add_new_view_clicked(GtkMenuItem *, gpointer);
 void on_management_window_view_clicked(GtkToolButton * toolbtn, gpointer);
 void on_management_window_add_new_dag_activated(GtkMenuItem *, gpointer);
+void on_management_window_viewport_dag_menu_item_toggled(GtkCheckMenuItem *, gpointer);
 
 
 /* process.c */

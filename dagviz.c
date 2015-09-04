@@ -802,6 +802,7 @@ dv_view_create_new_with_dag(dv_dag_t * D) {
           GtkWidget * submenu = gtk_menu_item_get_submenu(GTK_MENU_ITEM(widget));
           GtkWidget * item = gtk_check_menu_item_new_with_label(V->name);
           gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);
+          g_signal_connect(G_OBJECT(item), "toggled", G_CALLBACK(on_management_window_viewport_dag_menu_item_toggled), (void *) VP);
         } else if (c == 2) {
           gtk_container_remove(GTK_CONTAINER(dag_menu), widget);
           GtkWidget * d_item = gtk_menu_item_new_with_label(D->name);
@@ -812,6 +813,9 @@ dv_view_create_new_with_dag(dv_dag_t * D) {
             if (D->mV[j]) {
               GtkWidget * item = gtk_check_menu_item_new_with_label(CS->V[j].name);
               gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);
+              if (VP->mV[j])
+                gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), TRUE);
+              g_signal_connect(G_OBJECT(item), "toggled", G_CALLBACK(on_management_window_viewport_dag_menu_item_toggled), (void *) VP);
             }
         }
         break;
@@ -838,6 +842,8 @@ dv_view_change_mainvp(dv_view_t * V, dv_viewport_t * VP) {
   V->mainVP = VP;
   if (!VP)
     return;
+  V->S->vpw = VP->vpw;
+  V->S->vph = VP->vph;
   V->S->do_zoomfit = 1;
 } 
 
@@ -1084,12 +1090,19 @@ dv_viewport_init(dv_viewport_t * VP) {
     int i, j;
     for (i = 0; i < CS->nD; i++) {
       dv_dag_t * D = &CS->D[i];
+      dv_view_t * V = NULL;
       int c = 0;
       for (j = 0; j < CS->nV; j++)
-        if (D->mV[j]) c++;
+        if (D->mV[j]) {
+          c++;
+          V = &CS->V[j];        
+        }
       if (c == 1) {
         GtkWidget * item = gtk_check_menu_item_new_with_label(D->name);
         gtk_menu_shell_append(GTK_MENU_SHELL(dag_menu), item);
+        if (VP->mV[V - CS->V])
+          gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), TRUE);
+        g_signal_connect(G_OBJECT(item), "toggled", G_CALLBACK(on_management_window_viewport_dag_menu_item_toggled), (void *) VP);
       } else if (c > 1) {
         GtkWidget * item = gtk_menu_item_new_with_label(D->name);
         gtk_menu_shell_append(GTK_MENU_SHELL(dag_menu), item);
@@ -1099,6 +1112,9 @@ dv_viewport_init(dv_viewport_t * VP) {
           if (D->mV[j]) {
             item = gtk_check_menu_item_new_with_label(CS->V[j].name);
             gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);
+            if (VP->mV[j])
+              gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), TRUE);
+            g_signal_connect(G_OBJECT(item), "toggled", G_CALLBACK(on_management_window_viewport_dag_menu_item_toggled), (void *) VP);
           }
       }
     }
@@ -1277,13 +1293,50 @@ dv_viewport_change_mainv(dv_viewport_t * VP, dv_view_t * V) {
   gtk_label_set_text(GTK_LABEL(VP->T->label), s);
 } 
 
+static void
+dv_viewport_dag_menu_item_set_active(dv_viewport_t * VP, dv_view_t * V, gboolean active) {
+  dv_dag_t * D = V->D;
+  /* Seek D's item */
+  GList * children = gtk_container_get_children(GTK_CONTAINER(VP->dag_menu));
+  GList * child = children;
+  while (child) {
+    GtkWidget * widget = GTK_WIDGET(child->data);
+    const gchar * str = gtk_menu_item_get_label(GTK_MENU_ITEM(widget));
+    if (strcmp(str, D->name) == 0) {
+      GtkWidget * submenu = gtk_menu_item_get_submenu(GTK_MENU_ITEM(widget));
+      if (!submenu) {
+        gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(widget), active);
+      } else {
+        /* Seek V's item */
+        GList * children = gtk_container_get_children(GTK_CONTAINER(submenu));
+        GList * child = children;
+        while (child) {
+          GtkWidget * widget = GTK_WIDGET(child->data);
+          const gchar * str = gtk_menu_item_get_label(GTK_MENU_ITEM(widget));
+          if (strcmp(str, V->name) == 0) {
+            gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(widget), active);
+            break;
+          }
+          child = child->next;
+        }
+      }
+      break;
+    }
+    child = child->next;
+  }
+  gtk_widget_queue_draw(VP->dag_menu);
+}
+
 void
 dv_viewport_add_view(dv_viewport_t * VP, dv_view_t * V) {
   int idx = V - CS->V;
-  dv_check(!VP->mV[idx]);
   VP->mV[idx] = 1;
   if (!VP->mainV)
     dv_viewport_change_mainv(VP, V);
+  /* Update widgets */
+  dv_viewport_dag_menu_item_set_active(VP, V, TRUE);
+  /* Redraw viewports */
+  gtk_widget_queue_draw(GTK_WIDGET(VP->frame));
 }
 
 void
@@ -1301,6 +1354,10 @@ dv_viewport_remove_view(dv_viewport_t * VP, dv_view_t * V) {
       }
     dv_viewport_change_mainv(VP, new_main_v);
   }
+  /* Update widgets */
+  dv_viewport_dag_menu_item_set_active(VP, V, FALSE);
+  /* Redraw viewports */
+  gtk_widget_queue_draw(GTK_WIDGET(VP->frame));
 }
 
 static GtkWidget *
@@ -1451,34 +1508,6 @@ dv_alternate_menubar() {
   */
 }
 
-
-static void
-on_viewport_select_view(GtkCheckMenuItem * checkmenuitem, gpointer user_data) {
-  dv_viewport_t * vp = (dv_viewport_t *) user_data;
-  const gchar * label = gtk_menu_item_get_label(GTK_MENU_ITEM(checkmenuitem));
-  gboolean active = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(checkmenuitem));
-  // Find V
-  char s[DV_STRING_LENGTH];
-  int i;
-  for (i=0; i<CS->nV; i++) {
-    sprintf(s, "VIEW _%d", i);
-    if (strcmp(s, label) == 0)
-      break;
-  }
-  if (i >= CS->nV) {
-    fprintf(stderr, "on_viewport_select_view: could not find view (%s)\n", label);
-    return;
-  }
-  dv_view_t * v = &CS->V[i];
-  // Actions
-  if (active) {
-    dv_view_add_viewport(v, vp);
-  } else {
-    dv_view_remove_viewport(v, vp);
-  }
-  gtk_widget_show_all(GTK_WIDGET(vp->frame));
-  gtk_widget_queue_draw(GTK_WIDGET(vp->frame));
-}
 
 G_MODULE_EXPORT void
 on_menubar_manage_viewports_activated_old(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
@@ -2233,7 +2262,7 @@ dv_create_menubar() {
         sprintf(s, "VIEW _%d", j);
         item = gtk_check_menu_item_new_with_mnemonic(s);
         gtk_menu_shell_append(GTK_MENU_SHELL(viewport_menu), item);
-        g_signal_connect(G_OBJECT(item), "toggled", G_CALLBACK(on_viewport_select_view), (void *) &CS->VP[i]);
+        g_signal_connect(G_OBJECT(item), "toggled", G_CALLBACK(on_management_window_viewport_dag_menu_item_toggled), (void *) &CS->VP[i]);
         if (CS->VP[i].mV[j])
           gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), TRUE);
       }

@@ -497,6 +497,7 @@ dv_dag_create_new_with_pidag(dv_pidag_t * P) {
     GtkWidget * item = gtk_check_menu_item_new_with_label(D->name);
     gtk_menu_shell_append(GTK_MENU_SHELL(CS->VP[i].dag_menu), item);
     gtk_widget_show_all(CS->VP[i].dag_menu);
+    g_signal_connect(G_OBJECT(item), "toggled", G_CALLBACK(on_management_window_viewport_dag_menu_item_toggled), (void *) &CS->VP[i]);
   }  
 
   return D;
