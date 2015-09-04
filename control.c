@@ -601,6 +601,33 @@ on_toolbar_settings_button_clicked(_unused_ GtkToolButton * toolbtn, _unused_ gp
   dv_view_open_toolbox_window(CS->activeV);
 }
 
+void
+on_toolbar_dag_menu_item_activated(GtkMenuItem * menuitem, gpointer user_data) {
+  dv_view_t * V = (dv_view_t *) user_data;
+  if (V) {
+    dv_view_open_toolbox_window(V);
+    return;
+  }
+  /* Iterate D and V */
+  const gchar * label_str = gtk_menu_item_get_label(GTK_MENU_ITEM(menuitem));
+  int i, j;
+  for (i = 0; i < CS->nD; i++) {
+    dv_dag_t * D = &CS->D[i];
+    if (strcmp(D->name, label_str) == 0) {
+      dv_view_t * V = NULL;
+      int c = 0;
+      for (j = 0; j < CS->nV; j++)
+        if (D->mV[j]) {
+          V = &CS->V[j];
+          c++;
+        }
+      if (c == 1)
+        dv_view_open_toolbox_window(V);
+      return;
+    }
+  }  
+}
+
 static void
 on_toolbar_zoomfit_button_clicked(_unused_ GtkToolButton * toolbtn, _unused_ gpointer user_data) {
   if (!CS->activeV) return;
@@ -772,18 +799,120 @@ on_menubar_statistics_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpoint
   dv_open_statistics_dialog();
 }
 
+/*
+static GtkWidget *
+dv_viewport_create_frame(dv_viewport_t * VP) {
+  char s[DV_STRING_LENGTH];
+  sprintf(s, "Viewport %ld", VP - CS->VP);
+  GtkWidget * frame = gtk_frame_new(s);
+  if (VP->split) {
+    GtkWidget * paned = gtk_paned_new(VP->orientation);
+    gtk_container_add(GTK_CONTAINER(frame), paned);
+    if (VP->vp1)
+      gtk_paned_pack1(GTK_PANED(paned), dv_viewport_create_frame(VP->vp1), TRUE, TRUE);
+    if (VP->vp2)
+      gtk_paned_pack2(GTK_PANED(paned), dv_viewport_create_frame(VP->vp2), TRUE, TRUE);
+  }
+  return frame;
+}
+
+static void
+dv_viewport_update_configure_box() {
+  // Box
+  GtkWidget * box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+  GList * list = gtk_container_get_children(GTK_CONTAINER(CS->box_viewport_configure));
+  GtkWidget * child = (GtkWidget *) g_list_nth_data(list, 0);
+  if (child)
+    gtk_container_remove(GTK_CONTAINER(CS->box_viewport_configure), child);
+  gtk_box_pack_start(GTK_BOX(CS->box_viewport_configure), box, TRUE, TRUE, 3);
+
+  // Left
+  GtkWidget * left = dv_viewport_create_frame(CS->VP);
+  gtk_box_pack_start(GTK_BOX(box), left, TRUE, TRUE, 3);
+
+  // Separator
+  gtk_box_pack_start(GTK_BOX(box), gtk_separator_new(GTK_ORIENTATION_VERTICAL), FALSE, FALSE, 4);
+
+  // Right
+  GtkWidget * right = gtk_scrolled_window_new(NULL, NULL);
+  gtk_box_pack_start(GTK_BOX(box), right, FALSE, FALSE, 3);
+  gtk_widget_set_size_request(GTK_WIDGET(right), 315, 0);
+  GtkWidget * right_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+  gtk_container_add(GTK_CONTAINER(right), right_box);
+  int i;
+  for (i=0; i<CS->nVP; i++) {
+    char s[DV_STRING_LENGTH];
+    sprintf(s, "Viewport %d: ", i);
+    GtkWidget * vp_frame = gtk_frame_new(NULL);
+    gtk_box_pack_start(GTK_BOX(right_box), vp_frame, FALSE, FALSE, 3);
+    GtkWidget * vp_hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+    gtk_container_add(GTK_CONTAINER(vp_frame), vp_hbox);
+
+    // Label
+    GtkWidget * label = gtk_label_new(s);
+    gtk_box_pack_start(GTK_BOX(vp_hbox), label, FALSE, FALSE, 3);
+
+    // Split
+    GtkWidget * split_combobox = gtk_combo_box_text_new();
+    gtk_box_pack_start(GTK_BOX(vp_hbox), split_combobox, TRUE, FALSE, 0);
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(split_combobox), "nosplit", "No split");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(split_combobox), "split", "Split");
+    gtk_combo_box_set_active(GTK_COMBO_BOX(split_combobox), CS->VP[i].split);
+    g_signal_connect(G_OBJECT(split_combobox), "changed", G_CALLBACK(on_viewport_options_split_changed), (void *) &CS->VP[i]);
+
+    // Orientation
+    GtkWidget * orient_combobox = gtk_combo_box_text_new();
+    gtk_box_pack_start(GTK_BOX(vp_hbox), orient_combobox, TRUE, FALSE, 0);
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(orient_combobox), "horizontal", "Horizontally");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(orient_combobox), "vertical", "Vertically");
+    gtk_combo_box_set_active(GTK_COMBO_BOX(orient_combobox), CS->VP[i].orientation);
+    g_signal_connect(G_OBJECT(orient_combobox), "changed", G_CALLBACK(on_viewport_options_orientation_changed), (void *) &CS->VP[i]);
+
+  }
+}
+
+G_MODULE_EXPORT void
+on_menubar_manage_viewports_activated_old(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
+  GtkWidget * dialog = gtk_dialog_new();
+  gtk_window_set_title(GTK_WINDOW(dialog), "Configure Viewports");
+  gtk_window_set_default_size(GTK_WINDOW(dialog), 800, 400);
+  
+  GtkWidget * box = CS->box_viewport_configure;
+  if (!box) {
+    box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+    g_object_ref(box);
+    CS->box_viewport_configure = box;
+  }
+
+  // Update dialog's content
+  dv_viewport_update_configure_box();
+
+  // GUI
+  GtkWidget * vbox = gtk_dialog_get_content_area(GTK_DIALOG(dialog));
+  gtk_box_pack_start(GTK_BOX(vbox), box, TRUE, TRUE, 0);
+
+  // Run
+  gtk_widget_show_all(dialog);
+  gtk_dialog_run(GTK_DIALOG(dialog));
+
+  // Destroy
+  gtk_container_remove(GTK_CONTAINER(vbox), box);
+  gtk_widget_destroy(dialog);
+}
+*/
+
 G_MODULE_EXPORT void
 on_menubar_manage_viewports_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
   GtkWidget * management_window = dv_gui_get_management_window(GUI);
-  gtk_notebook_set_current_page(GTK_NOTEBOOK(GUI->notebook), 0);
   gtk_widget_show_all(management_window);
+  gtk_notebook_set_current_page(GTK_NOTEBOOK(GUI->notebook), 0);
 }
 
 G_MODULE_EXPORT void
 on_menubar_manage_dags_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
-  GtkWidget * management_window = dv_gui_get_management_window(GUI);  
-  gtk_notebook_set_current_page(GTK_NOTEBOOK(GUI->notebook), 1);
+  GtkWidget * management_window = dv_gui_get_management_window(GUI);
   gtk_widget_show_all(management_window);
+  gtk_notebook_set_current_page(GTK_NOTEBOOK(GUI->notebook), 1); // effective only when being called after the window is shown for the first time
 }
 
 static gboolean

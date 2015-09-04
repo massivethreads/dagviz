@@ -623,12 +623,17 @@ dv_statusbar_update_selection_status() {
   }
   char s[DV_STRING_LENGTH];
   dv_view_t * V = CS->activeV;
-  sprintf(s, "DAG %ld: %ld/%ld/%ld (depth:%d/%d)",
+  sprintf(s, "DAG %ld: %ld/%ld/%ld (depth:%d/%d) - View %ld: (%.0lf,%.0lf), (%.3lf,%.3lf), (%d,%.3lf), %.0lf",
           V->D - CS->D,
           V->S->nd, V->S->ndh, V->D->P->n,
-          V->D->cur_d, V->D->dmax);
+          V->D->cur_d, V->D->dmax,
+          V - CS->V,
+          V->S->vpw, V->S->vph,
+          V->S->zoom_ratio_x, V->S->zoom_ratio_y,
+          V->D->sdt, (V->D->sdt==0)?V->D->log_radix:((V->D->sdt==1)?V->D->power_radix:V->D->linear_radix),
+          V->D->radius);
   dv_statusbar_update(2, 0, s);
-  sprintf(s, "Currently focused DAG: %s (change by tab key)", V->D->P->fn);
+  sprintf(s, "Currently focused DAG (change by tab key): nodes, hidden nodes, all nodes; depths - viewport dimension; Cairo zoom ratios; scale-down radix; node radius");
   if (GUI->statusbar2)
     gtk_widget_set_tooltip_text(GTK_WIDGET(GUI->statusbar2), s);
 }

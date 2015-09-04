@@ -500,6 +500,15 @@ dv_dag_create_new_with_pidag(dv_pidag_t * P) {
     g_signal_connect(G_OBJECT(item), "toggled", G_CALLBACK(on_management_window_viewport_dag_menu_item_toggled), (void *) &CS->VP[i]);
   }  
 
+  /* toolbar's settings button's dag menu */
+  if (GUI->dag_menu) {
+    GtkWidget * dag_menu = GUI->dag_menu;
+    GtkWidget * item = gtk_menu_item_new_with_label(D->name);
+    gtk_menu_shell_append(GTK_MENU_SHELL(dag_menu), item);
+    g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_dag_menu_item_activated), (void *) NULL);
+    gtk_widget_show_all(dag_menu);
+  }
+
   return D;
 }
 

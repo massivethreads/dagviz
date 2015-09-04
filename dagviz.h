@@ -525,7 +525,10 @@ typedef struct dv_gui {
   GtkWidget * window;
   GtkWidget * vbox0;
   GtkWidget * menubar;
+
+  /* Toolbar */
   GtkWidget * toolbar;
+  GtkWidget * dag_menu;
   
   /* Status bars */
   GtkWidget * statusbar1; // interaction statuses
@@ -558,9 +561,8 @@ typedef struct dv_global_state {
   dv_viewport_t VP[DV_MAX_VIEWPORT];
   int nVP;
 
-  /* Dialogs */
+  /* Backtrace viewer */
   dv_btsample_viewer_t btviewer[1];
-  GtkWidget * box_viewport_configure;
 
   /* Memory Pools */
   dv_dag_node_pool_t pool[1];
@@ -631,10 +633,13 @@ void dv_open_statistics_dialog();
 
 void dv_gui_init(dv_gui_t *);
 GtkWidget * dv_gui_get_management_window(dv_gui_t *);
+GtkWidget * dv_gui_get_main_window(dv_gui_t *, GtkApplication *);
 
 void dv_signal_handler(int);
 
 /* control.c */
+void on_toolbar_dag_menu_item_activated(GtkMenuItem *, gpointer);
+
 gboolean on_management_window_open_stat_button_clicked(GtkWidget *, gpointer);
 gboolean on_management_window_open_pp_button_clicked(GtkWidget *, gpointer);
 gboolean on_management_window_expand_dag_button_clicked(GtkWidget *, gpointer);
