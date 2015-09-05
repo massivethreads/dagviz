@@ -1020,11 +1020,10 @@ on_management_window_expand_dag_button_clicked(_unused_ GtkWidget * widget, gpoi
 }
 
 void
-on_management_window_add_new_view_clicked(_unused_ GtkMenuItem * menuitem, gpointer user_data) {
+on_management_window_add_new_view_clicked(_unused_ GtkWidget * widget, gpointer user_data) {
   dv_dag_t * D = (dv_dag_t *) user_data;
-  dv_view_t * V = dv_view_create_new_with_dag(D);
+  dv_view_t * V = dv_create_new_view(D);
   if (V) {
-    dv_view_layout(V);
     gtk_widget_show_all(GTK_WIDGET(D->mini_frame));
     gtk_widget_queue_draw(GTK_WIDGET(D->mini_frame));
   }
@@ -1040,11 +1039,10 @@ on_management_window_view_clicked(_unused_ GtkToolButton * toolbtn, _unused_ gpo
 void
 on_management_window_add_new_dag_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
   dv_pidag_t * P = (dv_pidag_t *) user_data;
-  dv_dag_t * D = dv_dag_create_new_with_pidag(P);
+  dv_dag_t * D = dv_create_new_dag(P);
   if (D) {
-    dv_view_t * V = dv_view_create_new_with_dag(D);
+    dv_view_t * V = dv_create_new_view(D);
     if (V) {
-      dv_view_layout(V);
       dv_do_expanding_one(V);
       gtk_widget_show_all(GTK_WIDGET(D->mini_frame));
       gtk_widget_queue_draw(GTK_WIDGET(D->mini_frame));
@@ -1094,6 +1092,27 @@ on_management_window_viewport_dag_menu_item_toggled(GtkCheckMenuItem * checkmenu
   gtk_widget_queue_draw(GTK_WIDGET(VP->frame));
 }
 
+void
+on_toolbar_division_menu_onedag_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
+  dv_viewport_t * VP = CS->VP;
+  dv_dag_t * D = CS->D;
+  long i = (long) user_data;
+  switch (i) {
+  case 1:
+    dv_viewport_divide_onedag_1(VP, D);
+    break;
+  case 2:
+    dv_viewport_divide_onedag_2(VP, D);
+    break;
+  case 3:
+    dv_viewport_divide_onedag_3(VP, D);
+    break;
+  case 4:
+    dv_viewport_divide_onedag_4(VP, D);
+    break;
+  }
+  gtk_widget_queue_draw(VP->frame);
+}
 
 /****************** end of GUI Callbacks **************************************/
 

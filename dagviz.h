@@ -529,6 +529,7 @@ typedef struct dv_gui {
   /* Toolbar */
   GtkWidget * toolbar;
   GtkWidget * dag_menu;
+  GtkWidget * division_menu;
   
   /* Status bars */
   GtkWidget * statusbar1; // interaction statuses
@@ -628,8 +629,15 @@ void dv_viewport_change_orientation(dv_viewport_t *, GtkOrientation);
 void dv_viewport_change_mainv(dv_viewport_t *, dv_view_t *);
 void dv_viewport_add_view(dv_viewport_t *, dv_view_t *);
 void dv_viewport_remove_view(dv_viewport_t *, dv_view_t *);
+void dv_viewport_divide_onedag_1(dv_viewport_t *, dv_dag_t *);
+void dv_viewport_divide_onedag_2(dv_viewport_t *, dv_dag_t *);
+void dv_viewport_divide_onedag_3(dv_viewport_t *, dv_dag_t *);
+void dv_viewport_divide_onedag_4(dv_viewport_t *, dv_dag_t *);
 
 void dv_open_statistics_dialog();
+
+dv_view_t * dv_create_new_view(dv_dag_t *);
+dv_dag_t * dv_create_new_dag(dv_pidag_t *);
 
 void dv_gui_init(dv_gui_t *);
 GtkWidget * dv_gui_get_management_window(dv_gui_t *);
@@ -643,10 +651,13 @@ void on_toolbar_dag_menu_item_activated(GtkMenuItem *, gpointer);
 gboolean on_management_window_open_stat_button_clicked(GtkWidget *, gpointer);
 gboolean on_management_window_open_pp_button_clicked(GtkWidget *, gpointer);
 gboolean on_management_window_expand_dag_button_clicked(GtkWidget *, gpointer);
-void on_management_window_add_new_view_clicked(GtkMenuItem *, gpointer);
+void on_management_window_add_new_view_clicked(GtkWidget *, gpointer);
 void on_management_window_view_clicked(GtkToolButton * toolbtn, gpointer);
 void on_management_window_add_new_dag_activated(GtkMenuItem *, gpointer);
 void on_management_window_viewport_dag_menu_item_toggled(GtkCheckMenuItem *, gpointer);
+
+void on_toolbar_division_menu_onedag_activated(GtkMenuItem *, gpointer);
+
 
 
 /* process.c */
