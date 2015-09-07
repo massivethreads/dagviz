@@ -629,10 +629,21 @@ void dv_viewport_change_orientation(dv_viewport_t *, GtkOrientation);
 void dv_viewport_change_mainv(dv_viewport_t *, dv_view_t *);
 void dv_viewport_add_view(dv_viewport_t *, dv_view_t *);
 void dv_viewport_remove_view(dv_viewport_t *, dv_view_t *);
+
 void dv_viewport_divide_onedag_1(dv_viewport_t *, dv_dag_t *);
 void dv_viewport_divide_onedag_2(dv_viewport_t *, dv_dag_t *);
 void dv_viewport_divide_onedag_3(dv_viewport_t *, dv_dag_t *);
 void dv_viewport_divide_onedag_4(dv_viewport_t *, dv_dag_t *);
+void dv_viewport_divide_onedag_5(dv_viewport_t *, dv_dag_t *);
+
+void dv_viewport_divide_twodags_1(dv_viewport_t *, dv_dag_t *, dv_dag_t *);
+void dv_viewport_divide_twodags_2(dv_viewport_t *, dv_dag_t *, dv_dag_t *);
+void dv_viewport_divide_twodags_3(dv_viewport_t *, dv_dag_t *, dv_dag_t *);
+void dv_viewport_divide_twodags_4(dv_viewport_t *, dv_dag_t *, dv_dag_t *);
+void dv_viewport_divide_twodags_5(dv_viewport_t *, dv_dag_t *, dv_dag_t *);
+void dv_viewport_divide_twodags_6(dv_viewport_t *, dv_dag_t *, dv_dag_t *);
+
+void dv_viewport_divide_threedags_1(dv_viewport_t *, dv_dag_t *, dv_dag_t *, dv_dag_t *);
 
 void dv_open_statistics_dialog();
 
@@ -657,7 +668,9 @@ void on_management_window_add_new_dag_activated(GtkMenuItem *, gpointer);
 void on_management_window_viewport_dag_menu_item_toggled(GtkCheckMenuItem *, gpointer);
 
 void on_toolbar_division_menu_onedag_activated(GtkMenuItem *, gpointer);
-
+void on_toolbar_division_menu_twodags_activated(GtkMenuItem *, gpointer);
+void on_toolbar_division_menu_threedags_activated(GtkMenuItem *, gpointer);
+void on_toolbar_dag_layout_paraprof_button_clicked(GtkToolButton *, gpointer);
 
 
 /* process.c */
@@ -672,9 +685,9 @@ void dv_dag_node_pool_set_status_label(dv_dag_node_pool_t *, GtkWidget *);
 void dv_histogram_entry_pool_set_status_label(dv_histogram_entry_pool_t *, GtkWidget *);
 
 void dv_view_get_zoomfit_hor(dv_view_t *, double *, double *, double *, double *);
-void dv_do_zoomfit_hor(dv_view_t *);
+void dv_view_do_zoomfit_hor(dv_view_t *);
 void dv_view_get_zoomfit_ver(dv_view_t *, double *, double *, double *, double *);
-void dv_do_zoomfit_ver(dv_view_t *);
+void dv_view_do_zoomfit_ver(dv_view_t *);
 void dv_view_do_zoomfit_based_on_lt(dv_view_t *);
 void dv_view_do_zoomfit_full(dv_view_t *);
 void dv_view_change_radix(dv_view_t *, double);

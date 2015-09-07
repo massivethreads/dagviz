@@ -340,12 +340,12 @@ on_window_key_event(_unused_ GtkWidget * widget, GdkEvent * event, _unused_ gpoi
   case 104: /* H */
     if (aV->S->adjust_auto_zoomfit)
       dv_view_change_azf(aV, 1);
-    dv_do_zoomfit_hor(aV);
+    dv_view_do_zoomfit_hor(aV);
     return TRUE;
   case 118: /* V */
     if (aV->S->adjust_auto_zoomfit)
       dv_view_change_azf(aV, 2);
-    dv_do_zoomfit_ver(aV);
+    dv_view_do_zoomfit_ver(aV);
     return TRUE;
   case 102: /* F */
     if (aV->S->adjust_auto_zoomfit)
@@ -586,13 +586,13 @@ on_btn_run_dag_scan_clicked(_unused_ GtkButton * button, gpointer user_data) {
 static void
 on_btn_zoomfit_hor_clicked(_unused_ GtkToolButton * toolbtn, gpointer user_data) {
   dv_view_t * V = (dv_view_t *) user_data;
-  dv_do_zoomfit_hor(V);
+  dv_view_do_zoomfit_hor(V);
 }
 
 static void
 on_btn_zoomfit_ver_clicked(_unused_ GtkToolButton * toolbtn, gpointer user_data) {
   dv_view_t * V = (dv_view_t *) user_data;
-  dv_do_zoomfit_ver(V);
+  dv_view_do_zoomfit_ver(V);
 }
 
 static void
@@ -629,9 +629,20 @@ on_toolbar_dag_menu_item_activated(GtkMenuItem * menuitem, gpointer user_data) {
 }
 
 static void
-on_toolbar_zoomfit_button_clicked(_unused_ GtkToolButton * toolbtn, _unused_ gpointer user_data) {
+on_toolbar_zoomfit_button_clicked(_unused_ GtkToolButton * toolbtn, gpointer user_data) {
   if (!CS->activeV) return;
-  dv_view_do_zoomfit_full(CS->activeV);
+  long i = (long) user_data;
+  switch (i) {
+  case 0:
+    dv_view_do_zoomfit_full(CS->activeV);
+    break;
+  case 1:
+    dv_view_do_zoomfit_hor(CS->activeV);
+    break;
+  case 2:
+    dv_view_do_zoomfit_ver(CS->activeV);
+    break;
+  }
 }
 
 static void
@@ -1110,8 +1121,61 @@ on_toolbar_division_menu_onedag_activated(_unused_ GtkMenuItem * menuitem, _unus
   case 4:
     dv_viewport_divide_onedag_4(VP, D);
     break;
+  case 5:
+    dv_viewport_divide_onedag_5(VP, D);
+    break;
   }
-  gtk_widget_queue_draw(VP->frame);
+}
+
+void
+on_toolbar_division_menu_twodags_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
+  dv_viewport_t * VP = CS->VP;
+  if (CS->nD < 2) return;
+  dv_dag_t * D1 = CS->D;
+  dv_dag_t * D2 = CS->D + 1;
+  long i = (long) user_data;
+  switch (i) {
+  case 1:
+    dv_viewport_divide_twodags_1(VP, D1, D2);
+    break;
+  case 2:
+    dv_viewport_divide_twodags_2(VP, D1, D2);
+    break;
+  case 3:
+    dv_viewport_divide_twodags_3(VP, D1, D2);
+    break;
+  case 4:
+    dv_viewport_divide_twodags_4(VP, D1, D2);
+    break;
+  case 5:
+    dv_viewport_divide_twodags_5(VP, D1, D2);
+    break;
+  case 6:
+    dv_viewport_divide_twodags_6(VP, D1, D2);
+    break;
+  }
+}
+
+void
+on_toolbar_division_menu_threedags_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
+  dv_viewport_t * VP = CS->VP;
+  if (CS->nD < 3) return;
+  dv_dag_t * D1 = CS->D;
+  dv_dag_t * D2 = CS->D + 1;
+  dv_dag_t * D3 = CS->D + 2;
+  long i = (long) user_data;
+  switch (i) {
+  case 1:
+    dv_viewport_divide_threedags_1(VP, D1, D2, D3);
+    break;
+  }
+}
+
+void
+on_toolbar_dag_layout_buttons_clicked(_unused_ GtkToolButton * toolbtn, _unused_ gpointer user_data) {
+  if (!CS->activeV) return;
+  long i = (long) user_data;
+  dv_view_change_lt(CS->activeV, i);
 }
 
 /****************** end of GUI Callbacks **************************************/

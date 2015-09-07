@@ -128,10 +128,10 @@ static gboolean dv_animation_tick(gpointer data) {
   case 0:
     break;
   case 1:
-    dv_do_zoomfit_hor(a->V);
+    dv_view_do_zoomfit_hor(a->V);
     break;
   case 2:
-    dv_do_zoomfit_ver(a->V);
+    dv_view_do_zoomfit_ver(a->V);
     break;
   case 3:
     dv_view_do_zoomfit_based_on_lt(a->V);

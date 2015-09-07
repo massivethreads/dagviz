@@ -1230,6 +1230,9 @@ dv_viewport_change_orientation(dv_viewport_t * VP, GtkOrientation o) {
   g_object_ref(VP->mini_paned);
   gtk_container_set_border_width(GTK_CONTAINER(VP->mini_paned), 5);
   
+  /* Update widgets */
+  gtk_combo_box_set_active(GTK_COMBO_BOX(VP->orient_combobox), o);
+
   VP->orientation = o;
   dv_viewport_show(VP);
   dv_viewport_miniver_show(VP);
@@ -1319,9 +1322,11 @@ dv_viewport_remove_view(dv_viewport_t * VP, dv_view_t * V) {
 }
 
 
-/* Divisions for one DAG: D , D|T , D/T , (D|B)/T */
+/* Divisions for one DAG: D , T , D|T , D/T , (D|B)/T */
 void
 dv_viewport_divide_onedag_1(dv_viewport_t * VP, dv_dag_t * D) {
+  /* D */
+  /* View */
   dv_view_t * V = NULL;
   int i;
   for (i = 0; i < CS->nV; i++)
@@ -1331,6 +1336,9 @@ dv_viewport_divide_onedag_1(dv_viewport_t * VP, dv_dag_t * D) {
     }
   if (!V)
     V = dv_create_new_view(D);
+  dv_view_change_lt(V, 0);
+  
+  /* Viewport */
   dv_viewport_change_split(VP, 0);
   for (i = 0; i < CS->nV; i++)
     if (VP->mV[i]) {
@@ -1343,6 +1351,34 @@ dv_viewport_divide_onedag_1(dv_viewport_t * VP, dv_dag_t * D) {
 
 void
 dv_viewport_divide_onedag_2(dv_viewport_t * VP, dv_dag_t * D) {
+  /* T */
+  /* View */
+  dv_view_t * V = NULL;
+  int i;
+  for (i = 0; i < CS->nV; i++)
+    if (D->mV[i]) {
+      V = &CS->V[i];
+      break;
+    }
+  if (!V)
+    V = dv_create_new_view(D);
+  dv_view_change_lt(V, 4);
+  
+  /* Viewport */
+  dv_viewport_change_split(VP, 0);
+  for (i = 0; i < CS->nV; i++)
+    if (VP->mV[i]) {
+      dv_view_t * V = &CS->V[i];
+      dv_view_remove_viewport(V, VP);
+    }
+  dv_view_add_viewport(V, VP);
+  dv_view_change_mainvp(V, VP);
+}
+
+void
+dv_viewport_divide_onedag_3(dv_viewport_t * VP, dv_dag_t * D) {
+  /* D | T */
+  /* View */
   dv_view_t * V1 = NULL;
   dv_view_t * V2 = NULL;
   int i;
@@ -1361,10 +1397,13 @@ dv_viewport_divide_onedag_2(dv_viewport_t * VP, dv_dag_t * D) {
   dv_view_change_lt(V1, 0);
   dv_view_change_lt(V2, 4);
   
+  /* Viewport */
   dv_viewport_change_split(VP, 1);
   dv_viewport_change_orientation(VP, GTK_ORIENTATION_HORIZONTAL);
   dv_viewport_t * VP1 = VP->vp1;
   dv_viewport_t * VP2 = VP->vp2;
+  dv_viewport_change_split(VP1, 0);
+  dv_viewport_change_split(VP2, 0);
   for (i = 0; i < CS->nV; i++) {
     if (VP1->mV[i]) {
       dv_view_t * V = &CS->V[i];
@@ -1382,11 +1421,209 @@ dv_viewport_divide_onedag_2(dv_viewport_t * VP, dv_dag_t * D) {
 }
 
 void
-dv_viewport_divide_onedag_3(dv_viewport_t * VP, dv_dag_t * D) {
+dv_viewport_divide_onedag_4(dv_viewport_t * VP, dv_dag_t * D) {
+  /* D / T */
+  /* View */
+  dv_view_t * V1 = NULL;
+  dv_view_t * V2 = NULL;
+  int i;
+  for (i = 0; i < CS->nV; i++)
+    if (D->mV[i]) {
+      if (!V1) V1 = &CS->V[i];
+      else if (!V2) {
+        V2 = &CS->V[i];
+        break;
+      }
+    }
+  if (!V1)
+    V1 = dv_create_new_view(D);
+  if (!V2)
+    V2 = dv_create_new_view(D);
+  dv_view_change_lt(V1, 0);
+  dv_view_change_lt(V2, 4);
+  
+  /* Viewport */
+  dv_viewport_change_split(VP, 1);
+  dv_viewport_change_orientation(VP, GTK_ORIENTATION_VERTICAL);
+  dv_viewport_t * VP1 = VP->vp1;
+  dv_viewport_t * VP2 = VP->vp2;
+  dv_viewport_change_split(VP1, 0);
+  dv_viewport_change_split(VP2, 0);
+  for (i = 0; i < CS->nV; i++) {
+    if (VP1->mV[i]) {
+      dv_view_t * V = &CS->V[i];
+      dv_view_remove_viewport(V, VP1);
+    }
+    if (VP2->mV[i]) {
+      dv_view_t * V = &CS->V[i];
+      dv_view_remove_viewport(V, VP2);
+    }
+  }
+  dv_view_add_viewport(V1, VP1);
+  dv_view_add_viewport(V2, VP2);
+  dv_view_change_mainvp(V1, VP1);
+  dv_view_change_mainvp(V2, VP2);
 }
 
 void
-dv_viewport_divide_onedag_4(dv_viewport_t * VP, dv_dag_t * D) {
+dv_viewport_divide_onedag_5(dv_viewport_t * VP, dv_dag_t * D) {
+  /* (D | B) / T */
+  /* View */
+  dv_view_t * V1 = NULL;
+  dv_view_t * V2 = NULL;
+  dv_view_t * V3 = NULL;
+  int i;
+  for (i = 0; i < CS->nV; i++)
+    if (D->mV[i]) {
+      if (!V1) V1 = &CS->V[i];
+      else if (!V2) V2 = &CS->V[i];
+      else if (!V3) {
+        V3 = &CS->V[i];
+        break;
+      }
+    }
+  if (!V1)
+    V1 = dv_create_new_view(D);
+  if (!V2)
+    V2 = dv_create_new_view(D);
+  if (!V3)
+    V3 = dv_create_new_view(D);
+  dv_view_change_lt(V1, 0);
+  dv_view_change_lt(V2, 1);
+  dv_view_change_lt(V3, 4);
+  
+  /* Viewport */
+  dv_viewport_t * VP1 = NULL;
+  dv_viewport_t * VP2 = NULL;
+  {
+    dv_viewport_change_split(VP, 1);
+    dv_viewport_change_orientation(VP, GTK_ORIENTATION_VERTICAL);
+    VP1 = VP->vp1;
+    VP2 = VP->vp2;
+    dv_viewport_change_split(VP2, 0);
+    for (i = 0; i < CS->nV; i++) {
+      if (VP1->mV[i]) {
+        dv_view_t * V = &CS->V[i];
+        dv_view_remove_viewport(V, VP1);
+      }
+      if (VP2->mV[i]) {
+        dv_view_t * V = &CS->V[i];
+        dv_view_remove_viewport(V, VP2);
+      }
+    }
+    dv_view_add_viewport(V3, VP2);
+    dv_view_change_mainvp(V3, VP2);
+  }
+  
+  VP = VP1;
+  {
+    dv_viewport_change_split(VP, 1);
+    dv_viewport_change_orientation(VP, GTK_ORIENTATION_HORIZONTAL);
+    VP1 = VP->vp1;
+    VP2 = VP->vp2;
+    dv_viewport_change_split(VP1, 0);
+    dv_viewport_change_split(VP2, 0);
+    for (i = 0; i < CS->nV; i++) {
+      if (VP1->mV[i]) {
+        dv_view_t * V = &CS->V[i];
+        dv_view_remove_viewport(V, VP1);
+      }
+      if (VP2->mV[i]) {
+        dv_view_t * V = &CS->V[i];
+        dv_view_remove_viewport(V, VP2);
+      }
+    }
+    dv_view_add_viewport(V1, VP1);
+    dv_view_add_viewport(V2, VP2);
+    dv_view_change_mainvp(V1, VP1);
+    dv_view_change_mainvp(V2, VP2);
+  }
+}
+
+/* Divisions for 2 DAGs: D|D , T|T , T/T , (D/T)|(D/T) , (D|T)/(D|T) , (D|B)/T | (D|B)/T */
+void
+dv_viewport_divide_twodags_1(dv_viewport_t * VP, dv_dag_t * D1, dv_dag_t * D2) {
+  /* D | D */
+  /* Viewport */
+  dv_viewport_change_split(VP, 1);
+  dv_viewport_change_orientation(VP, GTK_ORIENTATION_HORIZONTAL);
+  dv_viewport_t * VP1 = VP->vp1;
+  dv_viewport_t * VP2 = VP->vp2;
+  dv_viewport_divide_onedag_1(VP1, D1);
+  dv_viewport_divide_onedag_1(VP2, D2);
+}
+
+void
+dv_viewport_divide_twodags_2(dv_viewport_t * VP, dv_dag_t * D1, dv_dag_t * D2) {
+  /* T | T */
+  /* Viewport */
+  dv_viewport_change_split(VP, 1);
+  dv_viewport_change_orientation(VP, GTK_ORIENTATION_HORIZONTAL);
+  dv_viewport_t * VP1 = VP->vp1;
+  dv_viewport_t * VP2 = VP->vp2;
+  dv_viewport_divide_onedag_2(VP1, D1);
+  dv_viewport_divide_onedag_2(VP2, D2);
+}
+
+void
+dv_viewport_divide_twodags_3(dv_viewport_t * VP, dv_dag_t * D1, dv_dag_t * D2) {
+  /* T / T */
+  /* Viewport */
+  dv_viewport_change_split(VP, 1);
+  dv_viewport_change_orientation(VP, GTK_ORIENTATION_VERTICAL);
+  dv_viewport_t * VP1 = VP->vp1;
+  dv_viewport_t * VP2 = VP->vp2;
+  dv_viewport_divide_onedag_2(VP1, D1);
+  dv_viewport_divide_onedag_2(VP2, D2);
+}
+
+void
+dv_viewport_divide_twodags_4(dv_viewport_t * VP, dv_dag_t * D1, dv_dag_t * D2) {
+  /* (D / T) | (D / T) */
+  /* Viewport */
+  dv_viewport_change_split(VP, 1);
+  dv_viewport_change_orientation(VP, GTK_ORIENTATION_HORIZONTAL);
+  dv_viewport_t * VP1 = VP->vp1;
+  dv_viewport_t * VP2 = VP->vp2;
+  dv_viewport_divide_onedag_4(VP1, D1);
+  dv_viewport_divide_onedag_4(VP2, D2);
+}
+
+void
+dv_viewport_divide_twodags_5(dv_viewport_t * VP, dv_dag_t * D1, dv_dag_t * D2) {
+  /* (D | T) / (D | T) */
+  /* Viewport */
+  dv_viewport_change_split(VP, 1);
+  dv_viewport_change_orientation(VP, GTK_ORIENTATION_VERTICAL);
+  dv_viewport_t * VP1 = VP->vp1;
+  dv_viewport_t * VP2 = VP->vp2;
+  dv_viewport_divide_onedag_3(VP1, D1);
+  dv_viewport_divide_onedag_3(VP2, D2);
+}
+
+void
+dv_viewport_divide_twodags_6(dv_viewport_t * VP, dv_dag_t * D1, dv_dag_t * D2) {
+  /* (D | B) / T | (D | B) / T */
+  /* Viewport */
+  dv_viewport_change_split(VP, 1);
+  dv_viewport_change_orientation(VP, GTK_ORIENTATION_HORIZONTAL);
+  dv_viewport_t * VP1 = VP->vp1;
+  dv_viewport_t * VP2 = VP->vp2;
+  dv_viewport_divide_onedag_5(VP1, D1);
+  dv_viewport_divide_onedag_5(VP2, D2);
+}
+
+/* Divisions for 3 DAGs: D | D | D */
+void
+dv_viewport_divide_threedags_1(dv_viewport_t * VP, dv_dag_t * D1, dv_dag_t * D2, dv_dag_t * D3) {
+  /* D | D | D*/
+  /* Viewport */
+  dv_viewport_change_split(VP, 1);
+  dv_viewport_change_orientation(VP, GTK_ORIENTATION_HORIZONTAL);
+  dv_viewport_t * VP1 = VP->vp1;
+  dv_viewport_t * VP2 = VP->vp2;
+  dv_viewport_divide_onedag_1(VP1, D1);
+  dv_viewport_divide_twodags_1(VP2, D2, D3);
 }
 
 /*-----------------end of VIEWPORT's functions-----------------*/
@@ -2392,8 +2629,7 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
   g_signal_connect(G_OBJECT(GUI->window), "key-press-event", G_CALLBACK(on_window_key_event), NULL);
   
   /* Icon */
-  /*
-  char * icon_filename = "smile_icon.png";
+  char * icon_filename = "gtk/dagviz_icon.svg";
   GError * error = 0; 
   GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file(icon_filename, &error);
   if (!pixbuf) {
@@ -2401,8 +2637,6 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
   } else {
     gtk_window_set_icon(GTK_WINDOW(window), pixbuf);
   }
-  */
-
   
   /* Vbox0 */
   gui->vbox0 = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
@@ -2433,9 +2667,12 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
       GtkToolItem * btn_divisions = gtk_menu_tool_button_new(NULL, NULL);
       gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_divisions, -1);
       gtk_toolbar_insert(GTK_TOOLBAR(toolbar), gtk_separator_tool_item_new(), -1);
-      gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_divisions), "video-display");
+      //gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_divisions), "video-display");
+      GtkWidget * icon = gtk_image_new_from_file("gtk/viewport_division_icon.svg");
+      gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(btn_divisions), icon);
       gtk_widget_set_tooltip_text(GTK_WIDGET(btn_divisions), "Viewport divisions");
       g_signal_connect(G_OBJECT(btn_divisions), "clicked", G_CALLBACK(on_menubar_manage_viewports_activated), NULL);
+
 
       GtkWidget * menu = gui->division_menu = gtk_menu_new();
       gtk_menu_tool_button_set_menu(GTK_MENU_TOOL_BUTTON(btn_divisions), menu);
@@ -2444,7 +2681,7 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
       GtkWidget * submenu;
       
       if (CS->nP >= 1) {
-        /* Divisions for 1 DAG: D , D|T , D/T , (D|B)/T */
+        /* Divisions for 1 DAG: D , T , D|T , D/T , (D|B)/T */
         item = gtk_menu_item_new_with_mnemonic("Divisions for 1 DAG");
         gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
         submenu = gtk_menu_new();
@@ -2454,17 +2691,65 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
         gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);        
         g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_onedag_activated), (void *) 1);
 
-        item = gtk_menu_item_new_with_label("D | T");
+        item = gtk_menu_item_new_with_label("T");
         gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);        
         g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_onedag_activated), (void *) 2);
+
+        item = gtk_menu_item_new_with_label("D | T");
+        gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);        
+        g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_onedag_activated), (void *) 3);
         
         item = gtk_menu_item_new_with_label("D / T");
         gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);        
-        g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_onedag_activated), (void *) 3);
+        g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_onedag_activated), (void *) 4);
 
         item = gtk_menu_item_new_with_label("(D | B) / T");
         gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);
-        g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_onedag_activated), (void *) 4);
+        g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_onedag_activated), (void *) 5);
+      }
+      
+      if (CS->nP >= 2) {
+        /* Divisions for 2 DAGs: D|D , T|T , T/T , (D/T)|(D/T) , (D|T)/(D|T) , (D|B)/T | (D|B)/T */
+        item = gtk_menu_item_new_with_mnemonic("Divisions for 2 DAGs");
+        gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
+        submenu = gtk_menu_new();
+        gtk_menu_item_set_submenu(GTK_MENU_ITEM(item), submenu);
+
+        item = gtk_menu_item_new_with_label("D | D");
+        gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);        
+        g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_twodags_activated), (void *) 1);
+
+        item = gtk_menu_item_new_with_label("T | T");
+        gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);        
+        g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_twodags_activated), (void *) 2);
+        
+        item = gtk_menu_item_new_with_label("T / T");
+        gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);        
+        g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_twodags_activated), (void *) 3);
+
+        item = gtk_menu_item_new_with_label("(D / T) | (D / T)");
+        gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);
+        g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_twodags_activated), (void *) 4);
+
+        item = gtk_menu_item_new_with_label("(D | T) / (D | T)");
+        gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);
+        g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_twodags_activated), (void *) 5);
+
+        item = gtk_menu_item_new_with_label("((D | B) / T) | ((D | B) / T)");
+        gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);
+        g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_twodags_activated), (void *) 6);
+      }
+
+      if (CS->nP >= 3) {
+        /* Divisions for 3 DAGs: D|D|D */
+        item = gtk_menu_item_new_with_mnemonic("Divisions for 3 DAGs");
+        gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
+        submenu = gtk_menu_new();
+        gtk_menu_item_set_submenu(GTK_MENU_ITEM(item), submenu);
+        
+        item = gtk_menu_item_new_with_label("D | D | D");
+        gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);
+        g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_threedags_activated), (void *) 1);
       }
       
       gtk_widget_show_all(menu);
@@ -2474,10 +2759,10 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
     {
       GtkToolItem * btn_settings = gtk_menu_tool_button_new(NULL, NULL);
       gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_settings, -1);
-      gtk_toolbar_insert(GTK_TOOLBAR(toolbar), gtk_separator_tool_item_new(), -1);
       gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_settings), "preferences-system");
-      gtk_widget_set_tooltip_text(GTK_WIDGET(btn_settings), "Open toolbox for focused DAG (Ctrl-T)");
+      gtk_widget_set_tooltip_text(GTK_WIDGET(btn_settings), "Open toolbox for focused DAG (Ctrl+T)");
       g_signal_connect(G_OBJECT(btn_settings), "clicked", G_CALLBACK(on_toolbar_settings_button_clicked), NULL);
+      gtk_menu_tool_button_set_arrow_tooltip_text(GTK_MENU_TOOL_BUTTON(btn_settings), "Open toolbox for");
 
       GtkWidget * menu = gui->dag_menu = gtk_menu_new();
       gtk_menu_tool_button_set_menu(GTK_MENU_TOOL_BUTTON(btn_settings), menu);
@@ -2509,12 +2794,57 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
       gtk_widget_show_all(menu);
     }
 
+    /* buttons for switching layout types */
+    {
+      gtk_toolbar_insert(GTK_TOOLBAR(toolbar), gtk_separator_tool_item_new(), -1);
+      GtkToolItem * button;
+      GtkWidget * icon;
+      
+      button = gtk_tool_button_new(NULL, NULL);
+      gtk_toolbar_insert(GTK_TOOLBAR(toolbar), button, -1);
+      icon = gtk_image_new_from_file("gtk/dag_icon.svg");
+      gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(button), icon);
+      gtk_widget_set_tooltip_text(GTK_WIDGET(button), "DAG layout (Ctrl+1)");
+      g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_toolbar_dag_layout_buttons_clicked), (void *) 0);
+      
+      button = gtk_tool_button_new(NULL, NULL);
+      gtk_toolbar_insert(GTK_TOOLBAR(toolbar), button, -1);
+      icon = gtk_image_new_from_file("gtk/dag_boxes_icon.svg");
+      gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(button), icon);
+      gtk_widget_set_tooltip_text(GTK_WIDGET(button), "DAG-with-boxes layout (Ctrl+2)");
+      g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_toolbar_dag_layout_buttons_clicked), (void *) 1);
+      
+      button = gtk_tool_button_new(NULL, NULL);
+      gtk_toolbar_insert(GTK_TOOLBAR(toolbar), button, -1);
+      icon = gtk_image_new_from_file("gtk/paraprof_icon.svg");
+      gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(button), icon);
+      gtk_widget_set_tooltip_text(GTK_WIDGET(button), "Parallelism profile layout (Ctrl+5)");
+      g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_toolbar_dag_layout_buttons_clicked), (void *) 4);
+    }
+
     /* zoomfit */
-    GtkToolItem * btn_zoomfit = gtk_menu_tool_button_new(NULL, NULL);
-    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_zoomfit, -1);
-    gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_zoomfit), "zoom-fit-best");
-    gtk_widget_set_tooltip_text(GTK_WIDGET(btn_zoomfit), "Zoom DAG fitly (H, V, F)");
-    g_signal_connect(G_OBJECT(btn_zoomfit), "clicked", G_CALLBACK(on_toolbar_zoomfit_button_clicked), NULL);
+    {      
+      gtk_toolbar_insert(GTK_TOOLBAR(toolbar), gtk_separator_tool_item_new(), -1);
+      GtkToolItem * btn_zoomfit = gtk_menu_tool_button_new(NULL, NULL);
+      gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_zoomfit, -1);
+      gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_zoomfit), "zoom-fit-best");
+      gtk_widget_set_tooltip_text(GTK_WIDGET(btn_zoomfit), "Zoom DAG fully-fit (F)");
+      g_signal_connect(G_OBJECT(btn_zoomfit), "clicked", G_CALLBACK(on_toolbar_zoomfit_button_clicked), (void *) 0);
+
+      GtkWidget * menu = gtk_menu_new();
+      gtk_menu_tool_button_set_menu(GTK_MENU_TOOL_BUTTON(btn_zoomfit), menu);
+      GtkWidget * item;
+      
+      item= gtk_menu_item_new_with_label("Zoom DAG horizontally-fit (H)");
+      gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
+      g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_zoomfit_button_clicked), (void *) 1);
+      
+      item= gtk_menu_item_new_with_label("Zoom DAG vertically-fit (V)");
+      gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
+      g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_zoomfit_button_clicked), (void *) 2);
+
+      gtk_widget_show_all(menu);
+    }
 
     /* shrink, expand */
     GtkToolItem * btn_shrink = gtk_tool_button_new(NULL, NULL);
@@ -2722,15 +3052,14 @@ main(int argc, char * argv[]) {
       count++;
     }
   }
-  if (CS->nV == 1) {
-    V = CS->V;
-    dv_view_add_viewport(V, VP);
-    //dv_view_change_lt(V, 4);
-  } else if (CS->nV >= 2) {
-    dv_viewport_change_split(VP, 1);
-    dv_view_add_viewport(&CS->V[0], VP->vp1);
-    dv_view_add_viewport(&CS->V[1], VP->vp2);
-  }
+  if (CS->nD == 1)
+    dv_viewport_divide_onedag_1(VP, CS->D);
+  else if (CS->nD == 2)
+    dv_viewport_divide_twodags_1(VP, CS->D, CS->D + 1);
+  else if (CS->nD == 3)
+    dv_viewport_divide_threedags_1(VP, CS->D, CS->D + 1, CS->D + 2);
+  else if (CS->nD > 3)
+    dv_viewport_divide_twodags_1(VP, CS->D, CS->D + 1);
   dv_do_set_focused_view(CS->V, 1);
   
   /* Open GUI */
