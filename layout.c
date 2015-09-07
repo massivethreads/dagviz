@@ -123,25 +123,7 @@ static gboolean dv_animation_tick(gpointer data) {
   }
   */
   dv_view_layout(a->V);
-  /* auto zoom fit */
-  switch (a->V->S->auto_zoomfit) {
-  case 0:
-    break;
-  case 1:
-    dv_view_do_zoomfit_hor(a->V);
-    break;
-  case 2:
-    dv_view_do_zoomfit_ver(a->V);
-    break;
-  case 3:
-    dv_view_do_zoomfit_based_on_lt(a->V);
-    break;
-  case 4:
-    dv_view_do_zoomfit_full(a->V);
-    break;
-  default:
-    break;
-  }
+  dv_view_auto_zoomfit(a->V);
   dv_queue_draw_d(a->V);
   // stop timer when there is no moving node 
   if (dv_llist_size(a->movings) == 0) {

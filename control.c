@@ -90,8 +90,7 @@ on_combobox_sdt_changed(GtkComboBox * widget, gpointer user_data) {
   dv_view_t * V = (dv_view_t *) user_data;
   dv_view_change_sdt(V, gtk_combo_box_get_active(GTK_COMBO_BOX(widget)));
   dv_view_layout(V);
-  if (V->S->auto_zoomfit)
-    dv_view_do_zoomfit_full(V);
+  dv_view_auto_zoomfit(V);
   dv_queue_draw_d(V);
   return TRUE;
 }
@@ -339,17 +338,17 @@ on_window_key_event(_unused_ GtkWidget * widget, GdkEvent * event, _unused_ gpoi
     return TRUE;
   case 104: /* H */
     if (aV->S->adjust_auto_zoomfit)
-      dv_view_change_azf(aV, 1);
+      dv_view_change_azf(aV, 1); // auto zoom fit horizontal
     dv_view_do_zoomfit_hor(aV);
     return TRUE;
   case 118: /* V */
     if (aV->S->adjust_auto_zoomfit)
-      dv_view_change_azf(aV, 2);
+      dv_view_change_azf(aV, 2); // auto zoom fit vertical
     dv_view_do_zoomfit_ver(aV);
     return TRUE;
   case 102: /* F */
     if (aV->S->adjust_auto_zoomfit)
-      dv_view_change_azf(aV, 4);
+      dv_view_change_azf(aV, 4); // auto zoom fit full
     dv_view_do_zoomfit_full(aV);
     return TRUE;
   case 49: /* Ctrl + 1 */
@@ -1177,6 +1176,42 @@ on_toolbar_dag_layout_buttons_clicked(_unused_ GtkToolButton * toolbtn, _unused_
   long i = (long) user_data;
   dv_view_change_lt(CS->activeV, i);
 }
+
+void
+on_toolbar_dag_boxes_scale_type_menu_activated(_unused_ GtkToolButton * toolbtn, _unused_ gpointer user_data) {
+  if (!CS->activeV) return;
+  dv_view_t * V = CS->activeV;
+  long i = (long) user_data;
+  dv_view_change_lt(V, 1);
+  dv_view_change_sdt(V, i);
+  dv_view_layout(V);
+  dv_view_auto_zoomfit(V);
+  dv_queue_draw_d(V);
+}
+
+void
+on_menubar_view_workers_sidebar_toggled(_unused_ GtkCheckMenuItem * checkmenuitem, _unused_ gpointer user_data) {
+  printf("sidebar toggled \n");
+  GtkWidget * sidebar = dv_gui_get_workers_sidebar(GUI);
+  GList * children = gtk_container_get_children(GTK_CONTAINER(GUI->main_box));
+  int shown = (children->data == sidebar);
+  gboolean active = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(checkmenuitem));
+  if (!shown && active)
+    gtk_box_pack_start(GTK_BOX(GUI->main_box), sidebar, FALSE, FALSE, 0);
+  else if (shown && !active)
+    gtk_container_remove(GTK_CONTAINER(GUI->main_box), sidebar);
+}
+
+void
+on_workers_sidebar_row_selected(_unused_ GtkListBox * box, _unused_ GtkListBoxRow * row, _unused_ gpointer user_data) {
+  printf("row selected \n");
+}
+
+void
+on_workers_sidebar_row_activated(_unused_ GtkListBox * box, _unused_ GtkListBoxRow * row, _unused_ gpointer user_data) {
+  printf("row activated \n");
+}
+
 
 /****************** end of GUI Callbacks **************************************/
 

@@ -81,9 +81,9 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="4"
-     inkscape:cx="61.11565"
-     inkscape:cy="35.168683"
+     inkscape:zoom="5.6568542"
+     inkscape:cx="22.844145"
+     inkscape:cy="51.618324"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="true"
@@ -108,7 +108,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -119,24 +119,24 @@
      transform="translate(0,-924.3622)">
     <path
        style="fill:#ffff00;fill-opacity:1;stroke:#000000;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none"
-       d="m 64.351421,929.8048 -19.402179,38.8074 38.804357,0 z"
+       d="M 64.152179,929.8048 44.75,968.6122 l 38.804357,0 z"
        id="path5346-1"
        inkscape:connector-curvature="0" />
     <path
        inkscape:connector-curvature="0"
        id="path5348-3"
-       d="m 104.15218,1007.1122 19.40218,-38.80735 -38.80436,0 z"
+       d="m 103.15218,1007.6122 19.40218,-38.80735 -38.80436,0 z"
        style="fill:#ffff00;fill-opacity:1;stroke:#000000;stroke-width:1.5;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none" />
     <rect
        style="fill:#ffff00;fill-opacity:1;stroke:#000000;stroke-width:1.5;stroke-linecap:round;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:none;stroke-dashoffset:0"
        id="rect3966-7"
        width="38.785912"
        height="38.789001"
-       x="6.25"
-       y="968.51923" />
+       x="5.75"
+       y="968.82318" />
     <path
        transform="matrix(0.77609213,0,0,0.77615301,-149.07764,959.40195)"
-       d="m 350,87.362183 a 25,25 0 1 1 -50,0 25,25 0 1 1 50,0 z"
+       d="m 350,87.362183 c 0,13.807117 -11.19288,24.999997 -25,24.999997 -13.80712,0 -25,-11.19288 -25,-24.999997 0,-13.807119 11.19288,-25 25,-25 13.80712,0 25,11.192881 25,25 z"
        sodipodi:ry="25"
        sodipodi:rx="25"
        sodipodi:cy="87.362183"

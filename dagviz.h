@@ -72,7 +72,7 @@ typedef struct dv_llist {
 /*-----------------Constants-----------------*/
 
 #define DV_ZOOM_INCREMENT 1.20
-#define DV_SCALE_INCREMENT 1.07
+#define DV_SCALE_INCREMENT 1.04
 #define DV_HDIS 70
 #define DV_VDIS 70
 #define DV_RADIUS 20
@@ -523,8 +523,9 @@ typedef struct dv_stat_breakdown_graph {
 typedef struct dv_gui {
   /* Main window */
   GtkWidget * window;
-  GtkWidget * vbox0;
+  GtkWidget * window_box;
   GtkWidget * menubar;
+  GtkWidget * main_box;
 
   /* Toolbar */
   GtkWidget * toolbar;
@@ -536,10 +537,11 @@ typedef struct dv_gui {
   GtkWidget * statusbar2; // selection statuses
   GtkWidget * statusbar3; // pool status
 
-  /* Additional windows */
+  /* Additional */
   GtkWidget * management_window;
   GtkWidget * notebook;
   GtkWidget * scrolled_box; // DAGs tab's scrolled box
+  GtkWidget * workers_sidebar;
 } dv_gui_t;
 
 typedef struct dv_global_state {
@@ -653,6 +655,7 @@ dv_dag_t * dv_create_new_dag(dv_pidag_t *);
 void dv_gui_init(dv_gui_t *);
 GtkWidget * dv_gui_get_management_window(dv_gui_t *);
 GtkWidget * dv_gui_get_main_window(dv_gui_t *, GtkApplication *);
+GtkWidget * dv_gui_get_workers_sidebar(dv_gui_t *);
 
 void dv_signal_handler(int);
 
@@ -670,7 +673,14 @@ void on_management_window_viewport_dag_menu_item_toggled(GtkCheckMenuItem *, gpo
 void on_toolbar_division_menu_onedag_activated(GtkMenuItem *, gpointer);
 void on_toolbar_division_menu_twodags_activated(GtkMenuItem *, gpointer);
 void on_toolbar_division_menu_threedags_activated(GtkMenuItem *, gpointer);
-void on_toolbar_dag_layout_paraprof_button_clicked(GtkToolButton *, gpointer);
+void on_toolbar_dag_layout_buttons_clicked(GtkToolButton *, gpointer);
+void on_toolbar_dag_boxes_scale_type_menu_activated(GtkToolButton *, gpointer);
+
+void on_menubar_view_workers_sidebar_toggled(GtkCheckMenuItem *, gpointer);
+void on_workers_sidebar_row_selected(GtkListBox *, GtkListBoxRow *, gpointer);
+void on_workers_sidebar_row_activated(GtkListBox *, GtkListBoxRow *, gpointer);
+
+
 
 
 /* process.c */
@@ -712,6 +722,7 @@ void dv_do_motion_event(dv_view_t *, GdkEventMotion *);
 dv_dag_node_t * dv_find_node_with_pii_r(dv_view_t *, long, dv_dag_node_t *);
 
 void dv_view_change_azf(dv_view_t *, int);
+void dv_view_auto_zoomfit(dv_view_t *);
 
 void dv_view_status_set_coord(dv_view_status_t *);
 void dv_view_status_init(dv_view_t *, dv_view_status_t *);

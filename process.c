@@ -441,11 +441,7 @@ dv_view_change_lt(dv_view_t * V, int new_lt) {
     }
     // Re-layout
     dv_view_layout(V);
-    // zoomfit
-    if (V->S->auto_zoomfit) {
-      //dv_view_do_zoomfit_based_on_lt(V);
-      dv_view_do_zoomfit_full(V);
-    }
+    dv_view_auto_zoomfit(V);
     dv_queue_draw_d(V);
   }
 }
@@ -517,8 +513,6 @@ dv_do_zooming(dv_view_t * V, double new_zrx, double new_zry, double posx, double
 
 void
 dv_do_scrolling(dv_view_t * V, GdkEventScroll * event) {
-  if (V->S->adjust_auto_zoomfit)
-    dv_view_change_azf(V, 0);
   double factor = 1.0;
   
   if (V->S->do_scale_radix || V->S->do_scale_radius) {
@@ -527,15 +521,13 @@ dv_do_scrolling(dv_view_t * V, GdkEventScroll * event) {
       
       // Cal factor    
       if (event->direction == GDK_SCROLL_UP)
-        factor /= DV_SCALE_INCREMENT;
-      else if (event->direction == GDK_SCROLL_DOWN)
         factor *= DV_SCALE_INCREMENT;
+      else if (event->direction == GDK_SCROLL_DOWN)
+        factor /= DV_SCALE_INCREMENT;
       // Apply factor    
       double radix = dv_dag_get_radix(V->D);
       radix *= factor;
       dv_view_change_radix(V, radix);
-      dv_view_layout(V);
-      dv_queue_draw_d(V);
       
     }
     
@@ -549,13 +541,19 @@ dv_do_scrolling(dv_view_t * V, GdkEventScroll * event) {
         factor /= DV_SCALE_INCREMENT;
       // Apply factor    
       V->D->radius *= factor;
-      dv_view_layout(V);
-      dv_queue_draw_d(V);
       
     }
     
+    dv_view_layout(V);
+    dv_view_auto_zoomfit(V);
+    dv_queue_draw_d(V);
+
   } else {
     
+    /* Turn auto zoomfit off whenever there is zooming-scrolling */
+    if (V->S->adjust_auto_zoomfit)
+      dv_view_change_azf(V, 0);
+  
     // Cal factor    
     if (event->direction == GDK_SCROLL_UP)
       factor *= DV_ZOOM_INCREMENT;
@@ -938,8 +936,10 @@ dv_do_collapsing_one(dv_view_t * V) {
 
 void
 dv_do_button_event(dv_view_t * V, GdkEventButton * event) {
+  /* Turn auto zoomfit off whenever there is button_event */
   if (V->S->adjust_auto_zoomfit)
     dv_view_change_azf(V, 0);
+  
   dv_dag_t * D = V->D;
   dv_llist_t * itl = D->P->itl;
   dv_view_status_t * S = V->S;
@@ -1103,6 +1103,28 @@ void
 dv_view_change_azf(dv_view_t * V, int new_azf) {
   V->S->auto_zoomfit = new_azf;
   gtk_combo_box_set_active(GTK_COMBO_BOX(V->T->combobox_azf), new_azf);
+}
+
+void
+dv_view_auto_zoomfit(dv_view_t * V) {
+  switch (V->S->auto_zoomfit) {
+  case 0:
+    break;
+  case 1:
+    dv_view_do_zoomfit_hor(V);
+    break;
+  case 2:
+    dv_view_do_zoomfit_ver(V);
+    break;
+  case 3:
+    dv_view_do_zoomfit_based_on_lt(V);
+    break;
+  case 4:
+    dv_view_do_zoomfit_full(V);
+    break;
+  default:
+    break;
+  }
 }
 
 void

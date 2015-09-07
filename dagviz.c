@@ -2512,8 +2512,9 @@ dv_create_new_dag(dv_pidag_t * P) {
 void
 dv_gui_init(dv_gui_t * gui) {
   gui->window = NULL;
-  gui->vbox0 = NULL;
+  gui->window_box = NULL;
   gui->menubar = NULL;
+  gui->main_box = NULL;
   gui->toolbar = NULL;
   gui->dag_menu = NULL;
   gui->division_menu = NULL;
@@ -2523,6 +2524,7 @@ dv_gui_init(dv_gui_t * gui) {
   gui->management_window = NULL;
   gui->notebook = NULL;
   gui->scrolled_box = NULL;
+  gui->workers_sidebar = NULL;
 }
 
 static void
@@ -2607,9 +2609,8 @@ dv_gui_build_management_window(dv_gui_t * gui) {
 
 GtkWidget *
 dv_gui_get_management_window(dv_gui_t * gui) {
-  if (gui->management_window)
-    return gui->management_window;
-  dv_gui_build_management_window(gui);
+  if (!gui->management_window)
+    dv_gui_build_management_window(gui);
   return gui->management_window;
 }
 
@@ -2638,9 +2639,9 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
     gtk_window_set_icon(GTK_WINDOW(window), pixbuf);
   }
   
-  /* Vbox0 */
-  gui->vbox0 = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
-  gtk_container_add(GTK_CONTAINER(gui->window), gui->vbox0);
+  /* Window_Box */
+  gui->window_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+  gtk_container_add(GTK_CONTAINER(gui->window), gui->window_box);
 
   
   /* Menubar */
@@ -2653,14 +2654,14 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
   }
   gtk_builder_connect_signals(builder, NULL);
   GtkWidget * menubar = gui->menubar = (GtkWidget *) gtk_builder_get_object(builder, "menubar");
-  gtk_box_pack_start(GTK_BOX(gui->vbox0), menubar, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(gui->window_box), menubar, FALSE, FALSE, 0);
   gtk_widget_show_all(menubar);
 
   
   /* Toolbar */
   {
     GtkWidget * toolbar = gui->toolbar = gtk_toolbar_new();
-    gtk_box_pack_start(GTK_BOX(gui->vbox0), toolbar, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(gui->window_box), toolbar, FALSE, FALSE, 0);
 
     /* divisions */
     {
@@ -2670,9 +2671,9 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
       //gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_divisions), "video-display");
       GtkWidget * icon = gtk_image_new_from_file("gtk/viewport_division_icon.svg");
       gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(btn_divisions), icon);
-      gtk_widget_set_tooltip_text(GTK_WIDGET(btn_divisions), "Viewport divisions");
+      gtk_widget_set_tooltip_text(GTK_WIDGET(btn_divisions), "Manual screen division (Alt+E V)");
       g_signal_connect(G_OBJECT(btn_divisions), "clicked", G_CALLBACK(on_menubar_manage_viewports_activated), NULL);
-
+      gtk_menu_tool_button_set_arrow_tooltip_text(GTK_MENU_TOOL_BUTTON(btn_divisions), "Ready-made screen divisions");
 
       GtkWidget * menu = gui->division_menu = gtk_menu_new();
       gtk_menu_tool_button_set_menu(GTK_MENU_TOOL_BUTTON(btn_divisions), menu);
@@ -2682,7 +2683,7 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
       
       if (CS->nP >= 1) {
         /* Divisions for 1 DAG: D , T , D|T , D/T , (D|B)/T */
-        item = gtk_menu_item_new_with_mnemonic("Divisions for 1 DAG");
+        item = gtk_menu_item_new_with_mnemonic("Screen divisions for _1 DAG");
         gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
         submenu = gtk_menu_new();
         gtk_menu_item_set_submenu(GTK_MENU_ITEM(item), submenu);
@@ -2710,7 +2711,7 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
       
       if (CS->nP >= 2) {
         /* Divisions for 2 DAGs: D|D , T|T , T/T , (D/T)|(D/T) , (D|T)/(D|T) , (D|B)/T | (D|B)/T */
-        item = gtk_menu_item_new_with_mnemonic("Divisions for 2 DAGs");
+        item = gtk_menu_item_new_with_mnemonic("Screen divisions for _2 DAGs");
         gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
         submenu = gtk_menu_new();
         gtk_menu_item_set_submenu(GTK_MENU_ITEM(item), submenu);
@@ -2742,7 +2743,7 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
 
       if (CS->nP >= 3) {
         /* Divisions for 3 DAGs: D|D|D */
-        item = gtk_menu_item_new_with_mnemonic("Divisions for 3 DAGs");
+        item = gtk_menu_item_new_with_mnemonic("Screen divisions for _3 DAGs");
         gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
         submenu = gtk_menu_new();
         gtk_menu_item_set_submenu(GTK_MENU_ITEM(item), submenu);
@@ -2807,13 +2808,28 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
       gtk_widget_set_tooltip_text(GTK_WIDGET(button), "DAG layout (Ctrl+1)");
       g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_toolbar_dag_layout_buttons_clicked), (void *) 0);
       
-      button = gtk_tool_button_new(NULL, NULL);
+      button = gtk_menu_tool_button_new(NULL, NULL);
       gtk_toolbar_insert(GTK_TOOLBAR(toolbar), button, -1);
       icon = gtk_image_new_from_file("gtk/dag_boxes_icon.svg");
       gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(button), icon);
       gtk_widget_set_tooltip_text(GTK_WIDGET(button), "DAG-with-boxes layout (Ctrl+2)");
       g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_toolbar_dag_layout_buttons_clicked), (void *) 1);
+      gtk_menu_tool_button_set_arrow_tooltip_text(GTK_MENU_TOOL_BUTTON(button), "Select scale type");
       
+      GtkWidget * menu = gtk_menu_new();
+      gtk_menu_tool_button_set_menu(GTK_MENU_TOOL_BUTTON(button), menu);
+      GtkWidget * item;
+      item= gtk_menu_item_new_with_label("Log");
+      gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
+      g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_dag_boxes_scale_type_menu_activated), (void *) 0);
+      item= gtk_menu_item_new_with_label("Power");
+      gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
+      g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_dag_boxes_scale_type_menu_activated), (void *) 1);
+      item= gtk_menu_item_new_with_label("Linear");
+      gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
+      g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_dag_boxes_scale_type_menu_activated), (void *) 2);
+      gtk_widget_show_all(menu);
+
       button = gtk_tool_button_new(NULL, NULL);
       gtk_toolbar_insert(GTK_TOOLBAR(toolbar), button, -1);
       icon = gtk_image_new_from_file("gtk/paraprof_icon.svg");
@@ -2860,9 +2876,16 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
   }
 
 
+  /* Main box */
+  {
+    GtkWidget * main_box = gui->main_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_box_pack_start(GTK_BOX(gui->window_box), main_box, TRUE, TRUE, 0);
+  }
+
+
   /* Statusbars */
   GtkWidget * statusbar_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-  gtk_box_pack_end(GTK_BOX(gui->vbox0), statusbar_box, FALSE, FALSE, 0);
+  gtk_box_pack_end(GTK_BOX(gui->window_box), statusbar_box, FALSE, FALSE, 0);
   GtkWidget * statusbar_box_2 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_box_pack_start(GTK_BOX(statusbar_box), statusbar_box_2, TRUE, TRUE, 0);
   gtk_box_set_homogeneous(GTK_BOX(statusbar_box_2), TRUE);
@@ -2885,10 +2908,44 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
 
 GtkWidget *
 dv_gui_get_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
-  if (gui->window)
-    return gui->window;
-  dv_gui_build_main_window(gui, app);
+  if (!gui->window)
+    dv_gui_build_main_window(gui, app);
   return gui->window;
+}
+
+static void
+dv_gui_build_workers_sidebar(dv_gui_t * gui) {
+  GtkWidget * sidebar = gui->workers_sidebar = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+  GtkWidget * scrolled = gtk_scrolled_window_new(NULL, NULL);
+  gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolled), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
+  gtk_box_pack_start(GTK_BOX(sidebar), scrolled, TRUE, TRUE, 0);
+  GtkWidget * listbox = gtk_list_box_new();
+  gtk_container_add(GTK_CONTAINER(scrolled), listbox);
+  //gtk_list_box_set_sort_func(GTK_LIST_BOX(listbox), (GtkListBoxSortFunc) gtk_message_row_sort, listbox, NULL);
+  //gtk_list_box_set_activate_on_single_click(GTK_LIST_BOX (listbox), FALSE);
+  g_signal_connect(G_OBJECT(listbox), "row-selected", G_CALLBACK(on_workers_sidebar_row_selected), NULL);  
+  g_signal_connect(G_OBJECT(listbox), "row-activated", G_CALLBACK(on_workers_sidebar_row_activated), NULL);
+
+  int i;
+  for (i = 0; i < 10; i++) {
+    char s[DV_STRING_LENGTH];
+    sprintf(s, "Worker %d", i);
+    GtkWidget * row = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+    gtk_container_add(GTK_CONTAINER(listbox), row);
+    gtk_container_set_border_width(GTK_CONTAINER(row), 5);
+    GtkWidget * label = gtk_label_new(s);
+    gtk_box_pack_start(GTK_BOX(row), label, FALSE, FALSE, 0);
+    gtk_widget_show(GTK_WIDGET(row));
+  }
+  
+  gtk_widget_show_all(sidebar);
+}
+
+GtkWidget *
+dv_gui_get_workers_sidebar(dv_gui_t * gui) {
+  if (!gui->workers_sidebar)
+    dv_gui_build_workers_sidebar(gui);
+  return gui->workers_sidebar;
 }
 
 _static_unused_ void
@@ -2912,9 +2969,9 @@ dv_open_gui(_unused_ int argc, _unused_ char * argv[], GtkApplication * app) {
   GtkWidget * window = dv_gui_get_main_window(GUI, app);
 
   /* Viewports */
-  dv_viewport_t * vp0 = CS->VP;
-  gtk_box_pack_start(GTK_BOX(GUI->vbox0), vp0->frame, TRUE, TRUE, 0);
-  dv_viewport_show(vp0);
+  dv_viewport_t * VP = CS->VP;
+  gtk_box_pack_end(GTK_BOX(GUI->main_box), VP->frame, TRUE, TRUE, 0);
+  dv_viewport_show(VP);
 
   /* Status bars */
   dv_statusbar_update_selection_status();
