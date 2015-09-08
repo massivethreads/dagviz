@@ -770,7 +770,7 @@ dv_view_create_new_with_dag(dv_dag_t * D) {
 
   /* Set values */
   V->D = D;
-  D->tolayout[V->S->lt]++;
+  D->nviews[V->S->lt]++;
   D->mV[V - CS->V] = 1;
   
   return V;
@@ -800,6 +800,7 @@ dv_view_add_viewport(dv_view_t * V, dv_viewport_t * VP) {
   if (V->mVP[idx])
     return;
   V->mVP[idx] = 1;
+  V->S->nviewports++;
   dv_viewport_add_view(VP, V);
   if (!V->mainVP)
     dv_view_change_mainvp(V, VP);
@@ -811,6 +812,7 @@ dv_view_remove_viewport(dv_view_t * V, dv_viewport_t * VP) {
   if (!V->mVP[idx])
     return;
   V->mVP[idx] = 0;
+  V->S->nviewports--;
   dv_viewport_remove_view(VP, V);
   if (V->mainVP == VP) {
     dv_viewport_t * new_vp = NULL;
@@ -2525,6 +2527,8 @@ dv_gui_init(dv_gui_t * gui) {
   gui->notebook = NULL;
   gui->scrolled_box = NULL;
   gui->workers_sidebar = NULL;
+  gui->workers_scale = NULL;
+  gui->workers_entry = NULL;
 }
 
 static void
@@ -2880,6 +2884,8 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
   {
     GtkWidget * main_box = gui->main_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
     gtk_box_pack_start(GTK_BOX(gui->window_box), main_box, TRUE, TRUE, 0);
+    GtkWidget * sidebar = dv_gui_get_workers_sidebar(gui);
+    gtk_box_pack_start(GTK_BOX(gui->main_box), sidebar, FALSE, FALSE, 0);
   }
 
 
@@ -2913,9 +2919,58 @@ dv_gui_get_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
   return gui->window;
 }
 
+void
+dv_dag_set_current_time(_unused_ dv_dag_t * D, double current_time) {
+  D->current_time = current_time;
+  gtk_range_set_value(GTK_RANGE(GUI->workers_scale), current_time);
+  char s[DV_STRING_LENGTH];
+  sprintf(s, "%0.0lf", current_time);
+  gtk_entry_set_text(GTK_ENTRY(GUI->workers_entry), s);
+}
+
 static void
 dv_gui_build_workers_sidebar(dv_gui_t * gui) {
-  GtkWidget * sidebar = gui->workers_sidebar = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+  if (!CS->activeV)
+    return;
+  dv_dag_t * D = CS->activeV->D;
+  
+  GtkWidget * sidebar = gui->workers_sidebar = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+  gtk_container_set_border_width(GTK_CONTAINER(sidebar), 5);
+
+  GtkWidget * combobox_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+  gtk_box_pack_start(GTK_BOX(sidebar), combobox_box, FALSE, FALSE, 0);
+  gtk_container_set_border_width(GTK_CONTAINER(combobox_box), 5);
+  GtkWidget * combobox = gtk_combo_box_text_new();
+  gtk_box_pack_start(GTK_BOX(combobox_box), combobox, FALSE, FALSE, 0);
+  int i;
+  char s[DV_STRING_LENGTH];
+  for (i = 0; i < CS->nD; i++) {
+    dv_dag_t * D = &CS->D[i];
+    sprintf(s, "dag_%d", i);
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), s, D->name);
+  }
+  gtk_combo_box_set_active(GTK_COMBO_BOX(combobox), D - CS->D);
+  //g_signal_connect(G_OBJECT(combobox), "changed", G_CALLBACK(), (void *) NULL);
+  
+  GtkWidget * play = gtk_button_new_with_label("Play");
+  gtk_box_pack_start(GTK_BOX(combobox_box), play, FALSE, FALSE, 0);
+
+  GtkWidget * scale = gui->workers_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0, CS->activeV->D->et - CS->activeV->D->bt, 100.0);
+  gtk_box_pack_start(GTK_BOX(sidebar), scale, FALSE, FALSE, 0);
+  g_signal_connect(G_OBJECT(scale), "value-changed", G_CALLBACK(on_workers_sidebar_scale_value_changed), (void *) NULL);
+  
+  GtkWidget * entry = gui->workers_entry = gtk_entry_new();
+  gtk_box_pack_start(GTK_BOX(sidebar), entry, FALSE, FALSE, 0);
+  gtk_entry_set_max_length(GTK_ENTRY(entry), 20);
+  g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_workers_sidebar_entry_activated), (void *) NULL);
+  
+  //GtkWidget * play_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+  //gtk_box_pack_start(GTK_BOX(sidebar), play_box, FALSE, FALSE, 0);
+  //gtk_container_set_border_width(GTK_CONTAINER(play_box), 5);
+  //GtkWidget * play = gtk_button_new_with_label("Play");
+  //gtk_box_pack_start(GTK_BOX(play_box), play, FALSE, FALSE, 0);
+  
+  gtk_box_pack_start(GTK_BOX(sidebar), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), FALSE, FALSE, 0);
   GtkWidget * scrolled = gtk_scrolled_window_new(NULL, NULL);
   gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolled), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
   gtk_box_pack_start(GTK_BOX(sidebar), scrolled, TRUE, TRUE, 0);
@@ -2923,18 +2978,26 @@ dv_gui_build_workers_sidebar(dv_gui_t * gui) {
   gtk_container_add(GTK_CONTAINER(scrolled), listbox);
   //gtk_list_box_set_sort_func(GTK_LIST_BOX(listbox), (GtkListBoxSortFunc) gtk_message_row_sort, listbox, NULL);
   //gtk_list_box_set_activate_on_single_click(GTK_LIST_BOX (listbox), FALSE);
-  g_signal_connect(G_OBJECT(listbox), "row-selected", G_CALLBACK(on_workers_sidebar_row_selected), NULL);  
-  g_signal_connect(G_OBJECT(listbox), "row-activated", G_CALLBACK(on_workers_sidebar_row_activated), NULL);
+  //g_signal_connect(G_OBJECT(listbox), "row-selected", G_CALLBACK(on_workers_sidebar_row_selected), NULL);  
+  //g_signal_connect(G_OBJECT(listbox), "row-activated", G_CALLBACK(on_workers_sidebar_row_activated), NULL);
+  //gtk_list_box_row_set_activatable(GTK_LIST_BOX(listbox), FALSE);
+  //gtk_list_box_row_set_selectable(GTK_LIST_BOX(listbox), FALSE);
 
-  int i;
-  for (i = 0; i < 10; i++) {
-    char s[DV_STRING_LENGTH];
-    sprintf(s, "Worker %d", i);
-    GtkWidget * row = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
+  for (i = 0; i < D->P->num_workers; i++) {
+    sprintf(s, "Worker %d:", i);
+    GtkWidget * row = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
     gtk_container_add(GTK_CONTAINER(listbox), row);
     gtk_container_set_border_width(GTK_CONTAINER(row), 5);
+    GtkWidget * hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+    gtk_container_add(GTK_CONTAINER(row), hbox);
     GtkWidget * label = gtk_label_new(s);
-    gtk_box_pack_start(GTK_BOX(row), label, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
+    GtkWidget * button = gtk_button_new_with_label("Jump to");
+    gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
+    GtkWidget * checkbox = gtk_check_button_new_with_label("watch");
+    gtk_box_pack_start(GTK_BOX(row), checkbox, FALSE, FALSE, 0);
+    
+    gtk_box_pack_start(GTK_BOX(row), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), FALSE, FALSE, 0);
     gtk_widget_show(GTK_WIDGET(row));
   }
   

@@ -19,12 +19,12 @@ dv_view_layout_with_type(dv_view_t * V, int lt) {
     break;
   case 4:
     if (V->D->H) {
-      double start = dv_get_time();
+      //double start = dv_get_time();
       dv_view_layout_paraprof(V);
-      double end = dv_get_time();
-      fprintf(stderr, "layout time: %lf\n", end - start);
+      //double end = dv_get_time();
+      //fprintf(stderr, "layout time: %lf\n", end - start);
     } else {
-      fprintf(stderr, "Warning: trying to lay out type 4 without H.\n");
+      //fprintf(stderr, "Warning: trying to lay out type 4 without H.\n");
     }
     break;
   default:
@@ -35,11 +35,17 @@ dv_view_layout_with_type(dv_view_t * V, int lt) {
 void
 dv_view_layout(dv_view_t * V) {
   V->S->nl = 0;
-  dv_view_layout_with_type(V, V->S->lt);
-  int lt;
-  for (lt=0; lt<DV_NUM_LAYOUT_TYPES; lt++)
-    if (lt != V->S->lt && V->D->tolayout[lt])
-      dv_view_layout_with_type(V, lt);
+  int tolayout[DV_NUM_LAYOUT_TYPES];
+  int i;
+  for (i = 0; i < DV_NUM_LAYOUT_TYPES; i++)
+    tolayout[i] = 0;  
+  tolayout[V->S->lt]++;
+  for (i = 0; i < CS->nV; i++)
+    if (V->D->mV[i] && CS->V[i].S->nviewports > 0)
+      tolayout[CS->V[i].S->lt]++;
+  for (i = 0; i < DV_NUM_LAYOUT_TYPES; i++)
+    if (tolayout[i])
+      dv_view_layout_with_type(V, i);
 }
 
 /*-----------end of Main layout functions-------------------------*/

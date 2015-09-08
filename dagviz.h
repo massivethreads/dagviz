@@ -164,7 +164,7 @@ typedef struct dv_llist {
 #define _unused_ __attribute__((unused))
 #define _static_unused_ static __attribute__((unused))
 
-#define DV_PARAPROF_MIN_ENTRY_INTERVAL 100000
+#define DV_PARAPROF_MIN_ENTRY_INTERVAL 1000000
 
 /*-----------------Data Structures-----------------*/
 
@@ -264,7 +264,7 @@ typedef struct dv_dag {
   /* other */
   dv_llist_t itl[1]; /* list of nodes that have info tag */
   dv_histogram_t * H; /* structure for the paraprof view (5th) */
-  char tolayout[DV_NUM_LAYOUT_TYPES];
+  int nviews[DV_NUM_LAYOUT_TYPES]; /* num of views referencing each layout type */
 
   int ar[DV_MAX_NUM_REMARKS];
   int nr;
@@ -273,6 +273,8 @@ typedef struct dv_dag {
   GtkWidget * mini_frame;
   GtkWidget * views_box;
   GtkWidget * status_label;
+
+  double current_time;
 } dv_dag_t;
 
 typedef struct dv_view dv_view_t;
@@ -342,6 +344,8 @@ typedef struct dv_view_status {
   int show_status;
   int remain_inner;
   int color_remarked_only;
+  
+  int nviewports; /* num of viewports */
 } dv_view_status_t;
 
 typedef struct dv_viewport dv_viewport_t;
@@ -542,6 +546,8 @@ typedef struct dv_gui {
   GtkWidget * notebook;
   GtkWidget * scrolled_box; // DAGs tab's scrolled box
   GtkWidget * workers_sidebar;
+  GtkWidget * workers_scale;
+  GtkWidget * workers_entry;
 } dv_gui_t;
 
 typedef struct dv_global_state {
@@ -655,6 +661,7 @@ dv_dag_t * dv_create_new_dag(dv_pidag_t *);
 void dv_gui_init(dv_gui_t *);
 GtkWidget * dv_gui_get_management_window(dv_gui_t *);
 GtkWidget * dv_gui_get_main_window(dv_gui_t *, GtkApplication *);
+void dv_dag_set_current_time(dv_dag_t *, double);
 GtkWidget * dv_gui_get_workers_sidebar(dv_gui_t *);
 
 void dv_signal_handler(int);

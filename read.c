@@ -407,8 +407,10 @@ dv_dag_init(dv_dag_t * D, dv_pidag_t * P) {
   dv_llist_init(D->itl);
   D->H = NULL;
   for (i=0; i<DV_NUM_LAYOUT_TYPES; i++)
-    D->tolayout[i] = 0;
+    D->nviews[i] = 0;
   D->nr = 0;
+
+  D->current_time = 0.0;
 }
 
 dv_dag_t *

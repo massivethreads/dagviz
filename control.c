@@ -1190,16 +1190,13 @@ on_toolbar_dag_boxes_scale_type_menu_activated(_unused_ GtkToolButton * toolbtn,
 }
 
 void
-on_menubar_view_workers_sidebar_toggled(_unused_ GtkCheckMenuItem * checkmenuitem, _unused_ gpointer user_data) {
-  printf("sidebar toggled \n");
+on_menubar_view_workers_sidebar_toggled(GtkCheckMenuItem * checkmenuitem, _unused_ gpointer user_data) {
   GtkWidget * sidebar = dv_gui_get_workers_sidebar(GUI);
-  GList * children = gtk_container_get_children(GTK_CONTAINER(GUI->main_box));
-  int shown = (children->data == sidebar);
   gboolean active = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(checkmenuitem));
-  if (!shown && active)
-    gtk_box_pack_start(GTK_BOX(GUI->main_box), sidebar, FALSE, FALSE, 0);
-  else if (shown && !active)
-    gtk_container_remove(GTK_CONTAINER(GUI->main_box), sidebar);
+  if (active)
+    gtk_widget_show_all(sidebar);
+  else
+    gtk_widget_hide(sidebar);
 }
 
 void
@@ -1212,6 +1209,19 @@ on_workers_sidebar_row_activated(_unused_ GtkListBox * box, _unused_ GtkListBoxR
   printf("row activated \n");
 }
 
+void
+on_workers_sidebar_scale_value_changed(GtkRange * range, _unused_ gpointer user_data) {
+  double value = gtk_range_get_value(range);
+  dv_dag_set_current_time(CS->activeV->D, value);
+}
 
+void
+on_workers_sidebar_entry_activated(GtkEntry * entry, _unused_ gpointer user_data) {
+  const char * str = gtk_entry_get_text(entry);
+  double value = atof(str);
+  dv_dag_set_current_time(CS->activeV->D, value);
+}
+
+  
 /****************** end of GUI Callbacks **************************************/
 

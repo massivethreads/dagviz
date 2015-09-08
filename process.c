@@ -365,6 +365,7 @@ void
 dv_view_change_sdt(dv_view_t * V, int new_sdt) {
   if (new_sdt != V->D->sdt) {
     V->D->sdt = new_sdt;
+    gtk_combo_box_set_active(GTK_COMBO_BOX(V->T->combobox_sdt), new_sdt);
     dv_view_set_entry_radix_text(V);
   }
 }
@@ -431,9 +432,9 @@ dv_view_change_lt(dv_view_t * V, int new_lt) {
       dv_histogram_reset(V->D->H);
     }
     // Change lt
-    V->D->tolayout[old_lt]--;
+    V->D->nviews[old_lt]--;
     V->S->lt = new_lt;
-    V->D->tolayout[new_lt]++;
+    V->D->nviews[new_lt]++;
     dv_view_status_set_coord(V->S);
     // Update T
     if (GTK_IS_WIDGET(V->T->combobox_lt)) {
@@ -1189,6 +1190,8 @@ dv_view_status_init(dv_view_t * V, dv_view_status_t * S) {
   S->show_status = DV_SHOW_STATUS_INIT;
   S->remain_inner = DV_REMAIN_INNER_INIT;
   S->color_remarked_only = DV_COLOR_REMARKED_ONLY;
+
+  S->nviewports = 0;
 }
 
 
