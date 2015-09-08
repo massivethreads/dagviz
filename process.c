@@ -1103,7 +1103,8 @@ dv_find_node_with_pii_r(dv_view_t * V, long pii, dv_dag_node_t * node) {
 void
 dv_view_change_azf(dv_view_t * V, int new_azf) {
   V->S->auto_zoomfit = new_azf;
-  gtk_combo_box_set_active(GTK_COMBO_BOX(V->T->combobox_azf), new_azf);
+  if (V->T->combobox_azf)
+    gtk_combo_box_set_active(GTK_COMBO_BOX(V->T->combobox_azf), new_azf);
 }
 
 void

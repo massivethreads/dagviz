@@ -473,9 +473,9 @@ dv_view_draw_infotag_1(dv_view_t * V, cairo_t * cr, cairo_matrix_t * mt, dv_dag_
   yy += line_height;
     
   // Line 2
-  sprintf(s, "%llu-%llu (%llu) ready=%llu est=%llu",
-          pi->info.start.t,
-          pi->info.end.t,
+  sprintf(s, "%0.0lf-%0.0lf (%llu) ready=%llu est=%llu",
+          pi->info.start.t - D->bt,
+          pi->info.end.t - D->bt,
           pi->info.end.t - pi->info.start.t,
 	  pi->info.first_ready_t,
           pi->info.est);

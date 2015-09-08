@@ -274,6 +274,7 @@ typedef struct dv_dag {
   GtkWidget * views_box;
   GtkWidget * status_label;
 
+  int draw_with_current_time;
   double current_time;
 } dv_dag_t;
 
@@ -600,6 +601,10 @@ extern const int DV_RADIAL_PATTERN_STOPS_NUM;
 void dv_global_state_init(dv_global_state_t *);
 void dv_global_state_set_active_view(dv_view_t *);
 dv_view_t * dv_global_state_get_active_view();
+
+void dv_queue_draw_viewport(dv_viewport_t *);
+void dv_queue_draw_view(dv_view_t *);
+void dv_queue_draw_dag(dv_dag_t *);
 
 void dv_queue_draw(dv_view_t *);
 void dv_queue_draw_d(dv_view_t *);

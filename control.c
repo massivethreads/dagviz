@@ -1222,6 +1222,18 @@ on_workers_sidebar_entry_activated(GtkEntry * entry, _unused_ gpointer user_data
   dv_dag_set_current_time(CS->activeV->D, value);
 }
 
+void
+on_workers_sidebar_enable_toggled(GtkWidget * widget, _unused_ gpointer user_data) {
+  if (CS->activeV) {
+    gboolean active = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+    if (active)
+      CS->activeV->D->draw_with_current_time = 1;
+    else
+      CS->activeV->D->draw_with_current_time = 0;
+  }
+  dv_queue_draw_dag(CS->activeV->D);
+}
+
   
 /****************** end of GUI Callbacks **************************************/
 

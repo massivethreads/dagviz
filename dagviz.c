@@ -123,6 +123,36 @@ dv_view_t * dv_global_state_get_active_view() {
 /*--------Interactive processing functions------------*/
 
 void
+dv_queue_draw_viewport(dv_viewport_t * VP) {
+  gtk_widget_queue_draw(VP->darea);
+}
+
+void
+dv_queue_draw_view(dv_view_t * V) {
+  int i;
+  for (i=0; i<CS->nVP; i++)
+    if (V->mVP[i])
+      dv_queue_draw_viewport(&CS->VP[i]);
+}
+
+void
+dv_queue_draw_dag(dv_dag_t * D) {
+  int todraw[CS->nVP];
+  int i, j;
+  for (i = 0; i < CS->nVP; i++)
+    todraw[i] = 0;
+  for (i = 0; i < CS->nV; i++)
+    if (D->mV[i]) {
+      for (j = 0; j < CS->nVP; j++)
+        if (CS->V[i].mVP[j])
+          todraw[j]++;
+    }
+  for (i = 0; i < CS->nVP; i++)
+    if (todraw[i])
+      dv_queue_draw_viewport(&CS->VP[i]);
+}
+
+void
 dv_queue_draw(dv_view_t * V) {
   int i;
   for (i=0; i<CS->nVP; i++)
@@ -1191,7 +1221,8 @@ dv_viewport_change_split(dv_viewport_t * VP, int split) {
   }
 
   /* Update widgets */
-  gtk_combo_box_set_active(GTK_COMBO_BOX(VP->split_combobox), split);
+  if (VP->split_combobox)
+    gtk_combo_box_set_active(GTK_COMBO_BOX(VP->split_combobox), split);
 
   VP->split = split;
   dv_viewport_show(VP);
@@ -1233,7 +1264,8 @@ dv_viewport_change_orientation(dv_viewport_t * VP, GtkOrientation o) {
   gtk_container_set_border_width(GTK_CONTAINER(VP->mini_paned), 5);
   
   /* Update widgets */
-  gtk_combo_box_set_active(GTK_COMBO_BOX(VP->orient_combobox), o);
+  if (VP->orient_combobox)
+    gtk_combo_box_set_active(GTK_COMBO_BOX(VP->orient_combobox), o);
 
   VP->orientation = o;
   dv_viewport_show(VP);
@@ -2926,6 +2958,7 @@ dv_dag_set_current_time(_unused_ dv_dag_t * D, double current_time) {
   char s[DV_STRING_LENGTH];
   sprintf(s, "%0.0lf", current_time);
   gtk_entry_set_text(GTK_ENTRY(GUI->workers_entry), s);
+  dv_queue_draw_dag(D);
 }
 
 static void
@@ -2951,9 +2984,13 @@ dv_gui_build_workers_sidebar(dv_gui_t * gui) {
   }
   gtk_combo_box_set_active(GTK_COMBO_BOX(combobox), D - CS->D);
   //g_signal_connect(G_OBJECT(combobox), "changed", G_CALLBACK(), (void *) NULL);
+
+  GtkWidget * enable = gtk_check_button_new_with_label("Enable");
+  gtk_box_pack_start(GTK_BOX(combobox_box), enable, FALSE, FALSE, 0);
+  g_signal_connect(G_OBJECT(enable), "toggled", G_CALLBACK(on_workers_sidebar_enable_toggled), (void *) NULL);
   
-  GtkWidget * play = gtk_button_new_with_label("Play");
-  gtk_box_pack_start(GTK_BOX(combobox_box), play, FALSE, FALSE, 0);
+  //GtkWidget * play = gtk_button_new_with_label("Play");
+  //gtk_box_pack_end(GTK_BOX(combobox_box), play, FALSE, FALSE, 0);
 
   GtkWidget * scale = gui->workers_scale = gtk_scale_new_with_range(GTK_ORIENTATION_HORIZONTAL, 0, CS->activeV->D->et - CS->activeV->D->bt, 100.0);
   gtk_box_pack_start(GTK_BOX(sidebar), scale, FALSE, FALSE, 0);
@@ -2964,11 +3001,11 @@ dv_gui_build_workers_sidebar(dv_gui_t * gui) {
   gtk_entry_set_max_length(GTK_ENTRY(entry), 20);
   g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_workers_sidebar_entry_activated), (void *) NULL);
   
-  //GtkWidget * play_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-  //gtk_box_pack_start(GTK_BOX(sidebar), play_box, FALSE, FALSE, 0);
-  //gtk_container_set_border_width(GTK_CONTAINER(play_box), 5);
-  //GtkWidget * play = gtk_button_new_with_label("Play");
-  //gtk_box_pack_start(GTK_BOX(play_box), play, FALSE, FALSE, 0);
+  GtkWidget * play_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+  gtk_box_pack_start(GTK_BOX(sidebar), play_box, FALSE, FALSE, 0);
+  gtk_container_set_border_width(GTK_CONTAINER(play_box), 5);
+  GtkWidget * play = gtk_button_new_with_label("Play");
+  gtk_box_pack_end(GTK_BOX(play_box), play, FALSE, FALSE, 0);
   
   gtk_box_pack_start(GTK_BOX(sidebar), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), FALSE, FALSE, 0);
   GtkWidget * scrolled = gtk_scrolled_window_new(NULL, NULL);

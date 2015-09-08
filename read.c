@@ -410,6 +410,7 @@ dv_dag_init(dv_dag_t * D, dv_pidag_t * P) {
     D->nviews[i] = 0;
   D->nr = 0;
 
+  D->draw_with_current_time = 0;
   D->current_time = 0.0;
 }
 

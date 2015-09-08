@@ -404,6 +404,7 @@ dv_view_draw_dagbox_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
 
   /* Draw node's filling */
   if (V->D->nr == 0 || !V->S->color_remarked_only || node->r != 0) {
+    cairo_save(cr);
     if (!pat) {
       cairo_set_source_rgba(cr, c.red, c.green, c.blue, c.alpha * alpha);
       cairo_fill_preserve(cr);      
@@ -413,6 +414,7 @@ dv_view_draw_dagbox_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
       cairo_fill_preserve(cr);
       cairo_pattern_destroy(pat);      
     }
+    cairo_restore(cr);
   }
 
   /* Draw node's border */
@@ -422,9 +424,31 @@ dv_view_draw_dagbox_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
   /* Draw node's infotag's mark */
   if (dv_llist_has(V->D->P->itl, (void *) node->pii)) {
     cairo_set_source_rgba(cr, 0.1, 0.1, 0.1, 0.6);
-    cairo_fill(cr);
+    cairo_fill_preserve(cr);
     dv_llist_add(V->D->itl, (void *) node);
   }
+  
+  /* Fill rate */
+  double fill_rate = 1.0;
+  if (D->draw_with_current_time) {
+    double st = pi->info.start.t - D->bt;
+    double et = pi->info.end.t - D->bt;
+    if (D->current_time <= st)
+      fill_rate = 0.0;
+    else if (D->current_time <= et)
+      fill_rate = D->current_time / (et - st);
+    else
+      fill_rate = 1.0;
+  }
+        
+  /* Clip */
+  GdkRGBA white[1];
+  gdk_rgba_parse(white, "white");
+  cairo_clip(cr);
+  cairo_rectangle(cr, xx, yy + (h * fill_rate), w, h * (1 - fill_rate));
+  cairo_clip_preserve(cr);
+  cairo_set_source_rgba(cr, white->red, white->green, white->blue, white->alpha);
+  cairo_fill(cr);
   
   cairo_restore(cr);
 }
