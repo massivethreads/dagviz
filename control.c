@@ -1099,6 +1099,9 @@ on_toolbar_division_menu_onedag_activated(_unused_ GtkMenuItem * menuitem, _unus
   case 5:
     dv_viewport_divide_onedag_5(VP, D);
     break;
+  case 6:
+    dv_viewport_divide_onedag_6(VP, D);
+    break;
   }
 }
 

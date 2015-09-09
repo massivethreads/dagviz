@@ -1575,6 +1575,51 @@ dv_viewport_divide_onedag_5(dv_viewport_t * VP, dv_dag_t * D) {
   }
 }
 
+void
+dv_viewport_divide_onedag_6(dv_viewport_t * VP, dv_dag_t * D) {
+  /* D | B */
+  /* View */
+  dv_view_t * V1 = NULL;
+  dv_view_t * V2 = NULL;
+  int i;
+  for (i = 0; i < CS->nV; i++)
+    if (D->mV[i]) {
+      if (!V1) V1 = &CS->V[i];
+      else if (!V2) {
+        V2 = &CS->V[i];
+        break;
+      }
+    }
+  if (!V1)
+    V1 = dv_create_new_view(D);
+  if (!V2)
+    V2 = dv_create_new_view(D);
+  dv_view_change_lt(V1, 0);
+  dv_view_change_lt(V2, 1);
+  
+  /* Viewport */
+  dv_viewport_change_split(VP, 1);
+  dv_viewport_change_orientation(VP, GTK_ORIENTATION_HORIZONTAL);
+  dv_viewport_t * VP1 = VP->vp1;
+  dv_viewport_t * VP2 = VP->vp2;
+  dv_viewport_change_split(VP1, 0);
+  dv_viewport_change_split(VP2, 0);
+  for (i = 0; i < CS->nV; i++) {
+    if (VP1->mV[i]) {
+      dv_view_t * V = &CS->V[i];
+      dv_view_remove_viewport(V, VP1);
+    }
+    if (VP2->mV[i]) {
+      dv_view_t * V = &CS->V[i];
+      dv_view_remove_viewport(V, VP2);
+    }
+  }
+  dv_view_add_viewport(V1, VP1);
+  dv_view_add_viewport(V2, VP2);
+  dv_view_change_mainvp(V1, VP1);
+  dv_view_change_mainvp(V2, VP2);
+}
+
 /* Divisions for 2 DAGs: D|D , T|T , T/T , (D/T)|(D/T) , (D|T)/(D|T) , (D|B)/T | (D|B)/T */
 void
 dv_viewport_divide_twodags_1(dv_viewport_t * VP, dv_dag_t * D1, dv_dag_t * D2) {
@@ -2886,7 +2931,7 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
       GtkWidget * submenu;
       
       if (CS->nP >= 1) {
-        /* Divisions for 1 DAG: D , T , D|T , D/T , (D|B)/T */
+        /* Divisions for 1 DAG: D , T , D|T , D/T , D|B, (D|B)/T */
         item = gtk_menu_item_new_with_mnemonic("Screen divisions for _1 DAG");
         gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
         submenu = gtk_menu_new();
@@ -2908,6 +2953,10 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
         gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);        
         g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_onedag_activated), (void *) 4);
 
+        item = gtk_menu_item_new_with_label("D | B");
+        gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);        
+        g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_onedag_activated), (void *) 6);
+        
         item = gtk_menu_item_new_with_label("(D | B) / T");
         gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);
         g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_onedag_activated), (void *) 5);

@@ -658,6 +658,7 @@ void dv_viewport_divide_onedag_2(dv_viewport_t *, dv_dag_t *);
 void dv_viewport_divide_onedag_3(dv_viewport_t *, dv_dag_t *);
 void dv_viewport_divide_onedag_4(dv_viewport_t *, dv_dag_t *);
 void dv_viewport_divide_onedag_5(dv_viewport_t *, dv_dag_t *);
+void dv_viewport_divide_onedag_6(dv_viewport_t *, dv_dag_t *);
 
 void dv_viewport_divide_twodags_1(dv_viewport_t *, dv_dag_t *, dv_dag_t *);
 void dv_viewport_divide_twodags_2(dv_viewport_t *, dv_dag_t *, dv_dag_t *);
@@ -872,7 +873,7 @@ void dv_histogram_init(dv_histogram_t *);
 void dv_histogram_add_node(dv_histogram_t *, dv_dag_node_t *);
 void dv_histogram_remove_node(dv_histogram_t *, dv_dag_node_t *);
 void dv_histogram_fini(dv_histogram_t *);
-void dv_histogram_draw(dv_histogram_t *, cairo_t *);
+void dv_histogram_draw(dv_histogram_t *, cairo_t *, dv_view_t *);
 void dv_histogram_reset(dv_histogram_t *);
 
 void dv_view_layout_paraprof(dv_view_t *);

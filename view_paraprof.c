@@ -208,22 +208,54 @@ dv_histogram_fini(dv_histogram_t * H) {
 }
 
 static double
-dv_histogram_draw_piece(dv_histogram_t * H, cairo_t * cr, double x, double w, double y, double h, int layer) {
-  (void)H;
+dv_histogram_draw_piece(_unused_ dv_histogram_t * H, dv_view_t * V, cairo_t * cr, double x, double width, double y, double height, int layer) {
   cairo_save(cr);
-  // Color
+  
+  /* Color */
   GdkRGBA color;
   gdk_rgba_parse(&color, DV_HISTOGRAM_COLORS[(layer + 6) % 6]);
-  // Draw
-  cairo_rectangle(cr, x, y - h, w, h);
-  cairo_set_source_rgba(cr, color.red, color.green, color.blue, color.alpha);
-  cairo_fill(cr);
+  
+  /* Draw */
+  double xx, yy, w, h;
+  xx = x;
+  yy = y - height;
+  w = width;
+  h = height;
+  if (V) {
+    double bound_left = dv_view_clip_get_bound_left(V);
+    double bound_right = dv_view_clip_get_bound_right(V);
+    double bound_up = dv_view_clip_get_bound_up(V);
+    double bound_down = dv_view_clip_get_bound_down(V);
+    if (xx < bound_right && xx + w > bound_left &&
+        yy < bound_down && yy + h > bound_up) {
+      if (xx < bound_left) {
+        w -= (bound_left - xx);
+        xx = bound_left;
+      }
+      if (xx + w > bound_right)
+        w = bound_right - xx;
+      if (yy < bound_up) {
+        h -= (bound_up - yy);
+        yy = bound_up;
+      }
+      if (yy + h > bound_down)
+        h = bound_down - yy;
+      cairo_rectangle(cr, xx, yy, w, h);
+      cairo_set_source_rgba(cr, color.red, color.green, color.blue, color.alpha);
+      cairo_fill(cr);
+    }
+  } else {
+    cairo_rectangle(cr, xx, yy, w, h);
+    cairo_set_source_rgba(cr, color.red, color.green, color.blue, color.alpha);
+    cairo_fill(cr);    
+  }
+  
   cairo_restore(cr);
   return y - h;
 }
 
 static void
-dv_histogram_draw_entry(dv_histogram_t * H, dv_histogram_entry_t * e, cairo_t * cr) {
+dv_histogram_draw_entry(dv_histogram_t * H, dv_histogram_entry_t * e, cairo_t * cr, dv_view_t * V) {
   if (!e->next) {
     fprintf(stderr, "Warning: not draw entry at t=%lf due to no next\n", e->t);
     return;
@@ -235,7 +267,7 @@ dv_histogram_draw_entry(dv_histogram_t * H, dv_histogram_entry_t * e, cairo_t * 
   int i;
   for (i=0; i<dv_histogram_layer_max; i++) {
     h = e->h[i];
-    y = dv_histogram_draw_piece(H, cr, x, w, y, h, i);
+    y = dv_histogram_draw_piece(H, V, cr, x, w, y, h, i);
   }
 }
 
@@ -272,10 +304,10 @@ dv_histogram_cal_work_delay_nowork(dv_histogram_t * H) {
 }
 
 void
-dv_histogram_draw(dv_histogram_t * H, cairo_t * cr) {
+dv_histogram_draw(dv_histogram_t * H, cairo_t * cr, dv_view_t * V) {
   dv_histogram_entry_t * e = H->head_e;
   while (e != NULL && e->next) {
-    dv_histogram_draw_entry(H, e, cr);
+    dv_histogram_draw_entry(H, e, cr, V);
     e = e->next;
   }
   dv_histogram_cal_work_delay_nowork(H);
@@ -345,7 +377,7 @@ void
 dv_view_draw_paraprof(dv_view_t * V, cairo_t * cr) {
   dv_view_draw_timeline(V, cr);
   if (V->D->H)
-    dv_histogram_draw(V->D->H, cr);
+    dv_histogram_draw(V->D->H, cr, V);
 }
 
 /*-----------------end of PARAPROF drawing functions-----------*/
