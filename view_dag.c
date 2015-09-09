@@ -356,7 +356,7 @@ dv_view_draw_dag_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
     if (D->current_time <= st)
       fill_rate = 0.0;
     else if (D->current_time <= et)
-      fill_rate = D->current_time / (et - st);
+      fill_rate = (D->current_time - st) / (et - st);
     else
       fill_rate = 1.0;
   }

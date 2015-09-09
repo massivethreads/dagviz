@@ -63,6 +63,14 @@
               </object>
             </child>
             
+            <child>
+              <object class="GtkMenuItem" id="manage_dag_files">
+                <property name="use-underline">TRUE</property>
+                <property name="label">Manage DAG _files</property>
+                <signal name="activate" handler="on_menubar_manage_dag_files_activated"/>
+              </object>
+            </child>
+            
           </object>
         </child>
       </object>

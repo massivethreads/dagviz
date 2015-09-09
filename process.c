@@ -365,7 +365,8 @@ void
 dv_view_change_sdt(dv_view_t * V, int new_sdt) {
   if (new_sdt != V->D->sdt) {
     V->D->sdt = new_sdt;
-    gtk_combo_box_set_active(GTK_COMBO_BOX(V->T->combobox_sdt), new_sdt);
+    if (V->T->combobox_sdt)
+      gtk_combo_box_set_active(GTK_COMBO_BOX(V->T->combobox_sdt), new_sdt);
     dv_view_set_entry_radix_text(V);
   }
 }

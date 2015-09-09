@@ -189,6 +189,10 @@ typedef struct dv_pidag {
   dv_llist_t itl[1]; /* list of pii's of nodes that have info tag */
   dr_pi_dag * G;
   long sz;
+
+  /* DAG management window */
+  char * name;
+  GtkWidget * mini_frame;
 } dv_pidag_t;
 
 typedef struct dv_node_coordinate {
@@ -276,6 +280,7 @@ typedef struct dv_dag {
 
   int draw_with_current_time;
   double current_time;
+  double time_step;
 } dv_dag_t;
 
 typedef struct dv_view dv_view_t;
@@ -542,13 +547,18 @@ typedef struct dv_gui {
   GtkWidget * statusbar2; // selection statuses
   GtkWidget * statusbar3; // pool status
 
-  /* Additional */
+  /* Management window */
   GtkWidget * management_window;
   GtkWidget * notebook;
   GtkWidget * scrolled_box; // DAGs tab's scrolled box
+  GtkWidget * dag_file_scrolled_box; // DAG files tab's scrolled box
+  GtkWidget * create_dag_menu;
+
+  /* Workers sidebar */
   GtkWidget * workers_sidebar;
   GtkWidget * workers_scale;
   GtkWidget * workers_entry;
+  GtkWidget * time_step_entry;
 } dv_gui_t;
 
 typedef struct dv_global_state {
@@ -659,13 +669,19 @@ void dv_viewport_divide_twodags_6(dv_viewport_t *, dv_dag_t *, dv_dag_t *);
 void dv_viewport_divide_threedags_1(dv_viewport_t *, dv_dag_t *, dv_dag_t *, dv_dag_t *);
 
 void dv_open_statistics_dialog();
+char * dv_choose_a_new_dag_file();
+
+void dv_open_dr_stat_file(dv_pidag_t *);
+void dv_open_dr_pp_file(dv_pidag_t *);
 
 dv_view_t * dv_create_new_view(dv_dag_t *);
 dv_dag_t * dv_create_new_dag(dv_pidag_t *);
+dv_pidag_t * dv_create_new_pidag(char *);
 
 void dv_gui_init(dv_gui_t *);
 GtkWidget * dv_gui_get_management_window(dv_gui_t *);
 GtkWidget * dv_gui_get_main_window(dv_gui_t *, GtkApplication *);
+void dv_dag_set_time_step(dv_dag_t *, double);
 void dv_dag_set_current_time(dv_dag_t *, double);
 GtkWidget * dv_gui_get_workers_sidebar(dv_gui_t *);
 

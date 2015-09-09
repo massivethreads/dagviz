@@ -5,13 +5,31 @@
 dv_pidag_t *
 dv_pidag_read_new_file(char * filename) {
   /* Get new PIDAG */
-  dv_check(CS->nP < DV_MAX_DAG_FILE);
+  if (CS->nP >= DV_MAX_DAG_FILE)
+    return NULL;
   dv_pidag_t * P = &CS->P[CS->nP++];
   P->fn = filename;
   dv_llist_init(P->itl);
 
+  /* Read file size */
+  int fd = open(filename, O_RDONLY);
+  if (fd < 0) {
+    fprintf(stderr, "cannot open file: %d\n", errno);
+    return NULL;
+  }
+  struct stat statbuf[1];
+  int err = fstat(fd, statbuf);
+  if (err < 0) {
+    fprintf(stderr, "cannot run fstat: %d\n", errno);
+    return NULL;
+  }
+  P->sz = statbuf->st_size;
+  close(fd);
+  
   /* Read DR's PI_DAG */
   dr_pi_dag * G = dr_read_dag(filename);
+  if (!G)
+    return NULL;
   
   P->n = G->n;
   P->m = G->m;
@@ -28,21 +46,6 @@ dv_pidag_read_new_file(char * filename) {
   P->S = G->S;
   P->G = G;
 
-  /* Read file size */
-  int fd = open(filename, O_RDONLY);
-  if (fd < 0) {
-    fprintf(stderr, "cannot open file: %d\n", errno);
-    exit(1);
-  }
-  struct stat statbuf[1];
-  int err = fstat(fd, statbuf);
-  if (err < 0) {
-    fprintf(stderr, "cannot run fstat: %d\n", errno);
-    exit(1);
-  }
-  P->sz = statbuf->st_size;
-  close(fd);
-  
   return P;
 }
 
@@ -412,6 +415,7 @@ dv_dag_init(dv_dag_t * D, dv_pidag_t * P) {
 
   D->draw_with_current_time = 0;
   D->current_time = 0.0;
+  D->time_step = 1000;
 }
 
 dv_dag_t *

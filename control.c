@@ -922,7 +922,14 @@ G_MODULE_EXPORT void
 on_menubar_manage_dags_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
   GtkWidget * management_window = dv_gui_get_management_window(GUI);
   gtk_widget_show_all(management_window);
-  gtk_notebook_set_current_page(GTK_NOTEBOOK(GUI->notebook), 1); // effective only when being called after the window is shown for the first time
+  gtk_notebook_set_current_page(GTK_NOTEBOOK(GUI->notebook), 1); // effective only when being called after the window is shown for the first time -> should be called after gtk_widget_show_all()
+}
+
+G_MODULE_EXPORT void
+on_menubar_manage_dag_files_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
+  GtkWidget * management_window = dv_gui_get_management_window(GUI);
+  gtk_widget_show_all(management_window);
+  gtk_notebook_set_current_page(GTK_NOTEBOOK(GUI->notebook), 2); // effective only when being called after the window is shown for the first time -> should be called after gtk_widget_show_all()
 }
 
 static gboolean
@@ -965,59 +972,28 @@ on_management_window_viewport_options_orientation_changed(_unused_ GtkWidget * w
 gboolean
 on_management_window_open_stat_button_clicked(_unused_ GtkWidget * widget, gpointer user_data) {
   dv_dag_t * D = (dv_dag_t *) user_data;
-  int n = strlen(D->P->fn);
-  char * filename = (char *) dv_malloc( sizeof(char) * (n + 2) );
-  strcpy(filename, D->P->fn);
-  if (strcmp(filename + n - 3, "dag") != 0)
-    return FALSE;
-  filename[n-3] = 's';
-  filename[n-2] = 't';
-  filename[n-1] = 'a';
-  filename[n]   = 't';
-  filename[n+1] = '\0';
-  /* call gnuplot */
-  GPid pid;
-  char * argv[3];
-  argv[0] = "gedit";
-  argv[1] = filename;
-  argv[2] = NULL;
-  int ret = g_spawn_async_with_pipes(NULL, argv, NULL,
-                                     G_SPAWN_SEARCH_PATH, //G_SPAWN_DEFAULT | G_SPAWN_SEARCH_PATH,
-                                     NULL, NULL, &pid,
-                                     NULL, NULL, NULL, NULL);
-  if (!ret) {
-    fprintf(stderr, "g_spawn_async_with_pipes() failed.\n");
-  }
-  dv_free(filename, strlen(filename) + 1);
+  dv_open_dr_stat_file(D->P);
   return TRUE;
 }
 
 gboolean
 on_management_window_open_pp_button_clicked(_unused_ GtkWidget * widget, gpointer user_data) {
   dv_dag_t * D = (dv_dag_t *) user_data;
-  int n = strlen(D->P->fn);
-  char * filename = (char *) dv_malloc( sizeof(char) * (n + 1) );
-  strcpy(filename, D->P->fn);
-  if (strcmp(filename + n - 3, "dag") != 0)
-    return FALSE;
-  filename[n-3] = 'g';
-  filename[n-2] = 'p';
-  filename[n-1] = 'l';
-  /* call gnuplot */
-  GPid pid;
-  char * argv[4];
-  argv[0] = "gnuplot";
-  argv[1] = "-persist";
-  argv[2] = filename;
-  argv[3] = NULL;
-  int ret = g_spawn_async_with_pipes(NULL, argv, NULL,
-                                     G_SPAWN_SEARCH_PATH, //G_SPAWN_DEFAULT | G_SPAWN_SEARCH_PATH,
-                                     NULL, NULL, &pid,
-                                     NULL, NULL, NULL, NULL);
-  if (!ret) {
-    fprintf(stderr, "g_spawn_async_with_pipes() failed.\n");
-  }
-  dv_free(filename, strlen(filename) + 1);
+  dv_open_dr_pp_file(D->P);
+  return TRUE;
+}
+
+gboolean
+on_management_window_pidag_open_stat_button_clicked(_unused_ GtkWidget * widget, gpointer user_data) {
+  dv_pidag_t * P = (dv_pidag_t *) user_data;
+  dv_open_dr_stat_file(P);
+  return TRUE;
+}
+
+gboolean
+on_management_window_pidag_open_pp_button_clicked(_unused_ GtkWidget * widget, gpointer user_data) {
+  dv_pidag_t * P = (dv_pidag_t *) user_data;
+  dv_open_dr_pp_file(P);
   return TRUE;
 }
 
@@ -1210,6 +1186,18 @@ on_workers_sidebar_row_activated(_unused_ GtkListBox * box, _unused_ GtkListBoxR
 }
 
 void
+on_workers_sidebar_enable_toggled(GtkWidget * widget, _unused_ gpointer user_data) {
+  if (CS->activeV) {
+    gboolean active = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+    if (active)
+      CS->activeV->D->draw_with_current_time = 1;
+    else
+      CS->activeV->D->draw_with_current_time = 0;
+  }
+  dv_queue_draw_dag(CS->activeV->D);
+}
+
+void
 on_workers_sidebar_scale_value_changed(GtkRange * range, _unused_ gpointer user_data) {
   double value = gtk_range_get_value(range);
   dv_dag_set_current_time(CS->activeV->D, value);
@@ -1223,15 +1211,40 @@ on_workers_sidebar_entry_activated(GtkEntry * entry, _unused_ gpointer user_data
 }
 
 void
-on_workers_sidebar_enable_toggled(GtkWidget * widget, _unused_ gpointer user_data) {
-  if (CS->activeV) {
-    gboolean active = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-    if (active)
-      CS->activeV->D->draw_with_current_time = 1;
-    else
-      CS->activeV->D->draw_with_current_time = 0;
+on_workers_sidebar_time_step_entry_activated(GtkEntry * entry, _unused_ gpointer user_data) {
+  const char * str = gtk_entry_get_text(entry);
+  double value = atof(str);
+  dv_dag_set_time_step(CS->activeV->D, value);
+}
+
+void
+on_workers_sidebar_next_button_clicked(_unused_ GtkButton * button, _unused_ gpointer user_data) {
+  if (!CS->activeV) return;
+  dv_dag_t * D = CS->activeV->D;
+  double t = D->current_time + D->time_step;
+  if (t > D->et - D->bt)
+    t = D->et - D->bt;
+  dv_dag_set_current_time(D, t);
+}
+
+void
+on_workers_sidebar_prev_button_clicked(_unused_ GtkButton * button, _unused_ gpointer user_data) {
+  if (!CS->activeV) return;
+  dv_dag_t * D = CS->activeV->D;
+  double t = D->current_time - D->time_step;
+  if (t < 0)
+    t = 0;
+  dv_dag_set_current_time(D, t);
+}
+
+void
+on_management_window_add_new_dag_file_clicked(_unused_ GtkWidget * widget, _unused_ gpointer user_data) {
+  char * filename = dv_choose_a_new_dag_file();
+  if (filename) {
+    dv_create_new_pidag(filename);
+    gtk_widget_show_all(GTK_WIDGET(GUI->dag_file_scrolled_box));
+    gtk_widget_queue_draw(GTK_WIDGET(GUI->dag_file_scrolled_box));
   }
-  dv_queue_draw_dag(CS->activeV->D);
 }
 
   
