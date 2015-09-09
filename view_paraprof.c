@@ -373,11 +373,27 @@ dv_view_layout_paraprof(dv_view_t * V) {
 
 /*-----------------PARAPROF Drawing functions-----------*/
 
+static void
+dv_paraprof_draw_time_bar(dv_view_t * V, dv_histogram_t * H, cairo_t * cr) {
+  double x = dv_dag_scale_down(H->D, H->D->current_time);
+  double y1 = - H->max_e->sum_h - H->D->radius;
+  double y2 = H->D->P->num_workers * (2 * H->D->radius) + H->D->radius;
+  cairo_save(cr);
+  cairo_move_to(cr, x, y1);
+  cairo_line_to(cr, x, y2);
+  cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, 0.8);
+  cairo_set_line_width(cr, (DV_NODE_LINE_WIDTH * 2) / V->S->zoom_ratio_x);
+  cairo_stroke(cr);
+  cairo_restore(cr);
+}
+
 void
 dv_view_draw_paraprof(dv_view_t * V, cairo_t * cr) {
   dv_view_draw_timeline(V, cr);
   if (V->D->H)
     dv_histogram_draw(V->D->H, cr, V);
+  if (V->D->draw_with_current_time)
+    dv_paraprof_draw_time_bar(V, V->D->H, cr);
 }
 
 /*-----------------end of PARAPROF drawing functions-----------*/

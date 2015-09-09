@@ -361,7 +361,7 @@ dv_view_draw_dag_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
       fill_rate = 1.0;
   }
         
-  /* Clip */
+  /* Replay clipping */
   GdkRGBA white[1];
   gdk_rgba_parse(white, "white");
   cairo_clip(cr);
