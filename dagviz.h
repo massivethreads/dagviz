@@ -164,7 +164,7 @@ typedef struct dv_llist {
 #define _unused_ __attribute__((unused))
 #define _static_unused_ static __attribute__((unused))
 
-#define DV_PARAPROF_MIN_ENTRY_INTERVAL 1000000
+#define DV_PARAPROF_MIN_ENTRY_INTERVAL 2000000
 
 /*-----------------Data Structures-----------------*/
 
@@ -536,6 +536,7 @@ typedef struct dv_gui {
   GtkWidget * window_box;
   GtkWidget * menubar;
   GtkWidget * main_box;
+  GtkAccelGroup * accel_group;
 
   /* Toolbar */
   GtkWidget * toolbar;
@@ -556,9 +557,12 @@ typedef struct dv_gui {
 
   /* Workers sidebar */
   GtkWidget * workers_sidebar;
+  GtkWidget * workers_enable;
   GtkWidget * workers_scale;
   GtkWidget * workers_entry;
   GtkWidget * time_step_entry;
+  GtkWidget * workers_dag_menu;
+  int workers_mD[DV_MAX_DAG];
 } dv_gui_t;
 
 typedef struct dv_global_state {
@@ -666,6 +670,7 @@ void dv_viewport_divide_twodags_3(dv_viewport_t *, dv_dag_t *, dv_dag_t *);
 void dv_viewport_divide_twodags_4(dv_viewport_t *, dv_dag_t *, dv_dag_t *);
 void dv_viewport_divide_twodags_5(dv_viewport_t *, dv_dag_t *, dv_dag_t *);
 void dv_viewport_divide_twodags_6(dv_viewport_t *, dv_dag_t *, dv_dag_t *);
+void dv_viewport_divide_twodags_7(dv_viewport_t *, dv_dag_t *, dv_dag_t *);
 
 void dv_viewport_divide_threedags_1(dv_viewport_t *, dv_dag_t *, dv_dag_t *, dv_dag_t *);
 
@@ -684,6 +689,8 @@ GtkWidget * dv_gui_get_management_window(dv_gui_t *);
 GtkWidget * dv_gui_get_main_window(dv_gui_t *, GtkApplication *);
 void dv_dag_set_time_step(dv_dag_t *, double);
 void dv_dag_set_current_time(dv_dag_t *, double);
+void dv_dag_set_draw_current_time_active(dv_dag_t *, int);
+void dv_gui_workers_sidebar_set_dag(dv_dag_t *, int);
 GtkWidget * dv_gui_get_workers_sidebar(dv_gui_t *);
 
 void dv_signal_handler(int);

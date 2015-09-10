@@ -223,6 +223,8 @@ dv_view_get_zoomfit_hor(dv_view_t * V, double * zrx, double * zry, double * myx,
 
 void
 dv_view_do_zoomfit_hor(dv_view_t * V) {
+  if (V->S->adjust_auto_zoomfit)
+    dv_view_change_azf(V, 1);
   dv_view_get_zoomfit_hor(V, &V->S->zoom_ratio_x, &V->S->zoom_ratio_y, &V->S->x, &V->S->y);
   dv_queue_draw(V);
 }
@@ -293,6 +295,8 @@ dv_view_get_zoomfit_ver(dv_view_t * V, double * zrx, double * zry, double * myx,
 
 void
 dv_view_do_zoomfit_ver(dv_view_t * V) {
+  if (V->S->adjust_auto_zoomfit)
+    dv_view_change_azf(V, 2);
   dv_view_get_zoomfit_ver(V, &V->S->zoom_ratio_x, &V->S->zoom_ratio_y, &V->S->x, &V->S->y);
   dv_queue_draw(V);
 }
@@ -319,6 +323,8 @@ dv_view_do_zoomfit_based_on_lt(dv_view_t * V) {
 
 void
 dv_view_do_zoomfit_full(dv_view_t * V) {
+  if (V->S->adjust_auto_zoomfit)
+    dv_view_change_azf(V, 4);
   double h_zrx, h_zry, h_x, h_y;
   dv_view_get_zoomfit_hor(V, &h_zrx, &h_zry, &h_x, &h_y);
   double v_zrx, v_zry, v_x, v_y;

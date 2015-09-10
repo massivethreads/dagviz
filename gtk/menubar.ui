@@ -37,6 +37,28 @@
         <child type="submenu">
           <object class="GtkMenu" id="edit_menu">
 
+            <child><object class="GtkMenuItem" id="change_focused_view">
+              <property name="use-underline">TRUE</property>
+              <property name="label">_Change focused View</property>
+              <signal name="activate" handler="on_menubar_change_focused_view_activated"/>
+            </object></child>
+            
+            <child><object class="GtkSeparatorMenuItem" id="edit_separator_0"></object></child>
+            
+            <child><object class="GtkMenuItem" id="expand_dag">
+              <property name="use-underline">TRUE</property>
+              <property name="label">E_xpand DAG one depth</property>
+              <signal name="activate" handler="on_menubar_expand_dag_activated"/>
+            </object></child>
+            
+            <child><object class="GtkMenuItem" id="contract_dag">
+              <property name="use-underline">TRUE</property>
+              <property name="label">_Contract DAG one depth</property>
+              <signal name="activate" handler="on_menubar_contract_dag_activated"/>
+            </object></child>
+            
+            <child><object class="GtkSeparatorMenuItem" id="edit_separator_1"></object></child>
+            
             <!--
             <child>
               <object class="GtkMenuItem" id="manage_viewports_old">
@@ -83,13 +105,85 @@
         <child type="submenu">
           <object class="GtkMenu" id="view_menu">
             
-            <child>
-              <object class="GtkCheckMenuItem" id="workers_sidebar">
+            <child><object class="GtkMenuItem" id="layout_types">
                 <property name="use-underline">TRUE</property>
-                <property name="label">_Workers sidebar</property>
-                <signal name="toggled" handler="on_menubar_view_workers_sidebar_toggled"/>
-              </object>
-            </child>
+                <property name="label">_Layout types</property>
+                <child type="submenu"><object class="GtkMenu" id="layout_types_menu">
+            
+                  <child><object class="GtkMenuItem" id="layout_dag">
+                    <property name="use-underline">TRUE</property>
+                    <property name="label">_DAG</property>
+                    <signal name="activate" handler="on_menubar_layout_type_dag_activated"/>
+                  </object></child>
+
+                  <child><object class="GtkMenuItem" id="layout_dag_boxes">
+                    <property name="use-underline">TRUE</property>
+                    <property name="label">DAG with _boxes</property>
+                    <signal name="activate" handler="on_menubar_layout_type_dag_boxes_activated"/>
+                  </object></child>
+
+                  <child><object class="GtkMenuItem" id="layout_timeline">
+                    <property name="use-underline">TRUE</property>
+                    <property name="label">Horizontal _timeline</property>
+                    <signal name="activate" handler="on_menubar_layout_type_timeline_activated"/>
+                  </object></child>
+
+                  <child><object class="GtkMenuItem" id="layout_timeline_ver">
+                    <property name="use-underline">TRUE</property>
+                    <property name="label">_Vertical _timeline</property>
+                    <signal name="activate" handler="on_menubar_layout_type_timeline_ver_activated"/>
+                  </object></child>
+
+                  <child><object class="GtkMenuItem" id="layout_paraprof">
+                    <property name="use-underline">TRUE</property>
+                    <property name="label">_Parallelism profile</property>
+                    <signal name="activate" handler="on_menubar_layout_type_paraprof_activated"/>
+                  </object></child>
+
+                </object></child>
+            </object></child>
+            
+            <child><object class="GtkSeparatorMenuItem" id="view_separator_0"></object></child>
+            
+            <child><object class="GtkCheckMenuItem" id="toolbox">
+                <property name="use-underline">TRUE</property>
+                <property name="label">View _toolbox</property>
+                <signal name="activate" handler="on_menubar_view_toolbox_activated"/>
+            </object></child>
+            
+            <child><object class="GtkCheckMenuItem" id="replay">
+                <property name="use-underline">TRUE</property>
+                <property name="label">_Replay</property>
+                <signal name="activate" handler="on_menubar_view_workers_sidebar_activated"/>
+            </object></child>
+            
+            <child><object class="GtkSeparatorMenuItem" id="view_separator_1"></object></child>
+            
+            <child><object class="GtkMenuItem" id="zoom">
+                <property name="use-underline">TRUE</property>
+                <property name="label">_Zoom</property>
+                <child type="submenu"><object class="GtkMenu" id="zoom_menu">
+            
+                  <child><object class="GtkMenuItem" id="zoomfit_full">
+                    <property name="use-underline">TRUE</property>
+                    <property name="label">Zoom fit _full</property>
+                    <signal name="activate" handler="on_menubar_zoomfit_full_activated"/>
+                  </object></child>
+
+                  <child><object class="GtkMenuItem" id="zoomfit_hor">
+                    <property name="use-underline">TRUE</property>
+                    <property name="label">Zoom fit _horizontally</property>
+                    <signal name="activate" handler="on_menubar_zoomfit_hor_activated"/>
+                  </object></child>
+
+                  <child><object class="GtkMenuItem" id="zoomfit_ver">
+                    <property name="use-underline">TRUE</property>
+                    <property name="label">Zoom fit _vertically</property>
+                    <signal name="activate" handler="on_menubar_zoomfit_ver_activated"/>
+                  </object></child>
+
+                </object></child>
+            </object></child>
             
           </object>
         </child>

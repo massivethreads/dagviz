@@ -318,6 +318,7 @@ on_darea_configure_event(_unused_ GtkWidget * widget, GdkEventConfigure * event,
 
 static gboolean
 on_window_key_event(_unused_ GtkWidget * widget, GdkEvent * event, _unused_ gpointer user_data) {
+  return FALSE;
   dv_view_t * aV = dv_global_state_get_active_view();
   if (!aV)
     return FALSE;
@@ -337,18 +338,12 @@ on_window_key_event(_unused_ GtkWidget * widget, GdkEvent * event, _unused_ gpoi
     dv_do_collapsing_one(aV);
     return TRUE;
   case 104: /* H */
-    if (aV->S->adjust_auto_zoomfit)
-      dv_view_change_azf(aV, 1); // auto zoom fit horizontal
     dv_view_do_zoomfit_hor(aV);
     return TRUE;
   case 118: /* V */
-    if (aV->S->adjust_auto_zoomfit)
-      dv_view_change_azf(aV, 2); // auto zoom fit vertical
     dv_view_do_zoomfit_ver(aV);
     return TRUE;
   case 102: /* F */
-    if (aV->S->adjust_auto_zoomfit)
-      dv_view_change_azf(aV, 4); // auto zoom fit full
     dv_view_do_zoomfit_full(aV);
     return TRUE;
   case 49: /* Ctrl + 1 */
@@ -932,6 +927,117 @@ on_menubar_manage_dag_files_activated(_unused_ GtkMenuItem * menuitem, _unused_ 
   gtk_notebook_set_current_page(GTK_NOTEBOOK(GUI->notebook), 2); // effective only when being called after the window is shown for the first time -> should be called after gtk_widget_show_all()
 }
 
+G_MODULE_EXPORT void
+on_menubar_zoomfit_full_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
+  dv_view_t * V = CS->activeV;
+  if (V) {
+    dv_view_do_zoomfit_full(V);
+  }
+}
+
+G_MODULE_EXPORT void
+on_menubar_zoomfit_hor_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
+  dv_view_t * V = CS->activeV;
+  if (V) {
+    dv_view_do_zoomfit_hor(V);
+  }
+}
+
+G_MODULE_EXPORT void
+on_menubar_zoomfit_ver_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
+  dv_view_t * V = CS->activeV;
+  if (V) {
+    dv_view_do_zoomfit_ver(V);
+  }
+}
+
+G_MODULE_EXPORT void
+on_menubar_change_focused_view_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
+  dv_view_t * V = CS->activeV;
+  if (V) {
+    dv_do_set_focused_view(V, 0);
+    int i = V - CS->V;
+    int has_viewport = 0;
+    int count = 0;
+    while (has_viewport == 0 && count < CS->nV - 1) {
+      i = (i + 1) % CS->nV;
+      V = &CS->V[i];
+      int j;
+      for (j = 0; j < CS->nVP; j++)
+        if (V->mVP[j])
+          has_viewport = 1;
+      count++;
+    }
+    dv_do_set_focused_view(V, 1);
+  } else {
+    dv_do_set_focused_view(CS->V, 1);
+  }
+}
+
+G_MODULE_EXPORT void
+on_menubar_expand_dag_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
+  dv_view_t * V = CS->activeV;
+  if (V) {
+    dv_do_expanding_one(V);
+  }
+}
+
+G_MODULE_EXPORT void
+on_menubar_contract_dag_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
+  dv_view_t * V = CS->activeV;
+  if (V) {
+    dv_do_collapsing_one(V);
+  }
+}
+
+G_MODULE_EXPORT void
+on_menubar_layout_type_dag_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
+  dv_view_t * V = CS->activeV;
+  if (V) {
+    dv_view_change_lt(V, 0);
+  }
+}
+
+G_MODULE_EXPORT void
+on_menubar_layout_type_dag_boxes_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
+  dv_view_t * V = CS->activeV;
+  if (V) {
+    dv_view_change_lt(V, 1);
+  }
+}
+
+G_MODULE_EXPORT void
+on_menubar_layout_type_timeline_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
+  dv_view_t * V = CS->activeV;
+  if (V) {
+    dv_view_change_lt(V, 2);
+  }
+}
+
+G_MODULE_EXPORT void
+on_menubar_layout_type_timeline_ver_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
+  dv_view_t * V = CS->activeV;
+  if (V) {
+    dv_view_change_lt(V, 3);
+  }
+}
+
+G_MODULE_EXPORT void
+on_menubar_layout_type_paraprof_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
+  dv_view_t * V = CS->activeV;
+  if (V) {
+    dv_view_change_lt(V, 4);
+  }
+}
+
+G_MODULE_EXPORT void
+on_menubar_view_toolbox_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
+  dv_view_t * V = CS->activeV;
+  if (V) {
+    dv_view_open_toolbox_window(V);
+  }
+}
+
 static gboolean
 on_management_window_viewport_options_split_changed(_unused_ GtkWidget * widget, gpointer user_data) {
   dv_viewport_t * VP = (dv_viewport_t *) user_data;
@@ -1131,6 +1237,9 @@ on_toolbar_division_menu_twodags_activated(_unused_ GtkMenuItem * menuitem, _unu
   case 6:
     dv_viewport_divide_twodags_6(VP, D1, D2);
     break;
+  case 7:
+    dv_viewport_divide_twodags_7(VP, D1, D2);
+    break;
   }
 }
 
@@ -1168,8 +1277,8 @@ on_toolbar_dag_boxes_scale_type_menu_activated(_unused_ GtkToolButton * toolbtn,
   dv_queue_draw_d(V);
 }
 
-void
-on_menubar_view_workers_sidebar_toggled(GtkCheckMenuItem * checkmenuitem, _unused_ gpointer user_data) {
+G_MODULE_EXPORT void
+on_menubar_view_workers_sidebar_activated(GtkCheckMenuItem * checkmenuitem, _unused_ gpointer user_data) {
   GtkWidget * sidebar = dv_gui_get_workers_sidebar(GUI);
   gboolean active = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(checkmenuitem));
   if (active)
@@ -1190,54 +1299,88 @@ on_workers_sidebar_row_activated(_unused_ GtkListBox * box, _unused_ GtkListBoxR
 
 void
 on_workers_sidebar_enable_toggled(GtkWidget * widget, _unused_ gpointer user_data) {
-  if (CS->activeV) {
-    gboolean active = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-    if (active)
-      CS->activeV->D->draw_with_current_time = 1;
-    else
-      CS->activeV->D->draw_with_current_time = 0;
+  gboolean active = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
+  int i;
+  for (i = 0; i < CS->nD; i++)
+    if (GUI->workers_mD[i]) {
+      dv_dag_t * D = &CS->D[i];
+      D->draw_with_current_time = active;
+      dv_queue_draw_dag(D);
+    }
+}
+
+void
+on_workers_sidebar_dag_toggled(GtkCheckMenuItem * checkmenuitem, _unused_ gpointer user_data) {
+  dv_dag_t * D = (dv_dag_t *) user_data;
+  if (D) {
+    gboolean onoff = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(checkmenuitem));
+    dv_gui_workers_sidebar_set_dag(D, onoff);
   }
-  dv_queue_draw_dag(CS->activeV->D);
 }
 
 void
 on_workers_sidebar_scale_value_changed(GtkRange * range, _unused_ gpointer user_data) {
   double value = gtk_range_get_value(range);
-  dv_dag_set_current_time(CS->activeV->D, value);
+  int i;
+  for (i = 0; i < CS->nD; i++)
+    if (GUI->workers_mD[i]) {
+      dv_dag_t * D = &CS->D[i];
+      dv_dag_set_current_time(D, value);
+    }
 }
 
 void
 on_workers_sidebar_entry_activated(GtkEntry * entry, _unused_ gpointer user_data) {
   const char * str = gtk_entry_get_text(entry);
   double value = atof(str);
-  dv_dag_set_current_time(CS->activeV->D, value);
+  int i;
+  for (i = 0; i < CS->nD; i++)
+    if (GUI->workers_mD[i]) {
+      dv_dag_t * D = &CS->D[i];
+      dv_dag_set_current_time(D, value);
+    }
 }
 
 void
 on_workers_sidebar_time_step_entry_activated(GtkEntry * entry, _unused_ gpointer user_data) {
   const char * str = gtk_entry_get_text(entry);
   double value = atof(str);
-  dv_dag_set_time_step(CS->activeV->D, value);
+  int i;
+  for (i = 0; i < CS->nD; i++)
+    if (GUI->workers_mD[i]) {
+      dv_dag_t * D = &CS->D[i];
+      dv_dag_set_time_step(D, value);
+    }  
 }
 
 void
 on_workers_sidebar_next_button_clicked(_unused_ GtkButton * button, _unused_ gpointer user_data) {
-  if (!CS->activeV) return;
-  dv_dag_t * D = CS->activeV->D;
-  double t = D->current_time + D->time_step;
-  if (t > D->et - D->bt)
-    t = D->et - D->bt;
-  dv_dag_set_current_time(D, t);
+  double current_time = gtk_range_get_value(GTK_RANGE(GUI->workers_scale));
+  double time_step = atof(gtk_entry_get_text(GTK_ENTRY(GUI->time_step_entry)));
+  double t = current_time + time_step;
+  //if (t > D->et - D->bt)
+  //t = D->et - D->bt;
+  int i;
+  for (i = 0; i < CS->nD; i++)
+    if (GUI->workers_mD[i]) {
+      dv_dag_t * D = &CS->D[i];
+      dv_dag_set_current_time(D, t);
+    }
 }
 
 void
 on_workers_sidebar_prev_button_clicked(_unused_ GtkButton * button, _unused_ gpointer user_data) {
-  if (!CS->activeV) return;
-  dv_dag_t * D = CS->activeV->D;
-  double t = D->current_time - D->time_step;
+  double current_time = gtk_range_get_value(GTK_RANGE(GUI->workers_scale));
+  double time_step = atof(gtk_entry_get_text(GTK_ENTRY(GUI->time_step_entry)));
+  double t = current_time - time_step;
   if (t < 0)
     t = 0;
-  dv_dag_set_current_time(D, t);
+  int i;
+  for (i = 0; i < CS->nD; i++)
+    if (GUI->workers_mD[i]) {
+      dv_dag_t * D = &CS->D[i];
+      dv_dag_set_current_time(D, t);
+    }
 }
 
 void
@@ -1249,6 +1392,7 @@ on_management_window_add_new_dag_file_clicked(_unused_ GtkWidget * widget, _unus
     gtk_widget_queue_draw(GTK_WIDGET(GUI->dag_file_scrolled_box));
   }
 }
+
 
   
 /****************** end of GUI Callbacks **************************************/
