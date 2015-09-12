@@ -80,6 +80,7 @@ dv_global_state_init(dv_global_state_t * CS) {
   CS->nVP = 0;
   CS->FL = NULL;
   CS->activeV = NULL;
+  CS->activeVP = NULL;
   CS->err = DV_OK;
   int i;
   for (i = 0; i < DV_NUM_COLOR_POOLS; i++)
@@ -105,15 +106,6 @@ dv_global_state_init(dv_global_state_t * CS) {
     CS->SBG->D[i] = 0;
   }
   CS->SBG->fn = DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME;
-}
-
-void dv_global_state_set_active_view(dv_view_t *V) {
-  CS->activeV = V;
-  dv_statusbar_update_selection_status();
-}
-
-dv_view_t * dv_global_state_get_active_view() {
-  return CS->activeV;
 }
 
 /*-----------------end of Global State-----------------*/
@@ -306,6 +298,8 @@ dv_viewport_draw(dv_viewport_t * VP, cairo_t * cr) {
     }
   //dv_viewport_draw_label(VP, cr);
   dv_statusbar_update_selection_status();
+  if (VP == CS->activeVP)
+    dv_viewport_draw_focused_mark(VP, cr);
 }
 
 /*--------end of Interactive processing functions------------*/
@@ -1001,13 +995,15 @@ dv_viewport_init(dv_viewport_t * VP) {
   gtk_box_pack_end(GTK_BOX(VP->box), VP->darea, TRUE, TRUE, 0);
   GtkWidget * darea = VP->darea;
   gtk_widget_override_background_color(GTK_WIDGET(darea), GTK_STATE_FLAG_NORMAL, white);
-  g_signal_connect(G_OBJECT(darea), "draw", G_CALLBACK(on_draw_event), (void *) VP);
+  gtk_widget_set_can_focus(darea, TRUE);
   gtk_widget_add_events(GTK_WIDGET(darea), GDK_SCROLL_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK | GDK_POINTER_MOTION_MASK);
-  g_signal_connect(G_OBJECT(darea), "scroll-event", G_CALLBACK(on_scroll_event), (void *) VP);
-  g_signal_connect(G_OBJECT(darea), "button-press-event", G_CALLBACK(on_button_event), (void *) VP);
-  g_signal_connect(G_OBJECT(darea), "button-release-event", G_CALLBACK(on_button_event), (void *) VP);
-  g_signal_connect(G_OBJECT(darea), "motion-notify-event", G_CALLBACK(on_motion_event), (void *) VP);
+  g_signal_connect(G_OBJECT(darea), "draw", G_CALLBACK(on_darea_draw_event), (void *) VP);
+  g_signal_connect(G_OBJECT(darea), "scroll-event", G_CALLBACK(on_darea_scroll_event), (void *) VP);
+  g_signal_connect(G_OBJECT(darea), "button-press-event", G_CALLBACK(on_darea_button_event), (void *) VP);
+  g_signal_connect(G_OBJECT(darea), "button-release-event", G_CALLBACK(on_darea_button_event), (void *) VP);
+  g_signal_connect(G_OBJECT(darea), "motion-notify-event", G_CALLBACK(on_darea_motion_event), (void *) VP);
   g_signal_connect(G_OBJECT(darea), "configure-event", G_CALLBACK(on_darea_configure_event), (void *) VP);
+  g_signal_connect(G_OBJECT(darea), "key-press-event", G_CALLBACK(on_darea_key_press_event), (void *) VP);
   
   /* VP <-> V */
   int i;
@@ -1209,7 +1205,12 @@ dv_viewport_change_split(dv_viewport_t * VP, int split) {
       if (VP->vp2)
         dv_viewport_init(VP->vp2);
     }
+    /* switch active VP */
+    if (CS->activeVP == VP)
+      CS->activeVP = VP->vp1;
   } else {
+    dv_viewport_change_split(VP->vp1, 0);
+    dv_viewport_change_split(VP->vp2, 0);
     int i;
     for (i=0; i<CS->nV; i++) {
       if (VP->vp1->mV[i]) {
@@ -1219,6 +1220,9 @@ dv_viewport_change_split(dv_viewport_t * VP, int split) {
         dv_view_switch_viewport(&CS->V[i], VP->vp2, VP);
       }
     }
+    /* switch active VP */
+    if (CS->activeVP == VP->vp1 || CS->activeVP == VP->vp2)
+      CS->activeVP = VP;
   }
 
   /* Update widgets */
@@ -2418,6 +2422,105 @@ dv_open_statistics_dialog() {
 
 /*-----------------Main begins-----------------*/
 
+static dv_viewport_t *
+dv_switch_focused_viewport_r(dv_viewport_t * VP, dv_viewport_t * curVP) {
+  if (!VP->split) {
+    if (!curVP)
+      return VP;
+    if (VP == curVP)
+      return curVP;
+    else
+      return NULL;
+  } else {
+    dv_viewport_t * ret = NULL;
+    ret = dv_switch_focused_viewport_r(VP->vp1, curVP);
+    if (!curVP) {
+      if (ret)
+        return ret;
+      ret = dv_switch_focused_viewport_r(VP->vp2, NULL);
+      return ret;
+    } else if (!ret) {
+      ret = dv_switch_focused_viewport_r(VP->vp2, curVP);
+      return ret;
+    } else if (ret == curVP) {
+      ret = dv_switch_focused_viewport_r(VP->vp2, NULL);
+      if (!ret)
+        return curVP;
+      else
+        return ret;
+    } else {
+      return ret;
+    }
+  }
+}
+
+void
+dv_switch_focused_viewport() {
+  dv_viewport_t * old_VP = (CS->activeVP)?( (CS->activeVP->split)?NULL:CS->activeVP ): NULL;
+  dv_viewport_t * VP = dv_switch_focused_viewport_r(CS->VP, old_VP);
+  if (VP == old_VP || VP == NULL) {
+    CS->activeVP = NULL;
+    dv_set_focused_view(NULL, 0);
+  } else {
+    CS->activeVP = VP;
+    int i;
+    for (i = 0; i < CS->nV; i++)
+      if (VP->mV[i]) {
+        dv_set_focused_view(&CS->V[i], 1);
+        break;
+      }
+  }
+  if (old_VP)
+    dv_queue_draw_viewport(old_VP);
+  if (VP)
+    dv_queue_draw_viewport(VP);
+  //printf("VP %ld - V %ld\n", (CS->activeVP)?(CS->activeVP-CS->VP):-1, (CS->activeV)?(CS->activeV-CS->V):-1);
+}
+
+void
+dv_switch_focused_view() {
+  /*
+  long i = 0;
+  if (CS->activeV)
+    i = CS->activeV - CS->V + 1;
+  while (i < CS->nV) {
+    dv_view_t * V = &CS->V[i];
+    int has_viewport = 0;
+    int j;
+    for (j = 0; j < CS->nVP; j++)
+      if (V->mVP[j]) {
+        has_viewport = 1;
+        break;
+      }
+    if (has_viewport) {
+      dv_set_focused_view(V, 1);
+      CS->activeVP = V->mainVP;
+    }
+    i++;
+  }
+  dv_set_focused_view(NULL, 0);
+  */
+}
+
+void
+dv_switch_focused_view_inside_viewport() {
+  dv_viewport_t * VP = CS->activeVP;
+  if (!VP) return;
+  long i = 0;
+  if (CS->activeV)
+    i = CS->activeV - CS->V + 1;
+  while (i < CS->nV) {
+    if (VP->mV[i]) {
+      dv_set_focused_view(&CS->V[i], 1);
+      //printf("VP %ld - V %ld\n", (CS->activeVP)?(CS->activeVP-CS->VP):-1, (CS->activeV)?(CS->activeV-CS->V):-1);
+      return;
+    }
+    i++;
+  }
+  dv_set_focused_view(NULL, 0);
+  //printf("VP %ld - V %ld\n", (CS->activeVP)?(CS->activeVP-CS->VP):-1, (CS->activeV)?(CS->activeV-CS->V):-1);
+}
+
 char *
 dv_choose_a_new_dag_file() {
   GtkWidget * dialog = gtk_file_chooser_dialog_new("Open DAG File",
@@ -2945,7 +3048,7 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
     gtk_widget_add_accelerator(item, "activate", accel_group, GDK_KEY_e, GDK_CONTROL_MASK | GDK_SHIFT_MASK, GTK_ACCEL_VISIBLE);
     
     item = GTK_WIDGET(gtk_builder_get_object(builder, "change_focused_view"));
-    gtk_widget_add_accelerator(item, "activate", accel_group, GDK_KEY_n, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE); 
+    gtk_widget_add_accelerator(item, "activate", accel_group, GDK_KEY_Tab, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE); 
     item = GTK_WIDGET(gtk_builder_get_object(builder, "expand_dag"));
     gtk_widget_add_accelerator(item, "activate", accel_group, GDK_KEY_x, 0, GTK_ACCEL_VISIBLE); 
     item = GTK_WIDGET(gtk_builder_get_object(builder, "contract_dag"));
@@ -3372,6 +3475,7 @@ dv_gui_build_workers_sidebar(dv_gui_t * gui) {
   g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_workers_sidebar_prev_button_clicked), (void *) NULL);
   
   gtk_box_pack_start(GTK_BOX(sidebar), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), FALSE, FALSE, 0);
+  /*
   if (CS->activeV) {
     dv_dag_t * D = CS->activeV->D;
     GtkWidget * scrolled = gtk_scrolled_window_new(NULL, NULL);
@@ -3405,6 +3509,7 @@ dv_gui_build_workers_sidebar(dv_gui_t * gui) {
       gtk_widget_show(GTK_WIDGET(row));
     }
   }
+  */
 
   for (i = 0; i < DV_MAX_DAG; i++)
     gui->workers_mD[i] = 0;
@@ -3531,7 +3636,7 @@ main_usegtkapplication(int argc, char * argv[]) {
     dv_view_add_viewport(&CS->V[0], VP->vp1);
     dv_view_add_viewport(&CS->V[1], VP->vp2);
   }  
-  dv_do_set_focused_view(CS->V, 1);
+  dv_set_focused_view(CS->V, 1);
 
   /* Open Gtk GUI */
   GtkApplication * app = gtk_application_new("com.github.zanton.dagviz", 0);
@@ -3584,7 +3689,7 @@ main(int argc, char * argv[]) {
     dv_viewport_divide_threedags_1(VP, CS->D, CS->D + 1, CS->D + 2);
   else if (CS->nD > 3)
     dv_viewport_divide_twodags_1(VP, CS->D, CS->D + 1);
-  dv_do_set_focused_view(CS->V, 1);
+  dv_switch_focused_viewport(CS->V, 1);
   
   /* Open GUI */
   dv_open_gui(argc, argv, NULL);

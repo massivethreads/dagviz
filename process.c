@@ -458,32 +458,22 @@ dv_view_change_lt(dv_view_t * V, int new_lt) {
 }
 
 void
-dv_do_set_focused_view(dv_view_t * V, int focused) {
-  if (!V)
-    return;
-  if (focused) {
-    dv_global_state_set_active_view(V);
+dv_set_focused_view(dv_view_t * V, int focused) {
+  if (!V) {
+    CS->activeV = NULL;
+  } else if (focused) {
+    CS->activeV = V;
     V->S->focused = 1;
     int i;
-    /*
-    for (i = 0; i < CS->nVP; i++)
-      if (V->mVP[i])
-        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(CS->VP[i].T->togg_focused), TRUE);
-    */
     for (i=0; i<CS->nV; i++)
       if (V != CS->V + i)
-        dv_do_set_focused_view(CS->V + i, 0);
+        dv_set_focused_view(CS->V + i, 0);
   } else {
-    if (V == dv_global_state_get_active_view())
-      dv_global_state_set_active_view(NULL);
+    if (V == CS->activeV)
+      CS->activeV = NULL;
     V->S->focused = 0;
-    /*
-    int i;
-    for (i = 0; i < CS->nVP; i++)
-      if (V->mVP[i])
-        gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(CS->VP[i].T->togg_focused), FALSE);
-    */
   }
+  dv_statusbar_update_selection_status();
 }
 
 /*

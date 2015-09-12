@@ -39,7 +39,7 @@
 
             <child><object class="GtkMenuItem" id="change_focused_view">
               <property name="use-underline">TRUE</property>
-              <property name="label">_Change focused View</property>
+              <property name="label">_Switch focused viewport</property>
               <signal name="activate" handler="on_menubar_change_focused_view_activated"/>
             </object></child>
             

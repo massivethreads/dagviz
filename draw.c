@@ -654,4 +654,18 @@ dv_view_draw_legend(dv_view_t * V, cairo_t * cr) {
   }
 }
 
+void
+dv_viewport_draw_focused_mark(dv_viewport_t * VP, cairo_t * cr) {
+  cairo_save(cr);
+  double x = DV_ZOOM_TO_FIT_MARGIN;
+  double y = VP->vph - 2 * DV_ZOOM_TO_FIT_MARGIN;
+  double r = DV_RADIUS / 2;
+  cairo_arc(cr, x + r, y + r, r, 0.0, 2 * M_PI);
+  cairo_close_path(cr);
+  cairo_set_source_rgb(cr, 1.0, 0.0, 0.0);
+  cairo_fill(cr);
+  cairo_restore(cr);
+}
+
+
 /*-----end of Main drawing functions-----*/

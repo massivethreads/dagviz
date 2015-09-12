@@ -13,6 +13,7 @@
 #include <assert.h>
 #include <errno.h>
 #include <gtk/gtk.h>
+#include <gdk/gdkkeysyms.h>
 #include <cairo.h>
 #include <cairo-ps.h>
 #include <cairo-svg.h>
@@ -400,7 +401,6 @@ typedef struct dv_view {
 
 typedef struct dv_viewport_toolbox {
   GtkWidget * toolbar;
-  //GtkWidget * togg_focused;
   GtkWidget * label;
 } dv_viewport_toolbox_t;
 
@@ -573,6 +573,7 @@ typedef struct dv_global_state {
   int nV;
   dv_llist_cell_t * FL;  
   dv_view_t * activeV;
+  dv_viewport_t * activeVP;
   int err;
   
   /* Color pools */
@@ -611,8 +612,6 @@ extern const int DV_RADIAL_PATTERN_STOPS_NUM;
 
 /* dagviz.c */
 void dv_global_state_init(dv_global_state_t *);
-void dv_global_state_set_active_view(dv_view_t *);
-dv_view_t * dv_global_state_get_active_view();
 
 void dv_queue_draw_viewport(dv_viewport_t *);
 void dv_queue_draw_view(dv_view_t *);
@@ -674,6 +673,10 @@ void dv_viewport_divide_threedags_1(dv_viewport_t *, dv_dag_t *, dv_dag_t *, dv_
 
 void dv_open_statistics_dialog();
 char * dv_choose_a_new_dag_file();
+
+void dv_switch_focused_view();
+void dv_switch_focused_viewport();
+void dv_switch_focused_view_inside_viewport();
 
 void dv_open_dr_stat_file(dv_pidag_t *);
 void dv_open_dr_pp_file(dv_pidag_t *);
@@ -741,7 +744,7 @@ void dv_view_change_sdt(dv_view_t *, int);
 void dv_view_change_eaffix(dv_view_t *, int);
 void dv_view_change_nc(dv_view_t *, int);
 void dv_view_change_lt(dv_view_t *, int);
-void dv_do_set_focused_view(dv_view_t *, int);
+void dv_set_focused_view(dv_view_t *, int);
 
 void dv_do_scrolling(dv_view_t *, GdkEventScroll *);
 void dv_statusbar_update(int, int, char *);
@@ -847,6 +850,7 @@ void dv_view_draw_infotags(dv_view_t *, cairo_t *, cairo_matrix_t *);
 void dv_view_draw(dv_view_t *, cairo_t *);
 void dv_viewport_draw_label(dv_viewport_t *, cairo_t *);
 void dv_view_draw_legend(dv_view_t *, cairo_t *);
+void dv_viewport_draw_focused_mark(dv_viewport_t *, cairo_t *);
 
 
 /* view_dag.c */

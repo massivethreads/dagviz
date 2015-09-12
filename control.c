@@ -2,7 +2,7 @@
 /****************** GUI Callbacks **************************************/
 
 static gboolean
-on_draw_event(_unused_ GtkWidget * widget, cairo_t * cr, gpointer user_data) {
+on_darea_draw_event(_unused_ GtkWidget * widget, cairo_t * cr, gpointer user_data) {
   dv_viewport_t * VP = (dv_viewport_t *) user_data;
   dv_viewport_draw(VP, cr);
   return FALSE;
@@ -27,7 +27,7 @@ on_btn_expand_clicked(_unused_ GtkToolButton * toolbtn, gpointer user_data) {
 }
 
 static gboolean
-on_scroll_event(_unused_ GtkWidget * widget, GdkEventScroll * event, gpointer user_data) {
+on_darea_scroll_event(_unused_ GtkWidget * widget, GdkEventScroll * event, gpointer user_data) {
   dv_viewport_t * VP = (dv_viewport_t *) user_data;
   if ( VP->mV[ CS->activeV - CS->V ] ) {
     dv_do_scrolling(CS->activeV, event);
@@ -41,7 +41,7 @@ on_scroll_event(_unused_ GtkWidget * widget, GdkEventScroll * event, gpointer us
 }
 
 static gboolean
-on_button_event(_unused_ GtkWidget * widget, GdkEventButton * event, gpointer user_data) {
+on_darea_button_event(_unused_ GtkWidget * widget, GdkEventButton * event, gpointer user_data) {
   dv_viewport_t * VP = (dv_viewport_t *) user_data;
   if ( VP->mV[ CS->activeV - CS->V ] ) {
     dv_do_button_event(CS->activeV, event);
@@ -55,7 +55,7 @@ on_button_event(_unused_ GtkWidget * widget, GdkEventButton * event, gpointer us
 }
 
 static gboolean
-on_motion_event(_unused_ GtkWidget * widget, GdkEventMotion * event, gpointer user_data) {
+on_darea_motion_event(_unused_ GtkWidget * widget, GdkEventMotion * event, gpointer user_data) {
   dv_viewport_t * VP = (dv_viewport_t *) user_data;
   if ( VP->mV[ CS->activeV - CS->V ] ) {
     dv_do_motion_event(CS->activeV, event);
@@ -272,7 +272,7 @@ static void
 on_togg_focused_toggled(_unused_ GtkWidget * widget, gpointer user_data) {
   dv_viewport_t * VP = (dv_viewport_t *) user_data;
   int focused = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
-  dv_do_set_focused_view(VP->mainV, focused);
+  dv_set_focused_view(VP->mainV, focused);
 }
 */
 
@@ -317,105 +317,118 @@ on_darea_configure_event(_unused_ GtkWidget * widget, GdkEventConfigure * event,
 }
 
 static gboolean
-on_window_key_event(_unused_ GtkWidget * widget, GdkEvent * event, _unused_ gpointer user_data) {
+on_darea_key_press_event(_unused_ GtkWidget * widget, _unused_ GdkEventConfigure * event, gpointer user_data) {
+  dv_viewport_t * VP = (dv_viewport_t *) user_data;
   return FALSE;
-  dv_view_t * aV = dv_global_state_get_active_view();
-  if (!aV)
+
+  dv_view_t * V = NULL;
+  int i;
+  for (i = 0; i < CS->nV; i++)
+    if (VP->mV[i]) {
+      V = &CS->V[i];
+      break;
+    }
+  if (!V)
     return FALSE;
   
-  GdkModifierType modifiers = gtk_accelerator_get_default_mod_mask();
-  
+  GdkModifierType mod = gtk_accelerator_get_default_mod_mask();
   GdkEventKey * e = (GdkEventKey *) event;
-  int i;
-  //printf("key: %d\n", e->keyval);
   switch (e->keyval) {
   case 120: /* X */
   case 43: /* + */
-    dv_do_expanding_one(aV);    
+    dv_do_expanding_one(V);
     return TRUE;
   case 99: /* C */
   case 45: /* - */
-    dv_do_collapsing_one(aV);
+    dv_do_collapsing_one(V);
     return TRUE;
   case 104: /* H */
-    dv_view_do_zoomfit_hor(aV);
+    dv_view_do_zoomfit_hor(V);
     return TRUE;
   case 118: /* V */
-    dv_view_do_zoomfit_ver(aV);
+    dv_view_do_zoomfit_ver(V);
     return TRUE;
   case 102: /* F */
-    dv_view_do_zoomfit_full(aV);
+    dv_view_do_zoomfit_full(V);
     return TRUE;
   case 49: /* Ctrl + 1 */
-    if ((e->state & modifiers) == GDK_CONTROL_MASK) {
-      dv_view_change_lt(aV, 0);
+    if ((e->state & mod) == GDK_CONTROL_MASK) {
+      dv_view_change_lt(V, 0);
       return TRUE;
     }
     break;
   case 50: /* Ctrl + 2 */
-    if ((e->state & modifiers) == GDK_CONTROL_MASK) {
-      dv_view_change_lt(aV, 1);
+    if ((e->state & mod) == GDK_CONTROL_MASK) {
+      dv_view_change_lt(V, 1);
       return TRUE;
     }
     break;
   case 51: /* Ctrl + 3 */
-    if ((e->state & modifiers) == GDK_CONTROL_MASK) {
-      dv_view_change_lt(aV, 2);
+    if ((e->state & mod) == GDK_CONTROL_MASK) {
+      dv_view_change_lt(V, 2);
       return TRUE;
     }
     break;
   case 52: /* Ctrl + 4 */
-    if ((e->state & modifiers) == GDK_CONTROL_MASK) {
-      dv_view_change_lt(aV, 3);
+    if ((e->state & mod) == GDK_CONTROL_MASK) {
+      dv_view_change_lt(V, 3);
       return TRUE;
     }
     break;
   case 53: /* Ctrl + 5 */
-    if ((e->state & modifiers) == GDK_CONTROL_MASK) {
-      dv_view_change_lt(aV, 4);
+    if ((e->state & mod) == GDK_CONTROL_MASK) {
+      dv_view_change_lt(V, 4);
       return TRUE;
     }
     break;
-  case 65289: /* Tab */
-    if (!aV)
-      i = 0;
-    else {
-      i = aV - CS->V;
-      int boo = 0;
-      int count = 0;
-      while (boo == 0 && count < CS->nV) {
-        i = (i + 1) % CS->nV;
-        int j;
-        for (j = 0; j < CS->nVP; j++)
-          if (CS->V[i].mVP[j])
-            boo = 1;
-        count++;
-      }
-    }
-    dv_do_set_focused_view(CS->V + i, 1);
-    break;
   case 65361: /* Left */
-    aV->S->x += 15;
-    dv_queue_draw(aV);
+    V->S->x += 15;
+    dv_queue_draw(V);
     return TRUE;
   case 65362: /* Up */
-    aV->S->y += 15;
-    dv_queue_draw(aV);
+    V->S->y += 15;
+    dv_queue_draw(V);
     return TRUE;
   case 65363: /* Right */
-    aV->S->x -= 15;
-    dv_queue_draw(aV);
+    V->S->x -= 15;
+    dv_queue_draw(V);
     return TRUE;
   case 65364: /* Down */
-    aV->S->y -= 15;
-    dv_queue_draw(aV);
+    V->S->y -= 15;
+    dv_queue_draw(V);
     return TRUE;
   case 116: /* T */
-    fprintf(stderr, "open toolbox window of V %ld\n", aV - CS->V);
-    dv_view_open_toolbox_window(aV);
+    fprintf(stderr, "open toolbox window of V %ld\n", V - CS->V);
+    dv_view_open_toolbox_window(V);
     return TRUE;
   default:
     return FALSE;
+  }
+  return FALSE;
+}
+
+static gboolean
+on_window_key_event(_unused_ GtkWidget * widget, GdkEvent * event, _unused_ gpointer user_data) {
+  GdkModifierType mod = gtk_accelerator_get_default_mod_mask();
+  GdkEventKey * e = (GdkEventKey *) event;
+  //printf("key: %d\n", e->keyval);
+  switch (e->keyval) {
+  case GDK_KEY_Tab: { /* Tab */
+    if ((e->state & mod) == GDK_CONTROL_MASK) { /* Ctrl + Tab */
+      dv_switch_focused_viewport();
+      return TRUE;
+    }
+    break;
+  }
+  case GDK_KEY_ISO_Left_Tab: { /* Shift + Tab */
+    if (e->state & GDK_CONTROL_MASK) { /* Ctrl + Shift + Tab */
+      dv_switch_focused_view_inside_viewport();
+      return TRUE;
+    }
+    break;
+  }
+  default:
+    break;
   }
   return FALSE;
 }
@@ -953,25 +966,7 @@ on_menubar_zoomfit_ver_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpoin
 
 G_MODULE_EXPORT void
 on_menubar_change_focused_view_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
-  dv_view_t * V = CS->activeV;
-  if (V) {
-    dv_do_set_focused_view(V, 0);
-    int i = V - CS->V;
-    int has_viewport = 0;
-    int count = 0;
-    while (has_viewport == 0 && count < CS->nV - 1) {
-      i = (i + 1) % CS->nV;
-      V = &CS->V[i];
-      int j;
-      for (j = 0; j < CS->nVP; j++)
-        if (V->mVP[j])
-          has_viewport = 1;
-      count++;
-    }
-    dv_do_set_focused_view(V, 1);
-  } else {
-    dv_do_set_focused_view(CS->V, 1);
-  }
+  dv_switch_focused_viewport();
 }
 
 G_MODULE_EXPORT void
