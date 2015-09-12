@@ -140,7 +140,7 @@ typedef struct dv_llist {
 
 #define DV_CLIPPING_FRAME_MARGIN 0
 #define DV_HISTOGRAM_MARGIN 15
-#define DV_HISTOGRAM_MARGIN_DOWN 23
+#define DV_HISTOGRAM_MARGIN_DOWN 15
 
 #define DV_HISTOGRAM_DIVIDE_TO_PIECES 0
 
@@ -462,7 +462,6 @@ typedef struct dv_histogram_entry {
   double t;
   struct dv_histogram_entry * next;
   double h[dv_histogram_layer_max];
-  double sum_h;
 } dv_histogram_entry_t;
 
 typedef struct dv_histogram {
@@ -470,7 +469,6 @@ typedef struct dv_histogram {
   dv_histogram_entry_t * tail_e;
   long n_e;
   dv_dag_t * D;
-  dv_histogram_entry_t * max_e;
   double work, delay, nowork;
 } dv_histogram_t;
 
@@ -877,6 +875,7 @@ void dv_view_draw_timeline_ver(dv_view_t *, cairo_t *);
 
 /* view_paraprof.c */
 void dv_histogram_init(dv_histogram_t *);
+double dv_histogram_get_max_height(dv_histogram_t *);
 void dv_histogram_add_node(dv_histogram_t *, dv_dag_node_t *);
 void dv_histogram_remove_node(dv_histogram_t *, dv_dag_node_t *);
 void dv_histogram_fini(dv_histogram_t *);

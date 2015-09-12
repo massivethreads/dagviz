@@ -204,11 +204,12 @@ dv_view_get_zoomfit_hor(dv_view_t * V, double * zrx, double * zry, double * myx,
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     y -= V->D->P->num_workers * 2 * V->D->radius * zoom_ratio;
+    double max_h = dv_histogram_get_max_height(D->H);
     double dy = (h - DV_HISTOGRAM_MARGIN_DOWN
                  - DV_HISTOGRAM_MARGIN
                  - zoom_ratio
                  * (D->P->num_workers * 2 * D->radius
-                    + D->H->max_e->sum_h)
+                    + max_h)
                  ) / 2.0;
     if (dy > 0)
       y -= dy;
@@ -271,9 +272,10 @@ dv_view_get_zoomfit_ver(dv_view_t * V, double * zrx, double * zry, double * myx,
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     break;
-  case 4:
+  case 4: {
     // Parallelism profile
-    d1 = D->P->num_workers * (2 * D->radius) + D->H->max_e->sum_h;
+    double max_h = dv_histogram_get_max_height(D->H);
+    d1 = D->P->num_workers * (2 * D->radius) + max_h;
     d2 = h - DV_HISTOGRAM_MARGIN - DV_HISTOGRAM_MARGIN_DOWN;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
@@ -282,6 +284,7 @@ dv_view_get_zoomfit_ver(dv_view_t * V, double * zrx, double * zry, double * myx,
     if (dx > 0)
       x += dx;
     break;
+  }
   default:
     dv_check(0);
   }

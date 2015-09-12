@@ -8,7 +8,6 @@ dv_histogram_init(dv_histogram_t * H) {
   H->tail_e = NULL;
   H->n_e = 0;
   H->D = NULL;
-  H->max_e = NULL;
   H->work = H->delay = H->nowork = 0.0;
 }
 
@@ -20,13 +19,29 @@ dv_histogram_entry_init(dv_histogram_entry_t * e) {
     e->h[i] = 0.0;
   }
   e->next = NULL;
-  e->sum_h = 0.0;
 }
 
 static long int count_insert_entry;
 static long int count_pile_entry;
 static long int count_pile;
 static long int count_add_node;
+
+double
+dv_histogram_get_max_height(dv_histogram_t * H) {
+  double max_h = 0.0;
+  dv_histogram_entry_t * e = H->head_e;
+  while (e != NULL) {
+    double h = 0.0;
+    int i;
+    for (i = 0; i < dv_histogram_layer_max; i++) {
+      h += e->h[i];
+    }
+    if (h > max_h)
+      max_h = h;
+    e = e->next;
+  }
+  return max_h;
+}
 
 static dv_histogram_entry_t *
 dv_histogram_insert_entry(dv_histogram_t * H, double t) {
@@ -72,7 +87,6 @@ dv_histogram_pile_entry(dv_histogram_t * H, dv_histogram_entry_t * e, dv_histogr
   (void)node;
   count_pile_entry++;
   e->h[layer] += thick;
-  e->sum_h += thick;
 }
 
 static void
@@ -85,8 +99,6 @@ dv_histogram_pile(dv_histogram_t * H, dv_dag_node_t * node, dv_histogram_layer_t
   dv_histogram_entry_t * e = e_from;
   while (e != e_to) {
     dv_histogram_pile_entry(H, e, layer, parallelism * 2 * H->D->radius, node);
-    if (!H->max_e || e->sum_h > H->max_e->sum_h)
-      H->max_e = e;
     e = e->next;
   }
 }
@@ -133,7 +145,6 @@ dv_histogram_unpile_entry(dv_histogram_t * H, dv_histogram_entry_t * e, dv_histo
   (void)H;
   (void)node;
   e->h[layer] -= thick;
-  e->sum_h -= thick;
 }
 
 static void
@@ -146,8 +157,6 @@ dv_histogram_unpile(dv_histogram_t * H, dv_dag_node_t * node, dv_histogram_layer
   dv_histogram_entry_t * e = e_from;
   while (e != e_to) {
     dv_histogram_unpile_entry(H, e, layer, parallelism * 2 * H->D->radius, node);
-    if (!H->max_e || e->sum_h > H->max_e->sum_h)
-      H->max_e = e;
     e = e->next;
   }
 }
@@ -204,7 +213,6 @@ dv_histogram_fini(dv_histogram_t * H) {
   H->tail_e = NULL;
   H->n_e = 0;
   H->D = NULL;
-  H->max_e = NULL;
 }
 
 static double
@@ -376,7 +384,7 @@ dv_view_layout_paraprof(dv_view_t * V) {
 static void
 dv_paraprof_draw_time_bar(dv_view_t * V, dv_histogram_t * H, cairo_t * cr) {
   double x = dv_dag_scale_down(H->D, H->D->current_time);
-  double y1 = - H->max_e->sum_h - H->D->radius;
+  double y1 = - dv_histogram_get_max_height(H) - H->D->radius;
   double y2 = H->D->P->num_workers * (2 * H->D->radius) + H->D->radius;
   cairo_save(cr);
   cairo_move_to(cr, x, y1);
