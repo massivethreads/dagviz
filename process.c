@@ -310,16 +310,12 @@ dv_view_do_zoomfit_based_on_lt(dv_view_t * V) {
   case 0:
   case 1:
   case 2:
-    dv_view_do_zoomfit_ver(V);
-    break;
   case 3:
-    dv_view_do_zoomfit_hor(V);
-    break;
   case 4:
-    dv_view_do_zoomfit_hor(V);
+    dv_view_do_zoomfit_full(V);
     break;
   default:
-    dv_view_do_zoomfit_ver(V);
+    dv_view_do_zoomfit_full(V);
     break;
   }
 }
@@ -408,8 +404,25 @@ dv_view_change_nc(dv_view_t * V, int new_nc) {
 void
 dv_view_change_lt(dv_view_t * V, int new_lt) {
   int old_lt = V->S->lt;
+  
   if (new_lt != old_lt) {
-    // edge affix, sdt
+    
+    /* switching out from paraprof */
+    if (old_lt == 4) {
+      int count = 0;
+      int i;
+      for (i = 0; i < CS->nV; i++) {
+        if (V->D->mV[i] && CS->V[i].S->lt == 4 && CS->V[i].S->nviewports) {
+          count++;
+        }
+      }
+      if (!count) {
+        dv_histogram_fini(V->D->H);
+        V->D->H->D = V->D;
+      }
+    }
+    
+    /* edge affix, sdt */
     switch (new_lt) {
     case 0:
       dv_view_change_nc(V, 0);
@@ -429,31 +442,33 @@ dv_view_change_lt(dv_view_t * V, int new_lt) {
     default:
       break;
     }
-    // Paraprof: check H structure
+    
+    /* switching to paraprof */
     if (new_lt == 4) {
       if (!V->D->H) {
         V->D->H = dv_malloc( sizeof(dv_histogram_t) );
         dv_histogram_init(V->D->H);
         V->D->H->D = V->D;
-      } else {
-        dv_histogram_fini(V->D->H);
-        V->D->H->D = V->D;
-      }
-      dv_histogram_reset(V->D->H);
+        dv_histogram_reset(V->D->H);
+      } else if (!V->D->H->head_e) {
+        dv_histogram_reset(V->D->H);
+      }      
     }
-    // Change lt
+    
+    /* Change lt */
     V->D->nviews[old_lt]--;
     V->S->lt = new_lt;
     V->D->nviews[new_lt]++;
     dv_view_status_set_coord(V->S);
-    // Update T
+    /* Update T */
     if (GTK_IS_WIDGET(V->T->combobox_lt)) {
       gtk_combo_box_set_active(GTK_COMBO_BOX(V->T->combobox_lt), new_lt);
     }
-    // Re-layout
+    /* Layout */
     dv_view_layout(V);
     dv_view_auto_zoomfit(V);
     dv_queue_draw_d(V);
+    
   }
 }
 
@@ -753,17 +768,17 @@ dv_do_expanding_one_1(dv_view_t * V, dv_dag_node_t * node) {
       dv_node_flag_remove(node->f, DV_NODE_FLAG_EXPANDING);
     }
     dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKED);
-    // Histogram
-    if (V->D->H) {
-      dv_histogram_remove_node(V->D->H, node);
-      dv_dag_node_t * x = NULL;
-      while ( (x = dv_dag_node_traverse_children(node, x)) ) {
-        dv_histogram_add_node(V->D->H, x);
-      }
-    }
     break;
   default:
     dv_check(0);
+  }
+  /* Histogram */
+  if (V->D->H && V->D->H->head_e) {
+    dv_histogram_remove_node(V->D->H, node);
+    dv_dag_node_t * x = NULL;
+    while ( (x = dv_dag_node_traverse_children(node, x)) ) {
+      dv_histogram_add_node(V->D->H, x);
+    }
   }
 }
 
@@ -838,17 +853,17 @@ dv_do_collapsing_one_1(dv_view_t * V, dv_dag_node_t * node) {
       dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKING);
     }
     dv_node_flag_set(node->f, DV_NODE_FLAG_SHRINKED);
-    // Histogram
-    if (V->D->H) {
-      dv_dag_node_t * x = NULL;
-      while ( (x = dv_dag_node_traverse_children(node, x)) ) {
-        dv_histogram_remove_node(V->D->H, x);
-      }
-      dv_histogram_add_node(V->D->H, node);
-    }
     break;
   default:
     dv_check(0);
+  }
+  /* Histogram */
+  if (V->D->H && V->D->H->head_e) {
+    dv_dag_node_t * x = NULL;
+    while ( (x = dv_dag_node_traverse_children(node, x)) ) {
+      dv_histogram_remove_node(V->D->H, x);
+    }
+    dv_histogram_add_node(V->D->H, node);
   }
 }
 

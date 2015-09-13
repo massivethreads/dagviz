@@ -298,7 +298,7 @@ dv_viewport_draw(dv_viewport_t * VP, cairo_t * cr) {
     }
   //dv_viewport_draw_label(VP, cr);
   dv_statusbar_update_selection_status();
-  if (VP == CS->activeVP)
+  if (VP == CS->activeVP && VP != CS->VP)
     dv_viewport_draw_focused_mark(VP, cr);
 }
 

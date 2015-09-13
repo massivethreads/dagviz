@@ -361,6 +361,8 @@ dv_histogram_reset_node(dv_histogram_t * H, dv_dag_node_t * node) {
 void
 dv_histogram_reset(dv_histogram_t * H) {
   dv_dag_t * D = H->D;
+  if (H->head_e)
+    dv_histogram_fini(H);
   dv_histogram_init(H);
   H->D = D;
   dv_histogram_reset_node(H, D->rt);
