@@ -2857,6 +2857,7 @@ dv_gui_init(dv_gui_t * gui) {
   gui->menubar = NULL;
   gui->main_box = NULL;
   gui->accel_group = NULL;
+  gui->context_menu = NULL;
   gui->toolbar = NULL;
   gui->dag_menu = NULL;
   gui->division_menu = NULL;
@@ -3050,7 +3051,7 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
     item = GTK_WIDGET(gtk_builder_get_object(builder, "change_focused_view"));
     gtk_widget_add_accelerator(item, "activate", accel_group, GDK_KEY_Tab, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE); 
     item = GTK_WIDGET(gtk_builder_get_object(builder, "expand_dag"));
-    gtk_widget_add_accelerator(item, "activate", accel_group, GDK_KEY_x, 0, GTK_ACCEL_VISIBLE); 
+    gtk_widget_add_accelerator(item, "activate", accel_group, GDK_KEY_x, 0, GTK_ACCEL_VISIBLE);
     item = GTK_WIDGET(gtk_builder_get_object(builder, "contract_dag"));
     gtk_widget_add_accelerator(item, "activate", accel_group, GDK_KEY_c, 0, GTK_ACCEL_VISIBLE); 
 
@@ -3347,6 +3348,17 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
   gtk_box_pack_end(GTK_BOX(statusbar_box), gui->statusbar3, FALSE, FALSE, 0);
   gtk_widget_set_tooltip_text(GTK_WIDGET(gui->statusbar3), "Memory pool status");
   gtk_box_pack_end(GTK_BOX(statusbar_box), gtk_separator_new(GTK_ORIENTATION_VERTICAL), FALSE, FALSE, 0);
+
+  /* Context menu */
+  {
+    GtkWidget * menu = gui->context_menu = gtk_menu_new();
+    GtkWidget * item;
+    item = gtk_menu_item_new_with_label("Hello");
+    gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
+    item = gtk_menu_item_new_with_label("Goodbye");
+    gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
+    gtk_widget_show_all(menu);
+  }
 }
 
 GtkWidget *

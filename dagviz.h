@@ -535,6 +535,7 @@ typedef struct dv_gui {
   GtkWidget * menubar;
   GtkWidget * main_box;
   GtkAccelGroup * accel_group;
+  GtkWidget * context_menu;
 
   /* Toolbar */
   GtkWidget * toolbar;

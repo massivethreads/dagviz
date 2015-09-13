@@ -51,6 +51,14 @@ on_darea_button_event(_unused_ GtkWidget * widget, GdkEventButton * event, gpoin
       if ( VP->mV[i] )
         dv_do_button_event(&CS->V[i], event);
   }
+  
+  /* show context menu */
+  if (event->button == GDK_BUTTON_SECONDARY) {
+    if (event->type == GDK_BUTTON_PRESS) {
+      gtk_menu_popup(GTK_MENU(GUI->context_menu), NULL, NULL, NULL, NULL, event->button, event->time);
+    }
+  }
+  
   return TRUE;
 }
 

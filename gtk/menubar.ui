@@ -48,6 +48,9 @@
             <child><object class="GtkMenuItem" id="expand_dag">
               <property name="use-underline">TRUE</property>
               <property name="label">E_xpand DAG one depth</property>
+              <!--
+              <accelerator key="x" modifiers="GDK_CONTROL_MASK" signal="activate"/>
+              -->
               <signal name="activate" handler="on_menubar_expand_dag_activated"/>
             </object></child>
             
