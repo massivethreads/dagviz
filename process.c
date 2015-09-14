@@ -1241,16 +1241,16 @@ dv_do_button_event(dv_view_t * V, GdkEventButton * event) {
   if (event->button == GDK_BUTTON_PRIMARY) { /* left mouse button */
     
     if (event->type == GDK_BUTTON_PRESS) {
-      // Drag
+      /* Drag */
       S->drag_on = 1;
       S->pressx = event->x;
       S->pressy = event->y;
       S->accdisx = 0.0;
       S->accdisy = 0.0;
     }  else if (event->type == GDK_BUTTON_RELEASE) {
-      // Drag
+      /* Drag */
       S->drag_on = 0;
-      // Node clicked
+      /* Click */
       if (S->accdisx < DV_SAFE_CLICK_RANGE
           && S->accdisy < DV_SAFE_CLICK_RANGE) {
         double ox = (event->x - S->basex - S->x) / S->zoom_ratio_x;
@@ -1289,17 +1289,20 @@ dv_do_button_event(dv_view_t * V, GdkEventButton * event) {
 
   } else if (event->button == GDK_BUTTON_SECONDARY) { /* right mouse button */
 
-    if (event->type == GDK_BUTTON_RELEASE) {
+    /* show context menu */
+    if (event->type == GDK_BUTTON_PRESS) {
+
       double ox = (event->x - S->basex - S->x) / S->zoom_ratio_x;
       double oy = (event->y - S->basey - S->y) / S->zoom_ratio_y;
       dv_dag_node_t * node = dv_do_finding_clicked_node(V, ox, oy);
       if (node) {
-        /* Info box */
-        if (!dv_llist_remove(itl, (void *) node->pii)) {
-          dv_llist_add(itl, (void *) node->pii);
-        }
-        dv_queue_draw_d_p(V);
+        CS->context_view = V;
+        CS->context_node = node;
+        gtk_menu_popup(GTK_MENU(GUI->context_menu), NULL, NULL, NULL, NULL, event->button, event->time);
       }
+      
+    } else if (event->type == GDK_BUTTON_RELEASE) {
+      // nothing
     }
 
   }

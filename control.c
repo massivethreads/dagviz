@@ -44,6 +44,9 @@ static gboolean
 on_darea_button_event(_unused_ GtkWidget * widget, GdkEventButton * event, gpointer user_data) {
   dv_viewport_t * VP = (dv_viewport_t *) user_data;
 
+  /* grab focus */
+  dv_change_focused_viewport(VP);
+  
   /* node clicking, dag dragging */
   if ( VP->mV[ CS->activeV - CS->V ] ) {
     dv_do_button_event(CS->activeV, event);
@@ -54,16 +57,6 @@ on_darea_button_event(_unused_ GtkWidget * widget, GdkEventButton * event, gpoin
         dv_do_button_event(&CS->V[i], event);
   }
 
-  /* grab focus */
-  dv_change_focused_viewport(VP);
-  
-  /* show context menu */
-  if (event->button == GDK_BUTTON_SECONDARY) {
-    if (event->type == GDK_BUTTON_PRESS) {
-      gtk_menu_popup(GTK_MENU(GUI->context_menu), NULL, NULL, NULL, NULL, event->button, event->time);
-    }
-  }
-  
   return TRUE;
 }
 
@@ -1003,18 +996,46 @@ on_menubar_change_focused_view_activated(_unused_ GtkMenuItem * menuitem, _unuse
 
 G_MODULE_EXPORT void
 on_menubar_expand_dag_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
-  dv_view_t * V = CS->activeV;
-  if (V) {
-    dv_do_expanding_one(V);
+  dv_viewport_t * VP = CS->activeVP;
+  int action[CS->nV];
+  int i;
+  for (i = 0; i < CS->nV; i++)
+    action[i] = 0;
+  if (CS->activeV && VP->mV[CS->activeV - CS->V]) {
+    action[CS->activeV - CS->V] = 1;
+  } else {
+    for (i = 0; i < CS->nV; i++)
+      if (VP->mV[i])
+        action[i] = 1;
   }
+
+  for (i = 0; i < CS->nV; i++)
+    if (action[i]) {
+      dv_view_t * V = &CS->V[i];
+      dv_do_expanding_one(V);
+    }
 }
 
 G_MODULE_EXPORT void
 on_menubar_contract_dag_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
-  dv_view_t * V = CS->activeV;
-  if (V) {
-    dv_do_collapsing_one(V);
+  dv_viewport_t * VP = CS->activeVP;
+  int action[CS->nV];
+  int i;
+  for (i = 0; i < CS->nV; i++)
+    action[i] = 0;
+  if (CS->activeV && VP->mV[CS->activeV - CS->V]) {
+    action[CS->activeV - CS->V] = 1;
+  } else {
+    for (i = 0; i < CS->nV; i++)
+      if (VP->mV[i])
+        action[i] = 1;
   }
+
+  for (i = 0; i < CS->nV; i++)
+    if (action[i]) {
+      dv_view_t * V = &CS->V[i];
+      dv_do_collapsing_one(V);
+    }
 }
 
 G_MODULE_EXPORT void
@@ -1420,7 +1441,22 @@ on_management_window_add_new_dag_file_clicked(_unused_ GtkWidget * widget, _unus
   }
 }
 
+void
+on_context_menu_gui_infobox_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
+}
 
-  
+void
+on_context_menu_viewport_infobox_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
+  if (!CS->context_view || !CS->context_node) return;  
+  dv_llist_t * itl = CS->context_view->D->P->itl;
+  dv_dag_node_t * node = CS->context_node;
+  if (!dv_llist_remove(itl, (void *) node->pii)) {
+    dv_llist_add(itl, (void *) node->pii);
+  }
+  dv_queue_draw_pidag(CS->context_view->D->P);
+  //dv_queue_draw_d_p(CS->context_view);
+}
+
+
 /****************** end of GUI Callbacks **************************************/
 

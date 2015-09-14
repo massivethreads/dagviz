@@ -595,6 +595,9 @@ typedef struct dv_global_state {
   /* Statistics */
   dv_stat_distribution_t SD[1];
   dv_stat_breakdown_graph_t SBG[1];
+
+  dv_view_t * context_view;
+  dv_dag_node_t * context_node;
 } dv_global_state_t;
 
 extern const char * const DV_COLORS[];
@@ -617,6 +620,7 @@ void dv_global_state_init(dv_global_state_t *);
 void dv_queue_draw_viewport(dv_viewport_t *);
 void dv_queue_draw_view(dv_view_t *);
 void dv_queue_draw_dag(dv_dag_t *);
+void dv_queue_draw_pidag(dv_pidag_t *);
 
 void dv_queue_draw(dv_view_t *);
 void dv_queue_draw_d(dv_view_t *);

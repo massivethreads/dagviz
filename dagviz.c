@@ -106,6 +106,8 @@ dv_global_state_init(dv_global_state_t * CS) {
     CS->SBG->D[i] = 0;
   }
   CS->SBG->fn = DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME;
+  CS->context_view = NULL;
+  CS->context_node = NULL;
 }
 
 /*-----------------end of Global State-----------------*/
@@ -142,6 +144,14 @@ dv_queue_draw_dag(dv_dag_t * D) {
   for (i = 0; i < CS->nVP; i++)
     if (todraw[i])
       dv_queue_draw_viewport(&CS->VP[i]);
+}
+
+void
+dv_queue_draw_pidag(dv_pidag_t * P) {
+  int i;
+  for (i = 0; i < CS->nD; i++)
+    if (CS->D[i].P == P)
+      dv_queue_draw_dag(&CS->D[i]);
 }
 
 void
@@ -2449,6 +2459,10 @@ dv_change_focused_viewport(dv_viewport_t * VP) {
   }
   CS->activeVP = VP;
   if (CS->activeVP) {
+    /*
+    if (!CS->activeVP->mV[CS->activeV - CS->V])
+      dv_change_focused_view(NULL);
+    */
     int i;
     for (i = 0; i < CS->nV; i++)
       if (VP->mV[i]) {
@@ -3380,10 +3394,13 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
   {
     GtkWidget * menu = gui->context_menu = gtk_menu_new();
     GtkWidget * item;
-    item = gtk_menu_item_new_with_label("Hello");
+    item = gtk_menu_item_new_with_label("Display detailed information box on GUI");
     gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
-    item = gtk_menu_item_new_with_label("Goodbye");
+    g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_context_menu_gui_infobox_activated), (void *) NULL);
+    gtk_menu_shell_append(GTK_MENU_SHELL(menu), gtk_separator_menu_item_new());
+    item = gtk_menu_item_new_with_label("Switch on/off internal information box");
     gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
+    g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_context_menu_viewport_infobox_activated), (void *) NULL);
     gtk_widget_show_all(menu);
   }
 }
