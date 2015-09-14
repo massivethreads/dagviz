@@ -157,7 +157,13 @@
             <child><object class="GtkCheckMenuItem" id="replay">
                 <property name="use-underline">TRUE</property>
                 <property name="label">_Replay</property>
-                <signal name="activate" handler="on_menubar_view_workers_sidebar_activated"/>
+                <signal name="activate" handler="on_menubar_view_replay_sidebox_activated"/>
+            </object></child>
+            
+            <child><object class="GtkCheckMenuItem" id="nodeinfo">
+                <property name="use-underline">TRUE</property>
+                <property name="label">_Node Info</property>
+                <signal name="activate" handler="on_menubar_view_nodeinfo_sidebox_activated"/>
             </object></child>
             
             <child><object class="GtkSeparatorMenuItem" id="view_separator_1"></object></child>

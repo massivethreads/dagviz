@@ -536,6 +536,7 @@ typedef struct dv_gui {
   GtkWidget * main_box;
   GtkAccelGroup * accel_group;
   GtkWidget * context_menu;
+  GtkWidget * left_sidebar;
 
   /* Toolbar */
   GtkWidget * toolbar;
@@ -554,14 +555,22 @@ typedef struct dv_gui {
   GtkWidget * dag_file_scrolled_box; // DAG files tab's scrolled box
   GtkWidget * create_dag_menu;
 
-  /* Workers sidebar */
-  GtkWidget * workers_sidebar;
-  GtkWidget * workers_enable;
-  GtkWidget * workers_scale;
-  GtkWidget * workers_entry;
-  GtkWidget * time_step_entry;
-  GtkWidget * workers_dag_menu;
-  int workers_mD[DV_MAX_DAG];
+  /* Replay sidebox */
+  struct replay {
+    GtkWidget * sidebox;
+    GtkWidget * enable;
+    GtkWidget * scale;
+    GtkWidget * entry;
+    GtkWidget * time_step_entry;
+    GtkWidget * dag_menu;
+    int mD[DV_MAX_DAG];
+  } replay;
+  
+  /* Node info sidebox */
+  struct nodeinfo {
+    GtkWidget * sidebox;
+  } nodeinfo;
+  
 } dv_gui_t;
 
 typedef struct dv_global_state {
@@ -697,8 +706,9 @@ GtkWidget * dv_gui_get_main_window(dv_gui_t *, GtkApplication *);
 void dv_dag_set_time_step(dv_dag_t *, double);
 void dv_dag_set_current_time(dv_dag_t *, double);
 void dv_dag_set_draw_current_time_active(dv_dag_t *, int);
-void dv_gui_workers_sidebar_set_dag(dv_dag_t *, int);
-GtkWidget * dv_gui_get_workers_sidebar(dv_gui_t *);
+void dv_gui_replay_sidebox_set_dag(dv_dag_t *, int);
+GtkWidget * dv_gui_get_replay_sidebox(dv_gui_t *);
+GtkWidget * dv_gui_get_nodeinfo_sidebox(dv_gui_t *);
 
 void dv_signal_handler(int);
 
@@ -719,9 +729,9 @@ void on_toolbar_division_menu_threedags_activated(GtkMenuItem *, gpointer);
 void on_toolbar_dag_layout_buttons_clicked(GtkToolButton *, gpointer);
 void on_toolbar_dag_boxes_scale_type_menu_activated(GtkToolButton *, gpointer);
 
-void on_menubar_view_workers_sidebar_toggled(GtkCheckMenuItem *, gpointer);
-void on_workers_sidebar_row_selected(GtkListBox *, GtkListBoxRow *, gpointer);
-void on_workers_sidebar_row_activated(GtkListBox *, GtkListBoxRow *, gpointer);
+void on_menubar_view_replay_sidebox_toggled(GtkCheckMenuItem *, gpointer);
+void on_replay_sidebox_row_selected(GtkListBox *, GtkListBoxRow *, gpointer);
+void on_replay_sidebox_row_activated(GtkListBox *, GtkListBoxRow *, gpointer);
 
 
 

@@ -1326,31 +1326,43 @@ on_toolbar_dag_boxes_scale_type_menu_activated(_unused_ GtkToolButton * toolbtn,
 }
 
 G_MODULE_EXPORT void
-on_menubar_view_workers_sidebar_activated(GtkCheckMenuItem * checkmenuitem, _unused_ gpointer user_data) {
-  GtkWidget * sidebar = dv_gui_get_workers_sidebar(GUI);
+on_menubar_view_replay_sidebox_activated(GtkCheckMenuItem * checkmenuitem, _unused_ gpointer user_data) {
+  GtkWidget * sidebox = dv_gui_get_replay_sidebox(GUI);
   gboolean active = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(checkmenuitem));
-  if (active)
-    gtk_widget_show_all(sidebar);
-  else
-    gtk_widget_hide(sidebar);
+  if (active) {
+    gtk_box_pack_start(GTK_BOX(GUI->left_sidebar), sidebox, FALSE, FALSE, 0);
+  } else {
+    gtk_container_remove(GTK_CONTAINER(GUI->left_sidebar), sidebox);
+  }
+}
+
+G_MODULE_EXPORT void
+on_menubar_view_nodeinfo_sidebox_activated(GtkCheckMenuItem * checkmenuitem, _unused_ gpointer user_data) {
+  GtkWidget * sidebox = dv_gui_get_nodeinfo_sidebox(GUI);
+  gboolean active = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(checkmenuitem));
+  if (active) {
+    gtk_box_pack_start(GTK_BOX(GUI->left_sidebar), sidebox, FALSE, FALSE, 0);
+  } else {
+    gtk_container_remove(GTK_CONTAINER(GUI->left_sidebar), sidebox);
+  }
 }
 
 void
-on_workers_sidebar_row_selected(_unused_ GtkListBox * box, _unused_ GtkListBoxRow * row, _unused_ gpointer user_data) {
+on_replay_sidebox_row_selected(_unused_ GtkListBox * box, _unused_ GtkListBoxRow * row, _unused_ gpointer user_data) {
   printf("row selected \n");
 }
 
 void
-on_workers_sidebar_row_activated(_unused_ GtkListBox * box, _unused_ GtkListBoxRow * row, _unused_ gpointer user_data) {
+on_replay_sidebox_row_activated(_unused_ GtkListBox * box, _unused_ GtkListBoxRow * row, _unused_ gpointer user_data) {
   printf("row activated \n");
 }
 
 void
-on_workers_sidebar_enable_toggled(GtkWidget * widget, _unused_ gpointer user_data) {
+on_replay_sidebox_enable_toggled(GtkWidget * widget, _unused_ gpointer user_data) {
   gboolean active = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(widget));
   int i;
   for (i = 0; i < CS->nD; i++)
-    if (GUI->workers_mD[i]) {
+    if (GUI->replay.mD[i]) {
       dv_dag_t * D = &CS->D[i];
       D->draw_with_current_time = active;
       dv_queue_draw_dag(D);
@@ -1358,74 +1370,74 @@ on_workers_sidebar_enable_toggled(GtkWidget * widget, _unused_ gpointer user_dat
 }
 
 void
-on_workers_sidebar_dag_toggled(GtkCheckMenuItem * checkmenuitem, _unused_ gpointer user_data) {
+on_replay_sidebox_dag_toggled(GtkCheckMenuItem * checkmenuitem, _unused_ gpointer user_data) {
   dv_dag_t * D = (dv_dag_t *) user_data;
   if (D) {
     gboolean onoff = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(checkmenuitem));
-    dv_gui_workers_sidebar_set_dag(D, onoff);
+    dv_gui_replay_sidebox_set_dag(D, onoff);
   }
 }
 
 void
-on_workers_sidebar_scale_value_changed(GtkRange * range, _unused_ gpointer user_data) {
+on_replay_sidebox_scale_value_changed(GtkRange * range, _unused_ gpointer user_data) {
   double value = gtk_range_get_value(range);
   int i;
   for (i = 0; i < CS->nD; i++)
-    if (GUI->workers_mD[i]) {
+    if (GUI->replay.mD[i]) {
       dv_dag_t * D = &CS->D[i];
       dv_dag_set_current_time(D, value);
     }
 }
 
 void
-on_workers_sidebar_entry_activated(GtkEntry * entry, _unused_ gpointer user_data) {
+on_replay_sidebox_entry_activated(GtkEntry * entry, _unused_ gpointer user_data) {
   const char * str = gtk_entry_get_text(entry);
   double value = atof(str);
   int i;
   for (i = 0; i < CS->nD; i++)
-    if (GUI->workers_mD[i]) {
+    if (GUI->replay.mD[i]) {
       dv_dag_t * D = &CS->D[i];
       dv_dag_set_current_time(D, value);
     }
 }
 
 void
-on_workers_sidebar_time_step_entry_activated(GtkEntry * entry, _unused_ gpointer user_data) {
+on_replay_sidebox_time_step_entry_activated(GtkEntry * entry, _unused_ gpointer user_data) {
   const char * str = gtk_entry_get_text(entry);
   double value = atof(str);
   int i;
   for (i = 0; i < CS->nD; i++)
-    if (GUI->workers_mD[i]) {
+    if (GUI->replay.mD[i]) {
       dv_dag_t * D = &CS->D[i];
       dv_dag_set_time_step(D, value);
     }  
 }
 
 void
-on_workers_sidebar_next_button_clicked(_unused_ GtkButton * button, _unused_ gpointer user_data) {
-  double current_time = gtk_range_get_value(GTK_RANGE(GUI->workers_scale));
-  double time_step = atof(gtk_entry_get_text(GTK_ENTRY(GUI->time_step_entry)));
+on_replay_sidebox_next_button_clicked(_unused_ GtkButton * button, _unused_ gpointer user_data) {
+  double current_time = gtk_range_get_value(GTK_RANGE(GUI->replay.scale));
+  double time_step = atof(gtk_entry_get_text(GTK_ENTRY(GUI->replay.time_step_entry)));
   double t = current_time + time_step;
   //if (t > D->et - D->bt)
   //t = D->et - D->bt;
   int i;
   for (i = 0; i < CS->nD; i++)
-    if (GUI->workers_mD[i]) {
+    if (GUI->replay.mD[i]) {
       dv_dag_t * D = &CS->D[i];
       dv_dag_set_current_time(D, t);
     }
 }
 
 void
-on_workers_sidebar_prev_button_clicked(_unused_ GtkButton * button, _unused_ gpointer user_data) {
-  double current_time = gtk_range_get_value(GTK_RANGE(GUI->workers_scale));
-  double time_step = atof(gtk_entry_get_text(GTK_ENTRY(GUI->time_step_entry)));
+on_replay_sidebox_prev_button_clicked(_unused_ GtkButton * button, _unused_ gpointer user_data) {
+  double current_time = gtk_range_get_value(GTK_RANGE(GUI->replay.scale));
+  double time_step = atof(gtk_entry_get_text(GTK_ENTRY(GUI->replay.time_step_entry)));
   double t = current_time - time_step;
   if (t < 0)
     t = 0;
   int i;
   for (i = 0; i < CS->nD; i++)
-    if (GUI->workers_mD[i]) {
+    if (GUI->replay.mD[i]) {
       dv_dag_t * D = &CS->D[i];
       dv_dag_set_current_time(D, t);
     }

@@ -2816,12 +2816,12 @@ dv_create_new_dag(dv_pidag_t * P) {
   }
 
   /* workers sidebar's dag menu */
-  if (GUI->workers_dag_menu) {
-    GtkWidget * dag_menu = GUI->workers_dag_menu;
+  if (GUI->replay.dag_menu) {
+    GtkWidget * dag_menu = GUI->replay.dag_menu;
     GtkWidget * item = gtk_check_menu_item_new_with_label(D->name);
     gtk_menu_shell_append(GTK_MENU_SHELL(dag_menu), item);
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), FALSE);
-    g_signal_connect(G_OBJECT(item), "toggled", G_CALLBACK(on_workers_sidebar_dag_toggled), (void *) D);
+    g_signal_connect(G_OBJECT(item), "toggled", G_CALLBACK(on_replay_sidebox_dag_toggled), (void *) D);
     gtk_widget_show_all(dag_menu);
   }
 
@@ -2899,6 +2899,7 @@ dv_gui_init(dv_gui_t * gui) {
   gui->main_box = NULL;
   gui->accel_group = NULL;
   gui->context_menu = NULL;
+  gui->left_sidebar = NULL;
   gui->toolbar = NULL;
   gui->dag_menu = NULL;
   gui->division_menu = NULL;
@@ -2910,12 +2911,18 @@ dv_gui_init(dv_gui_t * gui) {
   gui->scrolled_box = NULL;
   gui->dag_file_scrolled_box = NULL;
   gui->create_dag_menu = NULL;
-  gui->workers_sidebar = NULL;
-  gui->workers_enable = NULL;
-  gui->workers_scale = NULL;
-  gui->workers_entry = NULL;
-  gui->time_step_entry = NULL;
-  gui->workers_dag_menu = NULL;
+  
+  gui->replay.sidebox = NULL;
+  gui->replay.enable = NULL;
+  gui->replay.scale = NULL;
+  gui->replay.entry = NULL;
+  gui->replay.time_step_entry = NULL;
+  gui->replay.dag_menu = NULL;
+  int i;
+  for (i = 0; i < DV_MAX_DAG; i++)
+    gui->replay.mD[i] = 0;
+
+  gui->nodeinfo.sidebox = NULL;
 }
 
 static void
@@ -3118,6 +3125,8 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
     gtk_widget_add_accelerator(item, "activate", accel_group, GDK_KEY_t, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE); 
     item = GTK_WIDGET(gtk_builder_get_object(builder, "replay"));
     gtk_widget_add_accelerator(item, "activate", accel_group, GDK_KEY_r, GDK_CONTROL_MASK | GDK_SHIFT_MASK, GTK_ACCEL_VISIBLE); 
+    item = GTK_WIDGET(gtk_builder_get_object(builder, "nodeinfo"));
+    gtk_widget_add_accelerator(item, "activate", accel_group, GDK_KEY_n, GDK_CONTROL_MASK | GDK_SHIFT_MASK, GTK_ACCEL_VISIBLE); 
 
     item = GTK_WIDGET(gtk_builder_get_object(builder, "zoomfit_full"));
     gtk_widget_add_accelerator(item, "activate", accel_group, GDK_KEY_f, 0, GTK_ACCEL_VISIBLE); 
@@ -3363,8 +3372,8 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
     GtkWidget * main_box = gui->main_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
     gtk_box_pack_start(GTK_BOX(gui->window_box), main_box, TRUE, TRUE, 0);
     //g_signal_connect(G_OBJECT(main_box), "key-press-event", G_CALLBACK(on_window_key_event), NULL);
-    GtkWidget * sidebar = dv_gui_get_workers_sidebar(gui);
-    gtk_box_pack_start(GTK_BOX(gui->main_box), sidebar, FALSE, FALSE, 0);
+    GtkWidget * left_sidebar = gui->left_sidebar = gtk_box_new(GTK_ORIENTATION_VERTICAL, 3);
+    gtk_box_pack_start(GTK_BOX(gui->main_box), left_sidebar, FALSE, FALSE, 0);
   }
 
 
@@ -3418,7 +3427,7 @@ dv_dag_set_time_step(dv_dag_t * D, double time_step) {
   D->time_step = time_step;
   char s[DV_STRING_LENGTH];
   sprintf(s, "%0.0lf", time_step);
-  gtk_entry_set_text(GTK_ENTRY(GUI->time_step_entry), s);
+  gtk_entry_set_text(GTK_ENTRY(GUI->replay.time_step_entry), s);
 }
 
 void
@@ -3428,10 +3437,10 @@ dv_dag_set_current_time(dv_dag_t * D, double current_time) {
       || current_time == D->current_time)
     return;
   D->current_time = current_time;
-  gtk_range_set_value(GTK_RANGE(GUI->workers_scale), current_time);
+  gtk_range_set_value(GTK_RANGE(GUI->replay.scale), current_time);
   char s[DV_STRING_LENGTH];
   sprintf(s, "%0.0lf", current_time);
-  gtk_entry_set_text(GTK_ENTRY(GUI->workers_entry), s);
+  gtk_entry_set_text(GTK_ENTRY(GUI->replay.entry), s);
   dv_queue_draw_dag(D);
 }
 
@@ -3441,46 +3450,51 @@ dv_dag_set_draw_current_time_active(dv_dag_t * D, int active) {
     D->draw_with_current_time = 0;
   } else {
     D->draw_with_current_time = 1;
-    double current_time = gtk_range_get_value(GTK_RANGE(GUI->workers_scale));
+    double current_time = gtk_range_get_value(GTK_RANGE(GUI->replay.scale));
     dv_dag_set_current_time(D, current_time);
-    double time_step = atof(gtk_entry_get_text(GTK_ENTRY(GUI->time_step_entry)));
+    double time_step = atof(gtk_entry_get_text(GTK_ENTRY(GUI->replay.time_step_entry)));
     dv_dag_set_time_step(D, time_step);
   }
   dv_queue_draw_dag(D);
 }
 
 void
-dv_gui_workers_sidebar_set_dag(dv_dag_t * D, int set) {
+dv_gui_replay_sidebox_set_dag(dv_dag_t * D, int set) {
   if (!set) {
-    GUI->workers_mD[D - CS->D] = 0;
+    GUI->replay.mD[D - CS->D] = 0;
     dv_dag_set_draw_current_time_active(D, 0);
     return;
   }
-  GUI->workers_mD[D - CS->D] = 1;
-  gtk_range_set_range(GTK_RANGE(GUI->workers_scale), 0, D->et - D->bt);
+  GUI->replay.mD[D - CS->D] = 1;
+  gtk_range_set_range(GTK_RANGE(GUI->replay.scale), 0, D->et - D->bt);
   dv_dag_set_current_time(D, D->current_time);
   dv_dag_set_time_step(D, D->time_step);
-  gboolean active = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(GUI->workers_enable));
+  gboolean active = gtk_toggle_button_get_active(GTK_TOGGLE_BUTTON(GUI->replay.enable));
   dv_dag_set_draw_current_time_active(D, active);
 }
 
 static void
-dv_gui_build_workers_sidebar(dv_gui_t * gui) {
-  GtkWidget * sidebar = gui->workers_sidebar = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-  gtk_container_set_border_width(GTK_CONTAINER(sidebar), 5);
+dv_gui_build_replay_sidebox(dv_gui_t * gui) {
+  GtkWidget * sidebox = gui->replay.sidebox = gtk_frame_new("Replay");
+  gtk_container_set_border_width(GTK_CONTAINER(sidebox), 5);
+  g_object_ref(sidebox);
+
+  GtkWidget * sidebox_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+  gtk_container_add(GTK_CONTAINER(sidebox), sidebox_box);
+  gtk_container_set_border_width(GTK_CONTAINER(sidebox_box), 5);
 
   GtkWidget * box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-  gtk_box_pack_start(GTK_BOX(sidebar), box, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(sidebox_box), box, FALSE, FALSE, 0);
   gtk_container_set_border_width(GTK_CONTAINER(box), 5);
 
-  GtkWidget * enable = gui->workers_enable = gtk_check_button_new_with_label("Enable");
+  GtkWidget * enable = gui->replay.enable = gtk_check_button_new_with_label("Enable");
   gtk_box_pack_start(GTK_BOX(box), enable, FALSE, FALSE, 0);
   gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(enable), FALSE);
-  g_signal_connect(G_OBJECT(enable), "toggled", G_CALLBACK(on_workers_sidebar_enable_toggled), (void *) NULL);
+  g_signal_connect(G_OBJECT(enable), "toggled", G_CALLBACK(on_replay_sidebox_enable_toggled), (void *) NULL);
   
   GtkWidget * menu_button = gtk_menu_button_new();
   gtk_box_pack_start(GTK_BOX(box), menu_button, FALSE, FALSE, 0);
-  GtkWidget * menu = gui->workers_dag_menu = gtk_menu_new();
+  GtkWidget * menu = gui->replay.dag_menu = gtk_menu_new();
   gtk_menu_button_set_popup(GTK_MENU_BUTTON(menu_button), menu);
   int i;
   for (i = 0; i < CS->nD; i++) {
@@ -3488,61 +3502,61 @@ dv_gui_build_workers_sidebar(dv_gui_t * gui) {
     GtkWidget * item = gtk_check_menu_item_new_with_label(D->name);
     gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), FALSE);
-    g_signal_connect(G_OBJECT(item), "toggled", G_CALLBACK(on_workers_sidebar_dag_toggled), (void *) D);
+    g_signal_connect(G_OBJECT(item), "toggled", G_CALLBACK(on_replay_sidebox_dag_toggled), (void *) D);
   }
   gtk_widget_show_all(menu);
   
   //GtkWidget * play = gtk_button_new_with_label("Play");
   //gtk_box_pack_end(GTK_BOX(box), play, FALSE, FALSE, 0);
 
-  GtkWidget * scale = gui->workers_scale = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, NULL);
-  gtk_box_pack_start(GTK_BOX(sidebar), scale, FALSE, FALSE, 0);
+  GtkWidget * scale = gui->replay.scale = gtk_scale_new(GTK_ORIENTATION_HORIZONTAL, NULL);
+  gtk_box_pack_start(GTK_BOX(sidebox_box), scale, FALSE, FALSE, 0);
   gtk_scale_set_draw_value(GTK_SCALE(scale), FALSE);
-  gtk_range_set_range(GTK_RANGE(GUI->workers_scale), 0.0, 100.0);
-  g_signal_connect(G_OBJECT(scale), "value-changed", G_CALLBACK(on_workers_sidebar_scale_value_changed), (void *) NULL);
+  gtk_range_set_range(GTK_RANGE(GUI->replay.scale), 0.0, 100.0);
+  g_signal_connect(G_OBJECT(scale), "value-changed", G_CALLBACK(on_replay_sidebox_scale_value_changed), (void *) NULL);
   
   GtkWidget * entry_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
-  gtk_box_pack_start(GTK_BOX(sidebar), entry_box, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(sidebox_box), entry_box, FALSE, FALSE, 0);
   gtk_container_set_border_width(GTK_CONTAINER(entry_box), 5);
   GtkWidget * entry;
-  entry= gui->workers_entry = gtk_entry_new();
+  entry= gui->replay.entry = gtk_entry_new();
   gtk_box_pack_start(GTK_BOX(entry_box), entry, FALSE, FALSE, 0);
   gtk_entry_set_width_chars(GTK_ENTRY(entry), 12);
   gtk_entry_set_text(GTK_ENTRY(entry), "0");
   gtk_widget_set_tooltip_text(entry, "Current time");
-  g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_workers_sidebar_entry_activated), (void *) NULL);
-  entry = gui->time_step_entry = gtk_entry_new();
+  g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_replay_sidebox_entry_activated), (void *) NULL);
+  entry = gui->replay.time_step_entry = gtk_entry_new();
   gtk_box_pack_start(GTK_BOX(entry_box), entry, FALSE, FALSE, 0);
   gtk_entry_set_width_chars(GTK_ENTRY(entry), 7);
   gtk_widget_set_tooltip_text(entry, "Time step");
-  g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_workers_sidebar_time_step_entry_activated), (void *) NULL);
+  g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_replay_sidebox_time_step_entry_activated), (void *) NULL);
   
   GtkWidget * play_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
-  gtk_box_pack_start(GTK_BOX(sidebar), play_box, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(sidebox_box), play_box, FALSE, FALSE, 0);
   gtk_container_set_border_width(GTK_CONTAINER(play_box), 5);
   GtkWidget * button;
   button = gtk_button_new_with_label("Play");
   gtk_box_pack_end(GTK_BOX(play_box), button, FALSE, FALSE, 0);
   button = gtk_button_new_with_label("Next");
   gtk_box_pack_end(GTK_BOX(play_box), button, FALSE, FALSE, 0);
-  g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_workers_sidebar_next_button_clicked), (void *) NULL);
+  g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_replay_sidebox_next_button_clicked), (void *) NULL);
   button = gtk_button_new_with_label("Prev");
   gtk_box_pack_end(GTK_BOX(play_box), button, FALSE, FALSE, 0);
-  g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_workers_sidebar_prev_button_clicked), (void *) NULL);
+  g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_replay_sidebox_prev_button_clicked), (void *) NULL);
   
-  gtk_box_pack_start(GTK_BOX(sidebar), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), FALSE, FALSE, 0);
   /*
+  gtk_box_pack_start(GTK_BOX(sidebox_box), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), FALSE, FALSE, 0);
   if (CS->activeV) {
     dv_dag_t * D = CS->activeV->D;
     GtkWidget * scrolled = gtk_scrolled_window_new(NULL, NULL);
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolled), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
-    gtk_box_pack_start(GTK_BOX(sidebar), scrolled, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(sidebox_box), scrolled, TRUE, TRUE, 0);
     GtkWidget * listbox = gtk_list_box_new();
     gtk_container_add(GTK_CONTAINER(scrolled), listbox);
     //gtk_list_box_set_sort_func(GTK_LIST_BOX(listbox), (GtkListBoxSortFunc) gtk_message_row_sort, listbox, NULL);
     //gtk_list_box_set_activate_on_single_click(GTK_LIST_BOX (listbox), FALSE);
-    //g_signal_connect(G_OBJECT(listbox), "row-selected", G_CALLBACK(on_workers_sidebar_row_selected), NULL);  
-    //g_signal_connect(G_OBJECT(listbox), "row-activated", G_CALLBACK(on_workers_sidebar_row_activated), NULL);
+    //g_signal_connect(G_OBJECT(listbox), "row-selected", G_CALLBACK(on_replay_sidebox_row_selected), NULL);  
+    //g_signal_connect(G_OBJECT(listbox), "row-activated", G_CALLBACK(on_replay_sidebox_row_activated), NULL);
     //gtk_list_box_row_set_activatable(GTK_LIST_BOX(listbox), FALSE);
     //gtk_list_box_row_set_selectable(GTK_LIST_BOX(listbox), FALSE);
 
@@ -3567,21 +3581,47 @@ dv_gui_build_workers_sidebar(dv_gui_t * gui) {
   }
   */
 
-  for (i = 0; i < DV_MAX_DAG; i++)
-    gui->workers_mD[i] = 0;
-
   if (CS->activeV)
-    dv_gui_workers_sidebar_set_dag(CS->activeV->D, 1);
+    dv_gui_replay_sidebox_set_dag(CS->activeV->D, 1);
     
-  gtk_widget_show_all(sidebar);
+  gtk_widget_show_all(sidebox);
 }
 
 GtkWidget *
-dv_gui_get_workers_sidebar(dv_gui_t * gui) {
-  if (!gui->workers_sidebar)
-    dv_gui_build_workers_sidebar(gui);
-  return gui->workers_sidebar;
+dv_gui_get_replay_sidebox(dv_gui_t * gui) {
+  if (!gui->replay.sidebox)
+    dv_gui_build_replay_sidebox(gui);
+  return gui->replay.sidebox;
 }
+
+static void
+dv_gui_build_nodeinfo_sidebox(dv_gui_t * gui) {
+  GtkWidget * sidebox = gui->nodeinfo.sidebox = gtk_frame_new("Node Info");
+  gtk_container_set_border_width(GTK_CONTAINER(sidebox), 5);
+  g_object_ref(sidebox);
+
+  GtkWidget * sidebox_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
+  gtk_container_add(GTK_CONTAINER(sidebox), sidebox_box);
+  gtk_container_set_border_width(GTK_CONTAINER(sidebox_box), 5);
+
+  GtkWidget * box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 5);
+  gtk_box_pack_start(GTK_BOX(sidebox_box), box, FALSE, FALSE, 0);
+  gtk_container_set_border_width(GTK_CONTAINER(box), 5);
+
+  GtkWidget * enable = gui->replay.enable = gtk_check_button_new_with_label("Enable");
+  gtk_box_pack_start(GTK_BOX(box), enable, FALSE, FALSE, 0);
+  gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(enable), FALSE);
+    
+  gtk_widget_show_all(sidebox);
+}
+
+GtkWidget *
+dv_gui_get_nodeinfo_sidebox(dv_gui_t * gui) {
+  if (!gui->nodeinfo.sidebox)
+    dv_gui_build_nodeinfo_sidebox(gui);
+  return gui->nodeinfo.sidebox;
+}
+
 
 _static_unused_ void
 dv_open_gui_1(_unused_ int argc, _unused_ char * argv[]) {
@@ -3614,7 +3654,6 @@ dv_open_gui(_unused_ int argc, _unused_ char * argv[], GtkApplication * app) {
 
   /* Run main loop */
   gtk_widget_show_all(window);
-  gtk_widget_hide(GUI->workers_sidebar);
 }
 
 
