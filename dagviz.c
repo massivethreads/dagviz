@@ -2422,6 +2422,44 @@ dv_open_statistics_dialog() {
 
 /*-----------------Main begins-----------------*/
 
+static void
+dv_change_focused_view(dv_view_t * V) {
+  if (V == CS->activeV) return;
+
+  if (CS->activeV) {
+    CS->activeV->S->focused = 0;
+    CS->activeV = NULL;
+  }
+  CS->activeV = V;
+  if (CS->activeV) {
+    CS->activeV->S->focused = 1;
+  }
+  dv_statusbar_update_selection_status();
+}
+
+void
+dv_change_focused_viewport(dv_viewport_t * VP) {
+  if (VP == CS->activeVP) return;
+
+  if (CS->activeVP) {
+    dv_viewport_t * old_VP = CS->activeVP;
+    CS->activeVP = NULL;
+    dv_change_focused_view(NULL);
+    dv_queue_draw_viewport(old_VP);
+  }
+  CS->activeVP = VP;
+  if (CS->activeVP) {
+    int i;
+    for (i = 0; i < CS->nV; i++)
+      if (VP->mV[i]) {
+        dv_change_focused_view(&CS->V[i]);
+        break;
+      }
+    gtk_widget_grab_focus(CS->activeVP->darea);
+    dv_queue_draw_viewport(CS->activeVP);
+  }
+}
+
 static dv_viewport_t *
 dv_switch_focused_viewport_r(dv_viewport_t * VP, dv_viewport_t * curVP) {
   if (!VP->split) {
@@ -2459,21 +2497,10 @@ dv_switch_focused_viewport() {
   dv_viewport_t * old_VP = (CS->activeVP)?( (CS->activeVP->split)?NULL:CS->activeVP ): NULL;
   dv_viewport_t * VP = dv_switch_focused_viewport_r(CS->VP, old_VP);
   if (VP == old_VP || VP == NULL) {
-    CS->activeVP = NULL;
-    dv_set_focused_view(NULL, 0);
+    dv_change_focused_viewport(NULL);
   } else {
-    CS->activeVP = VP;
-    int i;
-    for (i = 0; i < CS->nV; i++)
-      if (VP->mV[i]) {
-        dv_set_focused_view(&CS->V[i], 1);
-        break;
-      }
+    dv_change_focused_viewport(VP);
   }
-  if (old_VP)
-    dv_queue_draw_viewport(old_VP);
-  if (VP)
-    dv_queue_draw_viewport(VP);
   //printf("VP %ld - V %ld\n", (CS->activeVP)?(CS->activeVP-CS->VP):-1, (CS->activeV)?(CS->activeV-CS->V):-1);
 }
 
@@ -2493,12 +2520,12 @@ dv_switch_focused_view() {
         break;
       }
     if (has_viewport) {
-      dv_set_focused_view(V, 1);
+      dv_change_focused_view(V, 1);
       CS->activeVP = V->mainVP;
     }
     i++;
   }
-  dv_set_focused_view(NULL, 0);
+  dv_change_focused_view(NULL, 0);
   */
 }
 
@@ -2511,13 +2538,13 @@ dv_switch_focused_view_inside_viewport() {
     i = CS->activeV - CS->V + 1;
   while (i < CS->nV) {
     if (VP->mV[i]) {
-      dv_set_focused_view(&CS->V[i], 1);
+      dv_change_focused_view(&CS->V[i]);
       //printf("VP %ld - V %ld\n", (CS->activeVP)?(CS->activeVP-CS->VP):-1, (CS->activeV)?(CS->activeV-CS->V):-1);
       return;
     }
     i++;
   }
-  dv_set_focused_view(NULL, 0);
+  dv_change_focused_view(NULL);
   //printf("VP %ld - V %ld\n", (CS->activeVP)?(CS->activeVP-CS->VP):-1, (CS->activeV)?(CS->activeV-CS->V):-1);
 }
 
@@ -3648,7 +3675,7 @@ main_usegtkapplication(int argc, char * argv[]) {
     dv_view_add_viewport(&CS->V[0], VP->vp1);
     dv_view_add_viewport(&CS->V[1], VP->vp2);
   }  
-  dv_set_focused_view(CS->V, 1);
+  dv_switch_focused_viewport();
 
   /* Open Gtk GUI */
   GtkApplication * app = gtk_application_new("com.github.zanton.dagviz", 0);
@@ -3701,10 +3728,10 @@ main(int argc, char * argv[]) {
     dv_viewport_divide_threedags_1(VP, CS->D, CS->D + 1, CS->D + 2);
   else if (CS->nD > 3)
     dv_viewport_divide_twodags_1(VP, CS->D, CS->D + 1);
-  dv_switch_focused_viewport(CS->V, 1);
   
   /* Open GUI */
   dv_open_gui(argc, argv, NULL);
+  dv_switch_focused_viewport(); // darea can grab focus only when it is visible already
   gtk_main();
   return 1;
 }

@@ -675,8 +675,9 @@ void dv_viewport_divide_threedags_1(dv_viewport_t *, dv_dag_t *, dv_dag_t *, dv_
 void dv_open_statistics_dialog();
 char * dv_choose_a_new_dag_file();
 
-void dv_switch_focused_view();
+void dv_change_focused_viewport(dv_viewport_t *);
 void dv_switch_focused_viewport();
+void dv_switch_focused_view();
 void dv_switch_focused_view_inside_viewport();
 
 void dv_open_dr_stat_file(dv_pidag_t *);
@@ -745,28 +746,26 @@ void dv_view_change_sdt(dv_view_t *, int);
 void dv_view_change_eaffix(dv_view_t *, int);
 void dv_view_change_nc(dv_view_t *, int);
 void dv_view_change_lt(dv_view_t *, int);
-void dv_set_focused_view(dv_view_t *, int);
+void dv_view_change_azf(dv_view_t *, int);
+void dv_view_auto_zoomfit(dv_view_t *);
+void dv_view_status_set_coord(dv_view_status_t *);
+void dv_view_status_init(dv_view_t *, dv_view_status_t *);
 
-void dv_do_scrolling(dv_view_t *, GdkEventScroll *);
 void dv_statusbar_update(int, int, char *);
 void dv_statusbar_remove(int, int);
 void dv_statusbar_update_selection_status();
 void dv_statusbar_update_pool_status();
 
+void dv_export_viewport();
+void dv_export_all_viewports();
+
+void dv_do_scrolling(dv_view_t *, GdkEventScroll *);
 void dv_do_expanding_one(dv_view_t *);
 void dv_do_collapsing_one(dv_view_t *);
 void dv_do_button_event(dv_view_t *, GdkEventButton *);
 void dv_do_motion_event(dv_view_t *, GdkEventMotion *);
 dv_dag_node_t * dv_find_node_with_pii_r(dv_view_t *, long, dv_dag_node_t *);
 
-void dv_view_change_azf(dv_view_t *, int);
-void dv_view_auto_zoomfit(dv_view_t *);
-
-void dv_view_status_set_coord(dv_view_status_t *);
-void dv_view_status_init(dv_view_t *, dv_view_status_t *);
-
-void dv_export_viewport();
-void dv_export_all_viewports();
 
 
 /* print.c */

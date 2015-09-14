@@ -43,6 +43,8 @@ on_darea_scroll_event(_unused_ GtkWidget * widget, GdkEventScroll * event, gpoin
 static gboolean
 on_darea_button_event(_unused_ GtkWidget * widget, GdkEventButton * event, gpointer user_data) {
   dv_viewport_t * VP = (dv_viewport_t *) user_data;
+
+  /* node clicking, dag dragging */
   if ( VP->mV[ CS->activeV - CS->V ] ) {
     dv_do_button_event(CS->activeV, event);
   } else {
@@ -51,6 +53,9 @@ on_darea_button_event(_unused_ GtkWidget * widget, GdkEventButton * event, gpoin
       if ( VP->mV[i] )
         dv_do_button_event(&CS->V[i], event);
   }
+
+  /* grab focus */
+  dv_change_focused_viewport(VP);
   
   /* show context menu */
   if (event->button == GDK_BUTTON_SECONDARY) {
@@ -325,22 +330,56 @@ on_darea_configure_event(_unused_ GtkWidget * widget, GdkEventConfigure * event,
 }
 
 static gboolean
-on_darea_key_press_event(_unused_ GtkWidget * widget, _unused_ GdkEventConfigure * event, gpointer user_data) {
+on_darea_key_press_event(_unused_ GtkWidget * widget, _unused_ GdkEventConfigure * event, _unused_ gpointer user_data) {
   dv_viewport_t * VP = (dv_viewport_t *) user_data;
-  return FALSE;
+  if (VP != CS->activeVP) return FALSE;
+  //dv_viewport_t * VP = CS->activeVP;
+  //if (!VP) return FALSE;
 
-  dv_view_t * V = NULL;
+  int action[CS->nV];
   int i;
   for (i = 0; i < CS->nV; i++)
-    if (VP->mV[i]) {
-      V = &CS->V[i];
-      break;
+    action[i] = 0;
+  if (CS->activeV && VP->mV[CS->activeV - CS->V]) {
+    action[CS->activeV - CS->V] = 1;
+  } else {
+    for (i = 0; i < CS->nV; i++)
+      if (VP->mV[i])
+        action[i] = 1;
+  }
+
+  for (i = 0; i < CS->nV; i++)
+    if (action[i]) {
+      dv_view_t * V = &CS->V[i];
+      
+      _unused_ GdkModifierType mod = gtk_accelerator_get_default_mod_mask();
+      GdkEventKey * e = (GdkEventKey *) event;
+      switch (e->keyval) {
+      case 65361: /* Left */
+        V->S->x += 15;
+        dv_queue_draw_view(V);
+        return TRUE;
+      case 65362: /* Up */
+        V->S->y += 15;
+        dv_queue_draw_view(V);
+        return TRUE;
+      case 65363: /* Right */
+        V->S->x -= 15;
+        dv_queue_draw_view(V);
+        return TRUE;
+      case 65364: /* Down */
+        V->S->y -= 15;
+        dv_queue_draw_view(V);
+        return TRUE;
+      default:
+        return FALSE;
+      }
     }
-  if (!V)
-    return FALSE;
-  
-  GdkModifierType mod = gtk_accelerator_get_default_mod_mask();
-  GdkEventKey * e = (GdkEventKey *) event;
+  return FALSE;        
+}
+
+#if 0
+{
   switch (e->keyval) {
   case 120: /* X */
   case 43: /* + */
@@ -389,22 +428,6 @@ on_darea_key_press_event(_unused_ GtkWidget * widget, _unused_ GdkEventConfigure
       return TRUE;
     }
     break;
-  case 65361: /* Left */
-    V->S->x += 15;
-    dv_queue_draw(V);
-    return TRUE;
-  case 65362: /* Up */
-    V->S->y += 15;
-    dv_queue_draw(V);
-    return TRUE;
-  case 65363: /* Right */
-    V->S->x -= 15;
-    dv_queue_draw(V);
-    return TRUE;
-  case 65364: /* Down */
-    V->S->y -= 15;
-    dv_queue_draw(V);
-    return TRUE;
   case 116: /* T */
     fprintf(stderr, "open toolbox window of V %ld\n", V - CS->V);
     dv_view_open_toolbox_window(V);
@@ -414,6 +437,7 @@ on_darea_key_press_event(_unused_ GtkWidget * widget, _unused_ GdkEventConfigure
   }
   return FALSE;
 }
+#endif
 
 static gboolean
 on_window_key_event(_unused_ GtkWidget * widget, GdkEvent * event, _unused_ gpointer user_data) {
