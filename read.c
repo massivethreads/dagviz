@@ -4,13 +4,6 @@
 
 dv_pidag_t *
 dv_pidag_read_new_file(char * filename) {
-  /* Get new PIDAG */
-  if (CS->nP >= DV_MAX_DAG_FILE)
-    return NULL;
-  dv_pidag_t * P = &CS->P[CS->nP++];
-  P->fn = filename;
-  dv_llist_init(P->itl);
-
   /* Read file size */
   int fd = open(filename, O_RDONLY);
   if (fd < 0) {
@@ -23,14 +16,20 @@ dv_pidag_read_new_file(char * filename) {
     fprintf(stderr, "cannot run fstat: %d\n", errno);
     return NULL;
   }
-  P->sz = statbuf->st_size;
-  close(fd);
   
   /* Read DR's PI_DAG */
   dr_pi_dag * G = dr_read_dag(filename);
   if (!G)
     return NULL;
   
+  /* Get new PIDAG */
+  if (CS->nP >= DV_MAX_DAG_FILE)
+    return NULL;
+  dv_pidag_t * P = &CS->P[CS->nP++];
+  P->fn = filename;
+  dv_llist_init(P->itl);
+
+  P->sz = statbuf->st_size;
   P->n = G->n;
   P->m = G->m;
   P->start_clock = G->start_clock;
@@ -46,6 +45,7 @@ dv_pidag_read_new_file(char * filename) {
   P->S = G->S;
   P->G = G;
 
+  close(fd);
   return P;
 }
 

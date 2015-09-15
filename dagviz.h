@@ -530,6 +530,7 @@ typedef struct dv_stat_breakdown_graph {
 
 typedef struct dv_gui {
   /* Main window */
+  GtkBuilder * builder;
   GtkWidget * window;
   GtkWidget * window_box;
   GtkWidget * menubar;
@@ -569,6 +570,20 @@ typedef struct dv_gui {
   /* Node info sidebox */
   struct nodeinfo {
     GtkWidget * sidebox;
+    GtkWidget * offset;
+    GtkWidget * type;
+    GtkWidget * depth;
+    GtkWidget * cur_node_count;
+    GtkWidget * time;
+    GtkWidget * duration;    
+    GtkWidget * first_ready_t;
+    GtkWidget * est;
+    GtkWidget * t1inf;
+    GtkWidget * counters;
+    GtkWidget * worker;
+    GtkWidget * cpu;
+    GtkWidget * start_pos;
+    GtkWidget * end_pos;
   } nodeinfo;
   
 } dv_gui_t;
@@ -708,6 +723,7 @@ void dv_dag_set_current_time(dv_dag_t *, double);
 void dv_dag_set_draw_current_time_active(dv_dag_t *, int);
 void dv_gui_replay_sidebox_set_dag(dv_dag_t *, int);
 GtkWidget * dv_gui_get_replay_sidebox(dv_gui_t *);
+void dv_gui_nodeinfo_set_node(dv_gui_t *, dv_dag_node_t *, dv_dag_t *);
 GtkWidget * dv_gui_get_nodeinfo_sidebox(dv_gui_t *);
 
 void dv_signal_handler(int);

@@ -63,7 +63,7 @@ on_darea_button_event(_unused_ GtkWidget * widget, GdkEventButton * event, gpoin
 static gboolean
 on_darea_motion_event(_unused_ GtkWidget * widget, GdkEventMotion * event, gpointer user_data) {
   dv_viewport_t * VP = (dv_viewport_t *) user_data;
-  if ( VP->mV[ CS->activeV - CS->V ] ) {
+  if ( CS->activeV && VP->mV[ CS->activeV - CS->V ] ) {
     dv_do_motion_event(CS->activeV, event);
   } else {
     int i;
@@ -1455,6 +1455,12 @@ on_management_window_add_new_dag_file_clicked(_unused_ GtkWidget * widget, _unus
 
 void
 on_context_menu_gui_infobox_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
+  if (!CS->context_view || !CS->context_node) return;
+  GtkWidget * item = GTK_WIDGET(gtk_builder_get_object(GUI->builder, "nodeinfo"));  
+  gboolean shown = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(item));
+  if (!shown)
+    gtk_menu_item_activate(GTK_MENU_ITEM(item));
+  dv_gui_nodeinfo_set_node(GUI, CS->context_node, CS->context_view->D);
 }
 
 void

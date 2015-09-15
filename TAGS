@@ -1,98 +1,101 @@
 
-control.c,4095
+control.c,4249
 on_darea_draw_event(5,92
 on_btn_zoomfit_full_clicked(12,288
 on_btn_shrink_clicked(18,477
 on_btn_expand_clicked(24,657
 on_darea_scroll_event(30,840
 on_darea_button_event(44,1228
-on_darea_motion_event(58,1624
-on_combobox_lt_changed(72,2020
-on_combobox_nc_changed(81,2319
-on_combobox_sdt_changed(89,2556
-on_entry_radix_activate(99,2845
-on_entry_remark_activate(109,3124
-static gboolean on_entry_search_activate(145,3975
-static gboolean on_combobox_frombt_changed(244,7604
-static gboolean on_combobox_et_changed(252,7859
-on_togg_eaffix_toggled(260,8095
-on_combobox_cm_changed(280,8661
-on_combobox_hm_changed(287,8867
-on_combobox_azf_changed(294,9073
-on_darea_configure_event(302,9317
-on_darea_key_press_event(320,9773
-on_window_key_event(411,11856
-on_viewport_tool_icon_clicked(437,12551
-on_btn_choose_bt_file_clicked(443,12746
-on_btn_choose_binary_file_clicked(469,13924
-on_btn_find_node_clicked(495,15114
-on_btn_run_view_bt_samples_clicked(515,16112
-on_checkbox_xzoom_toggled(530,16774
-on_checkbox_yzoom_toggled(536,16950
-on_checkbox_scale_radix_toggled(542,17126
-on_checkbox_legend_toggled(548,17318
-on_checkbox_status_toggled(555,17519
-on_checkbox_remain_inner_toggled(562,17720
-on_checkbox_color_remarked_only_toggled(568,17909
-on_checkbox_scale_radius_toggled(575,18139
-on_checkbox_azf_toggled(581,18326
-on_btn_run_dag_scan_clicked(587,18520
-on_btn_zoomfit_hor_clicked(594,18698
-on_btn_zoomfit_ver_clicked(600,18868
-on_toolbar_settings_button_clicked(606,19038
-on_toolbar_dag_menu_item_activated(612,19218
-on_toolbar_zoomfit_button_clicked(639,19878
-on_toolbar_shrink_button_clicked(656,20246
-on_toolbar_expand_button_clicked(662,20424
-on_menubar_export_activated(668,20610
-on_menubar_export_all_activated(673,20751
-on_menubar_hotkeys_activated(678,20901
-on_menubar_view_samples_activated(710,22302
-on_menubar_statistics_activated(816,27883
-on_menubar_manage_viewports_activated(923,32000
-on_menubar_manage_dags_activated(930,32302
-on_menubar_manage_dag_files_activated(937,32728
-on_menubar_zoomfit_full_activated(944,33159
-on_menubar_zoomfit_hor_activated(952,33359
-on_menubar_zoomfit_ver_activated(960,33557
-on_menubar_change_focused_view_activated(968,33755
-on_menubar_expand_dag_activated(973,33916
-on_menubar_contract_dag_activated(981,34110
-on_menubar_layout_type_dag_activated(989,34307
-on_menubar_layout_type_dag_boxes_activated(997,34507
-on_menubar_layout_type_timeline_activated(1005,34713
-on_menubar_layout_type_timeline_ver_activated(1013,34918
-on_menubar_layout_type_paraprof_activated(1021,35127
-on_menubar_view_toolbox_activated(1029,35332
-on_management_window_viewport_options_split_changed(1037,35531
-on_management_window_viewport_options_orientation_changed(1055,36192
-on_management_window_open_stat_button_clicked(1074,36939
-on_management_window_open_pp_button_clicked(1081,37134
-on_management_window_pidag_open_stat_button_clicked(1088,37325
-on_management_window_pidag_open_pp_button_clicked(1095,37527
-on_management_window_expand_dag_button_clicked(1102,37725
-on_management_window_add_new_view_clicked(1110,37951
-on_management_window_view_clicked(1120,38255
-on_management_window_add_new_dag_activated(1127,38450
-on_management_window_viewport_dag_menu_item_toggled(1143,38980
-on_toolbar_division_menu_onedag_activated(1183,40122
-on_toolbar_division_menu_twodags_activated(1210,40705
-on_toolbar_division_menu_threedags_activated(1242,41448
-on_toolbar_dag_layout_buttons_clicked(1257,41826
-on_toolbar_dag_boxes_scale_type_menu_activated(1264,42031
-on_menubar_view_workers_sidebar_activated(1276,42380
-on_workers_sidebar_row_selected(1286,42725
-on_workers_sidebar_row_activated(1291,42882
-on_workers_sidebar_enable_toggled(1296,43041
-on_workers_sidebar_dag_toggled(1308,43389
-on_workers_sidebar_scale_value_changed(1317,43684
-on_workers_sidebar_entry_activated(1328,43974
-on_workers_sidebar_time_step_entry_activated(1340,44291
-on_workers_sidebar_next_button_clicked(1352,44617
-on_workers_sidebar_prev_button_clicked(1367,45114
-on_management_window_add_new_dag_file_clicked(1382,45585
+on_darea_motion_event(64,1718
+on_combobox_lt_changed(78,2114
+on_combobox_nc_changed(87,2413
+on_combobox_sdt_changed(95,2650
+on_entry_radix_activate(105,2939
+on_entry_remark_activate(115,3218
+static gboolean on_entry_search_activate(151,4069
+static gboolean on_combobox_frombt_changed(250,7698
+static gboolean on_combobox_et_changed(258,7953
+on_togg_eaffix_toggled(266,8189
+on_combobox_cm_changed(286,8755
+on_combobox_hm_changed(293,8961
+on_combobox_azf_changed(300,9167
+on_darea_configure_event(308,9411
+on_darea_key_press_event(326,9867
+on_window_key_event(436,12469
+on_viewport_tool_icon_clicked(462,13164
+on_btn_choose_bt_file_clicked(468,13359
+on_btn_choose_binary_file_clicked(494,14537
+on_btn_find_node_clicked(520,15727
+on_btn_run_view_bt_samples_clicked(540,16725
+on_checkbox_xzoom_toggled(555,17387
+on_checkbox_yzoom_toggled(561,17563
+on_checkbox_scale_radix_toggled(567,17739
+on_checkbox_legend_toggled(573,17931
+on_checkbox_status_toggled(580,18132
+on_checkbox_remain_inner_toggled(587,18333
+on_checkbox_color_remarked_only_toggled(593,18522
+on_checkbox_scale_radius_toggled(600,18752
+on_checkbox_azf_toggled(606,18939
+on_btn_run_dag_scan_clicked(612,19133
+on_btn_zoomfit_hor_clicked(619,19311
+on_btn_zoomfit_ver_clicked(625,19481
+on_toolbar_settings_button_clicked(631,19651
+on_toolbar_dag_menu_item_activated(637,19831
+on_toolbar_zoomfit_button_clicked(664,20491
+on_toolbar_shrink_button_clicked(681,20859
+on_toolbar_expand_button_clicked(687,21037
+on_menubar_export_activated(693,21223
+on_menubar_export_all_activated(698,21364
+on_menubar_hotkeys_activated(703,21514
+on_menubar_view_samples_activated(735,22915
+on_menubar_statistics_activated(841,28496
+on_menubar_manage_viewports_activated(948,32613
+on_menubar_manage_dags_activated(955,32915
+on_menubar_manage_dag_files_activated(962,33341
+on_menubar_zoomfit_full_activated(969,33772
+on_menubar_zoomfit_hor_activated(977,33972
+on_menubar_zoomfit_ver_activated(985,34170
+on_menubar_change_focused_view_activated(993,34368
+on_menubar_expand_dag_activated(998,34529
+on_menubar_contract_dag_activated(1020,35070
+on_menubar_layout_type_dag_activated(1042,35614
+on_menubar_layout_type_dag_boxes_activated(1050,35814
+on_menubar_layout_type_timeline_activated(1058,36020
+on_menubar_layout_type_timeline_ver_activated(1066,36225
+on_menubar_layout_type_paraprof_activated(1074,36434
+on_menubar_view_toolbox_activated(1082,36639
+on_management_window_viewport_options_split_changed(1090,36838
+on_management_window_viewport_options_orientation_changed(1108,37499
+on_management_window_open_stat_button_clicked(1127,38246
+on_management_window_open_pp_button_clicked(1134,38441
+on_management_window_pidag_open_stat_button_clicked(1141,38632
+on_management_window_pidag_open_pp_button_clicked(1148,38834
+on_management_window_expand_dag_button_clicked(1155,39032
+on_management_window_add_new_view_clicked(1163,39258
+on_management_window_view_clicked(1173,39562
+on_management_window_add_new_dag_activated(1180,39757
+on_management_window_viewport_dag_menu_item_toggled(1196,40287
+on_toolbar_division_menu_onedag_activated(1236,41429
+on_toolbar_division_menu_twodags_activated(1263,42012
+on_toolbar_division_menu_threedags_activated(1295,42755
+on_toolbar_dag_layout_buttons_clicked(1310,43133
+on_toolbar_dag_boxes_scale_type_menu_activated(1317,43338
+on_menubar_view_replay_sidebox_activated(1329,43687
+on_menubar_view_nodeinfo_sidebox_activated(1340,44139
+on_replay_sidebox_row_selected(1351,44579
+on_replay_sidebox_row_activated(1356,44735
+on_replay_sidebox_enable_toggled(1361,44893
+on_replay_sidebox_dag_toggled(1373,45239
+on_replay_sidebox_scale_value_changed(1382,45532
+on_replay_sidebox_entry_activated(1393,45820
+on_replay_sidebox_time_step_entry_activated(1405,46135
+on_replay_sidebox_next_button_clicked(1417,46459
+on_replay_sidebox_prev_button_clicked(1432,46960
+on_management_window_add_new_dag_file_clicked(1447,47435
+on_context_menu_gui_infobox_activated(1457,47786
+on_context_menu_viewport_infobox_activated(1467,48248
 
-dagviz.c,5336
+dagviz.c,5562
 dv_global_state_t  CS[CS3,21
 dv_gui_t GUI[GUI4,47
 const char * const DV_COLORS[DV_COLORS6,65
@@ -106,134 +109,140 @@ dv_get_env_long(45,1325
 dv_get_env_string(55,1469
 dv_get_env(65,1619
 dv_global_state_init(76,1793
-dv_queue_draw_viewport(118,2861
-dv_queue_draw_view(123,2950
-dv_queue_draw_dag(131,3092
-dv_queue_draw(148,3458
-dv_queue_draw_d(156,3599
-dv_queue_draw_d_p(165,3756
-dv_view_clip(174,3923
-dv_view_clip_get_bound_left(180,4154
-dv_view_clip_get_bound_right(185,4291
-dv_view_clip_get_bound_up(190,4443
-dv_view_clip_get_bound_down(195,4578
-dv_view_cairo_coordinate_bound_left(200,4729
-dv_view_cairo_coordinate_bound_right(205,4868
-dv_view_cairo_coordinate_bound_up(210,5008
-dv_view_cairo_coordinate_bound_down(215,5145
-dv_view_prepare_drawing(220,5289
-dv_viewport_draw(259,6593
-dv_view_toolbox_init(311,7870
-dv_view_toolbox_get_combobox_lt(397,12917
-dv_view_toolbox_get_combobox_nc(413,13856
-dv_view_toolbox_get_combobox_sdt(430,14860
-dv_view_toolbox_get_entry_radix(444,15602
-dv_view_toolbox_get_combobox_frombt(455,16048
-dv_view_toolbox_get_combobox_et(468,16762
-dv_view_toolbox_get_togg_eaffix(483,17567
-dv_view_toolbox_get_checkbox_legend(497,18248
-dv_view_toolbox_get_checkbox_status(507,18663
-dv_view_toolbox_get_entry_remark(517,19078
-dv_view_toolbox_get_checkbox_remain_inner(528,19562
-dv_view_toolbox_get_checkbox_color_remarked_only(538,20020
-dv_view_toolbox_get_window(554,20731
-dv_view_init(772,28933
-dv_view_create_new_with_dag(785,29232
-dv_view_open_toolbox_window(803,29598
-dv_view_change_mainvp(809,29755
-dv_view_add_viewport(821,29969
-dv_view_remove_viewport(833,30215
-dv_view_switch_viewport(853,30638
-dv_viewport_create_new(871,31107
-dv_viewport_toolbox_init(882,31368
-dv_viewport_init(966,35347
-dv_viewport_miniver2_show(1102,41272
-dv_viewport_miniver_show(1135,42549
-dv_viewport_show(1157,43225
-dv_viewport_change_split(1185,44067
-dv_viewport_change_orientation(1229,45088
-dv_viewport_change_mainv(1272,46438
-dv_viewport_dag_menu_item_set_active(1287,46762
-dv_viewport_add_view(1321,47971
-dv_viewport_remove_view(1333,48283
-dv_viewport_divide_onedag_1(1356,48858
-dv_viewport_divide_onedag_2(1382,49392
-dv_viewport_divide_onedag_3(1408,49926
-dv_viewport_divide_onedag_4(1453,51013
-dv_viewport_divide_onedag_5(1498,52098
-dv_viewport_divide_onedag_6(1573,53929
-dv_viewport_divide_twodags_1(1619,55108
-dv_viewport_divide_twodags_2(1631,55475
-dv_viewport_divide_twodags_3(1643,55842
-dv_viewport_divide_twodags_4(1655,56207
-dv_viewport_divide_twodags_5(1667,56586
-dv_viewport_divide_twodags_6(1679,56963
-dv_viewport_divide_twodags_7(1691,57350
-dv_viewport_divide_threedags_1(1704,57755
-on_stat_distribution_dag_changed(1723,58290
-on_stat_distribution_type_changed(1750,59210
-on_stat_distribution_stolen_changed(1758,59447
-on_stat_distribution_title_activate(1766,59692
-on_stat_distribution_xrange_from_activate(1778,60117
-on_stat_distribution_xrange_to_activate(1785,60364
-on_stat_distribution_granularity_activate(1792,60594
-on_stat_distribution_add_button_clicked(1799,60818
-on_stat_distribution_output_filename_activate(1805,60968
-on_stat_distribution_show_button_clicked(1816,61407
-on_stat_breakdown_dag_checkbox_toggled(1900,63973
-on_stat_breakdown_output_filename_activate(1907,64163
-  void (*process_event)process_event1918,64602
-  dr_pi_dag * G;1919,64671
-  dr_clock_t cum_running;1920,64688
-  dr_clock_t cum_delay;1921,64714
-  dr_clock_t cum_no_work;1922,64738
-  dr_clock_t t;1923,64764
-  long n_running;1924,64780
-  long n_ready;1925,64798
-  long n_workers;1926,64814
-  dr_clock_t total_elapsed;1927,64832
-  dr_clock_t total_t_1;1928,64860
-  long * edge_counts;1929,64884
-} dr_basic_stat;1930,64922
-dr_calc_inner_delay(1937,65047
-dr_calc_edges(1976,66199
-#define EDGE_COUNTS(1988,66656
-#undef EDGE_COUNTS2049,68450
-dr_basic_stat_init(2054,68509
-dr_basic_stat_process_event(2076,69132
-on_stat_breakdown_show_button_clicked(2134,70454
-dv_open_statistics_dialog(2225,73140
-dv_switch_focused_viewport_r(2416,82147
-dv_switch_focused_viewport(2445,82776
-dv_switch_focused_view(2462,83215
-dv_switch_focused_view_inside_viewport(2485,83653
-dv_choose_a_new_dag_file(2499,83937
-dv_open_dr_stat_file(2514,84644
-dv_open_dr_pp_file(2542,85486
-dv_create_new_view(2569,86312
-dv_create_new_dag(2672,90421
-dv_create_new_pidag(2765,94730
-dv_gui_init(2828,97512
-dv_gui_build_management_window(2854,98168
-dv_gui_get_management_window(2965,103337
-dv_gui_build_main_window(2972,103504
-dv_gui_get_main_window(3327,123240
-dv_dag_set_time_step(3335,123405
-dv_dag_set_current_time(3343,123617
-dv_dag_set_draw_current_time_active(3357,124051
-dv_gui_workers_sidebar_set_dag(3371,124495
-dv_gui_build_workers_sidebar(3386,125013
-dv_gui_get_workers_sidebar(3498,130824
-dv_open_gui_1(3505,130992
-dv_open_gui(3520,131584
-dv_alarm_set(3540,132104
-dv_signal_handler(3545,132150
-dv_alarm_init(3556,132423
-on_application_activate(3564,132583
-main_usegtkapplication(3569,132711
-main(3625,134045
+dv_queue_draw_viewport(120,2915
+dv_queue_draw_view(125,3004
+dv_queue_draw_dag(133,3146
+dv_queue_draw_pidag(150,3512
+dv_queue_draw(158,3659
+dv_queue_draw_d(166,3800
+dv_queue_draw_d_p(175,3957
+dv_view_clip(184,4124
+dv_view_clip_get_bound_left(190,4355
+dv_view_clip_get_bound_right(195,4492
+dv_view_clip_get_bound_up(200,4644
+dv_view_clip_get_bound_down(205,4779
+dv_view_cairo_coordinate_bound_left(210,4930
+dv_view_cairo_coordinate_bound_right(215,5069
+dv_view_cairo_coordinate_bound_up(220,5209
+dv_view_cairo_coordinate_bound_down(225,5346
+dv_view_prepare_drawing(230,5490
+dv_viewport_draw(269,6794
+dv_view_toolbox_init(323,8156
+dv_view_toolbox_get_combobox_lt(409,13203
+dv_view_toolbox_get_combobox_nc(425,14142
+dv_view_toolbox_get_combobox_sdt(442,15146
+dv_view_toolbox_get_entry_radix(456,15888
+dv_view_toolbox_get_combobox_frombt(467,16334
+dv_view_toolbox_get_combobox_et(480,17048
+dv_view_toolbox_get_togg_eaffix(495,17853
+dv_view_toolbox_get_checkbox_legend(509,18534
+dv_view_toolbox_get_checkbox_status(519,18949
+dv_view_toolbox_get_entry_remark(529,19364
+dv_view_toolbox_get_checkbox_remain_inner(540,19848
+dv_view_toolbox_get_checkbox_color_remarked_only(550,20306
+dv_view_toolbox_get_window(566,21017
+dv_view_init(817,30782
+dv_view_create_new_with_dag(830,31081
+dv_view_open_toolbox_window(848,31447
+dv_view_change_mainvp(854,31604
+dv_view_add_viewport(866,31818
+dv_view_remove_viewport(878,32064
+dv_view_switch_viewport(898,32487
+dv_viewport_create_new(916,32956
+dv_viewport_toolbox_init(927,33217
+dv_viewport_init(1011,37196
+dv_viewport_miniver2_show(1147,43121
+dv_viewport_miniver_show(1180,44398
+dv_viewport_show(1202,45074
+dv_viewport_change_split(1230,45916
+dv_viewport_change_orientation(1282,47218
+dv_viewport_change_mainv(1325,48568
+dv_viewport_dag_menu_item_set_active(1340,48892
+dv_viewport_add_view(1374,50101
+dv_viewport_remove_view(1386,50413
+dv_viewport_divide_onedag_1(1409,50988
+dv_viewport_divide_onedag_2(1435,51522
+dv_viewport_divide_onedag_3(1461,52056
+dv_viewport_divide_onedag_4(1506,53143
+dv_viewport_divide_onedag_5(1551,54228
+dv_viewport_divide_onedag_6(1626,56059
+dv_viewport_divide_twodags_1(1672,57238
+dv_viewport_divide_twodags_2(1684,57605
+dv_viewport_divide_twodags_3(1696,57972
+dv_viewport_divide_twodags_4(1708,58337
+dv_viewport_divide_twodags_5(1720,58716
+dv_viewport_divide_twodags_6(1732,59093
+dv_viewport_divide_twodags_7(1744,59480
+dv_viewport_divide_threedags_1(1757,59885
+on_stat_distribution_dag_changed(1776,60420
+on_stat_distribution_type_changed(1803,61340
+on_stat_distribution_stolen_changed(1811,61577
+on_stat_distribution_title_activate(1819,61822
+on_stat_distribution_xrange_from_activate(1831,62247
+on_stat_distribution_xrange_to_activate(1838,62494
+on_stat_distribution_granularity_activate(1845,62724
+on_stat_distribution_add_button_clicked(1852,62948
+on_stat_distribution_output_filename_activate(1858,63098
+on_stat_distribution_show_button_clicked(1869,63537
+on_stat_breakdown_dag_checkbox_toggled(1953,66103
+on_stat_breakdown_output_filename_activate(1960,66293
+  void (*process_event)process_event1971,66732
+  dr_pi_dag * G;1972,66801
+  dr_clock_t cum_running;1973,66818
+  dr_clock_t cum_delay;1974,66844
+  dr_clock_t cum_no_work;1975,66868
+  dr_clock_t t;1976,66894
+  long n_running;1977,66910
+  long n_ready;1978,66928
+  long n_workers;1979,66944
+  dr_clock_t total_elapsed;1980,66962
+  dr_clock_t total_t_1;1981,66990
+  long * edge_counts;1982,67014
+} dr_basic_stat;1983,67052
+dr_calc_inner_delay(1990,67177
+dr_calc_edges(2029,68329
+#define EDGE_COUNTS(2041,68786
+#undef EDGE_COUNTS2102,70580
+dr_basic_stat_init(2107,70639
+dr_basic_stat_process_event(2129,71262
+on_stat_breakdown_show_button_clicked(2187,72584
+dv_open_statistics_dialog(2278,75270
+dv_change_focused_view(2469,84266
+dv_change_focused_viewport(2484,84548
+dv_switch_focused_viewport_r(2511,85190
+dv_switch_focused_viewport(2543,85918
+dv_switch_focused_view(2555,86355
+dv_switch_focused_view_inside_viewport(2580,86809
+dv_choose_a_new_dag_file(2599,87360
+dv_open_dr_stat_file(2614,88067
+dv_open_dr_pp_file(2642,88909
+dv_create_new_view(2669,89735
+dv_create_new_dag(2772,93844
+dv_create_new_pidag(2865,98150
+dv_gui_init(2928,100932
+dv_gui_build_management_window(2963,101776
+dv_gui_get_management_window(3074,106945
+dv_gui_build_main_window(3081,107112
+dv_gui_get_main_window(3452,127816
+dv_dag_set_time_step(3460,127981
+dv_dag_set_current_time(3468,128200
+dv_dag_set_draw_current_time_active(3482,128632
+dv_gui_replay_sidebox_set_dag(3496,129082
+dv_gui_build_replay_sidebox(3511,129595
+dv_gui_get_replay_sidebox(3625,135558
+dv_gui_nodeinfo_set_node(3632,135706
+dv_gui_build_nodeinfo_sidebox(3663,136758
+dv_gui_get_nodeinfo_sidebox(3733,139423
+dv_open_gui_1(3741,139596
+dv_open_gui(3756,140188
+dv_alarm_set(3775,140667
+dv_signal_handler(3780,140713
+dv_alarm_init(3791,140986
+on_application_activate(3799,141146
+main_usegtkapplication(3804,141274
+main(3860,142607
 
-dagviz.h,14943
+dagviz.h,15372
 #define DAGVIZ_HEADER_6,43
 #define UNW_LOCAL_ONLY32,499
 typedef struct dv_linked_list 47,726
@@ -615,79 +624,93 @@ typedef struct dv_stat_breakdown_graph 525,14033
   char * fn;527,14118
 } dv_stat_breakdown_graph_t;528,14131
 typedef struct dv_gui 531,14162
-  GtkWidget * window;533,14206
-  GtkWidget * window_box;534,14228
-  GtkWidget * menubar;535,14254
-  GtkWidget * main_box;536,14277
-  GtkAccelGroup * accel_group;537,14301
-  GtkWidget * toolbar;540,14349
-  GtkWidget * dag_menu;541,14372
-  GtkWidget * division_menu;542,14396
-  GtkWidget * statusbar1;545,14448
-  GtkWidget * statusbar2;546,14498
-  GtkWidget * statusbar3;547,14546
-  GtkWidget * management_window;550,14614
-  GtkWidget * notebook;551,14647
-  GtkWidget * scrolled_box;552,14671
-  GtkWidget * dag_file_scrolled_box;553,14726
-  GtkWidget * create_dag_menu;554,14795
-  GtkWidget * workers_sidebar;557,14851
-  GtkWidget * workers_enable;558,14882
-  GtkWidget * workers_scale;559,14912
-  GtkWidget * workers_entry;560,14941
-  GtkWidget * time_step_entry;561,14970
-  GtkWidget * workers_dag_menu;562,15001
-  int workers_mD[workers_mD563,15033
-} dv_gui_t;564,15063
-typedef struct dv_global_state 566,15076
-  dv_pidag_t P[P568,15121
-  dv_dag_t D[D569,15154
-  dv_view_t V[V570,15180
-  int nP;571,15208
-  int nD;572,15218
-  int nV;573,15228
-  dv_llist_cell_t * FL;574,15238
-  dv_view_t * activeV;575,15264
-  dv_viewport_t * activeVP;576,15287
-  int err;577,15315
-  int CP[CP580,15349
-  int CP_sizes[CP_sizes581,15442
-  dv_viewport_t VP[VP584,15493
-  int nVP;585,15530
-  dv_btsample_viewer_t btviewer[btviewer588,15567
-  dv_dag_node_pool_t pool[pool591,15625
-  dv_histogram_entry_pool_t epool[epool592,15655
-  dv_stat_distribution_t SD[SD595,15713
-  dv_stat_breakdown_graph_t SBG[SBG596,15745
-} dv_global_state_t;597,15781
-dv_get_callpath_by_backtrace(939,30119
-dv_get_callpath_by_libunwind(952,30455
-dv_check_(976,31075
-#define dv_check(989,31460
-dv_malloc(992,31561
-dv_free(999,31660
-dv_node_flag_init(1008,31777
-dv_node_flag_check(1013,31856
-dv_node_flag_set(1019,31962
-dv_node_flag_remove(1025,32068
-dv_is_set(1031,32175
-dv_is_union(1037,32311
-dv_is_inner_loaded(1043,32451
-dv_is_shrinked(1049,32605
-dv_is_expanded(1055,32751
-dv_is_expanding(1061,32868
-dv_is_shrinking(1067,33016
-dv_is_single(1073,33164
-dv_is_visible(1084,33415
-dv_is_inward_callable(1095,33696
-dv_log_set_error(1105,33955
-dv_longlong_init(1113,34081
-dv_set_bit(1123,34241
-dv_get_bit(1130,34361
-dv_get_color_pool_index(1137,34470
-dv_get_time(1155,34920
+  GtkBuilder * builder;533,14206
+  GtkWidget * window;534,14230
+  GtkWidget * window_box;535,14252
+  GtkWidget * menubar;536,14278
+  GtkWidget * main_box;537,14301
+  GtkAccelGroup * accel_group;538,14325
+  GtkWidget * context_menu;539,14356
+  GtkWidget * left_sidebar;540,14384
+  GtkWidget * toolbar;543,14429
+  GtkWidget * dag_menu;544,14452
+  GtkWidget * division_menu;545,14476
+  GtkWidget * statusbar1;548,14528
+  GtkWidget * statusbar2;549,14578
+  GtkWidget * statusbar3;550,14626
+  GtkWidget * management_window;553,14694
+  GtkWidget * notebook;554,14727
+  GtkWidget * scrolled_box;555,14751
+  GtkWidget * dag_file_scrolled_box;556,14806
+  GtkWidget * create_dag_menu;557,14875
+  struct replay 560,14930
+    GtkWidget * sidebox;561,14948
+    GtkWidget * enable;562,14973
+    GtkWidget * scale;563,14997
+    GtkWidget * entry;564,15020
+    GtkWidget * time_step_entry;565,15043
+    GtkWidget * dag_menu;566,15076
+    int mD[mD567,15102
+  } replay;568,15126
+  struct nodeinfo 571,15167
+    GtkWidget * sidebox;572,15187
+    GtkWidget * offset;573,15212
+    GtkWidget * type;574,15236
+    GtkWidget * depth;575,15258
+    GtkWidget * cur_node_count;576,15281
+  } nodeinfo;577,15313
+} dv_gui_t;579,15330
+typedef struct dv_global_state 581,15343
+  dv_pidag_t P[P583,15388
+  dv_dag_t D[D584,15421
+  dv_view_t V[V585,15447
+  int nP;586,15475
+  int nD;587,15485
+  int nV;588,15495
+  dv_llist_cell_t * FL;589,15505
+  dv_view_t * activeV;590,15531
+  dv_viewport_t * activeVP;591,15554
+  int err;592,15582
+  int CP[CP595,15616
+  int CP_sizes[CP_sizes596,15709
+  dv_viewport_t VP[VP599,15760
+  int nVP;600,15797
+  dv_btsample_viewer_t btviewer[btviewer603,15834
+  dv_dag_node_pool_t pool[pool606,15892
+  dv_histogram_entry_pool_t epool[epool607,15922
+  dv_stat_distribution_t SD[SD610,15980
+  dv_stat_breakdown_graph_t SBG[SBG611,16012
+  dv_view_t * context_view;613,16049
+  dv_dag_node_t * context_node;614,16077
+} dv_global_state_t;615,16109
+dv_get_callpath_by_backtrace(960,30676
+dv_get_callpath_by_libunwind(973,31012
+dv_check_(997,31632
+#define dv_check(1010,32017
+dv_malloc(1013,32118
+dv_free(1020,32217
+dv_node_flag_init(1029,32334
+dv_node_flag_check(1034,32413
+dv_node_flag_set(1040,32519
+dv_node_flag_remove(1046,32625
+dv_is_set(1052,32732
+dv_is_union(1058,32868
+dv_is_inner_loaded(1064,33008
+dv_is_shrinked(1070,33162
+dv_is_expanded(1076,33308
+dv_is_expanding(1082,33425
+dv_is_shrinking(1088,33573
+dv_is_single(1094,33721
+dv_is_visible(1105,33972
+dv_is_inward_callable(1116,34253
+dv_log_set_error(1126,34512
+dv_longlong_init(1134,34638
+dv_set_bit(1144,34798
+dv_get_bit(1151,34918
+dv_get_color_pool_index(1158,35027
+dv_get_time(1176,35477
 
-draw.c,740
+draw.c,781
 void dv_draw_text(5,79
 void dv_draw_rounded_rectangle(25,528
 dv_draw_path_isosceles_triangle(49,1304
@@ -709,6 +732,7 @@ dv_view_draw_infotags(571,15301
 dv_view_draw(579,15530
 dv_viewport_draw_label(612,16221
 dv_view_draw_legend(634,16800
+dv_viewport_draw_focused_mark(658,17234
 
 layout.c,538
 dv_view_layout_with_type(6,96
@@ -743,7 +767,7 @@ static void * read_pi_string_table(192,4853
 void dv_print_dag_file(201,5097
 void dv_check_layout(258,6243
 
-process.c,1880
+process.c,1847
 dv_filename_get_short_name(6,107
 dv_dag_collect_delays_r(21,440
 dv_dag_collect_sync_delays_r(48,1328
@@ -751,52 +775,51 @@ dv_dag_collect_intervals_r(78,2356
 dv_dag_expand_implicitly_r(96,2973
 dv_dag_expand_implicitly(123,3609
 dv_dag_update_status_label(128,3698
-dv_dag_node_pool_set_status_label(141,4190
-dv_histogram_entry_pool_set_status_label(148,4441
-dv_view_get_zoomfit_hor(157,4709
-dv_view_do_zoomfit_hor(226,6547
-dv_view_get_zoomfit_ver(234,6770
-dv_view_do_zoomfit_ver(300,8649
-dv_view_do_zoomfit_based_on_lt(308,8872
-dv_view_do_zoomfit_full(328,9183
-dv_view_change_radix(349,9686
-dv_view_set_entry_radix_text(355,9814
-dv_view_set_entry_remark_text(366,10157
-dv_view_change_sdt(374,10406
-dv_view_change_eaffix(384,10663
-dv_view_change_nc(398,11046
-dv_view_change_lt(409,11303
-dv_set_focused_view(461,12521
-dv_do_zooming(502,13459
-dv_do_scrolling(516,13873
-dv_statusbar_update(576,15416
-dv_statusbar_remove(597,15824
-dv_statusbar_update_selection_status(618,16218
-dv_statusbar_update_pool_status(641,17133
-dv_do_finding_clicked_node_1(656,17553
-dv_do_finding_clicked_node_r(687,18241
-dv_do_finding_clicked_node(710,18946
-dv_do_expanding_one_1(723,19273
-dv_do_expanding_one_r(771,20727
-dv_do_expanding_one(797,21361
-dv_do_collapsing_one_1(810,21665
-dv_do_collapsing_one_r(856,23031
-dv_do_collapsing_one_depth_r(891,24053
-dv_do_collapsing_one(926,25131
-dv_do_button_event(939,25484
-dv_do_motion_event(1015,27836
-dv_find_node_with_pii_r(1081,29655
-dv_view_change_azf(1104,30265
-dv_view_auto_zoomfit(1111,30454
-dv_view_status_set_coord(1133,30796
-dv_view_status_init(1156,31101
-dv_viewport_export_to_surface(1203,32272
-dv_export_viewport(1217,32657
-dv_export_viewports_get_size_r(1254,33799
-dv_export_viewports_to_img_r(1276,34317
-dv_export_viewports_to_eps_r(1296,35058
-dv_export_viewports_to_svg_r(1318,35709
-dv_export_all_viewports(1340,36353
+dv_dag_node_pool_set_status_label(143,4192
+dv_histogram_entry_pool_set_status_label(150,4443
+dv_view_get_zoomfit_hor(162,4778
+dv_view_do_zoomfit_hor(231,6616
+dv_view_get_zoomfit_ver(239,6839
+dv_view_do_zoomfit_ver(305,8718
+dv_view_do_zoomfit_based_on_lt(313,8941
+dv_view_do_zoomfit_full(329,9170
+dv_view_change_radix(350,9673
+dv_view_set_entry_radix_text(356,9801
+dv_view_set_entry_remark_text(367,10144
+dv_view_change_sdt(375,10393
+dv_view_change_eaffix(385,10650
+dv_view_change_nc(399,11033
+dv_view_change_lt(410,11290
+dv_view_change_azf(481,12888
+dv_view_auto_zoomfit(488,13077
+dv_view_status_set_coord(510,13419
+dv_view_status_init(533,13724
+dv_statusbar_update(582,14971
+dv_statusbar_remove(603,15379
+dv_statusbar_update_selection_status(624,15773
+dv_statusbar_update_pool_status(647,16688
+dv_viewport_export_to_surface(668,17240
+dv_export_viewport(682,17625
+dv_export_viewports_get_size_r(719,18767
+dv_export_viewports_to_img_r(741,19285
+dv_export_viewports_to_eps_r(761,20026
+dv_export_viewports_to_svg_r(783,20677
+dv_export_all_viewports(805,21321
+dv_do_zooming(872,23252
+dv_do_scrolling(886,23666
+dv_do_finding_clicked_node_1(950,25231
+dv_do_finding_clicked_node_r(981,25919
+dv_do_finding_clicked_node(1004,26624
+dv_do_expanding_one_1(1017,26951
+dv_do_expanding_one_r(1065,28411
+dv_do_expanding_one(1091,29045
+dv_do_collapsing_one_1(1104,29349
+dv_do_collapsing_one_r(1150,30721
+dv_do_collapsing_one_depth_r(1185,31743
+dv_do_collapsing_one(1220,32821
+dv_do_button_event(1233,33174
+dv_do_motion_event(1312,35630
+dv_find_node_with_pii_r(1378,37449
 
 read.c,1529
 dv_pidag_read_new_file(6,88
@@ -944,9 +967,9 @@ dv_histogram_cal_work_delay_nowork(283,8602
 dv_histogram_draw(315,9664
 dv_histogram_reset_node(325,9925
 dv_histogram_reset(362,10780
-dv_view_layout_paraprof(375,11045
-dv_paraprof_draw_time_bar(385,11263
-dv_view_draw_paraprof(399,11780
+dv_view_layout_paraprof(377,11088
+dv_paraprof_draw_time_bar(387,11306
+dv_view_draw_paraprof(401,11823
 
 view_timeline.c,218
 dv_view_layout_timeline_node(6,97
