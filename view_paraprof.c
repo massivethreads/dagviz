@@ -268,8 +268,8 @@ dv_histogram_draw_entry(dv_histogram_t * H, dv_histogram_entry_t * e, cairo_t * 
     fprintf(stderr, "Warning: not draw entry at t=%lf due to no next\n", e->t);
     return;
   }
-  double x = dv_dag_scale_down(H->D, e->t - H->D->bt);
-  double w = dv_dag_scale_down(H->D, e->next->t - H->D->bt) - x;
+  double x = dv_dag_scale_down_linear(H->D, e->t - H->D->bt);
+  double w = dv_dag_scale_down_linear(H->D, e->next->t - H->D->bt) - x;
   double y = 0.0;
   double h;
   int i;
@@ -385,7 +385,7 @@ dv_view_layout_paraprof(dv_view_t * V) {
 
 static void
 dv_paraprof_draw_time_bar(dv_view_t * V, dv_histogram_t * H, cairo_t * cr) {
-  double x = dv_dag_scale_down(H->D, H->D->current_time);
+  double x = dv_dag_scale_down_linear(H->D, H->D->current_time);
   double y1 = - dv_histogram_get_max_height(H) - H->D->radius;
   double y2 = H->D->P->num_workers * (2 * H->D->radius) + H->D->radius;
   cairo_save(cr);

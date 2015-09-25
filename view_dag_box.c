@@ -23,6 +23,11 @@ dv_dag_scale_down(dv_dag_t * D, double val) {
 }
 
 double
+dv_dag_scale_down_linear(dv_dag_t * D, double val) {
+  return val / D->linear_radix;
+}
+
+double
 dv_view_scale_down(dv_view_t * V, double val) {
   return dv_dag_scale_down(V->D, val);
 }

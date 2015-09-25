@@ -384,6 +384,7 @@ dv_view_toolbox_init(dv_view_toolbox_t * T, dv_view_t * V) {
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(T->combobox_hm), "expand", "Expand");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(T->combobox_hm), "collapse", "Colapse");
   gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(T->combobox_hm), "expcoll", "Expand/Collapse");
+  gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(T->combobox_hm), "remark", "Remark similar nodes");
   gtk_combo_box_set_active(GTK_COMBO_BOX(T->combobox_hm), V->S->hm);
   g_signal_connect(G_OBJECT(T->combobox_hm), "changed", G_CALLBACK(on_combobox_hm_changed), (void *) V);
 
@@ -609,77 +610,77 @@ dv_view_toolbox_get_window(dv_view_toolbox_t * T) {
     gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
     
-    num = 1;
+    num++;
     label = gtk_label_new("Node color:");
     widget = dv_view_toolbox_get_combobox_nc(T);
     gtk_widget_set_halign(label, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
 
-    num = 2;
+    num++;
     label = gtk_label_new("Scale-down type:");
     widget = dv_view_toolbox_get_combobox_sdt(T);
     gtk_widget_set_halign(label, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
 
-    num = 3;
+    num++;
     label = gtk_label_new("Scale-down radix:");
     widget = dv_view_toolbox_get_entry_radix(T);
     gtk_widget_set_halign(label, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
 
-    num = 4;
+    num++;
     label = gtk_label_new("Scale radix by scrolling:");
     widget = T->checkbox_scale_radix;
     gtk_widget_set_halign(label, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
 
-    num = 5;
+    num++;
     label = gtk_label_new("Clicking mode:");
     widget = T->combobox_cm;
     gtk_widget_set_halign(label, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
 
-    num = 6;
+    num++;
     label = gtk_label_new("Hovering mode:");
     widget = T->combobox_hm;
     gtk_widget_set_halign(label, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
 
-    num = 7;
+    num++;
     label = gtk_label_new("Show legend:");
     widget = dv_view_toolbox_get_checkbox_legend(T);
     gtk_widget_set_halign(label, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
 
-    num = 8;
+    num++;
     label = gtk_label_new("Show status:");
     widget = dv_view_toolbox_get_checkbox_status(T);
     gtk_widget_set_halign(label, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
 
-    num = 9;
+    num++;
     label = gtk_label_new("Automatically zoom fit DAG:");
     widget = T->combobox_azf;
     gtk_widget_set_halign(label, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
 
-    num = 10;
+    num++;
     label = gtk_label_new("Auto adjust auto zoom fit:");
     widget = T->checkbox_azf;
     gtk_widget_set_halign(label, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
 
-    num = 11;
+    num++;
     label = gtk_label_new("Zoom fit DAG horizontally:");
     widget = gtk_button_new_with_label("Zoom");
     gtk_widget_set_halign(label, GTK_ALIGN_END);
@@ -688,7 +689,7 @@ dv_view_toolbox_get_window(dv_view_toolbox_t * T) {
     gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
 
-    num = 12;
+    num++;
     label = gtk_label_new("Zoom fit DAG vertically:");
     widget = gtk_button_new_with_label("Zoom");
     gtk_widget_set_halign(label, GTK_ALIGN_END);
@@ -720,14 +721,14 @@ dv_view_toolbox_get_window(dv_view_toolbox_t * T) {
     gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
 
-    num = 1;
+    num++;
     label = gtk_label_new("Remain inner after scanning:");
     widget = dv_view_toolbox_get_checkbox_remain_inner(T);
     gtk_widget_set_halign(label, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
 
-    num = 2;
+    num++;
     label = gtk_label_new("Scan DAG:");
     widget = gtk_button_new_with_label("Scan:");
     gtk_widget_set_halign(label, GTK_ALIGN_END);
@@ -735,7 +736,7 @@ dv_view_toolbox_get_window(dv_view_toolbox_t * T) {
     gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
 
-    num = 3;
+    num++;
     label = gtk_label_new("Color only remarked nodes:");
     widget = dv_view_toolbox_get_checkbox_color_remarked_only(T);
     gtk_widget_set_halign(label, GTK_ALIGN_END);
@@ -765,42 +766,42 @@ dv_view_toolbox_get_window(dv_view_toolbox_t * T) {
     gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
 
-    num = 1;
+    num++;
     label = gtk_label_new("Cairo's Y Zoom:");
     widget = T->checkbox_yzoom;
     gtk_widget_set_halign(label, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
 
-    num = 2;
+    num++;
     label = gtk_label_new("Scale Node Width by Scrolling:");
     widget = T->checkbox_scale_radius;
     gtk_widget_set_halign(label, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);    
 
-    num = 3;
+    num++;
     label = gtk_label_new("Search:");
     widget = T->entry_search;
     gtk_widget_set_halign(label, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
 
-    num = 4;
+    num++;
     label = gtk_label_new("From start time:");
     widget = dv_view_toolbox_get_combobox_frombt(T);
     gtk_widget_set_halign(label, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
 
-    num = 5;
+    num++;
     label = gtk_label_new("Edge drawing type:");
     widget = dv_view_toolbox_get_combobox_et(T);
     gtk_widget_set_halign(label, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
 
-    num = 6;
+    num++;
     label = gtk_label_new("Affix btwn edges & nodes:");
     widget = dv_view_toolbox_get_togg_eaffix(T);
     gtk_widget_set_halign(label, GTK_ALIGN_END);
@@ -3648,10 +3649,12 @@ dv_gui_nodeinfo_set_node(dv_gui_t * gui, dv_dag_node_t * node, dv_dag_t * D) {
           pi->info.n_child_create_tasks);
   gtk_label_set_text(GTK_LABEL(gui->nodeinfo.cur_node_count), s);
   
-  sprintf(s, "%0.0lf - %0.0lf",
-          pi->info.start.t - D->bt,
+  sprintf(s, "%11.0lf",
+          pi->info.start.t - D->bt);
+  gtk_label_set_text(GTK_LABEL(gui->nodeinfo.start_time), s);
+  sprintf(s, "%11.0lf",
           pi->info.end.t - D->bt);
-  gtk_label_set_text(GTK_LABEL(gui->nodeinfo.time), s);
+  gtk_label_set_text(GTK_LABEL(gui->nodeinfo.end_time), s);
   sprintf(s, "%llu",
           pi->info.end.t - pi->info.start.t);
   gtk_label_set_text(GTK_LABEL(gui->nodeinfo.duration), s);
@@ -3730,7 +3733,7 @@ dv_gui_build_nodeinfo_sidebox(dv_gui_t * gui) {
   gtk_widget_set_halign(label, GTK_ALIGN_END);
   gtk_label_set_selectable(GTK_LABEL(widget), TRUE);
   
-  num = 1;
+  num++;
   label = gtk_label_new("Offset:");
   widget = gui->nodeinfo.offset = gtk_label_new("<none>");
   gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
@@ -3738,7 +3741,7 @@ dv_gui_build_nodeinfo_sidebox(dv_gui_t * gui) {
   gtk_widget_set_halign(label, GTK_ALIGN_END);
   gtk_label_set_selectable(GTK_LABEL(widget), TRUE);
   
-  num = 2;
+  num++;
   label = gtk_label_new("Depth:");
   widget = gui->nodeinfo.depth = gtk_label_new("<none>");
   gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
@@ -3746,8 +3749,8 @@ dv_gui_build_nodeinfo_sidebox(dv_gui_t * gui) {
   gtk_widget_set_halign(label, GTK_ALIGN_END);
   gtk_label_set_selectable(GTK_LABEL(widget), TRUE);
 
-  num = 3;
-  label = gtk_label_new("Node counts:");
+  num++;
+  label = gtk_label_new("Nodes:");
   widget = gui->nodeinfo.cur_node_count = gtk_label_new("<none>");
   gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
   gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
@@ -3755,15 +3758,23 @@ dv_gui_build_nodeinfo_sidebox(dv_gui_t * gui) {
   gtk_widget_set_halign(label, GTK_ALIGN_END);
   gtk_label_set_selectable(GTK_LABEL(widget), TRUE);
 
-  num = 4;
-  label = gtk_label_new("Time:");
-  widget = gui->nodeinfo.time = gtk_label_new("<none> - <none>");
+  num++;
+  label = gtk_label_new("Start time:");
+  widget = gui->nodeinfo.start_time = gtk_label_new("<none>");
   gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
   gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
   gtk_widget_set_halign(label, GTK_ALIGN_END);
   gtk_label_set_selectable(GTK_LABEL(widget), TRUE);
 
-  num = 5;
+  num++;
+  label = gtk_label_new("End time:");
+  widget = gui->nodeinfo.end_time = gtk_label_new("<none>");
+  gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
+  gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
+  gtk_widget_set_halign(label, GTK_ALIGN_END);
+  gtk_label_set_selectable(GTK_LABEL(widget), TRUE);
+
+  num++;
   label = gtk_label_new("Duration:");
   widget = gui->nodeinfo.duration = gtk_label_new("<none>");
   gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
@@ -3771,7 +3782,7 @@ dv_gui_build_nodeinfo_sidebox(dv_gui_t * gui) {
   gtk_widget_set_halign(label, GTK_ALIGN_END);
   gtk_label_set_selectable(GTK_LABEL(widget), TRUE);
 
-  num = 6;
+  num++;
   label = gtk_label_new("First ready:");
   widget = gui->nodeinfo.first_ready_t = gtk_label_new("<none>");
   gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
@@ -3779,7 +3790,7 @@ dv_gui_build_nodeinfo_sidebox(dv_gui_t * gui) {
   gtk_widget_set_halign(label, GTK_ALIGN_END);
   gtk_label_set_selectable(GTK_LABEL(widget), TRUE);
 
-  num = 7;
+  num++;
   label = gtk_label_new("Est:");
   widget = gui->nodeinfo.est = gtk_label_new("<none>");
   gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
@@ -3787,7 +3798,7 @@ dv_gui_build_nodeinfo_sidebox(dv_gui_t * gui) {
   gtk_widget_set_halign(label, GTK_ALIGN_END);
   gtk_label_set_selectable(GTK_LABEL(widget), TRUE);
 
-  num = 8;
+  num++;
   label = gtk_label_new("t_1:");
   widget = gui->nodeinfo.t1inf = gtk_label_new("<none>");
   gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
@@ -3795,7 +3806,7 @@ dv_gui_build_nodeinfo_sidebox(dv_gui_t * gui) {
   gtk_widget_set_halign(label, GTK_ALIGN_END);
   gtk_label_set_selectable(GTK_LABEL(widget), TRUE);
 
-  num = 9;
+  num++;
   label = gtk_label_new("t_inf:");
   widget = gui->nodeinfo.t1inf = gtk_label_new("<none>");
   gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
@@ -3803,7 +3814,7 @@ dv_gui_build_nodeinfo_sidebox(dv_gui_t * gui) {
   gtk_widget_set_halign(label, GTK_ALIGN_END);
   gtk_label_set_selectable(GTK_LABEL(widget), TRUE);
 
-  num = 10;
+  num++;
   label = gtk_label_new("Counters:");
   widget = gui->nodeinfo.counters = gtk_label_new("<none>");
   gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
@@ -3811,7 +3822,7 @@ dv_gui_build_nodeinfo_sidebox(dv_gui_t * gui) {
   gtk_widget_set_halign(label, GTK_ALIGN_END);
   gtk_label_set_selectable(GTK_LABEL(widget), TRUE);
 
-  num = 11;
+  num++;
   label = gtk_label_new("Worker:");
   widget = gui->nodeinfo.worker = gtk_label_new("<none>");
   gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
@@ -3819,7 +3830,7 @@ dv_gui_build_nodeinfo_sidebox(dv_gui_t * gui) {
   gtk_widget_set_halign(label, GTK_ALIGN_END);
   gtk_label_set_selectable(GTK_LABEL(widget), TRUE);
 
-  num = 12;
+  num++;
   label = gtk_label_new("CPU:");
   widget = gui->nodeinfo.cpu = gtk_label_new("<none>");
   gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
@@ -3827,7 +3838,7 @@ dv_gui_build_nodeinfo_sidebox(dv_gui_t * gui) {
   gtk_widget_set_halign(label, GTK_ALIGN_END);
   gtk_label_set_selectable(GTK_LABEL(widget), TRUE);
 
-  num = 13;
+  num++;
   label = gtk_label_new("Start code:");
   widget = gui->nodeinfo.start_pos = gtk_label_new("<none>");
   gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
@@ -3835,7 +3846,7 @@ dv_gui_build_nodeinfo_sidebox(dv_gui_t * gui) {
   gtk_widget_set_halign(label, GTK_ALIGN_END);
   gtk_label_set_selectable(GTK_LABEL(widget), TRUE);
 
-  num = 14;
+  num++;
   label = gtk_label_new("End code:");
   widget = gui->nodeinfo.end_pos = gtk_label_new("<none>");
   gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);

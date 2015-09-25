@@ -46,6 +46,9 @@ dv_view_layout(dv_view_t * V) {
   for (i = 0; i < DV_NUM_LAYOUT_TYPES; i++)
     if (tolayout[i])
       dv_view_layout_with_type(V, i);
+  for (i = 0; i < CS->nV; i++)
+    if (V->D->mV[i] && CS->V[i].S->nviewports > 0)
+      dv_view_auto_zoomfit(&CS->V[i]);
 }
 
 /*-----------end of Main layout functions-------------------------*/

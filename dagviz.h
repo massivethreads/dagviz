@@ -107,12 +107,12 @@ typedef struct dv_llist {
 #define DV_NUM_LAYOUT_TYPES 5
 #define DV_LAYOUT_TYPE_INIT 0 // not paraprof coz need to check H of D
 #define DV_NODE_COLOR_INIT 0 // 0:worker, 1:cpu, 2:kind, 3:code start, 4:code end, 5: code segment
-#define DV_SCALE_TYPE_INIT 1
+#define DV_SCALE_TYPE_INIT 0 // 0:log, 1:power, 2:linear
 #define DV_FROMBT_INIT 0
 #define DV_EDGE_TYPE_INIT 3
 #define DV_EDGE_AFFIX_LENGTH 0//10
 #define DV_CLICK_MODE_INIT 2 // 0:none, 1:info, 2:expand/collapse
-#define DV_HOVER_MODE_INIT 0 // 0:none, 1:info, 2:expand, 3:collapse, 4:expand/collapse
+#define DV_HOVER_MODE_INIT 5 // 0:none, 1:info, 2:expand, 3:collapse, 4:expand/collapse, 5:remark similar nodes
 #define DV_SHOW_LEGEND_INIT 0
 #define DV_SHOW_STATUS_INIT 0
 #define DV_REMAIN_INNER_INIT 1
@@ -574,7 +574,8 @@ typedef struct dv_gui {
     GtkWidget * type;
     GtkWidget * depth;
     GtkWidget * cur_node_count;
-    GtkWidget * time;
+    GtkWidget * start_time;
+    GtkWidget * end_time;
     GtkWidget * duration;    
     GtkWidget * first_ready_t;
     GtkWidget * est;
@@ -781,6 +782,9 @@ void dv_view_auto_zoomfit(dv_view_t *);
 void dv_view_status_set_coord(dv_view_status_t *);
 void dv_view_status_init(dv_view_t *, dv_view_status_t *);
 
+void dv_view_scan(dv_view_t *);
+void dv_view_remark_similar_nodes(dv_view_t *, dv_dag_node_t *);
+
 void dv_statusbar_update(int, int, char *);
 void dv_statusbar_remove(int, int);
 void dv_statusbar_update_selection_status();
@@ -838,8 +842,6 @@ dv_dag_node_t * dv_dag_node_get_single_last(dv_dag_node_t *);
 void dv_btsample_viewer_init(dv_btsample_viewer_t *);
 int dv_btsample_viewer_extract_interval(dv_btsample_viewer_t *, int, unsigned long long, unsigned long long);
 
-void dv_view_scan(dv_view_t *);
-
 
 /* layout.c */
 void dv_view_layout(dv_view_t *);
@@ -890,8 +892,9 @@ void dv_view_draw_legend_dag(dv_view_t *, cairo_t *);
 
 
 /* view_dag_box.c */
-double dv_view_scale_down(dv_view_t *, double);
 double dv_dag_scale_down(dv_dag_t *, double);
+double dv_dag_scale_down_linear(dv_dag_t *, double);
+double dv_view_scale_down(dv_view_t *, double);
 double dv_view_calculate_vsize(dv_view_t *, dv_dag_node_t *);
 void dv_view_layout_dagbox(dv_view_t *);
 void dv_view_draw_dagbox(dv_view_t *, cairo_t *);

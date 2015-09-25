@@ -204,7 +204,7 @@ dv_view_get_zoomfit_hor(dv_view_t * V, double * zrx, double * zry, double * myx,
     break;
   case 4:
     // Parallelism profile
-    d1 = dv_dag_scale_down(V->D, V->D->et - V->D->bt);
+    d1 = dv_dag_scale_down_linear(V->D, V->D->et - V->D->bt);
     d2 = w - 2 * DV_HISTOGRAM_MARGIN;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
@@ -285,7 +285,7 @@ dv_view_get_zoomfit_ver(dv_view_t * V, double * zrx, double * zry, double * myx,
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     y -= D->P->num_workers * (2 * D->radius) * zoom_ratio;
-    double dx = (w - 2 * DV_HISTOGRAM_MARGIN - zoom_ratio * dv_dag_scale_down(V->D, V->D->et - V->D->bt)) / 2.0;
+    double dx = (w - 2 * DV_HISTOGRAM_MARGIN - zoom_ratio * dv_dag_scale_down_linear(V->D, V->D->et - V->D->bt)) / 2.0;
     if (dx > 0)
       x += dx;
     break;
@@ -441,7 +441,7 @@ dv_view_change_lt(dv_view_t * V, int new_lt) {
     case 2:
     case 3:
     case 4:
-      dv_view_change_sdt(V, 2);
+      //dv_view_change_sdt(V, 2);
       dv_view_change_nc(V, 2); // node kind
       break;
     default:
@@ -573,6 +573,73 @@ dv_view_status_init(dv_view_t * V, dv_view_status_t * S) {
 }
 
 /****************** end of VIEW **************************************/
+
+
+/*-----------------Remarked Workers-----------*/
+
+static void
+dv_view_scan_r(dv_view_t * V, dv_dag_node_t * node) {
+  dv_dag_t * D = V->D;
+  if (!dv_is_set(node))
+    dv_dag_node_set(D, node);
+  
+  if (dv_is_union(node)) {
+
+    /* Build inner */
+    int is_inner_loaded = dv_is_inner_loaded(node);
+    if (!is_inner_loaded) {
+      if (dv_dag_build_node_inner(D, node) != DV_OK) {
+        fprintf(stderr, "error in dv_dag_build_node_inner\n");
+        return;
+      }
+    }
+    /* Call inward */
+    dv_check(node->head);
+    dv_view_scan_r(V, node->head);
+    /* Process single */
+    node->r = node->head->link_r;
+    /* Collapse inner */
+    if (!is_inner_loaded && !V->S->remain_inner) {
+      dv_dag_collapse_node_inner(D, node);
+    }
+    
+  } else {
+    node->r = 0;
+    int v = dv_dag_node_lookup_value(D, node, V->S->nc);
+    int i;
+    for (i=0; i<V->D->nr; i++)
+      if (V->D->ar[i] == v) break;
+    if (i < V->D->nr)
+      dv_set_bit(&node->r, i);
+  }
+  
+  /* Call link-along */
+  node->link_r = node->r;
+  dv_dag_node_t * x = NULL;
+  while ( (x = dv_dag_node_traverse_nexts(node, x)) ) {
+    dv_view_scan_r(V, x);
+    node->link_r |= x->link_r;
+  }
+}
+
+void
+dv_view_scan(dv_view_t * V) {
+  dv_view_scan_r(V, V->D->rt);
+}
+
+void
+dv_view_remark_similar_nodes(dv_view_t * V, dv_dag_node_t * node) {
+  dv_dag_t * D = V->D;
+  int val = dv_dag_node_lookup_value(D, node, V->S->nc);
+  D->nr = 1;
+  D->ar[0] = val;
+  V->S->remain_inner = 1;
+  V->S->color_remarked_only = 1;
+  dv_view_scan(V);
+  dv_queue_draw_dag(D);
+}
+
+/*-----------------end of Remarked Workers-----------*/
 
 
 
@@ -1331,6 +1398,8 @@ dv_do_motion_event(dv_view_t * V, GdkEventMotion * event) {
       && node != S->last_hovered_node
       && !dv_is_shrinking(node->parent)
       && !dv_is_expanding(node->parent)) {
+
+    /* User-preferred hover mode */
     switch (S->hm) {
     case 0:
       break;
@@ -1365,13 +1434,29 @@ dv_do_motion_event(dv_view_t * V, GdkEventMotion * event) {
         dv_do_collapsing_one_r(V, node->parent);
       }
       break;
+    case 5:
+      /* Remark similar nodes */
+      dv_view_remark_similar_nodes(V, node);
+      break;
     default:
       dv_check(0);
     }
+
+    /* Adjust nodeinfo sidebox if shown */
+    GtkWidget * item = GTK_WIDGET(gtk_builder_get_object(GUI->builder, "nodeinfo"));  
+    gboolean shown = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(item));
+    if (shown)
+      dv_gui_nodeinfo_set_node(GUI, node, V->D);
+
+    /* Mark last hovered node */
     S->last_hovered_node = node;
   }
-  if (!node)
+  if (!node) {
     S->last_hovered_node = NULL;
+    
+    S->color_remarked_only = 0;
+    dv_queue_draw(V);
+  }
 }
 
 dv_dag_node_t *
