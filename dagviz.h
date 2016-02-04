@@ -72,7 +72,7 @@ typedef struct dv_llist {
 
 /*-----------------Constants-----------------*/
 
-#define DV_ZOOM_INCREMENT 1.20
+#define DV_ZOOM_INCREMENT 1.06
 #define DV_SCALE_INCREMENT 1.04
 #define DV_HDIS 70
 #define DV_VDIS 70
