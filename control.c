@@ -42,6 +42,11 @@ on_darea_scroll_event(_unused_ GtkWidget * widget, GdkEventScroll * event, gpoin
 
 static gboolean
 on_darea_button_event(_unused_ GtkWidget * widget, GdkEventButton * event, gpointer user_data) {
+  double time = dv_get_time();
+  if (CS->verbose_level >= 2) {
+    fprintf(stderr, "on_darea_button_event()\n");
+  }
+  
   dv_viewport_t * VP = (dv_viewport_t *) user_data;
 
   /* grab focus */
@@ -57,6 +62,9 @@ on_darea_button_event(_unused_ GtkWidget * widget, GdkEventButton * event, gpoin
         dv_do_button_event(&CS->V[i], event);
   }
 
+  if (CS->verbose_level >= 2) {
+    fprintf(stderr, "... done on_darea_button_event(): %lf\n", dv_get_time() - time);
+  }
   return TRUE;
 }
 
@@ -422,7 +430,9 @@ on_darea_key_press_event(_unused_ GtkWidget * widget, _unused_ GdkEventConfigure
     }
     break;
   case 116: /* T */
-    fprintf(stderr, "open toolbox window of V %ld\n", V - CS->V);
+    if (CS->verbose_level >= 1) {
+      fprintf(stderr, "open toolbox window of V %ld\n", V - CS->V);
+    }
     dv_view_open_toolbox_window(V);
     return TRUE;
   default:

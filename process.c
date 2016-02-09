@@ -1069,13 +1069,33 @@ dv_do_finding_clicked_node_r(dv_view_t * V, double x, double y, dv_dag_node_t * 
 
 static dv_dag_node_t *
 dv_do_finding_clicked_node(dv_view_t * V, double x, double y) {
-  dv_dag_node_t * ret = dv_do_finding_clicked_node_r(V, x, y, V->D->rt);
+  double time = dv_get_time();
+  if (CS->verbose_level >= 2) {
+    fprintf(stderr, "dv_do_finding_clicked_node()\n");
+  }
+  dv_dag_node_t * ret = NULL;
+  switch (V->S->lt) {
+  case 0:
+    ret = dv_view_dag_find_clicked_node(V, x, y);
+    break;
+  case 1:
+  case 2:
+  case 3:
+  case 4:
+    ret = dv_do_finding_clicked_node_r(V, x, y, V->D->rt);
+    break;
+  default:
+    dv_check(0);
+  }
   if (ret) {
     char s[DV_STRING_LENGTH];
     sprintf(s, "Node %ld", ret->pii);
     dv_statusbar_update(1, 0, s);
   } else {
     dv_statusbar_remove(1, 0);
+  }
+  if (CS->verbose_level >= 2) {
+    fprintf(stderr, "... done dv_do_finding_clicked_node(): %lf\n", dv_get_time() - time);
   }
   return ret;
 }
@@ -1298,6 +1318,10 @@ dv_do_collapsing_one(dv_view_t * V) {
 
 void
 dv_do_button_event(dv_view_t * V, GdkEventButton * event) {
+  double time = dv_get_time();
+  if (CS->verbose_level >= 2) {
+    fprintf(stderr, "dv_do_button_event()\n");
+  }
   /* Turn auto zoomfit off whenever there is button_event */
   if (V->S->adjust_auto_zoomfit)
     dv_view_change_azf(V, 0);
@@ -1372,6 +1396,9 @@ dv_do_button_event(dv_view_t * V, GdkEventButton * event) {
       // nothing
     }
 
+  }
+  if (CS->verbose_level >= 2) {
+    fprintf(stderr, "... done dv_do_button_event(): %.0lf\n", dv_get_time() - time);
   }
 }
 

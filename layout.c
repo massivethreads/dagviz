@@ -34,6 +34,11 @@ dv_view_layout_with_type(dv_view_t * V, int lt) {
 
 void
 dv_view_layout(dv_view_t * V) {
+  double time = dv_get_time();
+  if (CS->verbose_level >= 2) {
+    fprintf(stderr, "dv_view_layout()\n");
+  }
+  //printf("  d=%d, nd=%ld, nl=%ld, ntr=%ld\n", V->D->cur_d, V->S->nd, V->S->nl, V->S->ntr);
   V->S->nl = 0;
   int tolayout[DV_NUM_LAYOUT_TYPES];
   int i;
@@ -49,6 +54,10 @@ dv_view_layout(dv_view_t * V) {
   for (i = 0; i < CS->nV; i++)
     if (V->D->mV[i] && CS->V[i].S->nviewports > 0)
       dv_view_auto_zoomfit(&CS->V[i]);
+  if (CS->verbose_level >= 2) {
+    fprintf(stderr, "... done dv_view_layout(): %lf\n", dv_get_time() - time);
+    //fprintf(stderr, "  d=%d, nd=%ld, nl=%ld, ntr=%ld\n", V->D->cur_d, V->S->nd, V->S->nl, V->S->ntr);
+  }
 }
 
 /*-----------end of Main layout functions-------------------------*/
@@ -97,16 +106,24 @@ void dv_animation_init(dv_view_t *V, dv_animation_t *a) {
 }
 
 static gboolean dv_animation_tick(gpointer data) {
+  if (CS->verbose_level >= 2) {
+    fprintf(stderr, "dv_animation_tick() starts\n");
+  }
   dv_animation_t *a = (dv_animation_t *) data;
   dv_check(a->on);
   double cur = dv_get_time();
   dv_dag_node_t *node = NULL;
   // iterate moving nodes
+  long count_all = 0;
+  long count_del = 0;
   dv_llist_cell_t *c = a->movings->top;
   while (c) {
+    count_all++;
     node = (dv_dag_node_t *) c->item;
     c = c->next;
     if (cur - node->started >= a->duration) {
+      //printf("  %.0lf >= %.0lf\n", cur - node->started, a->duration);
+      count_del++;
       dv_animation_remove(a, node);
       if (dv_is_shrinking(node)) {
         dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKING);
@@ -116,6 +133,9 @@ static gboolean dv_animation_tick(gpointer data) {
         dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKED);
       }
     }
+  }
+  if (CS->verbose_level >= 2) {
+    fprintf(stderr, "  removed %ld nodes (of %ld in total)\n", count_del, count_all);
   }
   /*
   while (node = (dv_dag_node_t *) dv_llist_iterate_next(a->movings, node)) {
@@ -131,6 +151,9 @@ static gboolean dv_animation_tick(gpointer data) {
     }
   }
   */
+  if (CS->verbose_level >= 2) {
+    fprintf(stderr, "  to call dv_view_layout(), \n");
+  }
   dv_view_layout(a->V);
   dv_view_auto_zoomfit(a->V);
   dv_queue_draw_d(a->V);

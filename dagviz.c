@@ -108,6 +108,8 @@ dv_global_state_init(dv_global_state_t * CS) {
   CS->SBG->fn = DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME;
   CS->context_view = NULL;
   CS->context_node = NULL;
+
+  CS->verbose_level = DV_VERBOSE_LEVEL_DEFAULT;
 }
 
 /*-----------------end of Global State-----------------*/
@@ -118,6 +120,10 @@ dv_global_state_init(dv_global_state_t * CS) {
 
 void
 dv_queue_draw_viewport(dv_viewport_t * VP) {
+  if (CS->verbose_level >= 2) {
+    fprintf(stderr, "dv_queue_draw_viewport()\n");
+  }
+  fflush(stdin);
   gtk_widget_queue_draw(VP->darea);
 }
 
@@ -156,28 +162,31 @@ dv_queue_draw_pidag(dv_pidag_t * P) {
 
 void
 dv_queue_draw(dv_view_t * V) {
-  int i;
-  for (i=0; i<CS->nVP; i++)
-    if (V->mVP[i])
-      gtk_widget_queue_draw(CS->VP[i].darea);
+  dv_queue_draw_view(V);
 }
 
 void
 dv_queue_draw_d(dv_view_t * V) {
   dv_dag_t * D = V->D;
+  dv_queue_draw_dag(D);
+  /*
   int i;
   for (i=0; i<CS->nV; i++)
     if (CS->V[i].D == D)
       dv_queue_draw(&CS->V[i]);
+  */
 }
 
 void
 dv_queue_draw_d_p(dv_view_t * V) {
   dv_pidag_t * P = V->D->P;
+  dv_queue_draw_pidag(P);
+  /*
   int i;
   for (i=0; i<CS->nV; i++)
     if (CS->V[i].D->P == P)
       dv_queue_draw(&CS->V[i]);
+  */
 }
 
 void

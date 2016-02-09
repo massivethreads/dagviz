@@ -102,7 +102,7 @@ typedef struct dv_llist {
 #define DV_RADIX_LINEAR 100000
 
 #define DV_ANIMATION_DURATION 400 // milliseconds
-#define DV_ANIMATION_STEP 30 // milliseconds
+#define DV_ANIMATION_STEP 80 // milliseconds
 
 #define DV_NUM_LAYOUT_TYPES 5
 #define DV_LAYOUT_TYPE_INIT 0 // not paraprof coz need to check H of D
@@ -166,6 +166,8 @@ typedef struct dv_llist {
 #define _static_unused_ static __attribute__((unused))
 
 #define DV_PARAPROF_MIN_ENTRY_INTERVAL 2000000
+
+#define DV_VERBOSE_LEVEL_DEFAULT 0
 
 /*-----------------Data Structures-----------------*/
 
@@ -623,6 +625,8 @@ typedef struct dv_global_state {
 
   dv_view_t * context_view;
   dv_dag_node_t * context_node;
+
+  int verbose_level;
 } dv_global_state_t;
 
 extern const char * const DV_COLORS[];
@@ -889,6 +893,7 @@ void dv_viewport_draw_focused_mark(dv_viewport_t *, cairo_t *);
 void dv_view_layout_dag(dv_view_t *);
 void dv_view_draw_dag(dv_view_t *, cairo_t *);
 void dv_view_draw_legend_dag(dv_view_t *, cairo_t *);
+dv_dag_node_t * dv_view_dag_find_clicked_node(dv_view_t *, double, double);
 
 
 /* view_dag_box.c */

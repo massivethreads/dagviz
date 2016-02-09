@@ -1,7 +1,104 @@
 #include "dagviz.h"
 
 
-/*-----------------DAG layout functions-----------*/
+/****** Utility ******/
+
+static dv_dag_node_t *
+dv_view_dag_find_clicked_node_1(dv_view_t * V, double x, double y, dv_dag_node_t * node) {
+  dv_dag_node_t * ret = NULL;
+  dv_node_coordinate_t * c = &node->c[V->S->coord];
+  double vc, hc;
+  vc = c->x;
+  hc = c->y;
+  if (vc - V->D->radius < x && x < vc + V->D->radius
+      && hc < y && y < hc + 2 * V->D->radius) {
+    ret = node;
+  }
+  return ret;
+}
+
+static dv_dag_node_t *
+dv_view_dag_find_clicked_node_r(dv_view_t * V, double x, double y, dv_dag_node_t * node) {
+  dv_dag_node_t * ret = NULL;
+  const int coord = 0;
+  dv_node_coordinate_t * co = &node->c[coord];
+  /* Call inward */
+  if (dv_is_single(node)) {
+    if (dv_view_dag_find_clicked_node_1(V, x, y, node)) {
+      return node;
+    }
+  } else if (co->x - co->lw < x && x < co->x + co->rw && co->y < y && y < co->y + co->dw) {
+    ret = dv_view_dag_find_clicked_node_r(V, x, y, node->head);
+    if (ret)
+      return ret;
+  }
+  /* Call link-along */
+  if (co->x - co->link_lw < x && x < co->x + co->link_rw && co->y < y && y < co->y + co->link_dw) {
+    dv_dag_node_t * next = NULL;
+    while ( (next = dv_dag_node_traverse_nexts(node, next)) ) {
+      ret = dv_view_dag_find_clicked_node_r(V, x, y, next);
+      if (ret)
+        return ret;
+    }
+  }
+  return NULL;
+}
+
+dv_dag_node_t *
+dv_view_dag_find_clicked_node(dv_view_t * V, double x, double y) {
+  double time = dv_get_time();
+  if (CS->verbose_level >= 2) {
+    fprintf(stderr, "dv_view_dag_find_clicked_node()\n");
+  }
+  dv_dag_node_t * ret = dv_view_dag_find_clicked_node_r(V, x, y, V->D->rt);
+  if (CS->verbose_level >= 2) {
+    fprintf(stderr, "... done dv_view_dag_find_clicked_node(): %lf\n", dv_get_time() - time);
+  }
+  return ret;
+}
+
+/* 0 : visible
+   1 : hidden above
+   2 : hidden to the right
+   4 : hidden below
+   8 : hidden to the left
+ */
+static int
+dv_node_is_invisible(dv_view_t * V, dv_dag_node_t * node) {
+  double bound_left = dv_view_clip_get_bound_left(V);
+  double bound_right = dv_view_clip_get_bound_right(V);
+  double bound_up = dv_view_clip_get_bound_up(V);
+  double bound_down = dv_view_clip_get_bound_down(V);
+  int coord = 0;
+  dv_node_coordinate_t * nodeco = &node->c[coord];
+  double x = nodeco->x;
+  double y = nodeco->y;
+  double xx, yy, w, h;
+  xx = x - nodeco->lw;
+  yy = y;
+  w = nodeco->lw + nodeco->rw;
+  h = nodeco->dw;
+
+  int ret = 0;
+  int above = 0b0001;
+  int right = 0b0010;
+  int below = 0b0100;
+  int left = 0b1000;
+  if (yy + h < bound_up)
+    ret |= above;
+  if (xx > bound_right)
+    ret |= right;
+  if (yy > bound_down)
+    ret |= below;
+  if (xx + w < bound_left)
+    ret |= left;
+  return ret;
+}
+
+/****** end of Utility ******/
+
+
+/****** Layout ******/
 
 static void
 dv_view_layout_dag_node(dv_view_t * V, dv_dag_node_t * node) {
@@ -168,11 +265,10 @@ dv_view_layout_dag(dv_view_t * V) {
   
 }
 
-/*-----------------end of DAG layout functions-----------*/
+/****** end of Layout ******/
 
 
-
-/*-----------------DAG Drawing functions-----------*/
+/****** Draw ******/
 
 static void
 dv_view_draw_dag_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
@@ -374,87 +470,68 @@ dv_view_draw_dag_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
 }
 
 static void
-dv_view_draw_dag_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
-  // Count node
-  V->S->ndh++;
-  if (!node || !dv_is_set(node))
-    return;
-  /* Draw node */
-  if (!dv_is_union(node) || !dv_is_inner_loaded(node)
-      || dv_is_shrinked(node) || dv_is_shrinking(node)) {
-    dv_view_draw_dag_node_1(V, cr, node);
-  }
-  /* Call inward */
-  if (!dv_is_single(node)) {
-    dv_view_draw_dag_node_r(V, cr, node->head);
-  }
-  /* Call link-along */
-  dv_dag_node_t * x = NULL;
-  while ( (x = dv_dag_node_traverse_nexts(node, x)) ) {
-    dv_view_draw_dag_node_r(V, cr, x);
-  }
-}
-
-static void
 dv_view_draw_dag_edge_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node, dv_dag_node_t * next) {
   dv_view_draw_edge_1(V, cr, node, next);
 }
 
 static void
-dv_view_draw_dag_edge_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
+dv_view_draw_dag_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
+  // Count node
+  V->S->ndh++;
   if (!node || !dv_is_set(node))
     return;
-  /* Call inward */
-  if (!dv_is_single(node)) {
-    dv_view_draw_dag_edge_r(V, cr, node->head);
+
+  int hidden = dv_node_is_invisible(V, node);
+  if (!hidden) {
+    /* Draw node */
+    if (!dv_is_union(node) || !dv_is_inner_loaded(node)
+        || dv_is_shrinked(node) || dv_is_shrinking(node)) {
+      if (!hidden)
+        dv_view_draw_dag_node_1(V, cr, node);
+    }
+    /* Call inward */
+    if (!dv_is_single(node)) {
+      dv_view_draw_dag_node_r(V, cr, node->head);
+    }
   }
   /* Call link-along */
-  dv_dag_node_t * next = NULL;
-  while ( (next = dv_dag_node_traverse_nexts(node, next)) ) {
-    
-    if (dv_is_single(node)) {
-      
-      if (dv_is_single(next))
-        dv_view_draw_dag_edge_1(V, cr, node, next);
-      else
-        dv_view_draw_dag_edge_1(V, cr, node, dv_dag_node_get_single_head(next->head));
-      
-    } else {
-
-      dv_dag_node_t * tail = NULL;
-      while ( (tail = dv_dag_node_traverse_tails(node, tail)) ) {
-          dv_dag_node_t * last = dv_dag_node_get_single_last(tail);
-        
-          if (dv_is_single(next))
-            dv_view_draw_dag_edge_1(V, cr, last, next);
+  if ((hidden & 0b0100) == 0) {
+    dv_dag_node_t * x = NULL;
+    while ( (x = dv_dag_node_traverse_nexts(node, x)) ) {
+      /* Draw edge first */
+      if (dv_is_single(node)) {
+        if (dv_is_single(x))
+          dv_view_draw_dag_edge_1(V, cr, node, x);
+        else
+          dv_view_draw_dag_edge_1(V, cr, node, dv_dag_node_get_single_head(x->head));      
+      } else {
+        dv_dag_node_t * tail = NULL;
+        while ( (tail = dv_dag_node_traverse_tails(node, tail)) ) {
+          dv_dag_node_t * last = dv_dag_node_get_single_last(tail);        
+          if (dv_is_single(x))
+            dv_view_draw_dag_edge_1(V, cr, last, x);
           else
-            dv_view_draw_dag_edge_1(V, cr, last, dv_dag_node_get_single_head(next->head));
-      
+            dv_view_draw_dag_edge_1(V, cr, last, dv_dag_node_get_single_head(x->head));
+        }      
       }
-      
+      cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, 1.0);
+      cairo_stroke(cr);
+      /* Call recursively then */
+      dv_view_draw_dag_node_r(V, cr, x);
     }
-    dv_view_draw_dag_edge_r(V, cr, next);
-    
   }
 }
 
 void
 dv_view_draw_dag(dv_view_t * V, cairo_t * cr) {
   cairo_set_line_width(cr, DV_NODE_LINE_WIDTH);
-  // Draw nodes
+  /* Draw */
   dv_llist_init(V->D->itl);
   V->S->nd = 0;
   V->S->ndh = 0;
   V->D->cur_d = 0;
   V->D->cur_d_ex = V->D->dmax;
   dv_view_draw_dag_node_r(V, cr, V->D->rt);
-  // Draw edges
-  cairo_save(cr);
-  cairo_new_path(cr);
-  dv_view_draw_dag_edge_r(V, cr, V->D->rt);
-  cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, 1.0);
-  cairo_stroke(cr);
-  cairo_restore(cr);
 }
 
 void
@@ -602,6 +679,6 @@ dv_view_draw_legend_dag(dv_view_t * V, cairo_t * cr) {
   cairo_restore(cr);
 }
 
+/****** end of Draw ******/
 
 
-/*-----------------end of DAG Drawing functions-----------*/
