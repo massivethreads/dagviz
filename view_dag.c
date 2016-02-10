@@ -20,7 +20,7 @@ dv_view_dag_find_clicked_node_1(dv_view_t * V, double x, double y, dv_dag_node_t
 static dv_dag_node_t *
 dv_view_dag_find_clicked_node_r(dv_view_t * V, double x, double y, dv_dag_node_t * node) {
   dv_dag_node_t * ret = NULL;
-  const int coord = 0;
+  const int coord = V->S->lt;
   dv_node_coordinate_t * co = &node->c[coord];
   /* Call inward */
   if (dv_is_single(node)) {
@@ -57,41 +57,69 @@ dv_view_dag_find_clicked_node(dv_view_t * V, double x, double y) {
   return ret;
 }
 
-/* 0 : visible
-   1 : hidden above
-   2 : hidden to the right
-   4 : hidden below
-   8 : hidden to the left
- */
 static int
-dv_node_is_invisible(dv_view_t * V, dv_dag_node_t * node) {
+dv_dag_node_rec_is_invisible(dv_view_t * V, double x, double y, double w, double h) {
   double bound_left = dv_view_clip_get_bound_left(V);
   double bound_right = dv_view_clip_get_bound_right(V);
   double bound_up = dv_view_clip_get_bound_up(V);
   double bound_down = dv_view_clip_get_bound_down(V);
-  int coord = 0;
+  int ret = 0;
+  if (y + h < bound_up)
+    ret |= DV_DAG_NODE_HIDDEN_ABOVE;
+  if (x > bound_right)
+    ret |= DV_DAG_NODE_HIDDEN_RIGHT;
+  if (y > bound_down)
+    ret |= DV_DAG_NODE_HIDDEN_BELOW;
+  if (x + w < bound_left)
+    ret |= DV_DAG_NODE_HIDDEN_LEFT;
+  return ret;
+}
+
+int
+dv_dag_node_is_invisible(dv_view_t * V, dv_dag_node_t * node) {
+  int ret = 0;
+  if (!node) return ret;
+  
+  int coord = V->S->lt;
   dv_node_coordinate_t * nodeco = &node->c[coord];
   double x = nodeco->x;
   double y = nodeco->y;
+  double margin = 0.0;
+  if (dv_is_set(node) && dv_is_union(node) && dv_is_inner_loaded(node)
+      && (dv_is_expanding(node) || dv_is_shrinking(node))) {
+    margin = DV_UNION_NODE_MARGIN;
+  }
   double xx, yy, w, h;
-  xx = x - nodeco->lw;
-  yy = y;
-  w = nodeco->lw + nodeco->rw;
-  h = nodeco->dw;
+  xx = x - nodeco->lw - margin;
+  yy = y - margin;
+  w = nodeco->lw + nodeco->rw + 2 * margin;
+  h = nodeco->dw + 2 * margin;
+  
+  ret = dv_dag_node_rec_is_invisible(V, xx, yy, w, h);
+  return ret;
+}
 
+int
+dv_dag_node_link_is_invisible(dv_view_t * V, dv_dag_node_t * node) {
   int ret = 0;
-  int above = 0b0001;
-  int right = 0b0010;
-  int below = 0b0100;
-  int left = 0b1000;
-  if (yy + h < bound_up)
-    ret |= above;
-  if (xx > bound_right)
-    ret |= right;
-  if (yy > bound_down)
-    ret |= below;
-  if (xx + w < bound_left)
-    ret |= left;
+  if (!node) return ret;
+  
+  int coord = V->S->lt;
+  dv_node_coordinate_t * nodeco = &node->c[coord];
+  double x = nodeco->x;
+  double y = nodeco->y;
+  double margin = 0.0;
+  if (dv_is_set(node) && dv_is_union(node) && dv_is_inner_loaded(node)
+      && (dv_is_expanding(node) || dv_is_shrinking(node))) {
+    margin = DV_UNION_NODE_MARGIN;
+  }
+  double xx, yy, w, h;
+  xx = x - nodeco->link_lw - margin;
+  yy = y - margin;
+  w = nodeco->link_lw + nodeco->link_rw + 2 * margin;
+  h = nodeco->link_dw + 2 * margin;
+  
+  ret = dv_dag_node_rec_is_invisible(V, xx, yy, w, h);
   return ret;
 }
 
@@ -481,13 +509,11 @@ dv_view_draw_dag_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
   if (!node || !dv_is_set(node))
     return;
 
-  int hidden = dv_node_is_invisible(V, node);
-  if (!hidden) {
+  if (!dv_dag_node_is_invisible(V, node)) {
     /* Draw node */
     if (!dv_is_union(node) || !dv_is_inner_loaded(node)
         || dv_is_shrinked(node) || dv_is_shrinking(node)) {
-      if (!hidden)
-        dv_view_draw_dag_node_1(V, cr, node);
+      dv_view_draw_dag_node_1(V, cr, node);
     }
     /* Call inward */
     if (!dv_is_single(node)) {
@@ -495,10 +521,12 @@ dv_view_draw_dag_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
     }
   }
   /* Call link-along */
-  if ((hidden & 0b0100) == 0) {
+  if (!dv_dag_node_link_is_invisible(V, node)) {
     dv_dag_node_t * x = NULL;
     while ( (x = dv_dag_node_traverse_nexts(node, x)) ) {
       /* Draw edge first */
+      cairo_save(cr);
+      cairo_new_path(cr);
       if (dv_is_single(node)) {
         if (dv_is_single(x))
           dv_view_draw_dag_edge_1(V, cr, node, x);
@@ -516,6 +544,7 @@ dv_view_draw_dag_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
       }
       cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, 1.0);
       cairo_stroke(cr);
+      cairo_restore(cr);
       /* Call recursively then */
       dv_view_draw_dag_node_r(V, cr, x);
     }

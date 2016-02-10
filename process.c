@@ -1076,9 +1076,9 @@ dv_do_finding_clicked_node(dv_view_t * V, double x, double y) {
   dv_dag_node_t * ret = NULL;
   switch (V->S->lt) {
   case 0:
+  case 1:
     ret = dv_view_dag_find_clicked_node(V, x, y);
     break;
-  case 1:
   case 2:
   case 3:
   case 4:

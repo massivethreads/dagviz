@@ -213,7 +213,8 @@ dv_get_color_radial_pattern(double radius, double alpha) {
   return pat;
 }
 
-double dv_view_get_alpha_fading_out(dv_view_t *V, dv_dag_node_t *node) {
+double
+dv_view_get_alpha_fading_out(dv_view_t * V, dv_dag_node_t * node) {
   double ratio = (dv_get_time() - node->started) / V->S->a->duration;
   double ret;
   //ret = (1.0 - ratio) * 0.75;
@@ -221,7 +222,8 @@ double dv_view_get_alpha_fading_out(dv_view_t *V, dv_dag_node_t *node) {
   return ret;
 }
 
-double dv_view_get_alpha_fading_in(dv_view_t *V, dv_dag_node_t *node) {
+double
+dv_view_get_alpha_fading_in(dv_view_t * V, dv_dag_node_t * node) {
   double ratio = (dv_get_time() - node->started) / V->S->a->duration;
   double ret;
   //ret = ratio * 1.5;

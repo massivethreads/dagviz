@@ -1,6 +1,6 @@
 #include "dagviz.h"
 
-/*-----------------Dagbox layout functions-----------*/
+/****** Layout ******/
 
 double
 dv_dag_scale_down(dv_dag_t * D, double val) {
@@ -302,10 +302,10 @@ void dv_view_layout_dagbox(dv_view_t *V) {
 
 }
 
-/*-----------------end of Dagbox layout functions-----------*/
+/****** end of Layout ******/
 
 
-/*-----------------DAG Dagbox Drawing functions-----------*/
+/****** Draw ******/
 
 static void
 dv_view_draw_dagbox_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
@@ -459,90 +459,69 @@ dv_view_draw_dagbox_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
 }
 
 static void
-dv_view_draw_dagbox_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
-  // Count node
-  V->S->ndh++;
-  if (!node || !dv_is_set(node))
-    return;
-  /* Draw node */
-  if (!dv_is_union(node) || !dv_is_inner_loaded(node)
-      || dv_is_shrinked(node) || dv_is_shrinking(node)) {
-    dv_view_draw_dagbox_node_1(V, cr, node);
-  }
-  /* Call inward */
-  if (!dv_is_single(node)) {
-    dv_view_draw_dagbox_node_r(V, cr, node->head);
-  }
-  /* Call link-along */
-  dv_dag_node_t * x = NULL;
-  while ( (x = dv_dag_node_traverse_nexts(node, x)) ) {
-    dv_view_draw_dagbox_node_r(V, cr, x);
-  }
-}
-
-static void
 dv_view_draw_dagbox_edge_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node, dv_dag_node_t * next) {
   dv_view_draw_edge_1(V, cr, node, next);
 }
 
 static void
-dv_view_draw_dagbox_edge_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
+dv_view_draw_dagbox_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
+  /* Counting statistics */
+  V->S->ndh++;
   if (!node || !dv_is_set(node))
     return;
-  /* Call inward */
-  if (!dv_is_single(node)) {
-    dv_view_draw_dagbox_edge_r(V, cr, node->head);
+  
+  if (!dv_dag_node_is_invisible(V, node)) {
+    /* Draw node */
+    if (!dv_is_union(node) || !dv_is_inner_loaded(node)
+        || dv_is_shrinked(node) || dv_is_shrinking(node)) {
+      dv_view_draw_dagbox_node_1(V, cr, node);
+    }
+    /* Call inward */
+    if (!dv_is_single(node)) {
+      dv_view_draw_dagbox_node_r(V, cr, node->head);
+    }
   }
   /* Call link-along */
-  dv_dag_node_t * next = NULL;
-  while ( (next = dv_dag_node_traverse_nexts(node, next)) ) {
-    
-    if (dv_is_single(node)) {
-      
-      if (dv_is_single(next))
-        dv_view_draw_dagbox_edge_1(V, cr, node, next);
-      else
-        dv_view_draw_dagbox_edge_1(V, cr, node, dv_dag_node_get_single_head(next->head));
-      
-    } else {
-
-      dv_dag_node_t * tail = NULL;
-      while ( (tail = dv_dag_node_traverse_tails(node, tail)) ) {
+  if (!dv_dag_node_link_is_invisible(V, node)) {
+    dv_dag_node_t * x = NULL;
+    while ( (x = dv_dag_node_traverse_nexts(node, x)) ) {
+      /* Draw edge first */
+      cairo_save(cr);
+      cairo_new_path(cr);
+      if (dv_is_single(node)) {      
+        if (dv_is_single(x))
+          dv_view_draw_dagbox_edge_1(V, cr, node, x);
+        else
+          dv_view_draw_dagbox_edge_1(V, cr, node, dv_dag_node_get_single_head(x->head));
+      } else {
+        dv_dag_node_t * tail = NULL;
+        while ( (tail = dv_dag_node_traverse_tails(node, tail)) ) {
           dv_dag_node_t * last = dv_dag_node_get_single_last(tail);
-
-          if (dv_is_single(next))
-            dv_view_draw_dagbox_edge_1(V, cr, last, next);
+          if (dv_is_single(x))
+            dv_view_draw_dagbox_edge_1(V, cr, last, x);
           else
-            dv_view_draw_dagbox_edge_1(V, cr, last, dv_dag_node_get_single_head(next->head));
-
+            dv_view_draw_dagbox_edge_1(V, cr, last, dv_dag_node_get_single_head(x->head));
+        }
       }
-
+      cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, 1.0);
+      cairo_stroke(cr);
+      cairo_restore(cr);
+      /* Call recursively then */
+      dv_view_draw_dagbox_node_r(V, cr, x);
     }
-    dv_view_draw_dagbox_edge_r(V, cr, next);
-    
   }
 }
 
 void
 dv_view_draw_dagbox(dv_view_t * V, cairo_t * cr) {
   cairo_set_line_width(cr, DV_NODE_LINE_WIDTH);
-  // Draw nodes
+  /* Draw */
   dv_llist_init(V->D->itl);
   V->S->nd = 0;
   V->S->ndh = 0;
   V->D->cur_d = 0;
   V->D->cur_d_ex = V->D->dmax;
   dv_view_draw_dagbox_node_r(V, cr, V->D->rt);
-  // Draw edges
-  cairo_save(cr);
-  cairo_new_path(cr);
-  dv_view_draw_dagbox_edge_r(V, cr, V->D->rt);
-  cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, 1.0);
-  cairo_stroke(cr);
-  cairo_restore(cr);
 }
 
-
-/*-----------------end of DAG Dagbox drawing functions-----------*/
-
-
+/****** end of Draw ******/

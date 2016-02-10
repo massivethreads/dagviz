@@ -169,6 +169,11 @@ typedef struct dv_llist {
 
 #define DV_VERBOSE_LEVEL_DEFAULT 0
 
+#define DV_DAG_NODE_HIDDEN_ABOVE 0b0001
+#define DV_DAG_NODE_HIDDEN_RIGHT 0b0010
+#define DV_DAG_NODE_HIDDEN_BELOW 0b0100
+#define DV_DAG_NODE_HIDDEN_LEFT  0b1000
+
 /*-----------------Data Structures-----------------*/
 
 /* a single record of backtrace */
@@ -890,10 +895,12 @@ void dv_viewport_draw_focused_mark(dv_viewport_t *, cairo_t *);
 
 
 /* view_dag.c */
+dv_dag_node_t * dv_view_dag_find_clicked_node(dv_view_t *, double, double);
+int dv_dag_node_is_invisible(dv_view_t *, dv_dag_node_t *);
+int dv_dag_node_link_is_invisible(dv_view_t *, dv_dag_node_t *);
 void dv_view_layout_dag(dv_view_t *);
 void dv_view_draw_dag(dv_view_t *, cairo_t *);
 void dv_view_draw_legend_dag(dv_view_t *, cairo_t *);
-dv_dag_node_t * dv_view_dag_find_clicked_node(dv_view_t *, double, double);
 
 
 /* view_dag_box.c */
