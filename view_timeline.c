@@ -5,7 +5,7 @@
 static dv_dag_node_t *
 dv_timeline_find_clicked_node_r(dv_view_t * V, double cx, double cy, dv_dag_node_t * node) {
   dv_dag_node_t * ret = NULL;
-  const int coord = V->S->lt;
+  const int coord = (V->S->lt == DV_LAYOUT_TYPE_PARAPROF) ? DV_LAYOUT_TYPE_TIMELINE : DV_LAYOUT_TYPE_PARAPROF;
   dv_node_coordinate_t * co = &node->c[coord];
   /* Call inward */
   double x, y, w, h;
@@ -19,6 +19,7 @@ dv_timeline_find_clicked_node_r(dv_view_t * V, double cx, double cy, dv_dag_node
     else
       ret = dv_timeline_find_clicked_node_r(V, cx, cy, node->head);
   } else if ( (V->S->lt == DV_LAYOUT_TYPE_TIMELINE && cx > x + w)
+              || (V->S->lt == DV_LAYOUT_TYPE_PARAPROF && cx > x + w)
               || (V->S->lt == DV_LAYOUT_TYPE_TIMELINE_VER && cy > y + h) ) {
     /* Call link-along */
     dv_dag_node_t * next = NULL;
@@ -62,7 +63,7 @@ dv_timeline_node_is_invisible(dv_view_t * V, dv_dag_node_t * node) {
   int ret = -1;
   if (!node) return ret;
   
-  int coord = V->S->lt;
+  int coord = (V->S->lt == DV_LAYOUT_TYPE_PARAPROF) ? DV_LAYOUT_TYPE_TIMELINE : DV_LAYOUT_TYPE_PARAPROF;
   dv_node_coordinate_t * nodeco = &node->c[coord];
   double x, y, w, h;
   x = nodeco->x;
@@ -234,6 +235,10 @@ dv_view_draw_timeline_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) 
 
 void
 dv_view_draw_timeline(dv_view_t * V, cairo_t * cr) {
+  double time = dv_get_time();
+  if (CS->verbose_level >= 2) {
+    fprintf(stderr, "dv_view_draw_timeline()\n");
+  }
   /* Set adaptive line width */
   double line_width = dv_min(DV_NODE_LINE_WIDTH, DV_NODE_LINE_WIDTH / dv_min(V->S->zoom_ratio_x, V->S->zoom_ratio_y));
   cairo_set_line_width(cr, line_width);
@@ -274,6 +279,9 @@ dv_view_draw_timeline(dv_view_t * V, cairo_t * cr) {
     cairo_move_to(cr, xx, yy);
     cairo_show_text(cr, s);
     yy += 2 * V->D->radius;
+  }
+  if (CS->verbose_level >= 2) {
+    fprintf(stderr, "... done dv_view_draw_timeline(): %lf\n", dv_get_time() - time);
   }
 }
 

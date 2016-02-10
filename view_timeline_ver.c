@@ -1,6 +1,6 @@
 #include "dagviz.h"
 
-/*-----------Timeline layout functions----------------------*/
+/****** Layout ******/
 
 static void
 dv_view_layout_timeline_ver_node(dv_view_t * V, dv_dag_node_t * node) {
@@ -57,10 +57,10 @@ dv_view_layout_timeline_ver(dv_view_t * V) {
   dv_view_layout_timeline_ver_node(V, V->D->rt);
 }
 
-/*-----------end of Timeline layout functions----------------------*/
+/****** end of Layout ******/
 
 
-/*-----------------TIMELINE Drawing functions-----------*/
+/****** Draw ******/
 
 static void
 dv_view_draw_timeline_ver_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
@@ -184,6 +184,6 @@ dv_view_draw_timeline_ver(dv_view_t * V, cairo_t * cr) {
   }
 }
 
-/*-----------------end of TIMELINE drawing functions-----------*/
+/****** end of Draw ******/
 
 

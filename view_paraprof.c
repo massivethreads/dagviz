@@ -1,6 +1,6 @@
 #include "dagviz.h"
 
-/*-----------HISTOGRAM----------------------*/
+/****** HISTOGRAM ******/
 
 void
 dv_histogram_init(dv_histogram_t * H) {
@@ -215,6 +215,42 @@ dv_histogram_fini(dv_histogram_t * H) {
   H->D = NULL;
 }
 
+static int
+dv_histogram_entry_is_invisible(dv_histogram_t * H, dv_view_t * V, dv_histogram_entry_t * e) {
+  int ret = -1;
+  if (!H || !V || !e) return ret;
+
+  double x, y, w, h;
+  x = dv_dag_scale_down_linear(H->D, e->t - H->D->bt);
+  w = 0.0;
+  if (e->next)
+    w = dv_dag_scale_down_linear(H->D, e->next->t - H->D->bt) - x;
+  h = 0.0;
+  int i;
+  for (i = 0; i < dv_histogram_layer_max; i++)
+    h += e->h[i];
+  y = -h;
+  ret = dv_rectangle_is_invisible(V, x, y, w, h);
+  return ret;  
+}
+
+static int
+dv_histogram_entry_is_invisible_fast(dv_histogram_t * H, dv_view_t * V, dv_histogram_entry_t * e) {
+  double x, w;
+  x = dv_dag_scale_down_linear(H->D, e->t - H->D->bt);
+  w = 0.0;
+  if (e->next)
+    w = dv_dag_scale_down_linear(H->D, e->next->t - H->D->bt) - x;
+  double bound_left = dv_view_clip_get_bound_left(V);
+  double bound_right = dv_view_clip_get_bound_right(V);
+  int ret = 0;
+  if (x > bound_right)
+    ret |= DV_DAG_NODE_HIDDEN_RIGHT;
+  if (x + w < bound_left)
+    ret |= DV_DAG_NODE_HIDDEN_LEFT;
+  return ret;  
+}
+
 static double
 dv_histogram_draw_piece(_unused_ dv_histogram_t * H, dv_view_t * V, cairo_t * cr, double x, double width, double y, double height, int layer) {
   cairo_save(cr);
@@ -230,32 +266,17 @@ dv_histogram_draw_piece(_unused_ dv_histogram_t * H, dv_view_t * V, cairo_t * cr
   w = width;
   h = height;
   if (V) {
-    double bound_left = dv_view_clip_get_bound_left(V);
-    double bound_right = dv_view_clip_get_bound_right(V);
-    double bound_up = dv_view_clip_get_bound_up(V);
-    double bound_down = dv_view_clip_get_bound_down(V);
-    if (xx < bound_right && xx + w > bound_left &&
-        yy < bound_down && yy + h > bound_up) {
-      if (xx < bound_left) {
-        w -= (bound_left - xx);
-        xx = bound_left;
-      }
-      if (xx + w > bound_right)
-        w = bound_right - xx;
-      if (yy < bound_up) {
-        h -= (bound_up - yy);
-        yy = bound_up;
-      }
-      if (yy + h > bound_down)
-        h = bound_down - yy;
+    if (!dv_rectangle_is_invisible(V, xx, yy, w, h)) {
+      dv_timeline_trim_rectangle(V, &xx, &yy, &w, &h);
       cairo_rectangle(cr, xx, yy, w, h);
       cairo_set_source_rgba(cr, color.red, color.green, color.blue, color.alpha);
       cairo_fill(cr);
     }
   } else {
+    fprintf(stderr, "Warning: There is no V for dv_histogram_draw_piece().\n");
     cairo_rectangle(cr, xx, yy, w, h);
     cairo_set_source_rgba(cr, color.red, color.green, color.blue, color.alpha);
-    cairo_fill(cr);    
+    cairo_fill(cr);
   }
   
   cairo_restore(cr);
@@ -313,12 +334,23 @@ dv_histogram_cal_work_delay_nowork(dv_histogram_t * H) {
 
 void
 dv_histogram_draw(dv_histogram_t * H, cairo_t * cr, dv_view_t * V) {
+  double time = dv_get_time();
+  if (CS->verbose_level >= 2) {
+    fprintf(stderr, "dv_histogram_draw()\n");
+  }
   dv_histogram_entry_t * e = H->head_e;
   while (e != NULL && e->next) {
-    dv_histogram_draw_entry(H, e, cr, V);
+    int hidden = dv_histogram_entry_is_invisible_fast(H, V, e);
+    if (!hidden)
+      dv_histogram_draw_entry(H, e, cr, V);
+    else if (hidden & DV_DAG_NODE_HIDDEN_RIGHT)
+      break;      
     e = e->next;
   }
-  dv_histogram_cal_work_delay_nowork(H);
+  //dv_histogram_cal_work_delay_nowork(H);
+  if (CS->verbose_level >= 2) {
+    fprintf(stderr, "... done dv_histogram_draw(): %lf\n", dv_get_time() - time);
+  }
 }
 
 static void
@@ -360,28 +392,35 @@ dv_histogram_reset_node(dv_histogram_t * H, dv_dag_node_t * node) {
 
 void
 dv_histogram_reset(dv_histogram_t * H) {
+  double time = dv_get_time();
+  if (CS->verbose_level >= 2) {
+    fprintf(stderr, "dv_histogram_reset()\n");
+  }
   dv_dag_t * D = H->D;
   if (H->head_e)
     dv_histogram_fini(H);
   dv_histogram_init(H);
   H->D = D;
   dv_histogram_reset_node(H, D->rt);
+  if (CS->verbose_level >= 2) {
+    fprintf(stderr, "... done dv_histogram_reset(): %lf ms\n", dv_get_time() - time);
+  }
 }
 
-/*-----------end of HISTOGRAM----------------------*/
+/****** end of HISTOGRAM ******/
 
 
-/*-----------PARAPROF layout functions----------------------*/
+/****** PARAPROF Layout ******/
 
 void
 dv_view_layout_paraprof(dv_view_t * V) {
   dv_view_layout_timeline(V);
 }
 
-/*-----------end of PARAPROF layout functions----------------------*/
+/****** end of PARAPROF Layout ******/
 
 
-/*-----------------PARAPROF Drawing functions-----------*/
+/****** PARAPROF Draw ******/
 
 static void
 dv_paraprof_draw_time_bar(dv_view_t * V, dv_histogram_t * H, cairo_t * cr) {
@@ -406,4 +445,4 @@ dv_view_draw_paraprof(dv_view_t * V, cairo_t * cr) {
     dv_paraprof_draw_time_bar(V, V->D->H, cr);
 }
 
-/*-----------------end of PARAPROF drawing functions-----------*/
+/****** end of PARAPROF Draw ******/
