@@ -105,7 +105,13 @@ typedef struct dv_llist {
 #define DV_ANIMATION_STEP 80 // milliseconds
 
 #define DV_NUM_LAYOUT_TYPES 5
+#define DV_LAYOUT_TYPE_DAG 0
+#define DV_LAYOUT_TYPE_DAG_BOX 1
+#define DV_LAYOUT_TYPE_TIMELINE 3
+#define DV_LAYOUT_TYPE_TIMELINE_VER 2
+#define DV_LAYOUT_TYPE_PARAPROF 4
 #define DV_LAYOUT_TYPE_INIT 0 // not paraprof coz need to check H of D
+
 #define DV_NODE_COLOR_INIT 0 // 0:worker, 1:cpu, 2:kind, 3:code start, 4:code end, 5: code segment
 #define DV_SCALE_TYPE_INIT 0 // 0:log, 1:power, 2:linear
 #define DV_FROMBT_INIT 0
@@ -896,6 +902,7 @@ void dv_viewport_draw_focused_mark(dv_viewport_t *, cairo_t *);
 
 /* view_dag.c */
 dv_dag_node_t * dv_view_dag_find_clicked_node(dv_view_t *, double, double);
+int dv_rectangle_is_invisible(dv_view_t *, double, double, double, double);
 int dv_dag_node_is_invisible(dv_view_t *, dv_dag_node_t *);
 int dv_dag_node_link_is_invisible(dv_view_t *, dv_dag_node_t *);
 void dv_view_layout_dag(dv_view_t *);
@@ -913,6 +920,9 @@ void dv_view_draw_dagbox(dv_view_t *, cairo_t *);
 
 
 /* view_timeline.c */
+dv_dag_node_t * dv_timeline_find_clicked_node(dv_view_t *, double, double);
+void dv_timeline_trim_rectangle(dv_view_t *, double *, double *, double *, double *);
+int dv_timeline_node_is_invisible(dv_view_t *, dv_dag_node_t *);
 void dv_view_layout_timeline(dv_view_t *);
 void dv_view_draw_timeline(dv_view_t *, cairo_t *);
 

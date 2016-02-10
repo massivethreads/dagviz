@@ -57,8 +57,8 @@ dv_view_dag_find_clicked_node(dv_view_t * V, double x, double y) {
   return ret;
 }
 
-static int
-dv_dag_node_rec_is_invisible(dv_view_t * V, double x, double y, double w, double h) {
+int
+dv_rectangle_is_invisible(dv_view_t * V, double x, double y, double w, double h) {
   double bound_left = dv_view_clip_get_bound_left(V);
   double bound_right = dv_view_clip_get_bound_right(V);
   double bound_up = dv_view_clip_get_bound_up(V);
@@ -77,7 +77,7 @@ dv_dag_node_rec_is_invisible(dv_view_t * V, double x, double y, double w, double
 
 int
 dv_dag_node_is_invisible(dv_view_t * V, dv_dag_node_t * node) {
-  int ret = 0;
+  int ret = -1;
   if (!node) return ret;
   
   int coord = V->S->lt;
@@ -95,13 +95,13 @@ dv_dag_node_is_invisible(dv_view_t * V, dv_dag_node_t * node) {
   w = nodeco->lw + nodeco->rw + 2 * margin;
   h = nodeco->dw + 2 * margin;
   
-  ret = dv_dag_node_rec_is_invisible(V, xx, yy, w, h);
+  ret = dv_rectangle_is_invisible(V, xx, yy, w, h);
   return ret;
 }
 
 int
 dv_dag_node_link_is_invisible(dv_view_t * V, dv_dag_node_t * node) {
-  int ret = 0;
+  int ret = -1;
   if (!node) return ret;
   
   int coord = V->S->lt;
@@ -119,7 +119,7 @@ dv_dag_node_link_is_invisible(dv_view_t * V, dv_dag_node_t * node) {
   w = nodeco->link_lw + nodeco->link_rw + 2 * margin;
   h = nodeco->link_dw + 2 * margin;
   
-  ret = dv_dag_node_rec_is_invisible(V, xx, yy, w, h);
+  ret = dv_rectangle_is_invisible(V, xx, yy, w, h);
   return ret;
 }
 

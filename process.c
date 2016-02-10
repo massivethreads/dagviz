@@ -1075,12 +1075,14 @@ dv_do_finding_clicked_node(dv_view_t * V, double x, double y) {
   }
   dv_dag_node_t * ret = NULL;
   switch (V->S->lt) {
-  case 0:
-  case 1:
+  case DV_LAYOUT_TYPE_DAG:
+  case DV_LAYOUT_TYPE_DAG_BOX:
     ret = dv_view_dag_find_clicked_node(V, x, y);
     break;
-  case 2:
-  case 3:
+  case DV_LAYOUT_TYPE_TIMELINE:
+  case DV_LAYOUT_TYPE_TIMELINE_VER:
+    ret = dv_timeline_find_clicked_node(V, x, y);
+    break;
   case 4:
     ret = dv_do_finding_clicked_node_r(V, x, y, V->D->rt);
     break;
