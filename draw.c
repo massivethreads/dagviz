@@ -243,20 +243,8 @@ dv_view_draw_edge_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * u, dv_dag_node_
   dv_node_coordinate_t * vc = &v->c[S->coord];
   x1 = uc->x;
   y1 = uc->y + uc->dw;
-  /*
-  if (x1 == 0) {
-    dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(V->D->P, u);
-    printf("node u (%ld) has (%.0lf,%.0lf)\n", pi - V->D->P->T, x1, y1);
-  }
-  */
   x2 = vc->x;
   y2 = vc->y;
-  /*
-  if (x2 == 0 || y2 == 0) {
-    dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(V->D->P, v);
-    printf("node v (%ld) has (%.0lf,%.0lf)\n", pi - V->D->P->T, x2, y2);
-  }
-  */
   if (y1 > y2)
     return;
   

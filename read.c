@@ -182,8 +182,11 @@ dv_dag_node_init(dv_dag_node_t * node, dv_dag_node_t * parent, long pii) {
   node->tail = NULL;
 
   int i;
-  for (i=0; i<DV_NUM_LAYOUT_TYPES; i++)
-    dv_node_coordinate_init(&node->c[i]);
+  for (i = 0; i < DV_NUM_LAYOUT_TYPES; i++)
+    if (!parent)
+      dv_node_coordinate_init(&node->c[i]);
+    else
+      node->c[i] = parent->c[i];
 
   node->started = 0.0;
 
