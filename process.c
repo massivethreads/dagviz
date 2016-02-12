@@ -697,7 +697,7 @@ dv_statusbar_update_selection_status() {
   dv_view_t * V = CS->activeV;
   sprintf(s, "DAG %ld: %ld/%ld/%ld (depth:%d/%d) - View %ld: (%.0lf,%.0lf), (%.3lf,%.3lf), (%d,%.3lf), %.0lf",
           V->D - CS->D,
-          V->S->nd, V->S->ndh, V->D->P->n,
+          V->S->nd, V->S->nl, V->D->P->n,
           V->D->cur_d, V->D->dmax,
           V - CS->V,
           V->S->vpw, V->S->vph,
@@ -1086,10 +1086,10 @@ dv_do_expanding_one_1(dv_view_t * V, dv_dag_node_t * node) {
   }
   /* Histogram */
   if (V->D->H && V->D->H->head_e) {
-    dv_histogram_remove_node(V->D->H, node);
+    dv_histogram_remove_node(V->D->H, node, NULL);
     dv_dag_node_t * x = NULL;
     while ( (x = dv_dag_node_traverse_children(node, x)) ) {
-      dv_histogram_add_node(V->D->H, x);
+      dv_histogram_add_node(V->D->H, x, NULL);
     }
   }
 }
@@ -1173,9 +1173,9 @@ dv_do_collapsing_one_1(dv_view_t * V, dv_dag_node_t * node) {
   if (V->D->H && V->D->H->head_e) {
     dv_dag_node_t * x = NULL;
     while ( (x = dv_dag_node_traverse_children(node, x)) ) {
-      dv_histogram_remove_node(V->D->H, x);
+      dv_histogram_remove_node(V->D->H, x, NULL);
     }
-    dv_histogram_add_node(V->D->H, node);
+    dv_histogram_add_node(V->D->H, node, NULL);
   }
 }
 

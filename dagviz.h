@@ -173,7 +173,7 @@ typedef struct dv_llist {
 
 #define DV_PARAPROF_MIN_ENTRY_INTERVAL 2000000
 
-#define DV_VERBOSE_LEVEL_DEFAULT 0
+#define DV_VERBOSE_LEVEL_DEFAULT 1
 
 #define DV_DAG_NODE_HIDDEN_ABOVE 0b0001
 #define DV_DAG_NODE_HIDDEN_RIGHT 0b0010
@@ -935,8 +935,8 @@ void dv_view_draw_timeline_ver(dv_view_t *, cairo_t *);
 /* view_paraprof.c */
 void dv_histogram_init(dv_histogram_t *);
 double dv_histogram_get_max_height(dv_histogram_t *);
-void dv_histogram_add_node(dv_histogram_t *, dv_dag_node_t *);
-void dv_histogram_remove_node(dv_histogram_t *, dv_dag_node_t *);
+void dv_histogram_add_node(dv_histogram_t *, dv_dag_node_t *, dv_histogram_entry_t **);
+void dv_histogram_remove_node(dv_histogram_t *, dv_dag_node_t *, dv_histogram_entry_t **);
 void dv_histogram_fini(dv_histogram_t *);
 void dv_histogram_draw(dv_histogram_t *, cairo_t *, dv_view_t *);
 void dv_histogram_reset(dv_histogram_t *);

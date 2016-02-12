@@ -381,6 +381,7 @@ dv_dag_node_pool_pop(dv_dag_node_pool_t * pool) {
 
 void
 dv_dag_node_pool_push(dv_dag_node_pool_t * pool, dv_dag_node_t * node) {
+  memset(node, 0, sizeof(dv_dag_node_t));
   node->next = pool->head;
   pool->head = node;
   if (!pool->tail)
