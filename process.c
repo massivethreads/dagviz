@@ -1309,8 +1309,10 @@ dv_do_button_event(dv_view_t * V, GdkEventButton * event) {
             /* Expand/Collapse */
             if (dv_is_union(node)) {
               if ((!dv_is_inner_loaded(node) || dv_is_shrinked(node) || dv_is_shrinking(node))
-                  && !dv_is_expanding(node))
+                  && !dv_is_expanding(node)) {
                 dv_do_expanding_one_1(V, node);
+                dv_view_layout(V);
+              }
             } else {
               dv_do_collapsing_one_r(V, node->parent);
             }

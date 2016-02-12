@@ -247,7 +247,7 @@ dv_view_draw_edge_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * u, dv_dag_node_
   y2 = vc->y;
   if (y1 > y2)
     return;
-  
+
   /* Get alpha */
   /*
   double alpha;
