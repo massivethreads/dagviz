@@ -27,23 +27,22 @@ LDFLAGS += $(ldflags_2)
 LDFLAGS += $(ldflags_3)
 
 all: compile
-download :
-compile : compile_done
-install : install_done
+compile : done/$(platform)/compile
+install : done/$(platform)/install
 
 exe := dagviz
 
-compile_done : $(exe)
-	touch $@
+done/$(platform)/compile : $(exe)
+	mkdir -p $@
 
 $(exe) : dagviz.h dagviz.c read.c layout.c draw.c utils.c print.c view_dag.c view_dag_box.c view_timeline.c view_timeline_ver.c view_paraprof.c process.c control.c
 	$(CC) $(CFLAGS) dagviz.c read.c layout.c draw.c utils.c print.c view_dag.c view_dag_box.c view_timeline.c view_timeline_ver.c view_paraprof.c process.c $(LDFLAGS) -o $@
 
-install_done: compile_done
+done/$(platform)/install : done/$(platform)/compile
 	mkdir -p $(prefix)/bin
 	ln -sf $(realpath .)/$(exe) $(prefix)/bin/
-	touch $@
+	mkdir -p $@
 
 distclean:
-	rm -rf *_done
+	rm -rf done
 
