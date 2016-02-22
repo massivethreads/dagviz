@@ -1,0 +1,30 @@
+platform ?= g
+parallel2_dir ?= $(realpath ../../../..)
+prefix ?= $(parallel2_dir)/sys/inst/$(platform)
+
+dir:=dagviz
+
+all: compile
+download : dir_done
+compile : compile_done
+install : install_done
+exe := dagviz
+
+dir_done :
+	rm -rf $(dir)
+	git clone https://github.com/zanton/dagviz.git
+	touch $@
+
+compile_done : dir_done
+	cd $(dir); $(MAKE)
+	touch $@
+
+install_done: compile_done
+	mkdir -p $(prefix)/bin
+	ln -sf $(realpath .)/$(exe) $(prefix)/bin/
+	touch $@
+
+distclean:
+	rm -rf *_done
+	rm -rf $(dir)
+
