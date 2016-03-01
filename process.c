@@ -1413,6 +1413,12 @@ dv_do_motion_event(dv_view_t * V, GdkEventMotion * event) {
       /* Remark similar nodes */
       dv_view_remark_similar_nodes(V, node);
       break;
+    case 6:
+      /* Highlight */
+      if (S->last_hovered_node)
+        S->last_hovered_node->highlight = 0;
+      node->highlight = 1;
+      break;
     default:
       dv_check(0);
     }
@@ -1425,8 +1431,11 @@ dv_do_motion_event(dv_view_t * V, GdkEventMotion * event) {
 
     /* Mark last hovered node */
     S->last_hovered_node = node;
+    dv_queue_draw(V);
   }
   if (!node) {
+    if (S->last_hovered_node)
+      S->last_hovered_node->highlight = 0;
     S->last_hovered_node = NULL;
     
     S->color_remarked_only = 0;

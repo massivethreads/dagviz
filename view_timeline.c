@@ -194,6 +194,11 @@ dv_view_draw_timeline_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) 
         cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
         cairo_stroke_preserve(cr);
       }
+      /* Highlight */
+      if (node->highlight) {
+        cairo_set_source_rgba(cr, 0.1, 0.1, 0.1, 0.5);
+        cairo_fill_preserve(cr);
+      }
       /* Draw opaque for infotag node */
       if (dv_llist_has(V->D->P->itl, (void *) node->pii)) {
         cairo_set_source_rgba(cr, 0.1, 0.1, 0.1, 0.6);

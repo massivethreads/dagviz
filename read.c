@@ -189,6 +189,8 @@ dv_dag_node_init(dv_dag_node_t * node, dv_dag_node_t * parent, long pii) {
 
   node->r = 0;
   node->link_r = 0;
+
+  node->highlight = 0;
 }
 
 int
@@ -427,8 +429,10 @@ dv_dag_create_new_with_pidag(dv_pidag_t * P) {
 
   /* Set values */
   dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(P, D->rt);
-  D->bt = pi->info.start.t - 1;
-  D->et = pi->info.end.t + 1;
+  //D->bt = pi->info.start.t - 1;
+  //D->et = pi->info.end.t + 1;
+  D->bt = pi->info.first_ready_t;
+  D->et = pi->info.end.t;
   
   // Traverse pidag's nodes
   /*

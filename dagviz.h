@@ -118,7 +118,7 @@ typedef struct dv_llist {
 #define DV_EDGE_TYPE_INIT 3
 #define DV_EDGE_AFFIX_LENGTH 0//10
 #define DV_CLICK_MODE_INIT 2 // 0:none, 1:info, 2:expand/collapse
-#define DV_HOVER_MODE_INIT 5 // 0:none, 1:info, 2:expand, 3:collapse, 4:expand/collapse, 5:remark similar nodes
+#define DV_HOVER_MODE_INIT 6 // 0:none, 1:info, 2:expand, 3:collapse, 4:expand/collapse, 5:remark similar nodes, 6:highlight
 #define DV_SHOW_LEGEND_INIT 0
 #define DV_SHOW_STATUS_INIT 0
 #define DV_REMAIN_INNER_INIT 1
@@ -171,7 +171,7 @@ typedef struct dv_llist {
 #define _unused_ __attribute__((unused))
 #define _static_unused_ static __attribute__((unused))
 
-#define DV_PARAPROF_MIN_ENTRY_INTERVAL 2000000
+#define DV_PARAPROF_MIN_ENTRY_INTERVAL 1000
 
 #define DV_VERBOSE_LEVEL_DEFAULT 1
 
@@ -242,6 +242,8 @@ typedef struct dv_dag_node {
 
   long long r; /* remarks */
   long long link_r; /* summed remarks with linked paths */
+
+  char highlight; /* to highlight the node when drawing */
 
 } dv_dag_node_t;
 

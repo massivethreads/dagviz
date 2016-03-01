@@ -241,7 +241,7 @@ dv_histogram_fini(dv_histogram_t * H) {
   H->D = NULL;
 }
 
-static int
+_unused_ static int
 dv_histogram_entry_is_invisible(dv_histogram_t * H, dv_view_t * V, dv_histogram_entry_t * e) {
   int ret = -1;
   if (!H || !V || !e) return ret;
@@ -260,7 +260,7 @@ dv_histogram_entry_is_invisible(dv_histogram_t * H, dv_view_t * V, dv_histogram_
   return ret;  
 }
 
-static int
+_unused_ static int
 dv_histogram_entry_is_invisible_fast(dv_histogram_t * H, dv_view_t * V, dv_histogram_entry_t * e) {
   double x, w;
   x = dv_dag_scale_down_linear(H->D, e->t - H->D->bt);
@@ -317,7 +317,8 @@ dv_histogram_draw_entry(dv_histogram_t * H, dv_histogram_entry_t * e, cairo_t * 
   }
   double x = dv_dag_scale_down_linear(H->D, e->t - H->D->bt);
   double w = dv_dag_scale_down_linear(H->D, e->next->t - H->D->bt) - x;
-  double y = 0.0;
+  //double y = 0.0;
+  double y = - 2 * H->D->radius;
   double h;
   int i;
   for (i=0; i<dv_histogram_layer_max; i++) {
@@ -326,7 +327,7 @@ dv_histogram_draw_entry(dv_histogram_t * H, dv_histogram_entry_t * e, cairo_t * 
   }
 }
 
-static void
+_unused_ static void
 dv_histogram_cal_work_delay_nowork(dv_histogram_t * H) {
   H->work = H->delay = H->nowork = 0.0;
   double work_p, delay_p, nowork_p;
@@ -373,6 +374,19 @@ dv_histogram_draw(dv_histogram_t * H, cairo_t * cr, dv_view_t * V) {
       break;      
     e = e->next;
   }
+  
+  /* draw full-parallelism line */
+  double x1 = 0;
+  double x2 = dv_dag_scale_down_linear(H->D, H->D->et);
+  double y = - 2 * H->D->radius - H->D->P->num_workers * (2 * H->D->radius);
+  cairo_save(cr);
+  cairo_move_to(cr, x1, y);
+  cairo_line_to(cr, x2, y);
+  cairo_set_source_rgba(cr, 1.0, 0.0, 0.0, 0.8);
+  cairo_set_line_width(cr, DV_NODE_LINE_WIDTH / V->S->zoom_ratio_x);
+  cairo_stroke(cr);
+  cairo_restore(cr);
+  
   //dv_histogram_cal_work_delay_nowork(H);
   if (CS->verbose_level >= 2) {
     fprintf(stderr, "... done dv_histogram_draw(): %lf\n", dv_get_time() - time);

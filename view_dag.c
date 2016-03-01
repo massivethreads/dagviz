@@ -472,6 +472,12 @@ dv_view_draw_dag_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
     dv_llist_add(V->D->itl, (void *) node);
   }
 
+  /* Highlight */
+  if (node->highlight) {
+    cairo_set_source_rgba(cr, 0.1, 0.1, 0.1, 0.5);
+    cairo_fill_preserve(cr);
+  }
+
   /* Fill rate */
   double fill_rate = 1.0;
   if (D->draw_with_current_time) {
