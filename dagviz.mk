@@ -37,7 +37,7 @@ exe := dagviz
 all: $(exe)
 
 $(exe): $(HDR) $(AUX_SRC) $(OBJS)
-	$(CC) -o $@ $(CFLAGS) $(OBJS) $(LDFLAGS)
+	$(CC) -o $@ $(OBJS) $(LDFLAGS)
 
 %.o: %.c
 	$(CC) -c -o $@ $(CFLAGS) $<
