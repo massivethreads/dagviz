@@ -365,6 +365,8 @@ dv_histogram_draw(dv_histogram_t * H, cairo_t * cr, dv_view_t * V) {
   if (CS->verbose_level >= 2) {
     fprintf(stderr, "dv_histogram_draw()\n");
   }
+  cairo_save(cr);
+  cairo_new_path(cr);
   dv_histogram_entry_t * e = H->head_e;
   while (e != NULL && e->next) {
     int hidden = dv_histogram_entry_is_invisible_fast(H, V, e);
@@ -380,6 +382,7 @@ dv_histogram_draw(dv_histogram_t * H, cairo_t * cr, dv_view_t * V) {
   double x2 = dv_dag_scale_down_linear(H->D, H->D->et);
   double y = - 2 * H->D->radius - H->D->P->num_workers * (2 * H->D->radius);
   cairo_save(cr);
+  cairo_new_path(cr);
   cairo_move_to(cr, x1, y);
   cairo_line_to(cr, x2, y);
   cairo_set_source_rgba(cr, 1.0, 0.0, 0.0, 0.8);
@@ -391,6 +394,7 @@ dv_histogram_draw(dv_histogram_t * H, cairo_t * cr, dv_view_t * V) {
   if (CS->verbose_level >= 2) {
     fprintf(stderr, "... done dv_histogram_draw(): %lf\n", dv_get_time() - time);
   }
+  cairo_restore(cr);
 }
 
 static void

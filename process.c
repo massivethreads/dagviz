@@ -897,7 +897,7 @@ dv_export_all_viewports() {
   cairo_destroy(cr);
   cairo_surface_destroy(surface);
   
-  /* EPS */
+  /* SVG */
   surface = cairo_svg_surface_create("00dv.svg", w, h);
   cr = cairo_create(surface);
   // Whiten background

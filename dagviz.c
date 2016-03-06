@@ -3103,7 +3103,7 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
   g_signal_connect(G_OBJECT(GUI->window), "key-press-event", G_CALLBACK(on_window_key_event), NULL);
 
   /* Icon */
-  char * icon_filename = "gtk/dagviz_icon.svg";
+  char * icon_filename = "gui/dagviz_icon.svg";
   GError * error = 0; 
   GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file(icon_filename, &error);
   if (!pixbuf) {
@@ -3124,7 +3124,8 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
   {
     GtkBuilder * builder = gui->builder = gtk_builder_new();
     GError * gerr = NULL;
-    gtk_builder_add_from_file(builder, "gtk/menubar.ui", &gerr);
+    //gtk_builder_add_from_file(builder, "gui/menubar.ui", &gerr);
+    gtk_builder_add_from_resource(builder, "/org/utokyo/dagviz/gui/menubar.ui", &gerr);
     if (gerr) {
       g_error("ERROR: %s\n", gerr->message);
       exit(1);
@@ -3196,7 +3197,7 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
       gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_divisions, -1);
       gtk_toolbar_insert(GTK_TOOLBAR(toolbar), gtk_separator_tool_item_new(), -1);
       //gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_divisions), "video-display");
-      GtkWidget * icon = gtk_image_new_from_file("gtk/viewport_division_icon.svg");
+      GtkWidget * icon = gtk_image_new_from_file("gui/viewport_division_icon.svg");
       gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(btn_divisions), icon);
       gtk_widget_set_tooltip_text(GTK_WIDGET(btn_divisions), "Manual screen division (Shift+Ctrl+V)");
       g_signal_connect(G_OBJECT(btn_divisions), "clicked", G_CALLBACK(on_menubar_manage_viewports_activated), NULL);
@@ -3338,14 +3339,14 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
       
       button = gtk_tool_button_new(NULL, NULL);
       gtk_toolbar_insert(GTK_TOOLBAR(toolbar), button, -1);
-      icon = gtk_image_new_from_file("gtk/dag_icon.svg");
+      icon = gtk_image_new_from_file("gui/dag_icon.svg");
       gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(button), icon);
       gtk_widget_set_tooltip_text(GTK_WIDGET(button), "DAG layout (Ctrl+1)");
       g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_toolbar_dag_layout_buttons_clicked), (void *) 0);
       
       button = gtk_menu_tool_button_new(NULL, NULL);
       gtk_toolbar_insert(GTK_TOOLBAR(toolbar), button, -1);
-      icon = gtk_image_new_from_file("gtk/dag_boxes_icon.svg");
+      icon = gtk_image_new_from_file("gui/dag_boxes_icon.svg");
       gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(button), icon);
       gtk_widget_set_tooltip_text(GTK_WIDGET(button), "DAG-with-boxes layout (Ctrl+2)");
       g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_toolbar_dag_layout_buttons_clicked), (void *) 1);
@@ -3367,7 +3368,7 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
 
       button = gtk_tool_button_new(NULL, NULL);
       gtk_toolbar_insert(GTK_TOOLBAR(toolbar), button, -1);
-      icon = gtk_image_new_from_file("gtk/paraprof_icon.svg");
+      icon = gtk_image_new_from_file("gui/paraprof_icon.svg");
       gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(button), icon);
       gtk_widget_set_tooltip_text(GTK_WIDGET(button), "Parallelism profile layout (Ctrl+5)");
       g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_toolbar_dag_layout_buttons_clicked), (void *) 4);
@@ -3876,7 +3877,7 @@ dv_gui_get_nodeinfo_sidebox(dv_gui_t * gui) {
 
 _static_unused_ void
 dv_open_gui_1(_unused_ int argc, _unused_ char * argv[]) {
-  GtkBuilder * builder = gtk_builder_new_from_file("gtk/dagviz.ui");
+  GtkBuilder * builder = gtk_builder_new_from_file("gui/dagviz.ui");
   
   /* Window */
   GtkWidget * window = (GtkWidget *) gtk_builder_get_object(builder, "window");
