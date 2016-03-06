@@ -45,6 +45,23 @@ $(exe): $(HDR) $(AUX_SRC) $(OBJS)
 resources.c: dagviz.gresource.xml $(shell $(GLIB_COMPILE_RESOURCES) --sourcedir=. --generate-dependencies dagviz.gresource.xml)
 	$(GLIB_COMPILE_RESOURCES) dagviz.gresource.xml --target=$@ --sourcedir=. --generate-source
 
+
+install:
+	cp gui/dagviz_icon_48x48.png /usr/share/icons/hicolor/48x48/apps/dagviz.png
+	cp gui/dagviz_icon_128x128.png /usr/share/icons/hicolor/128x128/apps/dagviz.png
+	cp gui/dagviz_icon.svg /usr/share/icons/hicolor/scalable/apps/dagviz.svg
+	gtk-update-icon-cache-3.0 -f -t /usr/share/icons/hicolor/
+	cp dagviz /usr/bin/dagviz
+	cp gui/dagviz.desktop /usr/share/applications/
+
+uninstall:
+	rm -f /usr/share/icons/hicolor/48x48/apps/dagviz.png
+	rm -f /usr/share/icons/hicolor/128x128/apps/dagviz.png
+	rm -f /usr/share/icons/hicolor/scalable/apps/dagviz.svg
+	gtk-update-icon-cache-3.0 -f -t /usr/share/icons/hicolor/
+	rm -f /usr/bin/dagviz
+	rm -f /usr/share/applications/dagviz.desktop
+
 clean:
 	rm -f $(BUILT_SRC)
 	rm -f $(OBJS)

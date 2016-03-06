@@ -3103,6 +3103,7 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
   g_signal_connect(G_OBJECT(GUI->window), "key-press-event", G_CALLBACK(on_window_key_event), NULL);
 
   /* Icon */
+  /*
   char * icon_filename = "gui/dagviz_icon.svg";
   GError * error = 0; 
   GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file(icon_filename, &error);
@@ -3111,6 +3112,8 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
   } else {
     gtk_window_set_icon(GTK_WINDOW(window), pixbuf);
   }
+  */
+  gtk_window_set_icon_name(GTK_WINDOW(window), "dagviz");
   
   /* Accelerator group */
   GtkAccelGroup * accel_group = gui->accel_group = gtk_accel_group_new();
