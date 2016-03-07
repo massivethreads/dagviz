@@ -990,7 +990,7 @@ dv_viewport_toolbox_init(dv_viewport_t * VP) {
   // View-attribute dialog button
   GtkToolItem *btn_attrs = gtk_tool_button_new(NULL, NULL);
   gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_attrs, -1);
-  gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_attrs), "preferences-system");
+  gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_attrs), "preferences-system-symbolic");
   gtk_widget_set_tooltip_text(GTK_WIDGET(btn_attrs), "Open dialog to adjust VIEW's attributes (A)");
   g_signal_connect(G_OBJECT(btn_attrs), "clicked", G_CALLBACK(on_viewport_tool_icon_clicked), (void *) VP);
 
@@ -3299,7 +3299,7 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
     {
       GtkToolItem * btn_settings = gtk_menu_tool_button_new(NULL, NULL);
       gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_settings, -1);
-      gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_settings), "preferences-system");
+      gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_settings), "preferences-system-symbolic");
       gtk_widget_set_tooltip_text(GTK_WIDGET(btn_settings), "Open toolbox for focused DAG (Ctrl+T)");
       g_signal_connect(G_OBJECT(btn_settings), "clicked", G_CALLBACK(on_toolbar_settings_button_clicked), NULL);
       gtk_menu_tool_button_set_arrow_tooltip_text(GTK_MENU_TOOL_BUTTON(btn_settings), "Open toolbox for");
