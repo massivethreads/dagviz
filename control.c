@@ -637,6 +637,19 @@ on_btn_zoomfit_ver_clicked(_unused_ GtkToolButton * toolbtn, gpointer user_data)
   dv_view_do_zoomfit_ver(V);
 }
 
+static gboolean
+on_entry_paraprof_resolution_activate(GtkEntry * entry, gpointer user_data) {
+  dv_view_t * V = (dv_view_t *) user_data;
+  double value = atof(gtk_entry_get_text(GTK_ENTRY(entry)));
+  if (V->D->H) {
+    dv_histogram_t * H = V->D->H;
+    H->min_entry_interval = value;
+    dv_histogram_reset(H);
+    dv_queue_draw_dag(V->D);
+  }
+  return TRUE;
+}
+
 static void
 on_toolbar_settings_button_clicked(_unused_ GtkToolButton * toolbtn, _unused_ gpointer user_data) {
   if (!CS->activeV) return;

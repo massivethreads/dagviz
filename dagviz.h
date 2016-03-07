@@ -171,7 +171,7 @@ typedef struct dv_llist {
 #define _unused_ __attribute__((unused))
 #define _static_unused_ static __attribute__((unused))
 
-#define DV_PARAPROF_MIN_ENTRY_INTERVAL 1000
+#define DV_PARAPROF_MIN_ENTRY_INTERVAL 20000
 
 #define DV_VERBOSE_LEVEL_DEFAULT 1
 
@@ -389,6 +389,7 @@ typedef struct dv_view_toolbox {
   GtkWidget * checkbox_status;
   GtkWidget * combobox_azf;
   GtkWidget * checkbox_azf;
+  GtkWidget * entry_paraprof_min_interval;
 
   /* Advance */
   GtkWidget * entry_remark;
@@ -485,6 +486,7 @@ typedef struct dv_histogram {
   long n_e;
   dv_dag_t * D;
   double work, delay, nowork;
+  double min_entry_interval;
 } dv_histogram_t;
 
 typedef struct dv_histogram_entry_page {
@@ -789,6 +791,7 @@ void dv_view_do_zoomfit_based_on_lt(dv_view_t *);
 void dv_view_do_zoomfit_full(dv_view_t *);
 void dv_view_change_radix(dv_view_t *, double);
 void dv_view_set_entry_radix_text(dv_view_t *);
+void dv_view_set_entry_paraprof_resolution(dv_view_t *);
 void dv_view_set_entry_remark_text(dv_view_t *, char *);
 void dv_view_change_sdt(dv_view_t *, int);
 void dv_view_change_eaffix(dv_view_t *, int);
@@ -939,6 +942,7 @@ void dv_histogram_init(dv_histogram_t *);
 double dv_histogram_get_max_height(dv_histogram_t *);
 void dv_histogram_add_node(dv_histogram_t *, dv_dag_node_t *, dv_histogram_entry_t **);
 void dv_histogram_remove_node(dv_histogram_t *, dv_dag_node_t *, dv_histogram_entry_t **);
+void dv_histogram_clean(dv_histogram_t *);
 void dv_histogram_fini(dv_histogram_t *);
 void dv_histogram_draw(dv_histogram_t *, cairo_t *, dv_view_t *);
 void dv_histogram_reset(dv_histogram_t *);

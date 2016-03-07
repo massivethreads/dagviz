@@ -344,6 +344,7 @@ dv_view_toolbox_init(dv_view_toolbox_t * T, dv_view_t * V) {
   T->entry_remark = NULL;
   T->checkbox_remain_inner = NULL;
   T->checkbox_color_remarked_only = NULL;
+  T->entry_paraprof_min_interval = NULL;
 
   /* entry_search */
   T->entry_search = gtk_entry_new();
@@ -706,6 +707,16 @@ dv_view_toolbox_get_window(dv_view_toolbox_t * T) {
     g_signal_connect(G_OBJECT(widget), "clicked", G_CALLBACK(on_btn_zoomfit_ver_clicked), (void *) T->V);
     gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
+
+    num++;
+    label = gtk_label_new("Parallelism profile's resolution:");
+    widget = T->entry_paraprof_min_interval = gtk_entry_new();
+    gtk_widget_set_tooltip_text(GTK_WIDGET(widget), "Minimum entry interval on parallelism profile (unit: processor cycles)");
+    g_signal_connect(G_OBJECT(widget), "activate", G_CALLBACK(on_entry_paraprof_resolution_activate), (void *) T->V);
+    gtk_widget_set_halign(label, GTK_ALIGN_END);
+    gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
+    gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
+    dv_view_set_entry_paraprof_resolution(T->V);
   }
   
   /* Build tab "Advance" */

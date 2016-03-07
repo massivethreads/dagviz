@@ -9,6 +9,7 @@ dv_histogram_init(dv_histogram_t * H) {
   H->n_e = 0;
   H->D = NULL;
   H->work = H->delay = H->nowork = 0.0;
+  H->min_entry_interval = DV_PARAPROF_MIN_ENTRY_INTERVAL;
 }
 
 static void
@@ -55,7 +56,7 @@ dv_histogram_insert_entry(dv_histogram_t * H, double t, dv_histogram_entry_t * e
       ee = ee->next;
     }
   }
-  if (ee && ( (ee->t == t) || (e && (ee->t - e->t) < DV_PARAPROF_MIN_ENTRY_INTERVAL) ))
+  if (ee && ( (ee->t == t) || (e && (ee->t - e->t) < H->min_entry_interval) ))
     return ee;
   dv_histogram_entry_t * new_e = dv_histogram_entry_pool_pop(CS->epool);
   if (!new_e) {
@@ -224,7 +225,8 @@ dv_histogram_remove_node(dv_histogram_t * H, dv_dag_node_t * node, dv_histogram_
 }
 
 void
-dv_histogram_fini(dv_histogram_t * H) {
+dv_histogram_clean(dv_histogram_t * H) {
+  printf("dv_histogram_clean()\n");
   dv_histogram_entry_t * e = H->head_e;
   dv_histogram_entry_t * ee;
   long n = 0;
@@ -238,6 +240,11 @@ dv_histogram_fini(dv_histogram_t * H) {
   H->head_e = NULL;
   H->tail_e = NULL;
   H->n_e = 0;
+}
+
+void
+dv_histogram_fini(dv_histogram_t * H) {
+  dv_histogram_clean(H);
   H->D = NULL;
 }
 
@@ -439,12 +446,9 @@ dv_histogram_reset(dv_histogram_t * H) {
   if (CS->verbose_level >= 1) {
     fprintf(stderr, "dv_histogram_reset()\n");
   }
-  dv_dag_t * D = H->D;
-  if (H->head_e)
-    dv_histogram_fini(H);
-  dv_histogram_init(H);
-  H->D = D;
-  dv_histogram_reset_node(H, D->rt, NULL);
+  dv_histogram_clean(H);
+  if (H->D) 
+    dv_histogram_reset_node(H, H->D->rt, NULL);
   if (CS->verbose_level >= 1) {
     fprintf(stderr, "... done dv_histogram_reset(): %lf ms\n", dv_get_time() - time);
   }

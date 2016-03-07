@@ -364,6 +364,15 @@ dv_view_set_entry_radix_text(dv_view_t * V) {
 }
 
 void
+dv_view_set_entry_paraprof_resolution(dv_view_t * V) {
+  if (V->D->H && V->T->entry_paraprof_min_interval) {
+    char str[DV_STRING_LENGTH];
+    sprintf(str, "%.0lf", V->D->H->min_entry_interval);
+    gtk_entry_set_text(GTK_ENTRY(V->T->entry_paraprof_min_interval), str);
+  }
+}
+
+void
 dv_view_set_entry_remark_text(dv_view_t * V, char * str) {
   if (GTK_IS_WIDGET(V->T->entry_remark)) {
     gtk_entry_set_width_chars(GTK_ENTRY(V->T->entry_remark), strlen(str));
@@ -422,8 +431,7 @@ dv_view_change_lt(dv_view_t * V, int new_lt) {
         }
       }
       if (!count) {
-        dv_histogram_fini(V->D->H);
-        V->D->H->D = V->D;
+        dv_histogram_clean(V->D->H);
       }
     }
     
@@ -455,6 +463,7 @@ dv_view_change_lt(dv_view_t * V, int new_lt) {
         dv_histogram_init(V->D->H);
         V->D->H->D = V->D;
         dv_histogram_reset(V->D->H);
+        dv_view_set_entry_paraprof_resolution(V);
       } else if (!V->D->H->head_e) {
         dv_histogram_reset(V->D->H);
       }      
