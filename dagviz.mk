@@ -47,17 +47,21 @@ resources.c: dagviz.gresource.xml $(shell $(GLIB_COMPILE_RESOURCES) --sourcedir=
 
 
 install:
-	cp gui/dagviz_icon_48x48.png /usr/share/icons/hicolor/48x48/apps/dagviz.png
-	cp gui/dagviz_icon_128x128.png /usr/share/icons/hicolor/128x128/apps/dagviz.png
-	cp gui/dagviz_icon.svg /usr/share/icons/hicolor/scalable/apps/dagviz.svg
+	cp gui/128x128/dagviz_icon.png /usr/share/icons/hicolor/128x128/apps/dagviz.png
+	cp gui/128x128/dag_icon.png /usr/share/icons/hicolor/128x128/apps/dagviz-dag.png
+	cp gui/viewport_division_icon.svg /usr/share/icons/hicolor/scalable/apps/dagviz-viewport-division.svg
+	cp gui/dag_boxes_icon.svg /usr/share/icons/hicolor/scalable/apps/dagviz-dag-boxes.svg
+	cp gui/paraprof_icon.svg /usr/share/icons/hicolor/scalable/apps/dagviz-paraprof.svg
 	gtk-update-icon-cache-3.0 -f -t /usr/share/icons/hicolor/
 	cp dagviz /usr/bin/dagviz
 	cp gui/dagviz.desktop /usr/share/applications/
 
 uninstall:
-	rm -f /usr/share/icons/hicolor/48x48/apps/dagviz.png
 	rm -f /usr/share/icons/hicolor/128x128/apps/dagviz.png
-	rm -f /usr/share/icons/hicolor/scalable/apps/dagviz.svg
+	rm -f /usr/share/icons/hicolor/128x128/apps/dagviz-dag.png
+	rm -f /usr/share/icons/hicolor/scalable/apps/dagviz-viewport-division.svg
+	rm -f /usr/share/icons/hicolor/scalable/apps/dagviz-dag-boxes.svg
+	rm -f /usr/share/icons/hicolor/scalable/apps/dagviz-paraprof.svg
 	gtk-update-icon-cache-3.0 -f -t /usr/share/icons/hicolor/
 	rm -f /usr/bin/dagviz
 	rm -f /usr/share/applications/dagviz.desktop
