@@ -10,6 +10,7 @@ dv_histogram_init(dv_histogram_t * H) {
   H->D = NULL;
   H->work = H->delay = H->nowork = 0.0;
   H->min_entry_interval = DV_PARAPROF_MIN_ENTRY_INTERVAL;
+  H->unit_thick = 2.0;
 }
 
 static void
@@ -101,7 +102,7 @@ dv_histogram_pile(dv_histogram_t * H, dv_dag_node_t * node, dv_histogram_layer_t
     return;
   dv_histogram_entry_t * e = e_from;
   while (e != e_to) {
-    dv_histogram_pile_entry(H, e, layer, parallelism * 2 * H->D->radius, node);
+    dv_histogram_pile_entry(H, e, layer, parallelism * H->unit_thick * H->D->radius, node);
     e = e->next;
   }
 }
@@ -117,7 +118,6 @@ dv_histogram_add_node(dv_histogram_t * H, dv_dag_node_t * node, dv_histogram_ent
   dv_histogram_entry_t * e_from;
   dv_histogram_entry_t * e_to;
   dv_histogram_entry_t * e;
-  const double unit_parallelism = 2 * H->D->radius;
 
   from_t = pi->info.first_ready_t;
   to_t = pi->info.last_start_t;
@@ -129,15 +129,15 @@ dv_histogram_add_node(dv_histogram_t * H, dv_dag_node_t * node, dv_histogram_ent
   while (e != e_to) {
     int layer;
     layer = dv_histogram_layer_ready_end;
-    e->h[layer] += (pi->info.t_ready[dr_dag_edge_kind_end] / dt) * unit_parallelism;
+    e->h[layer] += (pi->info.t_ready[dr_dag_edge_kind_end] / dt);
     layer = dv_histogram_layer_ready_create;
-    e->h[layer] += (pi->info.t_ready[dr_dag_edge_kind_create] / dt) * unit_parallelism;
+    e->h[layer] += (pi->info.t_ready[dr_dag_edge_kind_create] / dt);
     layer = dv_histogram_layer_ready_create_cont;
-    e->h[layer] += (pi->info.t_ready[dr_dag_edge_kind_create_cont] / dt) * unit_parallelism;
+    e->h[layer] += (pi->info.t_ready[dr_dag_edge_kind_create_cont] / dt);
     layer = dv_histogram_layer_ready_wait_cont;
-    e->h[layer] += (pi->info.t_ready[dr_dag_edge_kind_wait_cont] / dt) * unit_parallelism;
+    e->h[layer] += (pi->info.t_ready[dr_dag_edge_kind_wait_cont] / dt);
     layer = dv_histogram_layer_ready_other_cont;
-    e->h[layer] += (pi->info.t_ready[dr_dag_edge_kind_other_cont] / dt) * unit_parallelism;
+    e->h[layer] += (pi->info.t_ready[dr_dag_edge_kind_other_cont] / dt);
     e = e->next;
   }
 
@@ -149,7 +149,7 @@ dv_histogram_add_node(dv_histogram_t * H, dv_dag_node_t * node, dv_histogram_ent
   dv_check(e_from && e_to);
   e = e_from;
   while (e != e_to) {
-    e->h[dv_histogram_layer_running] += (pi->info.t_1 / dt) * unit_parallelism;
+    e->h[dv_histogram_layer_running] += (pi->info.t_1 / dt);
     e = e->next;
   }
   if (hint_entry) *hint_entry = e_to;
@@ -171,7 +171,7 @@ dv_histogram_unpile(dv_histogram_t * H, dv_dag_node_t * node, dv_histogram_layer
     return;
   dv_histogram_entry_t * e = e_from;
   while (e != e_to) {
-    dv_histogram_unpile_entry(H, e, layer, parallelism * 2 * H->D->radius, node);
+    dv_histogram_unpile_entry(H, e, layer, parallelism * H->unit_thick * H->D->radius, node);
     e = e->next;
   }
 }
@@ -186,7 +186,6 @@ dv_histogram_remove_node(dv_histogram_t * H, dv_dag_node_t * node, dv_histogram_
   dv_histogram_entry_t * e_from;
   dv_histogram_entry_t * e_to;
   dv_histogram_entry_t * e;
-  const double unit_parallelism = 2 * H->D->radius;
   
   from_t = pi->info.first_ready_t;
   to_t = pi->info.last_start_t;
@@ -198,15 +197,15 @@ dv_histogram_remove_node(dv_histogram_t * H, dv_dag_node_t * node, dv_histogram_
   while (e != e_to) {
     int layer;
     layer = dv_histogram_layer_ready_end;
-    e->h[layer] -= (pi->info.t_ready[dr_dag_edge_kind_end] / dt) * unit_parallelism;
+    e->h[layer] -= (pi->info.t_ready[dr_dag_edge_kind_end] / dt);
     layer = dv_histogram_layer_ready_create;
-    e->h[layer] -= (pi->info.t_ready[dr_dag_edge_kind_create] / dt) * unit_parallelism;
+    e->h[layer] -= (pi->info.t_ready[dr_dag_edge_kind_create] / dt);
     layer = dv_histogram_layer_ready_create_cont;
-    e->h[layer] -= (pi->info.t_ready[dr_dag_edge_kind_create_cont] / dt) * unit_parallelism;
+    e->h[layer] -= (pi->info.t_ready[dr_dag_edge_kind_create_cont] / dt);
     layer = dv_histogram_layer_ready_wait_cont;
-    e->h[layer] -= (pi->info.t_ready[dr_dag_edge_kind_wait_cont] / dt) * unit_parallelism;
+    e->h[layer] -= (pi->info.t_ready[dr_dag_edge_kind_wait_cont] / dt);
     layer = dv_histogram_layer_ready_other_cont;
-    e->h[layer] -= (pi->info.t_ready[dr_dag_edge_kind_other_cont] / dt) * unit_parallelism;
+    e->h[layer] -= (pi->info.t_ready[dr_dag_edge_kind_other_cont] / dt);
     e = e->next;
   }
   
@@ -218,7 +217,7 @@ dv_histogram_remove_node(dv_histogram_t * H, dv_dag_node_t * node, dv_histogram_
   dv_check(e_from && e_to);
   e = e_from;
   while (e != e_to) {
-    e->h[dv_histogram_layer_running] -= (pi->info.t_1 / dt) * unit_parallelism;
+    e->h[dv_histogram_layer_running] -= (pi->info.t_1 / dt);
     e = e->next;
   }
   if (hint_entry) *hint_entry = e_to;
@@ -313,7 +312,7 @@ dv_histogram_draw_piece(_unused_ dv_histogram_t * H, dv_view_t * V, cairo_t * cr
   }
   
   cairo_restore(cr);
-  return y - h;
+  return yy;
 }
 
 static void
@@ -325,11 +324,11 @@ dv_histogram_draw_entry(dv_histogram_t * H, dv_histogram_entry_t * e, cairo_t * 
   double x = dv_dag_scale_down_linear(H->D, e->t - H->D->bt);
   double w = dv_dag_scale_down_linear(H->D, e->next->t - H->D->bt) - x;
   //double y = 0.0;
-  double y = - 2 * H->D->radius;
+  double y = - H->unit_thick * H->D->radius;
   double h;
   int i;
   for (i=0; i<dv_histogram_layer_max; i++) {
-    h = e->h[i];
+    h = e->h[i] * H->unit_thick * H->D->radius;
     y = dv_histogram_draw_piece(H, V, cr, x, w, y, h, i);
   }
 }
@@ -338,7 +337,7 @@ _unused_ static void
 dv_histogram_cal_work_delay_nowork(dv_histogram_t * H) {
   H->work = H->delay = H->nowork = 0.0;
   double work_p, delay_p, nowork_p;
-  double p_bound = H->D->P->num_workers * 2 * H->D->radius;
+  double p_bound = H->D->P->num_workers * H->unit_thick * H->D->radius;
   dv_histogram_entry_t * e = H->head_e;
   while (e != NULL && e->next) {
     int layer = dv_histogram_layer_running;
@@ -355,9 +354,9 @@ dv_histogram_cal_work_delay_nowork(dv_histogram_t * H) {
       delay_p = p_bound - work_p;
     }
     double interval = (e->next->t - e->t) / H->D->linear_radix;
-    H->work += interval * ( work_p / (2 * H->D->radius) );
-    H->delay += interval * ( delay_p / (2 * H->D->radius) );
-    H->nowork += interval * ( nowork_p / (2 * H->D->radius) );
+    H->work += interval * ( work_p / (H->unit_thick * H->D->radius) );
+    H->delay += interval * ( delay_p / (H->unit_thick * H->D->radius) );
+    H->nowork += interval * ( nowork_p / (H->unit_thick * H->D->radius) );
     e = e->next;
   }
   H->work /= H->D->P->num_workers;
@@ -387,7 +386,7 @@ dv_histogram_draw(dv_histogram_t * H, cairo_t * cr, dv_view_t * V) {
   /* draw full-parallelism line */
   double x1 = 0;
   double x2 = dv_dag_scale_down_linear(H->D, H->D->et);
-  double y = - 2 * H->D->radius - H->D->P->num_workers * (2 * H->D->radius);
+  double y = - H->unit_thick * H->D->radius - H->D->P->num_workers * (H->unit_thick * H->D->radius);
   cairo_save(cr);
   cairo_new_path(cr);
   cairo_move_to(cr, x1, y);
@@ -473,7 +472,7 @@ static void
 dv_paraprof_draw_time_bar(dv_view_t * V, dv_histogram_t * H, cairo_t * cr) {
   double x = dv_dag_scale_down_linear(H->D, H->D->current_time);
   double y1 = - dv_histogram_get_max_height(H) - H->D->radius;
-  double y2 = H->D->P->num_workers * (2 * H->D->radius) + H->D->radius;
+  double y2 = H->D->P->num_workers * (H->unit_thick * H->D->radius) + H->D->radius;
   cairo_save(cr);
   cairo_move_to(cr, x, y1);
   cairo_line_to(cr, x, y2);

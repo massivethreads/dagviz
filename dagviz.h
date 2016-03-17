@@ -487,6 +487,7 @@ typedef struct dv_histogram {
   dv_dag_t * D;
   double work, delay, nowork;
   double min_entry_interval;
+  double unit_thick;
 } dv_histogram_t;
 
 typedef struct dv_histogram_entry_page {

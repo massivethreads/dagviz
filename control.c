@@ -609,7 +609,7 @@ on_checkbox_color_remarked_only_toggled(_unused_ GtkWidget * widget, gpointer us
 static void
 on_checkbox_scale_radius_toggled(_unused_ GtkWidget * widget, gpointer user_data) {
   dv_view_t * V = (dv_view_t *) user_data;
-  V->S->show_legend = 1 - V->S->show_legend;
+  V->S->do_scale_radius = 1 - V->S->do_scale_radius;
 }
 
 static void

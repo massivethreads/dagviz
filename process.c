@@ -967,6 +967,7 @@ dv_do_scrolling(dv_view_t * V, GdkEventScroll * event) {
     if (V->S->do_scale_radix) {
       
       // Cal factor    
+      factor = 1.0;
       if (event->direction == GDK_SCROLL_UP)
         factor *= DV_SCALE_INCREMENT;
       else if (event->direction == GDK_SCROLL_DOWN)
@@ -993,7 +994,7 @@ dv_do_scrolling(dv_view_t * V, GdkEventScroll * event) {
     
     dv_view_layout(V);
     dv_view_auto_zoomfit(V);
-    dv_queue_draw_d(V);
+    dv_queue_draw_dag(V->D);
 
   } else {
     
@@ -1002,6 +1003,7 @@ dv_do_scrolling(dv_view_t * V, GdkEventScroll * event) {
       dv_view_change_azf(V, 0);
   
     // Cal factor    
+    factor = 1.0;
     if (event->direction == GDK_SCROLL_UP)
       factor *= DV_ZOOM_INCREMENT;
     else if (event->direction == GDK_SCROLL_DOWN)
