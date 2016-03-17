@@ -37,7 +37,7 @@ dv_histogram_get_max_height(dv_histogram_t * H) {
       max_h = h;
     e = e->next;
   }
-  return max_h;
+  return max_h * (H->unit_thick * H->D->radius);
 }
 
 static dv_histogram_entry_t *
