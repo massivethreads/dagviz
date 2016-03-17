@@ -384,13 +384,14 @@ dv_histogram_draw(dv_histogram_t * H, cairo_t * cr, dv_view_t * V) {
   }
   
   /* draw full-parallelism line */
-  double x1 = 0;
-  double x2 = dv_dag_scale_down_linear(H->D, H->D->et);
+  double x = 0;
+  double w = dv_dag_scale_down_linear(H->D, H->D->et);
   double y = - H->unit_thick * H->D->radius - H->D->P->num_workers * (H->unit_thick * H->D->radius);
+  dv_rectangle_trim(V, &x, &y, &w, NULL);
   cairo_save(cr);
   cairo_new_path(cr);
-  cairo_move_to(cr, x1, y);
-  cairo_line_to(cr, x2, y);
+  cairo_move_to(cr, x, y);
+  cairo_line_to(cr, x + w, y);
   cairo_set_source_rgba(cr, 1.0, 0.0, 0.0, 0.8);
   cairo_set_line_width(cr, DV_NODE_LINE_WIDTH / V->S->zoom_ratio_x);
   cairo_stroke(cr);

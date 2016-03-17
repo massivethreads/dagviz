@@ -909,6 +909,7 @@ void dv_viewport_draw_focused_mark(dv_viewport_t *, cairo_t *);
 /* view_dag.c */
 dv_dag_node_t * dv_view_dag_find_clicked_node(dv_view_t *, double, double);
 int dv_rectangle_is_invisible(dv_view_t *, double, double, double, double);
+int dv_rectangle_trim(dv_view_t *, double *, double *, double *, double *);
 int dv_dag_node_is_invisible(dv_view_t *, dv_dag_node_t *);
 int dv_dag_node_link_is_invisible(dv_view_t *, dv_dag_node_t *);
 void dv_view_layout_dag(dv_view_t *);

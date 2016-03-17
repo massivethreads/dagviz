@@ -76,6 +76,43 @@ dv_rectangle_is_invisible(dv_view_t * V, double x, double y, double w, double h)
 }
 
 int
+dv_rectangle_trim(dv_view_t * V, double * x, double * y, double * w, double * h) {
+  double bound_left = dv_view_clip_get_bound_left(V);
+  double bound_right = dv_view_clip_get_bound_right(V);
+  double bound_up = dv_view_clip_get_bound_up(V);
+  double bound_down = dv_view_clip_get_bound_down(V);
+  double ww = (w)?(*w):0.0;
+  double hh = (h)?(*h):0.0;
+  int ret = 0;
+  if (*y + hh < bound_up)
+    ret |= DV_DAG_NODE_HIDDEN_ABOVE;
+  if (*x > bound_right)
+    ret |= DV_DAG_NODE_HIDDEN_RIGHT;
+  if (*y > bound_down)
+    ret |= DV_DAG_NODE_HIDDEN_BELOW;
+  if (*x + ww < bound_left)
+    ret |= DV_DAG_NODE_HIDDEN_LEFT;
+  /* Trim */
+  if (!ret) {
+    if (*x < bound_left) {
+      ww -= (bound_left - *x);
+      *x = bound_left;
+    }
+    if (*x + ww > bound_right)
+      ww = bound_right - *x;
+    if (*y < bound_up) {
+      hh -= (bound_up - *y);
+      *y = bound_up;
+    }
+    if (*y + hh > bound_down)
+      hh = bound_down - *y;
+  }
+  if (w) *w = ww;
+  if (h) *h = hh;
+  return ret;
+}
+
+int
 dv_dag_node_is_invisible(dv_view_t * V, dv_dag_node_t * node) {
   int ret = -1;
   if (!node) return ret;
