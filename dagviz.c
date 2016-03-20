@@ -3602,10 +3602,12 @@ dv_gui_build_replay_sidebox(dv_gui_t * gui) {
   gtk_box_pack_end(GTK_BOX(play_box), button, FALSE, FALSE, 0);
   button = gtk_button_new_with_label("Next");
   gtk_box_pack_end(GTK_BOX(play_box), button, FALSE, FALSE, 0);
-  g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_replay_sidebox_next_button_clicked), (void *) NULL);
+  //g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_replay_sidebox_next_button_clicked), (void *) NULL);
+  g_signal_connect(G_OBJECT(button), "button-press-event", G_CALLBACK(on_replay_sidebox_next_button_pressed), (void *) NULL);
   button = gtk_button_new_with_label("Prev");
   gtk_box_pack_end(GTK_BOX(play_box), button, FALSE, FALSE, 0);
-  g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_replay_sidebox_prev_button_clicked), (void *) NULL);
+  //g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_replay_sidebox_prev_button_clicked), (void *) NULL);
+  g_signal_connect(G_OBJECT(button), "button-press-event", G_CALLBACK(on_replay_sidebox_prev_button_pressed), (void *) NULL);
   
   /*
   gtk_box_pack_start(GTK_BOX(sidebox_box), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), FALSE, FALSE, 0);

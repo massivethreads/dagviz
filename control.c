@@ -1451,6 +1451,22 @@ on_replay_sidebox_next_button_clicked(_unused_ GtkButton * button, _unused_ gpoi
     }
 }
 
+gboolean
+on_replay_sidebox_next_button_pressed(_unused_ GtkWidget * widget, _unused_ GdkEvent * event, _unused_ gpointer user_data) {
+  double current_time = gtk_range_get_value(GTK_RANGE(GUI->replay.scale));
+  double time_step = atof(gtk_entry_get_text(GTK_ENTRY(GUI->replay.time_step_entry)));
+  double t = current_time + time_step;
+  //if (t > D->et - D->bt)
+  //t = D->et - D->bt;
+  int i;
+  for (i = 0; i < CS->nD; i++)
+    if (GUI->replay.mD[i]) {
+      dv_dag_t * D = &CS->D[i];
+      dv_dag_set_current_time(D, t);
+    }
+  return TRUE;
+}
+
 void
 on_replay_sidebox_prev_button_clicked(_unused_ GtkButton * button, _unused_ gpointer user_data) {
   double current_time = gtk_range_get_value(GTK_RANGE(GUI->replay.scale));
@@ -1464,6 +1480,22 @@ on_replay_sidebox_prev_button_clicked(_unused_ GtkButton * button, _unused_ gpoi
       dv_dag_t * D = &CS->D[i];
       dv_dag_set_current_time(D, t);
     }
+}
+
+gboolean
+on_replay_sidebox_prev_button_pressed(_unused_ GtkWidget * widget, _unused_ GdkEvent * event, _unused_ gpointer user_data) {
+  double current_time = gtk_range_get_value(GTK_RANGE(GUI->replay.scale));
+  double time_step = atof(gtk_entry_get_text(GTK_ENTRY(GUI->replay.time_step_entry)));
+  double t = current_time - time_step;
+  if (t < 0)
+    t = 0;
+  int i;
+  for (i = 0; i < CS->nD; i++)
+    if (GUI->replay.mD[i]) {
+      dv_dag_t * D = &CS->D[i];
+      dv_dag_set_current_time(D, t);
+    }
+  return TRUE;
 }
 
 void
