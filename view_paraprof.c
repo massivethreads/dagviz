@@ -337,7 +337,7 @@ _unused_ static void
 dv_histogram_cal_work_delay_nowork(dv_histogram_t * H) {
   H->work = H->delay = H->nowork = 0.0;
   double work_p, delay_p, nowork_p;
-  double p_bound = H->D->P->num_workers * H->unit_thick * H->D->radius;
+  double p_bound = H->D->P->num_workers;
   dv_histogram_entry_t * e = H->head_e;
   while (e != NULL && e->next) {
     int layer = dv_histogram_layer_running;
@@ -354,14 +354,14 @@ dv_histogram_cal_work_delay_nowork(dv_histogram_t * H) {
       delay_p = p_bound - work_p;
     }
     double interval = (e->next->t - e->t) / H->D->linear_radix;
-    H->work += interval * ( work_p / (H->unit_thick * H->D->radius) );
-    H->delay += interval * ( delay_p / (H->unit_thick * H->D->radius) );
-    H->nowork += interval * ( nowork_p / (H->unit_thick * H->D->radius) );
+    H->work += interval * work_p;
+    H->delay += interval * delay_p;
+    H->nowork += interval * nowork_p;
     e = e->next;
   }
-  H->work /= H->D->P->num_workers;
-  H->delay /= H->D->P->num_workers;
-  H->nowork /= H->D->P->num_workers;
+  //H->work /= H->D->P->num_workers;
+  //H->delay /= H->D->P->num_workers;
+  //H->nowork /= H->D->P->num_workers;
   //printf("  work,delay,nowork = %10lf, %10lf, %10lf\n", H->work, H->delay, H->nowork);
 }
 

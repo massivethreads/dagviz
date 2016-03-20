@@ -6,12 +6,8 @@
 static dv_dag_node_t *
 dv_view_dag_find_clicked_node_1(dv_view_t * V, double x, double y, dv_dag_node_t * node) {
   dv_dag_node_t * ret = NULL;
-  dv_node_coordinate_t * c = &node->c[V->S->coord];
-  double vc, hc;
-  vc = c->x;
-  hc = c->y;
-  if (vc - V->D->radius < x && x < vc + V->D->radius
-      && hc < y && y < hc + 2 * V->D->radius) {
+  dv_node_coordinate_t * co = &node->c[V->S->coord];
+  if (co->x - co->lw < x && x < co->x + co->rw && co->y < y && y < co->y + co->dw) {
     ret = node;
   }
   return ret;
