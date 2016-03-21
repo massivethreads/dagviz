@@ -749,31 +749,9 @@ GtkWidget * dv_gui_get_nodeinfo_sidebox(dv_gui_t *);
 
 void dv_signal_handler(int);
 
+
+
 /* control.c */
-void on_toolbar_dag_menu_item_activated(GtkMenuItem *, gpointer);
-
-gboolean on_management_window_open_stat_button_clicked(GtkWidget *, gpointer);
-gboolean on_management_window_open_pp_button_clicked(GtkWidget *, gpointer);
-gboolean on_management_window_expand_dag_button_clicked(GtkWidget *, gpointer);
-void on_management_window_add_new_view_clicked(GtkWidget *, gpointer);
-void on_management_window_view_clicked(GtkToolButton * toolbtn, gpointer);
-void on_management_window_add_new_dag_activated(GtkMenuItem *, gpointer);
-void on_management_window_viewport_dag_menu_item_toggled(GtkCheckMenuItem *, gpointer);
-
-void on_toolbar_division_menu_onedag_activated(GtkMenuItem *, gpointer);
-void on_toolbar_division_menu_twodags_activated(GtkMenuItem *, gpointer);
-void on_toolbar_division_menu_threedags_activated(GtkMenuItem *, gpointer);
-void on_toolbar_dag_layout_buttons_clicked(GtkToolButton *, gpointer);
-void on_toolbar_dag_boxes_scale_type_menu_activated(GtkToolButton *, gpointer);
-
-void on_menubar_view_replay_sidebox_toggled(GtkCheckMenuItem *, gpointer);
-void on_replay_sidebox_row_selected(GtkListBox *, GtkListBoxRow *, gpointer);
-void on_replay_sidebox_row_activated(GtkListBox *, GtkListBoxRow *, gpointer);
-
-
-
-
-/* process.c */
 char * dv_filename_get_short_name(char *);
 void dv_dag_collect_delays_r(dv_dag_t *, dv_dag_node_t *, FILE *, dv_stat_distribution_entry_t *);
 void dv_dag_collect_sync_delays_r(dv_dag_t *, dv_dag_node_t *, FILE *, dv_stat_distribution_entry_t *);

@@ -8,9 +8,9 @@ CFLAGS = $(shell $(PKGCONFIG) --cflags gtk+-3.0)
 LDFLAGS = $(shell $(PKGCONFIG) --libs gtk+-3.0)
 GLIB_COMPILE_RESOURCES = $(shell $(PKGCONFIG) --variable=glib_compile_resources gio-2.0)
 
-HDR = dagviz.h
-AUX_SRC = control.c dagviz.gresource.xml
-SRC = dagviz.c read.c layout.c draw.c utils.c print.c view_dag.c view_dag_box.c view_timeline.c view_timeline_ver.c view_paraprof.c process.c 
+HDR = dagviz.h callback.h 
+AUX_SRC = dagviz.gresource.xml
+SRC = dagviz.c read.c layout.c draw.c utils.c print.c view_dag.c view_dag_box.c view_timeline.c view_timeline_ver.c view_paraprof.c control.c 
 BUILT_SRC = resources.c
 
 OBJS = $(BUILT_SRC:.c=.o) $(SRC:.c=.o)

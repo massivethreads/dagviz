@@ -1,4 +1,5 @@
 #include "dagviz.h"
+#include "callback.h"
 
 dv_global_state_t  CS[1];
 dv_gui_t GUI[1];
@@ -325,8 +326,6 @@ dv_viewport_draw(dv_viewport_t * VP, cairo_t * cr) {
 
 
 /*-----------------VIEW's functions-----------------*/
-
-#include "control.c"
 
 void
 dv_view_toolbox_init(dv_view_toolbox_t * T, dv_view_t * V) {
