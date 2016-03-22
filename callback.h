@@ -712,6 +712,17 @@ on_toolbar_expand_button_clicked(_unused_ GtkToolButton * toolbtn, _unused_ gpoi
   dv_do_expanding_one(CS->activeV);
 }
 
+static void
+on_toolbar_critical_path_button_clicked(_unused_ GtkToolButton * toolbtn, _unused_ gpointer user_data) {
+  if (!CS->activeV) return;
+  long cp = (long) user_data;
+  dv_dag_t * D = CS->activeV->D;
+  D->show_critical_paths[cp] = 1 - D->show_critical_paths[cp];
+  if (D->show_critical_paths[cp])
+    dv_critical_path_compute(D);
+  dv_queue_draw_dag(D);
+}
+
 G_MODULE_EXPORT void
 on_menubar_export_activated(_unused_ GtkToolButton * toolbtn, _unused_ gpointer user_data) {
   dv_export_viewport();
@@ -1529,7 +1540,6 @@ on_context_menu_viewport_infobox_activated(_unused_ GtkMenuItem * menuitem, _unu
   dv_queue_draw_pidag(CS->context_view->D->P);
   //dv_queue_draw_d_p(CS->context_view);
 }
-
 
 /****************** end of GUI Callbacks **************************************/
 

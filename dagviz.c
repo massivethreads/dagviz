@@ -3426,6 +3426,18 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
     gtk_widget_set_tooltip_text(GTK_WIDGET(btn_expand), "Expand one depth (X)");
     g_signal_connect(G_OBJECT(btn_shrink), "clicked", G_CALLBACK(on_toolbar_shrink_button_clicked), NULL);  
     g_signal_connect(G_OBJECT(btn_expand), "clicked", G_CALLBACK(on_toolbar_expand_button_clicked), NULL);
+
+    /* Critical path buttons */
+    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), gtk_separator_tool_item_new(), -1);
+    GtkToolItem * btn_cp_1 = gtk_tool_button_new(gtk_label_new("Critical path 1"), NULL);
+    GtkToolItem * btn_cp_2 = gtk_tool_button_new(gtk_label_new("Critical path 2"), NULL);
+    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_cp_1, -1);
+    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_cp_2, -1);
+    gtk_widget_set_tooltip_text(GTK_WIDGET(btn_cp_1), "Show critical path in terms of work"); 
+    gtk_widget_set_tooltip_text(GTK_WIDGET(btn_cp_2), "Show critical path in terms of both work & delay");
+    g_signal_connect(G_OBJECT(btn_cp_1), "clicked", G_CALLBACK(on_toolbar_critical_path_button_clicked), (void *) 0);  
+    g_signal_connect(G_OBJECT(btn_cp_2), "clicked", G_CALLBACK(on_toolbar_critical_path_button_clicked), (void *) 1);
+    
   }
 
 

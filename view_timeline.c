@@ -142,11 +142,14 @@ dv_view_layout_timeline(dv_view_t * V) {
 
 static void
 dv_view_draw_timeline_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
+  cairo_save(cr);
+  /* Get inputs */
   dv_dag_t * D = V->D;
   dv_view_status_t * S = V->S;
   int coord = DV_LAYOUT_TYPE_TIMELINE;
   dv_node_coordinate_t * nodeco = &node->c[coord];
-  // Count node drawn
+  
+  /* Count drawn node */
   S->nd++;
   if (node->d > D->cur_d)
     D->cur_d = node->d;
@@ -154,17 +157,17 @@ dv_view_draw_timeline_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) 
       && dv_is_shrinked(node)
       && node->d < D->cur_d_ex)
     D->cur_d_ex = node->d;
-  // Node color
+  
+  /* Node color */
   double x = nodeco->x;
   double y = nodeco->y;
   double c[4];
   dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, node);
   dv_lookup_color(pi, S->nc, c, c+1, c+2, c+3);
-  // Alpha
+  /* Alpha */
   double alpha = 1.0;
-  // Draw path
-  cairo_save(cr);
-  cairo_new_path(cr);
+  
+  /* Coordinates */
   double xx, yy, w, h;
   // Normal-sized box (terminal node)
   xx = x;
@@ -172,22 +175,22 @@ dv_view_draw_timeline_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) 
   w = nodeco->rw;
   h = nodeco->dw;
   
+  /* Draw path */
+  cairo_new_path(cr);
   if (!dv_timeline_node_is_invisible(V, node)) {
     dv_timeline_trim_rectangle(V, &xx, &yy, &w, &h);
     
-    /* Draw path */
-    cairo_move_to(cr, xx, yy);
-    cairo_line_to(cr, xx + w, yy);
-    cairo_line_to(cr, xx + w, yy + h);
-    cairo_line_to(cr, xx, yy + h);
-    cairo_close_path(cr);
+    cairo_rectangle(cr, xx, yy, w, h);
     
     /* Draw node */
     if (dv_is_union(node)) {
+      
       double c[4] = { 0.15, 0.15, 0.15, 0.2 };
       cairo_set_source_rgba(cr, c[0], c[1], c[2], c[3]);
       cairo_fill(cr);
+      
     } else {
+      
       cairo_set_source_rgba(cr, c[0], c[1], c[2], c[3] * alpha);
       cairo_fill_preserve(cr);
       if (DV_TIMELINE_NODE_WITH_BORDER) {
@@ -195,22 +198,58 @@ dv_view_draw_timeline_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) 
         cairo_stroke_preserve(cr);
       }
       /* Highlight */
-      if (node->highlight) {
+      if ( node->highlight ) {
         cairo_set_source_rgba(cr, 0.1, 0.1, 0.1, 0.5);
         cairo_fill_preserve(cr);
       }
-      /* Draw opaque for infotag node */
+      /* Draw node's infotag's mark */
       if (dv_llist_has(V->D->P->itl, (void *) node->pii)) {
         cairo_set_source_rgba(cr, 0.1, 0.1, 0.1, 0.6);
-        cairo_fill(cr);
+        cairo_fill_preserve(cr);
       }
+      
+      /* Highlight critical paths */
+      if ( (D->show_critical_paths[DV_CRITICAL_PATH_WORK] && dv_node_flag_check(node->f, DV_NODE_FLAG_CRITICAL_PATH_WORK))
+           || (D->show_critical_paths[DV_CRITICAL_PATH_WORK_DELAY] && dv_node_flag_check(node->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY)) ) {
+        cairo_new_path(cr);
+        double margin, line_width, margin_increment;
+        GdkRGBA color[1];
+        
+        //line_width = 2 * DV_NODE_LINE_WIDTH;
+        line_width = 2 * DV_NODE_LINE_WIDTH / V->S->zoom_ratio_x;
+        if (line_width > 40 * DV_NODE_LINE_WIDTH)
+          line_width = 40 * DV_NODE_LINE_WIDTH;
+        margin = - 0.5 * line_width;
+        margin_increment = - line_width;
+    
+        if ( D->show_critical_paths[DV_CRITICAL_PATH_WORK] && dv_node_flag_check(node->f, DV_NODE_FLAG_CRITICAL_PATH_WORK) ) {
+          gdk_rgba_parse(color, DV_CRITICAL_PATH_WORK_COLOR);
+          cairo_set_source_rgba(cr, color->red, color->green, color->blue, color->alpha);
+          cairo_set_line_width(cr, line_width );
+          cairo_rectangle(cr, xx - margin, yy - margin, w + 2 * margin, h + 2 * margin);
+          cairo_stroke(cr);
+          margin += margin_increment;
+        }
+    
+        if ( D->show_critical_paths[DV_CRITICAL_PATH_WORK_DELAY] && dv_node_flag_check(node->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY) ) {
+          gdk_rgba_parse(color, DV_CRITICAL_PATH_WORK_DELAY_COLOR);
+          cairo_set_source_rgba(cr, color->red, color->green, color->blue, color->alpha);
+          cairo_set_line_width(cr, line_width );
+          cairo_rectangle(cr, xx - margin, yy - margin, w + 2 * margin, h + 2 * margin);
+          cairo_stroke(cr);
+          margin += margin_increment;
+        }
+      }
+
     }
     
   }
-  // Flag to draw infotag
+  
+  /* Flag to draw infotag */
   if (dv_llist_has(V->D->P->itl, (void *) node->pii)) {
     dv_llist_add(V->D->itl, (void *) node);
   }
+  
   cairo_restore(cr);
 }
 

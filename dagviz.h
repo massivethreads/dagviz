@@ -88,6 +88,9 @@ typedef struct dv_llist {
 #define DV_NODE_FLAG_EXPANDING    (1 << 4) /* expanding */
 #define DV_NODE_FLAG_SHRINKING    (1 << 5) /* shrinking */
 
+#define DV_NODE_FLAG_CRITICAL_PATH_WORK (1 << 6) /* node is on critical path of work */
+#define DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY (1 << 7) /* node is on critical path of work & delay */
+
 #define DV_ZOOM_TO_FIT_MARGIN 15
 #define DV_ZOOM_TO_FIT_MARGIN_DOWN 20
 #define DV_STRING_LENGTH 1000
@@ -179,6 +182,13 @@ typedef struct dv_llist {
 #define DV_DAG_NODE_HIDDEN_RIGHT 0b0010
 #define DV_DAG_NODE_HIDDEN_BELOW 0b0100
 #define DV_DAG_NODE_HIDDEN_LEFT  0b1000
+
+#define DV_NUM_CRITICAL_PATHS 2
+#define DV_CRITICAL_PATH_WORK 0
+#define DV_CRITICAL_PATH_WORK_DELAY 1
+#define DV_CRITICAL_PATH_WORK_COLOR "red"
+#define DV_CRITICAL_PATH_WORK_DELAY_COLOR "green"
+
 
 /*-----------------Data Structures-----------------*/
 
@@ -297,6 +307,7 @@ typedef struct dv_dag {
   int draw_with_current_time;
   double current_time;
   double time_step;
+  int show_critical_paths[DV_NUM_CRITICAL_PATHS];
 } dv_dag_t;
 
 typedef struct dv_view dv_view_t;
@@ -799,6 +810,8 @@ void dv_do_button_event(dv_view_t *, GdkEventButton *);
 void dv_do_motion_event(dv_view_t *, GdkEventMotion *);
 dv_dag_node_t * dv_find_node_with_pii_r(dv_view_t *, long, dv_dag_node_t *);
 
+void dv_critical_path_compute_node(dv_dag_t *, dv_dag_node_t *);
+void dv_critical_path_compute(dv_dag_t *);
 
 
 /* print.c */

@@ -309,6 +309,7 @@ void dv_view_layout_dagbox(dv_view_t *V) {
 
 static void
 dv_view_draw_dagbox_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
+  cairo_save(cr);
   /* Get inputs */
   dv_dag_t * D = V->D;
   dv_view_status_t * S = V->S;
@@ -333,10 +334,6 @@ dv_view_draw_dagbox_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
   
   /* Coordinates */
   double xx, yy, w, h;
-  
-  /* Draw path */
-  cairo_save(cr);
-  cairo_new_path(cr);
   if (dv_is_union(node)) {
 
     cairo_set_line_width(cr, DV_NODE_LINE_WIDTH_COLLECTIVE_FACTOR * DV_NODE_LINE_WIDTH);
@@ -372,18 +369,17 @@ dv_view_draw_dagbox_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
   } else {
     
     /* Calculate coordinates: normal-sized box (leaf node) */
+    cairo_set_line_width(cr, DV_NODE_LINE_WIDTH);
     xx = x - nodeco->lw;
     yy = y;
     w = nodeco->lw + nodeco->rw;
     h = nodeco->dw;
     
   }
+  
   /* Draw path */
-  cairo_move_to(cr, xx, yy);
-  cairo_line_to(cr, xx + w, yy);
-  cairo_line_to(cr, xx + w, yy + h);
-  cairo_line_to(cr, xx, yy + h);
-  cairo_close_path(cr);
+  cairo_new_path(cr);
+  cairo_rectangle(cr, xx, yy, w, h);
 
   /* Calculate alpha (based on parent) */
   if (dv_is_shrinking(node->parent)) {
@@ -434,12 +430,12 @@ dv_view_draw_dagbox_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
   }
   
   /* Highlight */
-  if (node->highlight) {
+  if ( node->highlight ) {
     cairo_set_source_rgba(cr, 0.1, 0.1, 0.1, 0.5);
     cairo_fill_preserve(cr);
   }
   
-  /* Fill rate */
+  /* Fill node partly according to D->current_time */
   double fill_rate = 1.0;
   if (D->draw_with_current_time) {
     double st = pi->info.start.t - D->bt;
@@ -451,15 +447,45 @@ dv_view_draw_dagbox_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
     else
       fill_rate = 1.0;
   }
-        
-  /* Clip */
   GdkRGBA white[1];
   gdk_rgba_parse(white, "white");
-  cairo_clip(cr);
+  cairo_new_path(cr);
   cairo_rectangle(cr, xx, yy + (h * fill_rate), w, h * (1 - fill_rate));
-  cairo_clip_preserve(cr);
   cairo_set_source_rgba(cr, white->red, white->green, white->blue, white->alpha);
   cairo_fill(cr);
+
+  /* Highlight critical paths */
+  if ( (D->show_critical_paths[DV_CRITICAL_PATH_WORK] && dv_node_flag_check(node->f, DV_NODE_FLAG_CRITICAL_PATH_WORK))
+       || (D->show_critical_paths[DV_CRITICAL_PATH_WORK_DELAY] && dv_node_flag_check(node->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY)) ) {
+    cairo_new_path(cr);
+    double margin, line_width, margin_increment;
+    GdkRGBA color[1];
+    
+    //line_width = 2 * DV_NODE_LINE_WIDTH;
+    line_width = 2 * DV_NODE_LINE_WIDTH / V->S->zoom_ratio_x;
+    if (line_width < DV_NODE_LINE_WIDTH)
+      line_width = DV_NODE_LINE_WIDTH;
+    margin = 0.5 * DV_NODE_LINE_WIDTH + 0.5 * line_width;
+    margin_increment = line_width;
+
+    if ( D->show_critical_paths[DV_CRITICAL_PATH_WORK] && dv_node_flag_check(node->f, DV_NODE_FLAG_CRITICAL_PATH_WORK) ) {
+      gdk_rgba_parse(color, DV_CRITICAL_PATH_WORK_COLOR);
+      cairo_set_source_rgba(cr, color->red, color->green, color->blue, color->alpha);
+      cairo_set_line_width(cr, line_width );
+      cairo_rectangle(cr, xx - margin, yy - margin, w + 2 * margin, h + 2 * margin);
+      cairo_stroke(cr);
+      margin += margin_increment;
+    }
+    
+    if ( D->show_critical_paths[DV_CRITICAL_PATH_WORK_DELAY] && dv_node_flag_check(node->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY) ) {
+      gdk_rgba_parse(color, DV_CRITICAL_PATH_WORK_DELAY_COLOR);
+      cairo_set_source_rgba(cr, color->red, color->green, color->blue, color->alpha);
+      cairo_set_line_width(cr, line_width );
+      cairo_rectangle(cr, xx - margin, yy - margin, w + 2 * margin, h + 2 * margin);
+      cairo_stroke(cr);
+      margin += margin_increment;
+    }
+  }
   
   cairo_restore(cr);
 }

@@ -38,7 +38,7 @@ dv_view_layout(dv_view_t * V) {
   if (CS->verbose_level >= 2) {
     fprintf(stderr, "dv_view_layout()\n");
   }
-  //printf("  d=%d, nd=%ld, nl=%ld, ntr=%ld\n", V->D->cur_d, V->S->nd, V->S->nl, V->S->ntr);
+
   V->S->nl = 0;
   int tolayout[DV_NUM_LAYOUT_TYPES];
   int i;
@@ -54,6 +54,7 @@ dv_view_layout(dv_view_t * V) {
   for (i = 0; i < CS->nV; i++)
     if (V->D->mV[i] && CS->V[i].S->nviewports > 0)
       dv_view_auto_zoomfit(&CS->V[i]);
+  
   if (CS->verbose_level >= 2) {
     fprintf(stderr, "... done dv_view_layout(): %lf\n", dv_get_time() - time);
     //fprintf(stderr, "  d=%d, nd=%ld, nl=%ld, ntr=%ld\n", V->D->cur_d, V->S->nd, V->S->nl, V->S->ntr);

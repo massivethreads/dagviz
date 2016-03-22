@@ -1103,6 +1103,8 @@ dv_do_expanding_one_1(dv_view_t * V, dv_dag_node_t * node) {
       dv_histogram_add_node(V->D->H, x, NULL);
     }
   }
+  /* Critical paths */
+  dv_critical_path_compute_node(V->D, node);
 }
 
 static void
@@ -1477,3 +1479,86 @@ dv_find_node_with_pii_r(dv_view_t * V, long pii, dv_dag_node_t * node) {
   return NULL;
 }
 
+void
+dv_critical_path_compute_node(dv_dag_t * D, dv_dag_node_t * node) {
+  /* critical path of work */
+  if (dv_node_flag_check(node->f, DV_NODE_FLAG_CRITICAL_PATH_WORK)) {
+    
+    /* compute heaviest */
+    dv_dag_node_t * heaviest = NULL; /* tail node with heaviest-work path */
+    double heaviest_work = 0.0;
+    {
+      dv_dag_node_t * x = NULL;
+      while ( (x = dv_dag_node_traverse_tails(node, x)) ) {
+        dr_pi_dag_node * x_pi = dv_pidag_get_node_by_dag_node(D->P, x);
+        double x_work = x_pi->info.t_1;
+        dv_dag_node_t * pre = x->pre;
+        while (pre) {
+          dr_pi_dag_node * pre_pi = dv_pidag_get_node_by_dag_node(D->P, pre);
+          x_work += pre_pi->info.t_1;
+          pre = pre->pre;
+        }
+        if (!heaviest || heaviest_work < x_work) {
+          heaviest = x;
+          heaviest_work = x_work;
+        }
+      }
+    }
+    /* mark nodes */
+    {
+      dv_dag_node_t * x = heaviest;
+      while (x) {
+        dv_node_flag_set(x->f, DV_NODE_FLAG_CRITICAL_PATH_WORK);
+        x = x->pre;
+      }
+    }
+
+  }
+
+  /* critical path of work & delay */
+  if (dv_node_flag_check(node->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY)) {
+
+    /* compute last */
+    dv_dag_node_t * last = NULL; /* tail node finishing last */
+    dr_pi_dag_node * last_pi = NULL; 
+    {
+      dv_dag_node_t * x = NULL;
+      while ( (x = dv_dag_node_traverse_tails(node, x)) ) {
+        dr_pi_dag_node * x_pi = dv_pidag_get_node_by_dag_node(D->P, x);
+        if (!last || last_pi->info.end.t < x_pi->info.end.t) {
+          last = x;
+          last_pi = x_pi;
+        }
+      }
+    }
+    /* mark nodes */
+    {
+      dv_dag_node_t * x = last;
+      while (x) {
+        dv_node_flag_set(x->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY);
+        x = x->pre;
+      }
+    }
+    
+  }
+
+  /* compute recursively */
+  {
+    dv_dag_node_t * x = NULL;
+    while ( (x = dv_dag_node_traverse_children(node, x)) ) {
+      if (dv_node_flag_check(x->f, DV_NODE_FLAG_CRITICAL_PATH_WORK)
+          || dv_node_flag_check(x->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY))
+        dv_critical_path_compute_node(D, x);
+    }
+  }
+}
+
+void
+dv_critical_path_compute(dv_dag_t * D) {
+  if (!dv_node_flag_check(D->rt->f, DV_NODE_FLAG_CRITICAL_PATH_WORK)
+      || !dv_node_flag_check(D->rt->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY)) {
+    dv_node_flag_set(D->rt->f, DV_NODE_FLAG_CRITICAL_PATH_WORK);
+    dv_node_flag_set(D->rt->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY);
+    dv_critical_path_compute_node(D, D->rt);
+  }
+}
