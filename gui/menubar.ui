@@ -143,6 +143,12 @@
                     <signal name="activate" handler="on_menubar_layout_type_paraprof_activated"/>
                   </object></child>
 
+                  <child><object class="GtkMenuItem" id="layout_criticalpath">
+                    <property name="use-underline">TRUE</property>
+                    <property name="label">_Critical path</property>
+                    <signal name="activate" handler="on_menubar_layout_type_criticalpath_activated"/>
+                  </object></child>
+
                 </object></child>
             </object></child>
             

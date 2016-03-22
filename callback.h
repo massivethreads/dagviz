@@ -172,7 +172,7 @@ static gboolean on_entry_search_activate(GtkEntry *entry, gpointer user_data) {
   double y = 0.0;
   double d1, d2;
   switch (S->lt) {
-  case 0:
+  case DV_LAYOUT_TYPE_DAG:
     // DAG
     d1 = co->lw + co->rw;
     d2 = S->vpw - 2 * DV_ZOOM_TO_FIT_MARGIN;
@@ -186,7 +186,7 @@ static gboolean on_entry_search_activate(GtkEntry *entry, gpointer user_data) {
     x -= (co->x + (co->rw - co->lw) * 0.5) * zoom_ratio;
     y -= co->y * zoom_ratio - (S->vph - DV_ZOOM_TO_FIT_MARGIN - DV_ZOOM_TO_FIT_MARGIN_DOWN - co->dw * zoom_ratio) * 0.5;
     break;
-  case 1:
+  case DV_LAYOUT_TYPE_DAG_BOX:
     // DAG box
     d1 = co->lw + co->rw;
     d2 = S->vpw - 2 * DV_ZOOM_TO_FIT_MARGIN;
@@ -200,7 +200,7 @@ static gboolean on_entry_search_activate(GtkEntry *entry, gpointer user_data) {
     x -= (co->x + (co->rw - co->lw) * 0.5) * zoom_ratio;
     y -= co->y * zoom_ratio - (S->vph - DV_ZOOM_TO_FIT_MARGIN - DV_ZOOM_TO_FIT_MARGIN_DOWN - co->dw * zoom_ratio) * 0.5;
     break;
-  case 2:
+  case DV_LAYOUT_TYPE_TIMELINE_VER:
     // Vertical Timeline
     d1 = 2*D->radius + (D->P->num_workers - 1) * DV_HDIS;
     d2 = S->vpw - 2 * DV_ZOOM_TO_FIT_MARGIN;
@@ -214,7 +214,7 @@ static gboolean on_entry_search_activate(GtkEntry *entry, gpointer user_data) {
     x -= (co->x + (co->rw - co->lw) * 0.5) * zoom_ratio - S->vpw * 0.5;
     y -= co->y * zoom_ratio - (S->vph - DV_ZOOM_TO_FIT_MARGIN  - DV_ZOOM_TO_FIT_MARGIN_DOWN - co->dw * zoom_ratio) * 0.5;
     break;
-  case 3:
+  case DV_LAYOUT_TYPE_TIMELINE:
     // Horizontal Timeline
     d1 = D->P->num_workers * (D->radius * 2);
     d2 = S->vph - DV_ZOOM_TO_FIT_MARGIN - DV_ZOOM_TO_FIT_MARGIN_DOWN;
@@ -227,7 +227,7 @@ static gboolean on_entry_search_activate(GtkEntry *entry, gpointer user_data) {
     x -= (co->x + co->rw * 0.5) * zoom_ratio - S->vpw * 0.5;
     y -= co->y * zoom_ratio - (S->vph - DV_ZOOM_TO_FIT_MARGIN - DV_ZOOM_TO_FIT_MARGIN_DOWN - co->dw * zoom_ratio) * 0.5;
     break;
-  case 4:
+  case DV_LAYOUT_TYPE_PARAPROF:
     // Parallelism profile
     d1 = D->P->num_workers * (D->radius * 2);
     d2 = S->vph - DV_ZOOM_TO_FIT_MARGIN - DV_ZOOM_TO_FIT_MARGIN_DOWN;
@@ -239,6 +239,10 @@ static gboolean on_entry_search_activate(GtkEntry *entry, gpointer user_data) {
       zoom_ratio = dv_min(zoom_ratio, d2 / d1);
     x -= (co->x + co->rw * 0.5) * zoom_ratio - S->vpw * 0.5;
     y -= co->y * zoom_ratio - (S->vph - DV_ZOOM_TO_FIT_MARGIN - DV_ZOOM_TO_FIT_MARGIN_DOWN - co->dw * zoom_ratio) * 0.5;
+    break;
+  case DV_LAYOUT_TYPE_CRITICAL_PATH:
+    // Critical path
+    fprintf(stderr, "warning: currently do nothing in on_entry_search_activate() for critical-path view.\n");
     break;
   default:
     dv_check(0);
@@ -718,8 +722,11 @@ on_toolbar_critical_path_button_clicked(_unused_ GtkToolButton * toolbtn, _unuse
   long cp = (long) user_data;
   dv_dag_t * D = CS->activeV->D;
   D->show_critical_paths[cp] = 1 - D->show_critical_paths[cp];
-  if (D->show_critical_paths[cp])
+  if (D->show_critical_paths[cp]) {
     dv_critical_path_compute(D);
+    if (CS->activeV->S->lt == DV_LAYOUT_TYPE_CRITICAL_PATH)
+      dv_view_layout(CS->activeV);
+  }
   dv_queue_draw_dag(D);
 }
 
@@ -1076,7 +1083,7 @@ G_MODULE_EXPORT void
 on_menubar_layout_type_dag_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
   dv_view_t * V = CS->activeV;
   if (V) {
-    dv_view_change_lt(V, 0);
+    dv_view_change_lt(V, DV_LAYOUT_TYPE_DAG);
   }
 }
 
@@ -1084,7 +1091,7 @@ G_MODULE_EXPORT void
 on_menubar_layout_type_dag_boxes_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
   dv_view_t * V = CS->activeV;
   if (V) {
-    dv_view_change_lt(V, 1);
+    dv_view_change_lt(V, DV_LAYOUT_TYPE_DAG_BOX);
   }
 }
 
@@ -1092,7 +1099,7 @@ G_MODULE_EXPORT void
 on_menubar_layout_type_timeline_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
   dv_view_t * V = CS->activeV;
   if (V) {
-    dv_view_change_lt(V, 2);
+    dv_view_change_lt(V, DV_LAYOUT_TYPE_TIMELINE);
   }
 }
 
@@ -1100,7 +1107,7 @@ G_MODULE_EXPORT void
 on_menubar_layout_type_timeline_ver_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
   dv_view_t * V = CS->activeV;
   if (V) {
-    dv_view_change_lt(V, 3);
+    dv_view_change_lt(V, DV_LAYOUT_TYPE_TIMELINE_VER);
   }
 }
 
@@ -1108,7 +1115,15 @@ G_MODULE_EXPORT void
 on_menubar_layout_type_paraprof_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
   dv_view_t * V = CS->activeV;
   if (V) {
-    dv_view_change_lt(V, 4);
+    dv_view_change_lt(V, DV_LAYOUT_TYPE_PARAPROF);
+  }
+}
+
+G_MODULE_EXPORT void
+on_menubar_layout_type_criticalpath_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
+  dv_view_t * V = CS->activeV;
+  if (V) {
+    dv_view_change_lt(V, DV_LAYOUT_TYPE_CRITICAL_PATH);
   }
 }
 

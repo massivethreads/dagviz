@@ -170,7 +170,7 @@ dv_view_get_zoomfit_hor(dv_view_t * V, double * zrx, double * zry, double * myx,
   double d1, d2, dw;
   dv_node_coordinate_t *rtco = &D->rt->c[S->coord];
   switch (S->lt) {
-  case 0:
+  case DV_LAYOUT_TYPE_DAG:
     // DAG
     d1 = rtco->lw + rtco->rw;
     d2 = w - 2 * DV_ZOOM_TO_FIT_MARGIN;
@@ -178,7 +178,7 @@ dv_view_get_zoomfit_hor(dv_view_t * V, double * zrx, double * zry, double * myx,
       zoom_ratio = d2 / d1;
     x -= (rtco->rw - rtco->lw) * 0.5 * zoom_ratio;
     break;
-  case 1:
+  case DV_LAYOUT_TYPE_DAG_BOX:
     // DAG with Boxes
     d1 = rtco->lw + rtco->rw;
     d2 = w - 2 * DV_ZOOM_TO_FIT_MARGIN;
@@ -186,14 +186,14 @@ dv_view_get_zoomfit_hor(dv_view_t * V, double * zrx, double * zry, double * myx,
       zoom_ratio = d2 / d1;
     x -= (rtco->rw - rtco->lw) * 0.5 * zoom_ratio;
     break;
-  case 2:
+  case DV_LAYOUT_TYPE_TIMELINE_VER:
     // Vertical Timeline
     d1 = 2 * D->radius + (D->P->num_workers - 1) * DV_HDIS;
     d2 = w - 2 * DV_ZOOM_TO_FIT_MARGIN;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     break;
-  case 3:
+  case DV_LAYOUT_TYPE_TIMELINE:
     // Horizontal Timeline
     d1 = 10 + rtco->rw;
     d2 = w - 2 * DV_ZOOM_TO_FIT_MARGIN;
@@ -202,7 +202,7 @@ dv_view_get_zoomfit_hor(dv_view_t * V, double * zrx, double * zry, double * myx,
     dw = D->P->num_workers * (D->radius * 2);
     y += (h - dw * zoom_ratio) * 0.4;
     break;
-  case 4:
+  case DV_LAYOUT_TYPE_PARAPROF: {
     // Parallelism profile
     d1 = dv_dag_scale_down_linear(V->D, V->D->et - V->D->bt);
     d2 = w - 2 * DV_HISTOGRAM_MARGIN;
@@ -219,6 +219,21 @@ dv_view_get_zoomfit_hor(dv_view_t * V, double * zrx, double * zry, double * myx,
     if (dy > 0)
       y -= dy;
     break;
+  }
+  case DV_LAYOUT_TYPE_CRITICAL_PATH: {
+    // Critical path
+    d1 = dv_dag_scale_down_linear(V->D, V->D->et - V->D->bt);
+    d2 = w - 2 * DV_HISTOGRAM_MARGIN;
+    if (d1 > d2)
+      zoom_ratio = d2 / d1;
+    y -= V->D->P->num_workers * 2 * V->D->radius * zoom_ratio;
+    double max_h = dv_histogram_get_max_height(D->H);
+    double dy = (h - DV_HISTOGRAM_MARGIN_DOWN - DV_HISTOGRAM_MARGIN
+                 - zoom_ratio * (D->P->num_workers * 2 * D->radius + max_h)) / 2.0;
+    if (dy > 0)
+      y -= dy;
+    break;
+  }
   default:
     dv_check(0);
   }
@@ -247,21 +262,21 @@ dv_view_get_zoomfit_ver(dv_view_t * V, double * zrx, double * zry, double * myx,
   double d1, d2;
   dv_node_coordinate_t * rtco = &D->rt->c[S->coord];
   switch (S->lt) {
-  case 0:
+  case DV_LAYOUT_TYPE_DAG:
     d1 = rtco->dw;
     d2 = h - DV_ZOOM_TO_FIT_MARGIN - DV_ZOOM_TO_FIT_MARGIN_DOWN;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     x -= (rtco->rw - rtco->lw) * 0.5 * zoom_ratio;
     break;
-  case 1:
+  case DV_LAYOUT_TYPE_DAG_BOX:
     d1 = rtco->dw;
     d2 = h - DV_ZOOM_TO_FIT_MARGIN - DV_ZOOM_TO_FIT_MARGIN_DOWN;
     if (d1 > d2)
       zoom_ratio = d2 / d1;    
     x -= (rtco->rw - rtco->lw) * 0.5 * zoom_ratio;
     break;
-  case 2:
+  case DV_LAYOUT_TYPE_TIMELINE_VER:
     // Vertical Timeline
     d1 = 10 + rtco->dw;
     d2 = h - DV_ZOOM_TO_FIT_MARGIN - DV_ZOOM_TO_FIT_MARGIN_DOWN;
@@ -270,15 +285,28 @@ dv_view_get_zoomfit_ver(dv_view_t * V, double * zrx, double * zry, double * myx,
     double lrw = 2 * D->radius + (D->P->num_workers - 1) * DV_HDIS;
     x += (w - lrw * zoom_ratio) * 0.5;
     break;
-  case 3:
+  case DV_LAYOUT_TYPE_TIMELINE:
     // Horizontal Timeline
     d1 = D->P->num_workers * (D->radius * 2);
     d2 = h - DV_ZOOM_TO_FIT_MARGIN - DV_ZOOM_TO_FIT_MARGIN_DOWN;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     break;
-  case 4: {
+  case DV_LAYOUT_TYPE_PARAPROF: {
     // Parallelism profile
+    double max_h = dv_histogram_get_max_height(D->H);
+    d1 = D->P->num_workers * (2 * D->radius) + max_h;
+    d2 = h - DV_HISTOGRAM_MARGIN - DV_HISTOGRAM_MARGIN_DOWN;
+    if (d1 > d2)
+      zoom_ratio = d2 / d1;
+    y -= D->P->num_workers * (2 * D->radius) * zoom_ratio;
+    double dx = (w - 2 * DV_HISTOGRAM_MARGIN - zoom_ratio * dv_dag_scale_down_linear(V->D, V->D->et - V->D->bt)) / 2.0;
+    if (dx > 0)
+      x += dx;
+    break;
+  }
+  case DV_LAYOUT_TYPE_CRITICAL_PATH: {
+    // Critical path
     double max_h = dv_histogram_get_max_height(D->H);
     d1 = D->P->num_workers * (2 * D->radius) + max_h;
     d2 = h - DV_HISTOGRAM_MARGIN - DV_HISTOGRAM_MARGIN_DOWN;
@@ -312,11 +340,12 @@ dv_view_do_zoomfit_ver(dv_view_t * V) {
 void
 dv_view_do_zoomfit_based_on_lt(dv_view_t * V) {
   switch (V->S->lt) {
-  case 0:
-  case 1:
-  case 2:
-  case 3:
-  case 4:
+  case DV_LAYOUT_TYPE_DAG:
+  case DV_LAYOUT_TYPE_DAG_BOX:
+  case DV_LAYOUT_TYPE_TIMELINE_VER:
+  case DV_LAYOUT_TYPE_TIMELINE:
+  case DV_LAYOUT_TYPE_PARAPROF:
+  case DV_LAYOUT_TYPE_CRITICAL_PATH:
     dv_view_do_zoomfit_full(V);
     break;
   default:
@@ -437,27 +466,32 @@ dv_view_change_lt(dv_view_t * V, int new_lt) {
     
     /* edge affix, sdt */
     switch (new_lt) {
-    case 0:
+    case DV_LAYOUT_TYPE_DAG:
       dv_view_change_nc(V, 0);
       dv_view_change_eaffix(V, 0);
       break;
-    case 1:
+    case DV_LAYOUT_TYPE_DAG_BOX:
       dv_view_change_nc(V, 0);
       dv_view_change_eaffix(V, 0);
       //dv_view_change_sdt(V, 0);
       break;
-    case 2:
-    case 3:
-    case 4:
-      //dv_view_change_sdt(V, 2);
+    case DV_LAYOUT_TYPE_TIMELINE_VER:
+    case DV_LAYOUT_TYPE_TIMELINE:
+    case DV_LAYOUT_TYPE_PARAPROF:
       dv_view_change_nc(V, 2); // node kind
+      dv_view_change_sdt(V, 2);
+      break;
+    case DV_LAYOUT_TYPE_CRITICAL_PATH:
+      dv_view_change_nc(V, 0);
+      dv_view_change_sdt(V, 2);
+      dv_critical_path_compute(V->D);
       break;
     default:
       break;
     }
     
     /* switching to paraprof */
-    if (new_lt == 4) {
+    if (new_lt == DV_LAYOUT_TYPE_PARAPROF || new_lt == DV_LAYOUT_TYPE_CRITICAL_PATH) {
       if (!V->D->H) {
         V->D->H = dv_malloc( sizeof(dv_histogram_t) );
         dv_histogram_init(V->D->H);
@@ -518,20 +552,23 @@ dv_view_auto_zoomfit(dv_view_t * V) {
 void
 dv_view_status_set_coord(dv_view_status_t * S) {
   switch (S->lt) {
-  case 0:
+  case DV_LAYOUT_TYPE_DAG:
     S->coord = 0;
     break;
-  case 1:
+  case DV_LAYOUT_TYPE_DAG_BOX:
     S->coord = 1;
     break;
-  case 2:
+  case DV_LAYOUT_TYPE_TIMELINE_VER:
     S->coord = 2;
     break;
-  case 3:
+  case DV_LAYOUT_TYPE_TIMELINE:
     S->coord = 3;
     break;
-  case 4:
+  case DV_LAYOUT_TYPE_PARAPROF:
     S->coord = 3;
+    break;
+  case DV_LAYOUT_TYPE_CRITICAL_PATH:
+    S->coord = 5;
     break;
   default:
     dv_check(0);
@@ -1041,6 +1078,9 @@ dv_do_finding_clicked_node(dv_view_t * V, double x, double y) {
   case DV_LAYOUT_TYPE_PARAPROF:
     ret = dv_timeline_find_clicked_node(V, x, y);
     break;
+  case DV_LAYOUT_TYPE_CRITICAL_PATH:
+    ret = dv_critical_path_find_clicked_node(V, x, y);
+    break;
   default:
     dv_check(0);
   }
@@ -1063,8 +1103,8 @@ dv_do_expanding_one_1(dv_view_t * V, dv_dag_node_t * node) {
     if (dv_dag_build_node_inner(V->D, node) != DV_OK) return;
   dv_view_status_t * S = V->S;
   switch (S->lt) {
-  case 0:
-  case 1:
+  case DV_LAYOUT_TYPE_DAG:
+  case DV_LAYOUT_TYPE_DAG_BOX:
     // add to animation
     if (dv_is_shrinking(node)) {
       dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKING);
@@ -1076,15 +1116,16 @@ dv_do_expanding_one_1(dv_view_t * V, dv_dag_node_t * node) {
       dv_animation_add(S->a, node);
     }
     break;
-  case 2:
-  case 3:
+  case DV_LAYOUT_TYPE_TIMELINE_VER:
+  case DV_LAYOUT_TYPE_TIMELINE:
     if (dv_is_shrinking(node)) {
       dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKING);
     } else if (dv_is_expanding(node)) {
       dv_node_flag_remove(node->f, DV_NODE_FLAG_EXPANDING);
     }
     dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKED);
-  case 4:
+  case DV_LAYOUT_TYPE_PARAPROF:
+  case DV_LAYOUT_TYPE_CRITICAL_PATH:
     if (dv_is_shrinking(node)) {
       dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKING);
     } else if (dv_is_expanding(node)) {
@@ -1150,8 +1191,8 @@ static void
 dv_do_collapsing_one_1(dv_view_t * V, dv_dag_node_t * node) {
   dv_view_status_t * S = V->S;
   switch (S->lt) {
-  case 0:
-  case 1:
+  case DV_LAYOUT_TYPE_DAG:
+  case DV_LAYOUT_TYPE_DAG_BOX:
     // add to animation
     if (dv_is_expanding(node)) {
       dv_node_flag_remove(node->f, DV_NODE_FLAG_EXPANDING);
@@ -1163,15 +1204,16 @@ dv_do_collapsing_one_1(dv_view_t * V, dv_dag_node_t * node) {
       dv_animation_add(S->a, node);
     }
     break;
-  case 2:
-  case 3:
+  case DV_LAYOUT_TYPE_TIMELINE_VER:
+  case DV_LAYOUT_TYPE_TIMELINE:
     if (dv_is_expanding(node)) {
       dv_node_flag_remove(node->f, DV_NODE_FLAG_EXPANDING);
     } else if (dv_is_shrinking(node)) {
       dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKING);
     }
     dv_node_flag_set(node->f, DV_NODE_FLAG_SHRINKED);
-  case 4:
+  case DV_LAYOUT_TYPE_PARAPROF:
+  case DV_LAYOUT_TYPE_CRITICAL_PATH:
     if (dv_is_expanding(node)) {
       dv_node_flag_remove(node->f, DV_NODE_FLAG_EXPANDING);
     } else if (dv_is_shrinking(node)) {

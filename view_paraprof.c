@@ -493,3 +493,338 @@ dv_view_draw_paraprof(dv_view_t * V, cairo_t * cr) {
 }
 
 /****** end of PARAPROF Draw ******/
+
+
+
+
+
+/****** CRITICAL PATH ******/
+
+
+static dv_dag_node_t *
+dv_critical_path_find_clicked_node_r(dv_view_t * V, double cx, double cy, dv_dag_node_t * node) {
+  dv_dag_node_t * ret = NULL;
+  dv_node_coordinate_t * co = &node->c[V->S->coord];
+  /* Call inward */
+  double x, y, w, h;
+  x = co->x;
+  y = co->y;
+  w = co->rw;
+  h = co->dw;
+  if ( (x <= cx && cx <= x + w && y <= cy && cy <= y + h)
+       || (x <= cx && cx <= x + w && (y + 6 * (2 * V->D->radius)) <= cy && cy <= (y + 6 * (2 * V->D->radius) + h)) ) {
+    if (dv_is_single(node))
+      ret = node;
+    else
+      ret = dv_critical_path_find_clicked_node_r(V, cx, cy, node->head);
+  } else if ( cx > x + w ) {
+    /* Call link-along */
+    dv_dag_node_t * next = NULL;
+    while ( (next = dv_dag_node_traverse_nexts(node, next)) ) {
+      ret = dv_critical_path_find_clicked_node_r(V, cx, cy, next);
+      if (ret)
+        break;
+    }
+  }
+  return ret;
+}
+
+dv_dag_node_t *
+dv_critical_path_find_clicked_node(dv_view_t * V, double x, double y) {
+  dv_dag_node_t * ret = dv_critical_path_find_clicked_node_r(V, x, y, V->D->rt);
+  return ret;
+}
+
+static void
+dv_view_layout_critical_path_node(dv_view_t * V, dv_dag_node_t * node) {
+  V->S->nl++;
+  if (node->d > V->D->collapsing_d)
+    V->D->collapsing_d = node->d;
+  
+  dv_node_coordinate_t * nodeco = &node->c[V->S->coord];
+  dv_dag_t * D = V->D;
+  dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, node);
+  
+  /* Calculate inward */
+  nodeco->x = dv_dag_scale_down_linear(D, pi->info.start.t - D->bt);
+  nodeco->lw = 0.0;
+  nodeco->rw = dv_dag_scale_down_linear(D, pi->info.end.t - D->bt) - dv_dag_scale_down_linear(D, pi->info.start.t - D->bt);
+  nodeco->y = 0.0;
+  nodeco->dw = 5 * (2 * V->D->radius);
+  if (dv_is_union(node)) {
+    if (dv_is_inner_loaded(node) && dv_is_expanded(node)) 
+      dv_view_layout_critical_path_node(V, node->head);
+  }
+    
+  /* Calculate link-along */
+  dv_dag_node_t * u, * v;
+  switch ( dv_dag_node_count_nexts(node) ) {
+  case 0:
+    break;
+  case 1:
+    u = node->next;
+    dv_view_layout_critical_path_node(V, u);
+    break;
+  case 2:
+    u = node->next;  // cont node
+    v = node->spawn; // task node
+    if ( (D->show_critical_paths[DV_CRITICAL_PATH_WORK] && dv_node_flag_check(u->f, DV_NODE_FLAG_CRITICAL_PATH_WORK))
+         || (D->show_critical_paths[DV_CRITICAL_PATH_WORK_DELAY] && dv_node_flag_check(u->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY)) ) {
+      dv_view_layout_critical_path_node(V, u);
+    }
+    if ( (D->show_critical_paths[DV_CRITICAL_PATH_WORK] && dv_node_flag_check(v->f, DV_NODE_FLAG_CRITICAL_PATH_WORK))
+         || (D->show_critical_paths[DV_CRITICAL_PATH_WORK_DELAY] && dv_node_flag_check(v->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY)) ) {
+      dv_view_layout_critical_path_node(V, v);
+    }
+    break;
+  default:
+    dv_check(0);
+    break;
+  }
+  
+}
+
+void
+dv_view_layout_critical_path(dv_view_t * V) {
+  V->D->collapsing_d = 0;
+  if ( (V->D->show_critical_paths[DV_CRITICAL_PATH_WORK] && dv_node_flag_check(V->D->rt->f, DV_NODE_FLAG_CRITICAL_PATH_WORK))
+       || (V->D->show_critical_paths[DV_CRITICAL_PATH_WORK_DELAY] && dv_node_flag_check(V->D->rt->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY)) ) {
+    dv_view_layout_critical_path_node(V, V->D->rt);
+  }
+}
+
+
+static void
+dv_view_draw_critical_path_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
+  cairo_save(cr);
+  /* Get inputs */
+  dv_dag_t * D = V->D;
+  dv_view_status_t * S = V->S;
+  dv_node_coordinate_t * nodeco = &node->c[S->coord];
+  
+  /* Count drawn node */
+  S->nd++;
+  if (node->d > D->cur_d)
+    D->cur_d = node->d;
+  if (dv_is_union(node) && dv_is_inner_loaded(node)
+      && dv_is_shrinked(node)
+      && node->d < D->cur_d_ex)
+    D->cur_d_ex = node->d;
+  
+  /* Node color */
+  double x = nodeco->x;
+  double y = nodeco->y;
+  double c[4];
+  dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, node);
+  dv_lookup_color(pi, S->nc, c, c+1, c+2, c+3);
+  /* Alpha */
+  double alpha = 1.0;
+  
+  /* Coordinates */
+  double xx, yy, w, h;
+  // Normal-sized box (terminal node)
+  xx = x;
+  yy = y;
+  w = nodeco->rw;
+  h = nodeco->dw;
+
+  if ( (D->show_critical_paths[DV_CRITICAL_PATH_WORK] && dv_node_flag_check(node->f, DV_NODE_FLAG_CRITICAL_PATH_WORK)) ) {
+  
+    /* Draw path */
+    cairo_new_path(cr);
+    if (!dv_rectangle_is_invisible(V, xx, yy, w, h)) {
+      dv_rectangle_trim(V, &xx, &yy, &w, &h);
+    
+      cairo_rectangle(cr, xx, yy, w, h);
+    
+      /* Draw node */
+      if (dv_is_union(node)) {
+      
+        double c[4] = { 0.15, 0.15, 0.15, 0.2 };
+        cairo_set_source_rgba(cr, c[0], c[1], c[2], c[3]);
+        cairo_fill(cr);
+      
+      } else {
+      
+        cairo_set_source_rgba(cr, c[0], c[1], c[2], c[3] * alpha);
+        cairo_fill_preserve(cr);
+        if (DV_TIMELINE_NODE_WITH_BORDER) {
+          cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
+          cairo_stroke_preserve(cr);
+        }
+        /* Highlight */
+        if ( node->highlight ) {
+          cairo_set_source_rgba(cr, 0.1, 0.1, 0.1, 0.5);
+          cairo_fill_preserve(cr);
+        }
+        /* Draw node's infotag's mark */
+        if (dv_llist_has(V->D->P->itl, (void *) node->pii)) {
+          cairo_set_source_rgba(cr, 0.1, 0.1, 0.1, 0.6);
+          cairo_fill_preserve(cr);
+        }
+      
+        /* Highlight critical paths */
+        if (0) {
+          cairo_new_path(cr);
+          double margin, line_width, margin_increment;
+          GdkRGBA color[1];
+        
+          //line_width = 2 * DV_NODE_LINE_WIDTH;
+          line_width = 2 * DV_NODE_LINE_WIDTH / V->S->zoom_ratio_x;
+          if (line_width > 40 * DV_NODE_LINE_WIDTH)
+            line_width = 40 * DV_NODE_LINE_WIDTH;
+          margin = - 0.5 * line_width;
+          margin_increment = - line_width;
+    
+          if (1) {
+            gdk_rgba_parse(color, DV_CRITICAL_PATH_WORK_COLOR);
+            cairo_set_source_rgba(cr, color->red, color->green, color->blue, color->alpha);
+            cairo_set_line_width(cr, line_width );
+            cairo_rectangle(cr, xx - margin, yy - margin, w + 2 * margin, h + 2 * margin);
+            cairo_stroke(cr);
+            margin += margin_increment;
+          }
+        
+        }
+
+      }
+    
+    }
+
+  }
+
+  xx = x;
+  yy = y + 6 * (2 * V->D->radius);
+  w = nodeco->rw;
+  h = nodeco->dw;
+  if ( (D->show_critical_paths[DV_CRITICAL_PATH_WORK_DELAY] && dv_node_flag_check(node->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY)) ) {
+  
+    /* Draw path */
+    cairo_new_path(cr);
+    if (!dv_rectangle_is_invisible(V, xx, yy, w, h)) {
+      dv_rectangle_trim(V, &xx, &yy, &w, &h);
+    
+      cairo_rectangle(cr, xx, yy, w, h);
+    
+      /* Draw node */
+      if (dv_is_union(node)) {
+      
+        double c[4] = { 0.15, 0.15, 0.15, 0.2 };
+        cairo_set_source_rgba(cr, c[0], c[1], c[2], c[3]);
+        cairo_fill(cr);
+      
+      } else {
+      
+        cairo_set_source_rgba(cr, c[0], c[1], c[2], c[3] * alpha);
+        cairo_fill_preserve(cr);
+        if (DV_TIMELINE_NODE_WITH_BORDER) {
+          cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
+          cairo_stroke_preserve(cr);
+        }
+        /* Highlight */
+        if ( node->highlight ) {
+          cairo_set_source_rgba(cr, 0.1, 0.1, 0.1, 0.5);
+          cairo_fill_preserve(cr);
+        }
+        /* Draw node's infotag's mark */
+        if (dv_llist_has(V->D->P->itl, (void *) node->pii)) {
+          cairo_set_source_rgba(cr, 0.1, 0.1, 0.1, 0.6);
+          cairo_fill_preserve(cr);
+        }
+      
+        /* Highlight critical paths */
+        if (0) {
+          cairo_new_path(cr);
+          double margin, line_width, margin_increment;
+          GdkRGBA color[1];
+        
+          //line_width = 2 * DV_NODE_LINE_WIDTH;
+          line_width = 2 * DV_NODE_LINE_WIDTH / V->S->zoom_ratio_x;
+          if (line_width > 40 * DV_NODE_LINE_WIDTH)
+            line_width = 40 * DV_NODE_LINE_WIDTH;
+          margin = - 0.5 * line_width;
+          margin_increment = - line_width;
+    
+          if (1) {
+            gdk_rgba_parse(color, DV_CRITICAL_PATH_WORK_DELAY_COLOR);
+            cairo_set_source_rgba(cr, color->red, color->green, color->blue, color->alpha);
+            cairo_set_line_width(cr, line_width );
+            cairo_rectangle(cr, xx - margin, yy - margin, w + 2 * margin, h + 2 * margin);
+            cairo_stroke(cr);
+            margin += margin_increment;
+          }
+        
+        }
+
+      }
+    
+    }
+
+  }  
+  
+  /* Flag to draw infotag */
+  if (dv_llist_has(V->D->P->itl, (void *) node->pii)) {
+    dv_llist_add(V->D->itl, (void *) node);
+  }
+  
+  cairo_restore(cr);
+}
+
+static void
+dv_view_draw_critical_path_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
+  /* Counting statistics */
+  V->S->ndh++;
+  if (!node || !dv_is_set(node))
+    return;
+  /* Call inward */
+  dv_node_coordinate_t * nodeco = &node->c[V->S->coord];
+  double xx, yy, w, h;
+  int hidden;
+  xx = nodeco->x;
+  yy = nodeco->y;
+  w = nodeco->rw;
+  h = nodeco->dw;
+  hidden = dv_rectangle_is_invisible(V, xx, yy, w, h);
+  yy = nodeco->y + 6 * (2 * V->D->radius);
+  hidden &= dv_rectangle_is_invisible(V, xx, yy, w, h);
+  if (!hidden) {
+    if (dv_is_union(node) && dv_is_inner_loaded(node) && dv_is_expanded(node)) {
+      dv_view_draw_critical_path_node_r(V, cr, node->head);
+    } else {
+      dv_view_draw_critical_path_node_1(V, cr, node);
+    }
+  }
+  /* Call link-along */
+  if (1) { //(!(hidden & DV_DAG_NODE_HIDDEN_RIGHT)) {
+    dv_dag_node_t * next = NULL;
+    while ( (next = dv_dag_node_traverse_nexts(node, next)) ) {
+      if ( (V->D->show_critical_paths[DV_CRITICAL_PATH_WORK] && dv_node_flag_check(next->f, DV_NODE_FLAG_CRITICAL_PATH_WORK))
+           || (V->D->show_critical_paths[DV_CRITICAL_PATH_WORK_DELAY] && dv_node_flag_check(next->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY)) ) {
+        dv_view_draw_critical_path_node_r(V, cr, next);
+      }
+    }
+  }
+}
+
+void
+dv_view_draw_critical_path(dv_view_t * V, cairo_t * cr) {
+  /* Draw critical path */
+  if ( (V->D->show_critical_paths[DV_CRITICAL_PATH_WORK] && dv_node_flag_check(V->D->rt->f, DV_NODE_FLAG_CRITICAL_PATH_WORK))
+       || (V->D->show_critical_paths[DV_CRITICAL_PATH_WORK_DELAY] && dv_node_flag_check(V->D->rt->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY)) ) {
+    dv_llist_init(V->D->itl);
+    V->S->nd = 0;
+    V->S->ndh = 0;
+    V->D->cur_d = 0;
+    V->D->cur_d_ex = V->D->dmax;
+    dv_view_draw_critical_path_node_r(V, cr, V->D->rt);
+  }
+  /* Draw histogram */
+  if (V->D->H)
+    dv_histogram_draw(V->D->H, cr, V);
+  if (V->D->draw_with_current_time)
+    dv_paraprof_draw_time_bar(V, V->D->H, cr);
+}
+
+
+/****** end of CRITICAL PATH ******/
+

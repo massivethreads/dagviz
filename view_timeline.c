@@ -63,8 +63,7 @@ dv_timeline_node_is_invisible(dv_view_t * V, dv_dag_node_t * node) {
   int ret = -1;
   if (!node) return ret;
   
-  int coord = (V->S->lt == DV_LAYOUT_TYPE_PARAPROF) ? DV_LAYOUT_TYPE_TIMELINE : DV_LAYOUT_TYPE_PARAPROF;
-  dv_node_coordinate_t * nodeco = &node->c[coord];
+  dv_node_coordinate_t * nodeco = &node->c[V->S->coord];
   double x, y, w, h;
   x = nodeco->x;
   y = nodeco->y;

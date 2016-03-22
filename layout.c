@@ -5,26 +5,33 @@
 static void
 dv_view_layout_with_type(dv_view_t * V, int lt) {
   switch (lt) {
-  case 0:
+  case DV_LAYOUT_TYPE_DAG:
     dv_view_layout_dag(V);
     break;
-  case 1:
+  case DV_LAYOUT_TYPE_DAG_BOX:
     dv_view_layout_dagbox(V);
     break;
-  case 2:
+  case DV_LAYOUT_TYPE_TIMELINE_VER:
     dv_view_layout_timeline_ver(V);
     break;
-  case 3:
+  case DV_LAYOUT_TYPE_TIMELINE:
     dv_view_layout_timeline(V);
     break;
-  case 4:
+  case DV_LAYOUT_TYPE_PARAPROF:
     if (V->D->H) {
       //double start = dv_get_time();
       dv_view_layout_paraprof(V);
       //double end = dv_get_time();
       //fprintf(stderr, "layout time: %lf\n", end - start);
     } else {
-      //fprintf(stderr, "Warning: trying to lay out type 4 without H.\n");
+      fprintf(stderr, "Warning: trying to lay out type PARAPROF without H.\n");
+    }
+    break;
+  case DV_LAYOUT_TYPE_CRITICAL_PATH:
+    if (V->D->H) {
+      dv_view_layout_critical_path(V);
+    } else {
+      fprintf(stderr, "Warning: trying to lay out type CRITICAL PATH without H.\n");
     }
     break;
   default:

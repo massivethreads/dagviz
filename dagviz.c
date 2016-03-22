@@ -286,21 +286,25 @@ dv_viewport_draw(dv_viewport_t * VP, cairo_t * cr) {
       V = CS->V + i;
       S = V->S;
       switch (S->lt) {
-      case 0:
+      case DV_LAYOUT_TYPE_DAG:
         S->basex = 0.5 * S->vpw;
         S->basey = DV_ZOOM_TO_FIT_MARGIN;
         break;
-      case 1:
+      case DV_LAYOUT_TYPE_DAG_BOX:
         //G->basex = 0.5 * S->vpw - 0.5 * (G->rt->rw - G->rt->lw);
         S->basex = 0.5 * S->vpw;
         S->basey = DV_ZOOM_TO_FIT_MARGIN;
         break;
-      case 2:
-      case 3:
+      case DV_LAYOUT_TYPE_TIMELINE_VER:
+      case DV_LAYOUT_TYPE_TIMELINE:
         S->basex = DV_ZOOM_TO_FIT_MARGIN;
         S->basey = DV_ZOOM_TO_FIT_MARGIN;
         break;
-      case 4:
+      case DV_LAYOUT_TYPE_PARAPROF:
+        S->basex = DV_HISTOGRAM_MARGIN;
+        S->basey = S->vph - DV_HISTOGRAM_MARGIN_DOWN;
+        break;
+      case DV_LAYOUT_TYPE_CRITICAL_PATH:
         S->basex = DV_HISTOGRAM_MARGIN;
         S->basey = S->vph - DV_HISTOGRAM_MARGIN_DOWN;
         break;
@@ -425,6 +429,7 @@ dv_view_toolbox_get_combobox_lt(dv_view_toolbox_t * T) {
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "timelinev", "Vertical timeline");
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "timeline", "Horizontal timeline");
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "paraprof", "Parallelism profile");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "criticalpath", "Critical path");
     gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_lt), T->V->S->lt);
     g_signal_connect(G_OBJECT(combobox_lt), "changed", G_CALLBACK(on_combobox_lt_changed), (void *) T->V);
   }
@@ -3178,6 +3183,8 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
     gtk_widget_add_accelerator(item, "activate", accel_group, GDK_KEY_4, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE); 
     item = GTK_WIDGET(gtk_builder_get_object(builder, "layout_paraprof"));
     gtk_widget_add_accelerator(item, "activate", accel_group, GDK_KEY_5, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE); 
+    item = GTK_WIDGET(gtk_builder_get_object(builder, "layout_criticalpath"));
+    gtk_widget_add_accelerator(item, "activate", accel_group, GDK_KEY_6, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE); 
 
     item = GTK_WIDGET(gtk_builder_get_object(builder, "toolbox"));
     gtk_widget_add_accelerator(item, "activate", accel_group, GDK_KEY_t, GDK_CONTROL_MASK, GTK_ACCEL_VISIBLE); 
@@ -3357,7 +3364,7 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
       //gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(button), icon);
       gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(button), "dagviz-dag");
       gtk_widget_set_tooltip_text(GTK_WIDGET(button), "DAG layout (Ctrl+1)");
-      g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_toolbar_dag_layout_buttons_clicked), (void *) 0);
+      g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_toolbar_dag_layout_buttons_clicked), (void *) DV_LAYOUT_TYPE_DAG);
       
       button = gtk_menu_tool_button_new(NULL, NULL);
       gtk_toolbar_insert(GTK_TOOLBAR(toolbar), button, -1);
@@ -3365,7 +3372,7 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
       //gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(button), icon);
       gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(button), "dagviz-dag-boxes");
       gtk_widget_set_tooltip_text(GTK_WIDGET(button), "DAG-with-boxes layout (Ctrl+2)");
-      g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_toolbar_dag_layout_buttons_clicked), (void *) 1);
+      g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_toolbar_dag_layout_buttons_clicked), (void *) DV_LAYOUT_TYPE_DAG_BOX);
       gtk_menu_tool_button_set_arrow_tooltip_text(GTK_MENU_TOOL_BUTTON(button), "Select scale type");
       
       GtkWidget * menu = gtk_menu_new();
@@ -3388,7 +3395,13 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
       //gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(button), icon);
       gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(button), "dagviz-paraprof");
       gtk_widget_set_tooltip_text(GTK_WIDGET(button), "Parallelism profile layout (Ctrl+5)");
-      g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_toolbar_dag_layout_buttons_clicked), (void *) 4);
+      g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_toolbar_dag_layout_buttons_clicked), (void *) DV_LAYOUT_TYPE_PARAPROF);
+
+      button = gtk_tool_button_new(NULL, NULL);
+      gtk_toolbar_insert(GTK_TOOLBAR(toolbar), button, -1);
+      gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(button), "face-smile");
+      gtk_widget_set_tooltip_text(GTK_WIDGET(button), "Critical-path layout (Ctrl+6)");
+      g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_toolbar_dag_layout_buttons_clicked), (void *) DV_LAYOUT_TYPE_CRITICAL_PATH);
     }
 
     /* zoomfit */

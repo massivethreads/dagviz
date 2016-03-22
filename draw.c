@@ -586,26 +586,33 @@ dv_view_draw(dv_view_t * V, cairo_t * cr) {
   }
   /* Draw DAG */ 
   switch (V->S->lt) {
-  case 0:
+  case DV_LAYOUT_TYPE_DAG:
     dv_view_draw_dag(V, cr);
     break;
-  case 1:
+  case DV_LAYOUT_TYPE_DAG_BOX:
     dv_view_draw_dagbox(V, cr);
     break;
-  case 2:
+  case DV_LAYOUT_TYPE_TIMELINE_VER:
     dv_view_draw_timeline_ver(V, cr);
     break;
-  case 3:
+  case DV_LAYOUT_TYPE_TIMELINE:
     dv_view_draw_timeline(V, cr);
     break;
-  case 4:
+  case DV_LAYOUT_TYPE_PARAPROF:
     if (V->D->H) {
       //double start = dv_get_time();
       dv_view_draw_paraprof(V, cr);
       //double end = dv_get_time();
       //fprintf(stderr, "draw time: %lf\n", end - start);
     } else {
-      fprintf(stderr, "Warning: trying to draw type 4 without H.\n");
+      fprintf(stderr, "Warning: trying to draw type PARAPROF without H.\n");
+    }
+    break;
+  case DV_LAYOUT_TYPE_CRITICAL_PATH:
+    if (V->D->H) {
+      dv_view_draw_critical_path(V, cr);
+    } else {
+      fprintf(stderr, "Warning: trying to draw type CRITICAL PATH without H.\n");
     }
     break;
   default:
@@ -645,22 +652,24 @@ dv_viewport_draw_label(dv_viewport_t * VP, cairo_t * cr) {
 void
 dv_view_draw_legend(dv_view_t * V, cairo_t * cr) {
   switch (V->S->lt) {
-  case 0:
+  case DV_LAYOUT_TYPE_DAG:
     dv_view_draw_legend_dag(V, cr);
     break;
-  case 1:
+  case DV_LAYOUT_TYPE_DAG_BOX:
     //dv_view_draw_legend_dagbox(V, cr);
     break;
-  case 2:
+  case DV_LAYOUT_TYPE_TIMELINE_VER:
     //dv_view_draw_legend_timeline_ver(V, cr);
     break;
-  case 3:
+  case DV_LAYOUT_TYPE_TIMELINE:
     //dv_view_draw_legend_timeline(V, cr);
     break;
-  case 4: {
+  case DV_LAYOUT_TYPE_PARAPROF:
     //dv_view_draw_legend_paraprof(V, cr);
     break;
-  }
+  case DV_LAYOUT_TYPE_CRITICAL_PATH:
+    //dv_view_draw_legend_critical_path(V, cr);
+    break;
   default:
     dv_check(0);
   }
