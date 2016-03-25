@@ -664,26 +664,22 @@ dv_view_draw_critical_path_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * n
         }
       
         /* Highlight critical paths */
-        if (0) {
+        if (1) {
           cairo_new_path(cr);
-          double margin, line_width, margin_increment;
+          double margin, line_width;
           GdkRGBA color[1];
         
           //line_width = 2 * DV_NODE_LINE_WIDTH;
           line_width = 2 * DV_NODE_LINE_WIDTH / V->S->zoom_ratio_x;
-          if (line_width > 40 * DV_NODE_LINE_WIDTH)
-            line_width = 40 * DV_NODE_LINE_WIDTH;
+          if (line_width > 10 * DV_NODE_LINE_WIDTH)
+            line_width = 10 * DV_NODE_LINE_WIDTH;
           margin = - 0.5 * line_width;
-          margin_increment = - line_width;
     
-          if (1) {
-            gdk_rgba_parse(color, DV_CRITICAL_PATH_WORK_COLOR);
-            cairo_set_source_rgba(cr, color->red, color->green, color->blue, color->alpha);
-            cairo_set_line_width(cr, line_width );
-            cairo_rectangle(cr, xx - margin, yy - margin, w + 2 * margin, h + 2 * margin);
-            cairo_stroke(cr);
-            margin += margin_increment;
-          }
+          gdk_rgba_parse(color, DV_CRITICAL_PATH_WORK_COLOR);
+          cairo_set_source_rgba(cr, color->red, color->green, color->blue, color->alpha);
+          cairo_set_line_width(cr, line_width );
+          cairo_rectangle(cr, xx - margin, yy - margin, w + 2 * margin, h + 2 * margin);
+          cairo_stroke(cr);
         
         }
 
@@ -733,26 +729,22 @@ dv_view_draw_critical_path_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * n
         }
       
         /* Highlight critical paths */
-        if (0) {
+        if (1) {
           cairo_new_path(cr);
-          double margin, line_width, margin_increment;
+          double margin, line_width;
           GdkRGBA color[1];
         
           //line_width = 2 * DV_NODE_LINE_WIDTH;
           line_width = 2 * DV_NODE_LINE_WIDTH / V->S->zoom_ratio_x;
-          if (line_width > 40 * DV_NODE_LINE_WIDTH)
-            line_width = 40 * DV_NODE_LINE_WIDTH;
+          if (line_width > 10 * DV_NODE_LINE_WIDTH)
+            line_width = 10 * DV_NODE_LINE_WIDTH;
           margin = - 0.5 * line_width;
-          margin_increment = - line_width;
-    
-          if (1) {
-            gdk_rgba_parse(color, DV_CRITICAL_PATH_WORK_DELAY_COLOR);
-            cairo_set_source_rgba(cr, color->red, color->green, color->blue, color->alpha);
-            cairo_set_line_width(cr, line_width );
-            cairo_rectangle(cr, xx - margin, yy - margin, w + 2 * margin, h + 2 * margin);
-            cairo_stroke(cr);
-            margin += margin_increment;
-          }
+
+          gdk_rgba_parse(color, DV_CRITICAL_PATH_WORK_DELAY_COLOR);
+          cairo_set_source_rgba(cr, color->red, color->green, color->blue, color->alpha);
+          cairo_set_line_width(cr, line_width );
+          cairo_rectangle(cr, xx - margin, yy - margin, w + 2 * margin, h + 2 * margin);
+          cairo_stroke(cr);
         
         }
 
