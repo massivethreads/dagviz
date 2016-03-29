@@ -104,9 +104,10 @@ dv_global_state_init(dv_global_state_t * CS) {
   CS->SD->fn = DV_STAT_DISTRIBUTION_OUTPUT_DEFAULT_NAME;
   CS->SD->bar_width = 20;
   for (i = 0; i < DV_MAX_DAG; i++) {
-    CS->SBG->D[i] = 0;
+    CS->SBG->checked_D[i] = 0;
   }
   CS->SBG->fn = DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME;
+  CS->SBG->fn_2 = DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME_2;
   CS->context_view = NULL;
   CS->context_node = NULL;
 
@@ -1977,7 +1978,7 @@ on_stat_distribution_show_button_clicked(_unused_ GtkWidget * widget, _unused_ g
 static gboolean
 on_stat_breakdown_dag_checkbox_toggled(_unused_ GtkWidget * widget, gpointer user_data) {
   long i = (long) user_data;
-  CS->SBG->D[i] = 1 - CS->SBG->D[i];
+  CS->SBG->checked_D[i] = 1 - CS->SBG->checked_D[i];
   return TRUE;
 }
 
@@ -1989,6 +1990,17 @@ on_stat_breakdown_output_filename_activate(GtkWidget * widget, _unused_ gpointer
   }
   CS->SBG->fn = (char *) dv_malloc( sizeof(char) * ( strlen(new_output) + 1) );
   strcpy(CS->SBG->fn, new_output);
+  return TRUE;
+}
+
+static gboolean
+on_stat_breakdown_output_filename2_activate(GtkWidget * widget, _unused_ gpointer user_data) {
+  const char * new_output = gtk_entry_get_text(GTK_ENTRY(widget));
+  if (strcmp(CS->SBG->fn_2, DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME_2) != 0) {
+    dv_free(CS->SBG->fn_2, strlen(CS->SBG->fn_2) + 1);
+  }
+  CS->SBG->fn_2 = (char *) dv_malloc( sizeof(char) * ( strlen(new_output) + 1) );
+  strcpy(CS->SBG->fn_2, new_output);
   return TRUE;
 }
 
@@ -2234,20 +2246,17 @@ on_stat_breakdown_show_button_clicked(_unused_ GtkWidget * widget, _unused_ gpoi
           //          "set xlabel \"clocks\"\n"
           "set ylabel \"cumul. clocks\"\n"
           "plot "
-          "\"-\" u 2:xtic(1) w histogram t \"t1\", "
+          "\"-\" u 2:xtic(1) w histogram t \"work\", "
           "\"-\" u 3 w histogram t \"delay\", "
           "\"-\" u 4 w histogram t \"nowork\"\n");
-  dr_clock_t works[DV_MAX_DAG];
-  dr_clock_t delays[DV_MAX_DAG];
-  dr_clock_t noworks[DV_MAX_DAG];
   int DAGs[DV_MAX_DAG];
   int n = 0;
   int i;
   for (i = 0; i < CS->nD; i++) {
-    if (CS->SBG->D[i] == 0)
+    if (CS->SBG->checked_D[i] == 0)
       continue;
     dv_dag_t * D = &CS->D[i];
-    DAGs[n] = i;
+    DAGs[n++] = i;
 
     dr_pi_dag * G = D->P->G;
     dr_basic_stat bs[1];
@@ -2259,10 +2268,9 @@ on_stat_breakdown_show_button_clicked(_unused_ GtkWidget * widget, _unused_ gpoi
     dr_clock_t work = bs->total_t_1;
     dr_clock_t delay = bs->cum_delay + (bs->total_elapsed - bs->total_t_1);
     dr_clock_t no_work = bs->cum_no_work;
-    works[n] = work;
-    delays[n] = delay;
-    noworks[n] = no_work;
-    n++;
+    CS->SBG->work[i] = work;
+    CS->SBG->delay[i] = delay;
+    CS->SBG->nowork[i] = no_work;
   }
   int j;
   for (j = 0; j < 3; j++) {
@@ -2270,9 +2278,103 @@ on_stat_breakdown_show_button_clicked(_unused_ GtkWidget * widget, _unused_ gpoi
       fprintf(out,
               "DAG_%d  %lld %lld %lld\n",
               DAGs[i],
-              works[i],
-              delays[i],
-              noworks[i]);
+              CS->SBG->work[DAGs[i]],
+              CS->SBG->delay[DAGs[i]],
+              CS->SBG->nowork[DAGs[i]]);
+    }
+    fprintf(out,
+            "e\n");
+  }
+  fprintf(out,
+          "pause -1\n");
+  fclose(out);
+  fprintf(stdout, "generated breakdown graphs to %s\n", filename);
+  
+  /* call gnuplot */
+  GPid pid;
+  char * argv[4];
+  argv[0] = "gnuplot";
+  argv[1] = "-persist";
+  argv[2] = filename;
+  argv[3] = NULL;
+  int ret = g_spawn_async_with_pipes(NULL, argv, NULL,
+                                     G_SPAWN_SEARCH_PATH, //G_SPAWN_DEFAULT | G_SPAWN_SEARCH_PATH,
+                                     NULL, NULL, &pid,
+                                     NULL, NULL, NULL, NULL);
+  if (!ret) {
+    fprintf(stderr, "g_spawn_async_with_pipes() failed.\n");
+  }
+  return TRUE;
+}
+
+static gboolean
+on_stat_breakdown_show2_button_clicked(_unused_ GtkWidget * widget, _unused_ gpointer user_data) {
+  char * filename;
+  FILE * out;
+  
+  /* generate plots */
+  filename = CS->SBG->fn_2;
+  if (!filename || strlen(filename) == 0) {
+    fprintf(stderr, "Error: no file name to output.");
+    return FALSE;
+  }
+  out = fopen(filename, "w");
+  dv_check(out);
+  fprintf(out,
+          "#set terminal png font arial 14 size 640,350\n"
+          "#set output ~/Desktop/00dv_stat_breakdown.png\n"
+          "set style data histograms\n"
+          "set style histogram rowstacked\n"
+          "set style fill solid 0.8 noborder\n"
+          "set key outside center top horizontal\n"
+          "set boxwidth 0.75 relative\n"
+          "set yrange [0:]\n"
+          //          "set xtics rotate by -30\n"
+          //          "set xlabel \"clocks\"\n"
+          "set ylabel \"cumul. clocks\"\n"
+          "plot "
+          "\"-\" u 2:xtic(1) w histogram t \"work\", "
+          "\"-\" u 3 w histogram t \"delay\"\n");
+  int DAGs[DV_MAX_DAG];
+  int n = 0;
+  int i;
+  for (i = 0; i < CS->nD; i++) {
+    if (CS->SBG->checked_D[i] == 0)
+      continue;
+    DAGs[n++] = i;
+    double * work = CS->SBG->cp_work[i];
+    double * delay = CS->SBG->cp_delay[i];
+    double * weighted_work = CS->SBG->cp_weighted_work[i];
+    double * weighted_delay = CS->SBG->cp_weighted_delay[i];
+    
+    dv_dag_t * D = dv_create_new_dag(CS->D[i].P);
+    dv_dag_expand_all(D);
+    
+    D->H = dv_malloc( sizeof(dv_histogram_t) );
+    dv_histogram_init(D->H);
+    D->H->D = D;
+    D->H->min_entry_interval = 0.0;
+    dv_histogram_reset(D->H);
+
+    dv_dag_compute_critical_paths(D, work, delay, weighted_work, weighted_delay);
+  }
+  
+  int j, cp;
+  for (j = 0; j < 2; j++) {
+    for (i = 0; i < n; i++) {
+      for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
+        fprintf(out,
+                "DAG_%d_cp%d  %lf %lf\n"
+                "wDAG_%d_cp%d  %lf %lf\n",
+                DAGs[i],
+                cp,
+                CS->SBG->cp_work[DAGs[i]][cp],
+                CS->SBG->cp_delay[DAGs[i]][cp],
+                DAGs[i],
+                cp,
+                CS->SBG->cp_weighted_work[DAGs[i]][cp],
+                CS->SBG->cp_weighted_delay[DAGs[i]][cp]);
+      }
     }
     fprintf(out,
             "e\n");
@@ -2454,13 +2556,14 @@ dv_open_statistics_dialog() {
       sprintf(str, "DAG %2ld ", i);
       GtkWidget * checkbox = gtk_check_button_new_with_label(str);
       gtk_box_pack_start(GTK_BOX(dag_box), checkbox, FALSE, FALSE, 0);
-      gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(checkbox), CS->SBG->D[i]);
+      gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(checkbox), CS->SBG->checked_D[i]);
       g_signal_connect(G_OBJECT(checkbox), "toggled", G_CALLBACK(on_stat_breakdown_dag_checkbox_toggled), (void *) i);
     }
 
+    GtkWidget * hbox, * label, * entry, * button;
+    
     gtk_box_pack_start(GTK_BOX(tab_box), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), FALSE, FALSE, 4);
 
-    GtkWidget * hbox, * label, * entry, * button;
     hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
     gtk_box_pack_start(GTK_BOX(tab_box), hbox, FALSE, FALSE, 0);
     label = gtk_label_new("Output: ");
@@ -2473,6 +2576,21 @@ dv_open_statistics_dialog() {
     button = gtk_button_new_with_mnemonic("_Show");
     gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
     g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_stat_breakdown_show_button_clicked), (void *) NULL);
+
+    gtk_box_pack_start(GTK_BOX(tab_box), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), FALSE, FALSE, 4);
+
+    hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_box_pack_start(GTK_BOX(tab_box), hbox, FALSE, FALSE, 0);
+    label = gtk_label_new("Critical-path breakdowns: ");
+    gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
+    entry = gtk_entry_new();
+    gtk_box_pack_start(GTK_BOX(hbox), entry, FALSE, FALSE, 0);
+    gtk_entry_set_width_chars(GTK_ENTRY(entry), 15);
+    gtk_entry_set_text(GTK_ENTRY(entry), CS->SBG->fn_2);
+    g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_stat_breakdown_output_filename2_activate), (void *) NULL);
+    button = gtk_button_new_with_mnemonic("_Show");
+    gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
+    g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_stat_breakdown_show2_button_clicked), (void *) NULL);
   }
 
 

@@ -40,7 +40,7 @@ dv_histogram_get_max_height(dv_histogram_t * H) {
   return max_h * (H->unit_thick * H->D->radius);
 }
 
-static dv_histogram_entry_t *
+dv_histogram_entry_t *
 dv_histogram_insert_entry(dv_histogram_t * H, double t, dv_histogram_entry_t * e_hint) {
   dv_histogram_entry_t * e = NULL;
   dv_histogram_entry_t * ee = H->head_e;
@@ -554,6 +554,12 @@ dv_view_layout_critical_path_node(dv_view_t * V, dv_dag_node_t * node) {
   if (dv_is_union(node)) {
     if (dv_is_inner_loaded(node) && dv_is_expanded(node)) 
       dv_view_layout_critical_path_node(V, node->head);
+  } else if (dv_node_flag_check(node->f, DV_NODE_FLAG_CRITICAL_PATH_WORK)) {
+    D->cp_work[DV_CRITICAL_PATH_WORK] += nodeco->rw;
+    D->cp_delay[DV_CRITICAL_PATH_WORK] += nodeco->rw;
+  } else if (dv_node_flag_check(node->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY)) {
+    D->cp_work[DV_CRITICAL_PATH_WORK_DELAY] += nodeco->rw;
+    D->cp_delay[DV_CRITICAL_PATH_WORK_DELAY] += nodeco->rw;
   }
     
   /* Calculate link-along */
@@ -586,9 +592,16 @@ dv_view_layout_critical_path_node(dv_view_t * V, dv_dag_node_t * node) {
 
 void
 dv_view_layout_critical_path(dv_view_t * V) {
-  V->D->collapsing_d = 0;
+  V->D->collapsing_d = 0;  
   if ( (V->D->show_critical_paths[DV_CRITICAL_PATH_WORK] && dv_node_flag_check(V->D->rt->f, DV_NODE_FLAG_CRITICAL_PATH_WORK))
        || (V->D->show_critical_paths[DV_CRITICAL_PATH_WORK_DELAY] && dv_node_flag_check(V->D->rt->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY)) ) {
+    int i;
+    for (i = 0; i < DV_NUM_CRITICAL_PATHS; i++) {
+      V->D->cp_work[i] = 0.0;
+      V->D->cp_delay[i] = 0.0;
+      V->D->cp_weighted_work[i] = 0.0;
+      V->D->cp_weighted_delay[i] = 0.0;
+    }
     dv_view_layout_critical_path_node(V, V->D->rt);
   }
 }
@@ -810,11 +823,37 @@ dv_view_draw_critical_path(dv_view_t * V, cairo_t * cr) {
     V->D->cur_d_ex = V->D->dmax;
     dv_view_draw_critical_path_node_r(V, cr, V->D->rt);
   }
+  
   /* Draw histogram */
   if (V->D->H)
     dv_histogram_draw(V->D->H, cr, V);
   if (V->D->draw_with_current_time)
     dv_paraprof_draw_time_bar(V, V->D->H, cr);
+  
+  /* Draw work, delay */
+  double x, y, w, h;
+  GdkRGBA color[1];
+  x = 0.0;
+  y =  11 * (2 * V->D->radius);
+  h = 2 * V->D->radius;
+  int i;
+  for (i = 0; i < DV_NUM_CRITICAL_PATHS; i++) {
+    if ( V->D->show_critical_paths[i] ) {
+      y += 2 * h;
+      w = V->D->cp_work[i] / 100.0;
+      cairo_new_path(cr);
+      gdk_rgba_parse(color, DV_CRITICAL_PATH_WORK_COLOR);
+      cairo_set_source_rgba(cr, color->red, color->green, color->blue, color->alpha);
+      cairo_rectangle(cr, x, y, w, h);
+      cairo_fill(cr);
+      w = V->D->cp_delay[i] / 100.0;
+      y += h;
+      gdk_rgba_parse(color, DV_CRITICAL_PATH_WORK_DELAY_COLOR);
+      cairo_set_source_rgba(cr, color->red, color->green, color->blue, color->alpha);
+      cairo_rectangle(cr, x, y, w, h);
+      cairo_fill(cr);
+    }
+  }
 }
 
 

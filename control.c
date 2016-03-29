@@ -1604,3 +1604,185 @@ dv_critical_path_compute(dv_dag_t * D) {
     dv_critical_path_compute_node(D, D->rt);
   }
 }
+
+static void
+dv_dag_expand_all_r(dv_dag_t * D, dv_dag_node_t * node) {
+  if (!dv_is_set(node))
+    dv_dag_node_set(D, node);
+  if (dv_is_union(node)) {
+    if (!dv_is_inner_loaded(node)) {
+      dv_dag_build_node_inner(D, node);
+    }
+    /* Call inward */
+    dv_check(node->head);
+    dv_dag_expand_all_r(D, node->head);
+  }
+  
+  /* Call link-along */
+  dv_dag_node_t * x = NULL;
+  while ( (x = dv_dag_node_traverse_nexts(node, x)) ) {
+    dv_dag_expand_all_r(D, x);
+  }
+}
+
+void
+dv_dag_expand_all(dv_dag_t * D) {
+  dv_dag_expand_all_r(D, D->rt);
+}
+
+static void
+dv_dag_compute_critical_paths_node(dv_dag_t * D, dv_dag_node_t * node) {
+  /* critical path of work */
+  /* compute heaviest */
+  dv_dag_node_t * heaviest = NULL; /* tail node with heaviest-work path */
+  double heaviest_work = 0.0;
+  {
+    dv_dag_node_t * x = NULL;
+    while ( (x = dv_dag_node_traverse_tails(node, x)) ) {
+      dr_pi_dag_node * x_pi = dv_pidag_get_node_by_dag_node(D->P, x);
+      double x_work = x_pi->info.t_1;
+      dv_dag_node_t * pre = x->pre;
+      while (pre) {
+        dr_pi_dag_node * pre_pi = dv_pidag_get_node_by_dag_node(D->P, pre);
+        x_work += pre_pi->info.t_1;
+        pre = pre->pre;
+      }
+      if (!heaviest || heaviest_work < x_work) {
+        heaviest = x;
+        heaviest_work = x_work;
+      }
+    }
+  }
+  /* mark nodes */
+  {
+    dv_dag_node_t * x = heaviest;
+    while (x) {
+      dv_node_flag_set(x->f, DV_NODE_FLAG_CRITICAL_PATH_WORK);
+      x = x->pre;
+    }
+  }
+
+  /* critical path of work & delay */
+  /* compute last */
+  dv_dag_node_t * last = NULL; /* tail node finishing last */
+  dr_pi_dag_node * last_pi = NULL; 
+  {
+    dv_dag_node_t * x = NULL;
+    while ( (x = dv_dag_node_traverse_tails(node, x)) ) {
+      dr_pi_dag_node * x_pi = dv_pidag_get_node_by_dag_node(D->P, x);
+      if (!last || last_pi->info.end.t < x_pi->info.end.t) {
+        last = x;
+        last_pi = x_pi;
+      }
+    }
+  }
+  /* mark nodes */
+  {
+    dv_dag_node_t * x = last;
+    while (x) {
+      dv_node_flag_set(x->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY);
+      x = x->pre;
+    }
+  }
+
+  /* compute recursively */
+  {
+    dv_dag_node_t * x = NULL;
+    while ( (x = dv_dag_node_traverse_children(node, x)) ) {
+      if (dv_node_flag_check(x->f, DV_NODE_FLAG_CRITICAL_PATH_WORK)
+          || dv_node_flag_check(x->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY))
+        dv_dag_compute_critical_paths_node(D, x);
+    }
+  }
+}
+
+double work;
+double delay;
+double weighted_work;
+double weighted_delay;
+
+static dv_dag_node_t *
+dv_dag_compute_critical_paths_r(dv_dag_t * D, dv_dag_node_t * node, dv_dag_node_t * prev, int cp) {
+  dv_dag_node_t * ret = NULL;
+  if (dv_is_union(node)) {
+    ret = dv_dag_compute_critical_paths_r(D, node->head, prev, cp);
+  } else {
+    int on_cp = 0;
+    switch (cp) {
+    case DV_CRITICAL_PATH_WORK:
+      on_cp = dv_node_flag_check(node->f, DV_NODE_FLAG_CRITICAL_PATH_WORK);
+      break;
+    case DV_CRITICAL_PATH_WORK_DELAY:
+      on_cp = dv_node_flag_check(node->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY);
+      break;
+    default:
+      dv_check(0);
+    }
+    if (on_cp) {
+      dv_histogram_entry_t * e0 = NULL;
+      dv_histogram_entry_t * e1 = NULL;
+      dv_histogram_entry_t * e2 = NULL;
+      dv_histogram_entry_t * e;
+      dv_histogram_entry_t * ee;
+      dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, node);
+      if (prev) {
+        dr_pi_dag_node * pi_prev = dv_pidag_get_node_by_dag_node(D->P, prev);
+        delay += pi->info.start.t - pi_prev->info.end.t;
+        e0 = dv_histogram_insert_entry(D->H, pi_prev->info.end.t, NULL);
+        e1 = dv_histogram_insert_entry(D->H, pi->info.start.t, e0);
+        e = e0;
+        ee = e0->next;
+        while (e != e1) {
+          double weight = D->P->num_workers - e->h[dv_histogram_layer_running];
+          weighted_delay += weight * (ee->t - e->t);
+          e = ee;
+          ee = e->next;
+        }
+      }
+      work += pi->info.end.t - pi->info.start.t;
+      if (!e1)
+        e1 = dv_histogram_insert_entry(D->H, pi->info.start.t, e0);
+      e2 = dv_histogram_insert_entry(D->H, pi->info.end.t, e1);
+      e = e1;
+      ee = e1->next;
+      while (e != e2) {
+        double weight = D->P->num_workers - e->h[dv_histogram_layer_running];
+        weighted_work += weight * (ee->t - e->t);
+        e = ee;
+        ee = e->next;
+      }
+      ret = node;
+    }
+  }
+  
+  dv_dag_node_t * x = NULL;
+  while ( (x = dv_dag_node_traverse_nexts(node, x)) ) {
+    if (dv_node_flag_check(x->f, cp)) {
+      ret = dv_dag_compute_critical_paths_r(D, x, ret, cp);
+    }
+  }
+  
+  return ret;
+}
+
+void
+dv_dag_compute_critical_paths(dv_dag_t * D, double * m_work, double * m_delay, double * m_weighted_work, double * m_weighted_delay) {
+  dv_node_flag_set(D->rt->f, DV_NODE_FLAG_CRITICAL_PATH_WORK);
+  dv_node_flag_set(D->rt->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY);
+  dv_dag_compute_critical_paths_node(D, D->rt);
+
+  int i;
+  for (i = 0; i < DV_NUM_CRITICAL_PATHS; i++) {
+    work = 0.0;
+    delay = 0.0;
+    weighted_work = 0.0;
+    weighted_delay = 0.0;
+    dv_dag_compute_critical_paths_r(D, D->rt, NULL, i);
+    printf("%.0lf %.0lf %.0lf %.0lf\n", work, delay, weighted_work, weighted_delay);
+    printf("et - bt = %.0lf\n", D->et - D->bt);
+    m_work[i] = work;
+    m_delay[i] = delay;
+    m_weighted_work[i] = weighted_work;
+    m_weighted_delay[i] = weighted_delay;
+  }
+}

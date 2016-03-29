@@ -168,6 +168,7 @@ typedef struct dv_llist {
 
 #define DV_STAT_DISTRIBUTION_OUTPUT_DEFAULT_NAME "00dv_stat_distribution.gpl"
 #define DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME "00dv_stat_breakdown.gpl"
+#define DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME_2 "00dv_stat_breakdown_2.gpl"
 
 #define DV_VIEW_AUTO_ZOOMFIT_INIT 4 /* 0:none, 1:hor, 2:ver, 3:based, 4:full */
 #define DV_VIEW_ADJUST_AUTO_ZOOMFIT_INIT 1
@@ -309,6 +310,10 @@ typedef struct dv_dag {
   double current_time;
   double time_step;
   int show_critical_paths[DV_NUM_CRITICAL_PATHS];
+  double cp_work[DV_NUM_CRITICAL_PATHS];
+  double cp_delay[DV_NUM_CRITICAL_PATHS];
+  double cp_weighted_work[DV_NUM_CRITICAL_PATHS];
+  double cp_weighted_delay[DV_NUM_CRITICAL_PATHS];  
 } dv_dag_t;
 
 typedef struct dv_view dv_view_t;
@@ -553,8 +558,16 @@ typedef struct dv_stat_distribution {
 } dv_stat_distribution_t;
 
 typedef struct dv_stat_breakdown_graph {
-  int D[DV_MAX_DAG]; /* show or not show */
+  int checked_D[DV_MAX_DAG]; /* show or not show */
   char * fn;
+  dr_clock_t work[DV_MAX_DAG];
+  dr_clock_t delay[DV_MAX_DAG];
+  dr_clock_t nowork[DV_MAX_DAG];
+  char * fn_2;
+  double cp_work[DV_MAX_DAG][DV_NUM_CRITICAL_PATHS];
+  double cp_delay[DV_MAX_DAG][DV_NUM_CRITICAL_PATHS];
+  double cp_weighted_work[DV_MAX_DAG][DV_NUM_CRITICAL_PATHS];
+  double cp_weighted_delay[DV_MAX_DAG][DV_NUM_CRITICAL_PATHS];
 } dv_stat_breakdown_graph_t;
 
 
@@ -813,6 +826,8 @@ dv_dag_node_t * dv_find_node_with_pii_r(dv_view_t *, long, dv_dag_node_t *);
 
 void dv_critical_path_compute_node(dv_dag_t *, dv_dag_node_t *);
 void dv_critical_path_compute(dv_dag_t *);
+void dv_dag_expand_all(dv_dag_t *);
+void dv_dag_compute_critical_paths(dv_dag_t *, double *, double *, double *, double *);
 
 
 /* print.c */
@@ -934,6 +949,8 @@ void dv_view_draw_timeline_ver(dv_view_t *, cairo_t *);
 /* view_paraprof.c */
 void dv_histogram_init(dv_histogram_t *);
 double dv_histogram_get_max_height(dv_histogram_t *);
+dv_histogram_entry_t * dv_histogram_insert_entry(dv_histogram_t *, double, dv_histogram_entry_t *);
+
 void dv_histogram_add_node(dv_histogram_t *, dv_dag_node_t *, dv_histogram_entry_t **);
 void dv_histogram_remove_node(dv_histogram_t *, dv_dag_node_t *, dv_histogram_entry_t **);
 void dv_histogram_clean(dv_histogram_t *);

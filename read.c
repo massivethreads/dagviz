@@ -418,8 +418,13 @@ dv_dag_init(dv_dag_t * D, dv_pidag_t * P) {
   D->draw_with_current_time = 0;
   D->current_time = 0.0;
   D->time_step = 1000;
-  for (i = 0; i < DV_NUM_CRITICAL_PATHS; i++)
+  for (i = 0; i < DV_NUM_CRITICAL_PATHS; i++) {
     D->show_critical_paths[i] = 0;
+    D->cp_work[i] = 0.0;
+    D->cp_delay[i] = 0.0;
+    D->cp_weighted_work[i] = 0.0;
+    D->cp_weighted_delay[i] = 0.0;
+  }
 }
 
 dv_dag_t *

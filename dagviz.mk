@@ -39,7 +39,10 @@ all: $(exe)
 $(exe): $(HDR) $(AUX_SRC) $(OBJS)
 	$(CC) -o $@ $(OBJS) $(LDFLAGS)
 
-%.o: %.c
+dagviz.o: dagviz.c $(HDR)
+	$(CC) -c -o $@ $(CFLAGS) $<
+
+%.o: %.c dagviz.h
 	$(CC) -c -o $@ $(CFLAGS) $<
 
 resources.c: dagviz.gresource.xml $(shell $(GLIB_COMPILE_RESOURCES) --sourcedir=. --generate-dependencies dagviz.gresource.xml)
