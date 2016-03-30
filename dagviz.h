@@ -950,7 +950,6 @@ void dv_view_draw_timeline_ver(dv_view_t *, cairo_t *);
 void dv_histogram_init(dv_histogram_t *);
 double dv_histogram_get_max_height(dv_histogram_t *);
 dv_histogram_entry_t * dv_histogram_insert_entry(dv_histogram_t *, double, dv_histogram_entry_t *);
-
 void dv_histogram_add_node(dv_histogram_t *, dv_dag_node_t *, dv_histogram_entry_t **);
 void dv_histogram_remove_node(dv_histogram_t *, dv_dag_node_t *, dv_histogram_entry_t **);
 void dv_histogram_clean(dv_histogram_t *);

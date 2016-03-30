@@ -2332,6 +2332,7 @@ on_stat_breakdown_show2_button_clicked(_unused_ GtkWidget * widget, _unused_ gpo
           //          "set xtics rotate by -30\n"
           //          "set xlabel \"clocks\"\n"
           "set ylabel \"cumul. clocks\"\n"
+          "set xtics rotate by -25\n"
           "plot "
           "\"-\" u 2:xtic(1) w histogram t \"work\", "
           "\"-\" u 3 w histogram t \"delay\"\n");
@@ -2361,15 +2362,20 @@ on_stat_breakdown_show2_button_clicked(_unused_ GtkWidget * widget, _unused_ gpo
   
   int j, cp;
   for (j = 0; j < 2; j++) {
-    for (i = 0; i < n; i++) {
-      for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
+    for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
+      for (i = 0; i < n; i++) {
         fprintf(out,
-                "DAG_%d_cp%d  %lf %lf\n"
-                "wDAG_%d_cp%d  %lf %lf\n",
+                "\"DAG%d (cp%d)\"  %lf %lf\n",
                 DAGs[i],
                 cp,
                 CS->SBG->cp_work[DAGs[i]][cp],
-                CS->SBG->cp_delay[DAGs[i]][cp],
+                CS->SBG->cp_delay[DAGs[i]][cp]);
+      }
+    }
+    for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
+      for (i = 0; i < n; i++) {
+        fprintf(out,
+                "\"DAG%d (cp%d w.)\"  %lf %lf\n",
                 DAGs[i],
                 cp,
                 CS->SBG->cp_weighted_work[DAGs[i]][cp],
