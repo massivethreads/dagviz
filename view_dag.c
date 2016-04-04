@@ -527,7 +527,8 @@ dv_view_draw_dag_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
   
   /* Highlight critical paths */
   if ( (D->show_critical_paths[DV_CRITICAL_PATH_WORK] && dv_node_flag_check(node->f, DV_NODE_FLAG_CRITICAL_PATH_WORK))
-       || (D->show_critical_paths[DV_CRITICAL_PATH_WORK_DELAY] && dv_node_flag_check(node->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY)) ) {
+       || (D->show_critical_paths[DV_CRITICAL_PATH_WORK_DELAY] && dv_node_flag_check(node->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY))
+       || (D->show_critical_paths[DV_CRITICAL_PATH_WEIGHTED] && dv_node_flag_check(node->f, DV_NODE_FLAG_CRITICAL_PATH_WEIGHTED)) ) {
     cairo_new_path(cr);
     double margin, line_width, margin_increment;
     GdkRGBA color[1];
@@ -550,6 +551,15 @@ dv_view_draw_dag_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
     
     if ( D->show_critical_paths[DV_CRITICAL_PATH_WORK_DELAY] && dv_node_flag_check(node->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY) ) {
       gdk_rgba_parse(color, DV_CRITICAL_PATH_WORK_DELAY_COLOR);
+      cairo_set_source_rgba(cr, color->red, color->green, color->blue, color->alpha);
+      cairo_set_line_width(cr, line_width );
+      cairo_rectangle(cr, xx - margin, yy - margin, w + 2 * margin, h + 2 * margin);
+      cairo_stroke(cr);
+      margin += margin_increment;
+    }
+
+    if ( D->show_critical_paths[DV_CRITICAL_PATH_WEIGHTED] && dv_node_flag_check(node->f, DV_NODE_FLAG_CRITICAL_PATH_WEIGHTED) ) {
+      gdk_rgba_parse(color, DV_CRITICAL_PATH_WEIGHTED_COLOR);
       cairo_set_source_rgba(cr, color->red, color->green, color->blue, color->alpha);
       cairo_set_line_width(cr, line_width );
       cairo_rectangle(cr, xx - margin, yy - margin, w + 2 * margin, h + 2 * margin);

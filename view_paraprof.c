@@ -21,6 +21,8 @@ dv_histogram_entry_init(dv_histogram_entry_t * e) {
     e->h[i] = 0.0;
   }
   e->next = NULL;
+  e->weighted_value = 0.0;
+  e->cumulative_value = 0.0;
 }
 
 double
@@ -44,21 +46,23 @@ dv_histogram_entry_t *
 dv_histogram_insert_entry(dv_histogram_t * H, double t, dv_histogram_entry_t * e_hint) {
   dv_histogram_entry_t * e = NULL;
   dv_histogram_entry_t * ee = H->head_e;
-  if (H->tail_e && (t > H->tail_e->t)) {
+  if (H->tail_e && (t >= H->tail_e->t)) {
     e = H->tail_e;
     ee = NULL;
   } else {
-    if (e_hint && (t > e_hint->t)) {
+    if (e_hint && (t >= e_hint->t)) {
       e = e_hint;
       ee = e->next;
     }
-    while (ee != NULL && ee->t < t) {
+    while (ee != NULL && ee->t <= t) {
       e = ee;
       ee = ee->next;
     }
   }
-  if (ee && ( (ee->t == t) || (e && (ee->t - e->t) < H->min_entry_interval) ))
-    return ee;
+  if (e && (e->t == t))
+    return e;
+  if (e && ee && (ee->t - e->t) < H->min_entry_interval)
+    return e;
   dv_histogram_entry_t * new_e = dv_histogram_entry_pool_pop(CS->epool);
   if (!new_e) {
     fprintf(stderr, "Error: cannot pop a new entry structure!\n");
@@ -454,6 +458,76 @@ dv_histogram_reset(dv_histogram_t * H) {
   }
 }
 
+static void
+dv_histogram_build_all_r(dv_histogram_t * H, dv_dag_node_t * node, dv_histogram_entry_t * e_hint_) {
+  /* Calculate inward */
+  dv_histogram_entry_t * e_hint = e_hint_;
+  if (dv_is_union(node) && dv_is_inner_loaded(node)) {
+    dv_histogram_build_all_r(H, node->head, e_hint);
+  } else {
+    dv_histogram_add_node(H, node, &e_hint);
+  }
+    
+  /* Calculate link-along */
+  dv_dag_node_t * u, * v; // linked nodes
+  switch ( dv_dag_node_count_nexts(node) ) {
+  case 0:
+    break;
+  case 1:
+    u = node->next;
+    dv_histogram_build_all_r(H, u, e_hint);
+    break;
+  case 2:
+    u = node->next;  // cont node
+    v = node->spawn; // task node
+    dv_histogram_build_all_r(H, u, e_hint);
+    dv_histogram_build_all_r(H, v, e_hint);
+    break;
+  default:
+    dv_check(0);
+    break;
+  }  
+}
+
+void
+dv_histogram_build_all(dv_histogram_t * H) {
+  double time = dv_get_time();
+  if (CS->verbose_level >= 1) {
+    fprintf(stderr, "dv_histogram_build_all()\n");
+  }
+  dv_histogram_clean(H);
+  if (H->D) 
+    dv_histogram_build_all_r(H, H->D->rt, NULL);
+  if (CS->verbose_level >= 1) {
+    fprintf(stderr, "... done dv_histogram_build_all(): %lf ms\n", dv_get_time() - time);
+  }
+}
+
+void
+dv_histogram_compute_weighted_values(dv_histogram_t * H) {
+  double time = dv_get_time();
+  if (CS->verbose_level >= 1) {
+    fprintf(stderr, "dv_histogram_compute_weighted_values()\n");
+  }
+  double cumul = 0.0;
+  dv_histogram_entry_t * e;
+  dv_histogram_entry_t * ee;
+  e = H->head_e;
+  while (e != H->tail_e) {
+    ee = e->next;
+    e->cumulative_value = cumul;
+    //double weight = 1 + H->D->P->num_workers - e->h[dv_histogram_layer_running];
+    double weight = 1 + (H->D->P->num_workers - e->h[dv_histogram_layer_running]) / H->D->P->num_workers;
+    e->weighted_value = weight * (ee->t - e->t);
+    cumul += e->weighted_value;
+    e = ee;
+  }
+  H->tail_e->cumulative_value = cumul;
+  if (CS->verbose_level >= 1) {
+    fprintf(stderr, "... done dv_histogram_compute_weighted_values(): %lf ms\n", dv_get_time() - time);
+  }
+}
+
 /****** end of HISTOGRAM ******/
 
 
@@ -554,12 +628,6 @@ dv_view_layout_critical_path_node(dv_view_t * V, dv_dag_node_t * node) {
   if (dv_is_union(node)) {
     if (dv_is_inner_loaded(node) && dv_is_expanded(node)) 
       dv_view_layout_critical_path_node(V, node->head);
-  } else if (dv_node_flag_check(node->f, DV_NODE_FLAG_CRITICAL_PATH_WORK)) {
-    D->cp_work[DV_CRITICAL_PATH_WORK] += nodeco->rw;
-    D->cp_delay[DV_CRITICAL_PATH_WORK] += nodeco->rw;
-  } else if (dv_node_flag_check(node->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY)) {
-    D->cp_work[DV_CRITICAL_PATH_WORK_DELAY] += nodeco->rw;
-    D->cp_delay[DV_CRITICAL_PATH_WORK_DELAY] += nodeco->rw;
   }
     
   /* Calculate link-along */
@@ -575,11 +643,13 @@ dv_view_layout_critical_path_node(dv_view_t * V, dv_dag_node_t * node) {
     u = node->next;  // cont node
     v = node->spawn; // task node
     if ( (D->show_critical_paths[DV_CRITICAL_PATH_WORK] && dv_node_flag_check(u->f, DV_NODE_FLAG_CRITICAL_PATH_WORK))
-         || (D->show_critical_paths[DV_CRITICAL_PATH_WORK_DELAY] && dv_node_flag_check(u->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY)) ) {
+         || (D->show_critical_paths[DV_CRITICAL_PATH_WORK_DELAY] && dv_node_flag_check(u->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY))
+         || (D->show_critical_paths[DV_CRITICAL_PATH_WEIGHTED] && dv_node_flag_check(u->f, DV_NODE_FLAG_CRITICAL_PATH_WEIGHTED)) ) {
       dv_view_layout_critical_path_node(V, u);
     }
     if ( (D->show_critical_paths[DV_CRITICAL_PATH_WORK] && dv_node_flag_check(v->f, DV_NODE_FLAG_CRITICAL_PATH_WORK))
-         || (D->show_critical_paths[DV_CRITICAL_PATH_WORK_DELAY] && dv_node_flag_check(v->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY)) ) {
+         || (D->show_critical_paths[DV_CRITICAL_PATH_WORK_DELAY] && dv_node_flag_check(v->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY))
+         || (D->show_critical_paths[DV_CRITICAL_PATH_WEIGHTED] && dv_node_flag_check(v->f, DV_NODE_FLAG_CRITICAL_PATH_WEIGHTED)) ) {
       dv_view_layout_critical_path_node(V, v);
     }
     break;
@@ -594,13 +664,14 @@ void
 dv_view_layout_critical_path(dv_view_t * V) {
   V->D->collapsing_d = 0;  
   if ( (V->D->show_critical_paths[DV_CRITICAL_PATH_WORK] && dv_node_flag_check(V->D->rt->f, DV_NODE_FLAG_CRITICAL_PATH_WORK))
-       || (V->D->show_critical_paths[DV_CRITICAL_PATH_WORK_DELAY] && dv_node_flag_check(V->D->rt->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY)) ) {
+       || (V->D->show_critical_paths[DV_CRITICAL_PATH_WORK_DELAY] && dv_node_flag_check(V->D->rt->f, DV_NODE_FLAG_CRITICAL_PATH_WEIGHTED))
+       || (V->D->show_critical_paths[DV_CRITICAL_PATH_WEIGHTED] && dv_node_flag_check(V->D->rt->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY)) ) {
     int i;
     for (i = 0; i < DV_NUM_CRITICAL_PATHS; i++) {
-      V->D->cp_work[i] = 0.0;
-      V->D->cp_delay[i] = 0.0;
-      V->D->cp_weighted_work[i] = 0.0;
-      V->D->cp_weighted_delay[i] = 0.0;
+      V->D->cp_stat[i].work = 0.0;
+      V->D->cp_stat[i].delay = 0.0;
+      V->D->cp_stat[i].weighted_work = 0.0;
+      V->D->cp_stat[i].weighted_delay = 0.0;
     }
     dv_view_layout_critical_path_node(V, V->D->rt);
   }
@@ -765,7 +836,72 @@ dv_view_draw_critical_path_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * n
     
     }
 
-  }  
+  }
+
+  xx = x;
+  yy = y + 12 * (2 * V->D->radius);
+  w = nodeco->rw;
+  h = nodeco->dw;
+  if ( (D->show_critical_paths[DV_CRITICAL_PATH_WEIGHTED] && dv_node_flag_check(node->f, DV_NODE_FLAG_CRITICAL_PATH_WEIGHTED)) ) {
+  
+    /* Draw path */
+    cairo_new_path(cr);
+    if (!dv_rectangle_is_invisible(V, xx, yy, w, h)) {
+      dv_rectangle_trim(V, &xx, &yy, &w, &h);
+    
+      cairo_rectangle(cr, xx, yy, w, h);
+    
+      /* Draw node */
+      if (dv_is_union(node)) {
+      
+        double c[4] = { 0.15, 0.15, 0.15, 0.2 };
+        cairo_set_source_rgba(cr, c[0], c[1], c[2], c[3]);
+        cairo_fill(cr);
+      
+      } else {
+      
+        cairo_set_source_rgba(cr, c[0], c[1], c[2], c[3] * alpha);
+        cairo_fill_preserve(cr);
+        if (DV_TIMELINE_NODE_WITH_BORDER) {
+          cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, alpha);
+          cairo_stroke_preserve(cr);
+        }
+        /* Highlight */
+        if ( node->highlight ) {
+          cairo_set_source_rgba(cr, 0.1, 0.1, 0.1, 0.5);
+          cairo_fill_preserve(cr);
+        }
+        /* Draw node's infotag's mark */
+        if (dv_llist_has(V->D->P->itl, (void *) node->pii)) {
+          cairo_set_source_rgba(cr, 0.1, 0.1, 0.1, 0.6);
+          cairo_fill_preserve(cr);
+        }
+      
+        /* Highlight critical paths */
+        if (1) {
+          cairo_new_path(cr);
+          double margin, line_width;
+          GdkRGBA color[1];
+        
+          //line_width = 2 * DV_NODE_LINE_WIDTH;
+          line_width = 2 * DV_NODE_LINE_WIDTH / V->S->zoom_ratio_x;
+          if (line_width > 10 * DV_NODE_LINE_WIDTH)
+            line_width = 10 * DV_NODE_LINE_WIDTH;
+          margin = - 0.5 * line_width;
+
+          gdk_rgba_parse(color, DV_CRITICAL_PATH_WEIGHTED_COLOR);
+          cairo_set_source_rgba(cr, color->red, color->green, color->blue, color->alpha);
+          cairo_set_line_width(cr, line_width );
+          cairo_rectangle(cr, xx - margin, yy - margin, w + 2 * margin, h + 2 * margin);
+          cairo_stroke(cr);
+        
+        }
+
+      }
+    
+    }
+
+  }
   
   /* Flag to draw infotag */
   if (dv_llist_has(V->D->P->itl, (void *) node->pii)) {
@@ -815,7 +951,8 @@ void
 dv_view_draw_critical_path(dv_view_t * V, cairo_t * cr) {
   /* Draw critical path */
   if ( (V->D->show_critical_paths[DV_CRITICAL_PATH_WORK] && dv_node_flag_check(V->D->rt->f, DV_NODE_FLAG_CRITICAL_PATH_WORK))
-       || (V->D->show_critical_paths[DV_CRITICAL_PATH_WORK_DELAY] && dv_node_flag_check(V->D->rt->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY)) ) {
+       || (V->D->show_critical_paths[DV_CRITICAL_PATH_WORK_DELAY] && dv_node_flag_check(V->D->rt->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY))
+       || (V->D->show_critical_paths[DV_CRITICAL_PATH_WEIGHTED] && dv_node_flag_check(V->D->rt->f, DV_NODE_FLAG_CRITICAL_PATH_WEIGHTED)) ) {
     dv_llist_init(V->D->itl);
     V->S->nd = 0;
     V->S->ndh = 0;
@@ -829,31 +966,6 @@ dv_view_draw_critical_path(dv_view_t * V, cairo_t * cr) {
     dv_histogram_draw(V->D->H, cr, V);
   if (V->D->draw_with_current_time)
     dv_paraprof_draw_time_bar(V, V->D->H, cr);
-  
-  /* Draw work, delay */
-  double x, y, w, h;
-  GdkRGBA color[1];
-  x = 0.0;
-  y =  11 * (2 * V->D->radius);
-  h = 2 * V->D->radius;
-  int i;
-  for (i = 0; i < DV_NUM_CRITICAL_PATHS; i++) {
-    if ( V->D->show_critical_paths[i] ) {
-      y += 2 * h;
-      w = V->D->cp_work[i] / 100.0;
-      cairo_new_path(cr);
-      gdk_rgba_parse(color, DV_CRITICAL_PATH_WORK_COLOR);
-      cairo_set_source_rgba(cr, color->red, color->green, color->blue, color->alpha);
-      cairo_rectangle(cr, x, y, w, h);
-      cairo_fill(cr);
-      w = V->D->cp_delay[i] / 100.0;
-      y += h;
-      gdk_rgba_parse(color, DV_CRITICAL_PATH_WORK_DELAY_COLOR);
-      cairo_set_source_rgba(cr, color->red, color->green, color->blue, color->alpha);
-      cairo_rectangle(cr, x, y, w, h);
-      cairo_fill(cr);
-    }
-  }
 }
 
 

@@ -108,7 +108,9 @@ void dv_stack_push(dv_stack_t * s, void * node) {
 
 void * dv_stack_pop(dv_stack_t * s) {
   dv_stack_cell_t * top = s->top;
-  dv_check(top);
+  //dv_check(top);
+  if (!top)
+    return NULL;
   s->top = top->next;
   top->next = s->freelist;
   s->freelist = top;

@@ -717,13 +717,20 @@ on_toolbar_expand_button_clicked(_unused_ GtkToolButton * toolbtn, _unused_ gpoi
 }
 
 static void
+on_toolbar_critical_path_compute_button_clicked(_unused_ GtkToolButton * toolbtn, _unused_ gpointer user_data) {
+  if (!CS->activeV) return;
+  dv_dag_t * D = CS->activeV->D;
+  dv_dag_compute_critical_paths(D);
+  dv_queue_draw_dag(D);
+}
+
+static void
 on_toolbar_critical_path_button_clicked(_unused_ GtkToolButton * toolbtn, _unused_ gpointer user_data) {
   if (!CS->activeV) return;
   long cp = (long) user_data;
   dv_dag_t * D = CS->activeV->D;
   D->show_critical_paths[cp] = 1 - D->show_critical_paths[cp];
   if (D->show_critical_paths[cp]) {
-    dv_critical_path_compute(D);
     if (CS->activeV->S->lt == DV_LAYOUT_TYPE_CRITICAL_PATH)
       dv_view_layout(CS->activeV);
   }
@@ -1555,6 +1562,151 @@ on_context_menu_viewport_infobox_activated(_unused_ GtkMenuItem * menuitem, _unu
   dv_queue_draw_pidag(CS->context_view->D->P);
   //dv_queue_draw_d_p(CS->context_view);
 }
+
+/*----------------- Statistics functions -----------------*/
+
+static gboolean
+on_stat_distribution_dag_changed(GtkWidget * widget, gpointer user_data) {
+  long i = (long) user_data;
+  int new_id = gtk_combo_box_get_active(GTK_COMBO_BOX(widget)) - 1;
+  char * new_title = "";
+  if (new_id >= 0)
+    new_title = dv_filename_get_short_name(CS->D[new_id].P->fn);
+  dv_stat_distribution_entry_t * e = &CS->SD->e[i];
+  int old_id = e->dag_id;
+  char * old_title = NULL;
+  if (old_id >= 0)
+    old_title = dv_filename_get_short_name(CS->D[old_id].P->fn);
+  if ( !e->title || strlen(e->title) == 0 ||
+       (old_title && strcmp(e->title, old_title) == 0) ) {
+    if (e->title && strlen(e->title))
+      dv_free(e->title, strlen(e->title) + 1);
+    e->title = new_title;
+    if (e->title_entry) 
+      gtk_entry_set_text(GTK_ENTRY(e->title_entry), e->title);
+  } else {
+    if (strlen(new_title))
+      dv_free(new_title, strlen(new_title) + 1);
+  }
+  e->dag_id = new_id;
+  return TRUE;
+}
+
+static gboolean
+on_stat_distribution_type_changed(GtkWidget * widget, gpointer user_data) {
+  long i = (long) user_data;
+  int new_type = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+  CS->SD->e[i].type = new_type;
+  return TRUE;
+}
+
+static gboolean
+on_stat_distribution_stolen_changed(GtkWidget * widget, gpointer user_data) {
+  long i = (long) user_data;
+  int new_stolen = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+  CS->SD->e[i].stolen = new_stolen;
+  return TRUE;
+}
+
+static gboolean
+on_stat_distribution_title_activate(GtkWidget * widget, gpointer user_data) {
+  long i = (long) user_data;
+  const char * new_title = gtk_entry_get_text(GTK_ENTRY(widget));
+  dv_stat_distribution_entry_t * e = &CS->SD->e[i];
+  if (strlen(e->title))
+    dv_free(e->title, strlen(e->title) + 1);
+  e->title = dv_malloc( sizeof(char) * (strlen(new_title) + 1) );
+  strcpy(e->title, new_title);
+  return TRUE;
+}
+
+static gboolean
+on_stat_distribution_xrange_from_activate(_unused_ GtkWidget * widget, _unused_ gpointer user_data) {
+  long new_xrange_from = atol(gtk_entry_get_text(GTK_ENTRY(widget)));
+  CS->SD->xrange_from = new_xrange_from;
+  return TRUE;
+}
+
+static gboolean
+on_stat_distribution_xrange_to_activate(GtkWidget * widget, _unused_ gpointer user_data) {
+  long new_xrange_to = atol(gtk_entry_get_text(GTK_ENTRY(widget)));
+  CS->SD->xrange_to = new_xrange_to;
+  return TRUE;
+}
+
+static gboolean
+on_stat_distribution_granularity_activate(GtkWidget * widget, _unused_ gpointer user_data) {
+  long new_width = atoi(gtk_entry_get_text(GTK_ENTRY(widget)));
+  CS->SD->bar_width = new_width;
+  return TRUE;
+}
+
+static gboolean
+on_stat_distribution_add_button_clicked(_unused_ GtkWidget * widget, _unused_ gpointer user_data) {
+  CS->SD->ne++;
+  return TRUE;
+}
+
+static gboolean
+on_stat_distribution_output_filename_activate(GtkWidget * widget, _unused_ gpointer user_data) {
+  const char * new_output = gtk_entry_get_text(GTK_ENTRY(widget));
+  if (strcmp(CS->SD->fn, DV_STAT_DISTRIBUTION_OUTPUT_DEFAULT_NAME) != 0) {
+    dv_free(CS->SD->fn, strlen(CS->SD->fn) + 1);
+  }
+  CS->SD->fn = (char *) dv_malloc( sizeof(char) * ( strlen(new_output) + 1) );
+  strcpy(CS->SD->fn, new_output);
+  return TRUE;
+}
+
+static gboolean
+on_stat_distribution_show_button_clicked(_unused_ GtkWidget * widget, _unused_ gpointer user_data) {
+  dv_statistics_graph_delay_distribution();
+  return TRUE;
+}
+
+static gboolean
+on_stat_breakdown_dag_checkbox_toggled(_unused_ GtkWidget * widget, gpointer user_data) {
+  long i = (long) user_data;
+  CS->SBG->checked_D[i] = 1 - CS->SBG->checked_D[i];
+  return TRUE;
+}
+
+static gboolean
+on_stat_breakdown_output_filename_activate(GtkWidget * widget, _unused_ gpointer user_data) {
+  const char * new_output = gtk_entry_get_text(GTK_ENTRY(widget));
+  if (strcmp(CS->SBG->fn, DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME) != 0) {
+    dv_free(CS->SBG->fn, strlen(CS->SBG->fn) + 1);
+  }
+  CS->SBG->fn = (char *) dv_malloc( sizeof(char) * ( strlen(new_output) + 1) );
+  strcpy(CS->SBG->fn, new_output);
+  return TRUE;
+}
+
+static gboolean
+on_stat_breakdown_output_filename2_activate(GtkWidget * widget, _unused_ gpointer user_data) {
+  const char * new_output = gtk_entry_get_text(GTK_ENTRY(widget));
+  if (strcmp(CS->SBG->fn_2, DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME_2) != 0) {
+    dv_free(CS->SBG->fn_2, strlen(CS->SBG->fn_2) + 1);
+  }
+  CS->SBG->fn_2 = (char *) dv_malloc( sizeof(char) * ( strlen(new_output) + 1) );
+  strcpy(CS->SBG->fn_2, new_output);
+  return TRUE;
+}
+
+static gboolean
+on_stat_breakdown_show_button_clicked(_unused_ GtkWidget * widget, _unused_ gpointer user_data) {
+  dv_statistics_graph_execution_time_breakdown();
+  return TRUE;
+}
+
+static gboolean
+on_stat_breakdown_show2_button_clicked(_unused_ GtkWidget * widget, _unused_ gpointer user_data) {
+  dv_statistics_graph_critical_path_breakdown();  
+  return TRUE;
+}
+
+/*----------------- end of Statistics functions -----------------*/
+
 
 /****************** end of GUI Callbacks **************************************/
 

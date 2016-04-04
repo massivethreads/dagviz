@@ -90,6 +90,7 @@ typedef struct dv_llist {
 
 #define DV_NODE_FLAG_CRITICAL_PATH_WORK (1 << 6) /* node is on critical path of work */
 #define DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY (1 << 7) /* node is on critical path of work & delay */
+#define DV_NODE_FLAG_CRITICAL_PATH_WEIGHTED (1 << 8) /* node is on critical path of weighted work & delay */
 
 #define DV_ZOOM_TO_FIT_MARGIN 15
 #define DV_ZOOM_TO_FIT_MARGIN_DOWN 20
@@ -185,11 +186,13 @@ typedef struct dv_llist {
 #define DV_DAG_NODE_HIDDEN_BELOW 0b0100
 #define DV_DAG_NODE_HIDDEN_LEFT  0b1000
 
-#define DV_NUM_CRITICAL_PATHS 2
+#define DV_NUM_CRITICAL_PATHS 3
 #define DV_CRITICAL_PATH_WORK 0
 #define DV_CRITICAL_PATH_WORK_DELAY 1
+#define DV_CRITICAL_PATH_WEIGHTED 2
 #define DV_CRITICAL_PATH_WORK_COLOR "red"
 #define DV_CRITICAL_PATH_WORK_DELAY_COLOR "green"
+#define DV_CRITICAL_PATH_WEIGHTED_COLOR "blue"
 
 
 /*-----------------Data Structures-----------------*/
@@ -228,6 +231,13 @@ typedef struct dv_node_coordinate {
   double link_lw, link_rw, link_dw;
 } dv_node_coordinate_t;
 
+typedef struct dv_critical_path_stat {
+  double work;
+  double delay;
+  double weighted_work;
+  double weighted_delay;
+} dv_critical_path_stat_t;
+
 typedef struct dv_dag_node {
   
   /* task-parallel data */
@@ -235,7 +245,7 @@ typedef struct dv_dag_node {
   long pii;
 
   /* state data */  
-  char f[1]; /* node flags, 0x0: single, 0x01: union/collapsed, 0x11: union/expanded */
+  int f[1]; /* node flags, 0x0: single, 0x01: union/collapsed, 0x11: union/expanded */
   int d; /* depth */
   
   /* linking structure */
@@ -257,6 +267,8 @@ typedef struct dv_dag_node {
 
   char highlight; /* to highlight the node when drawing */
 
+  /* statistics of inner subgraphs */
+  dv_critical_path_stat_t cps[DV_NUM_CRITICAL_PATHS];
 } dv_dag_node_t;
 
 typedef struct dv_histogram dv_histogram_t;
@@ -310,10 +322,8 @@ typedef struct dv_dag {
   double current_time;
   double time_step;
   int show_critical_paths[DV_NUM_CRITICAL_PATHS];
-  double cp_work[DV_NUM_CRITICAL_PATHS];
-  double cp_delay[DV_NUM_CRITICAL_PATHS];
-  double cp_weighted_work[DV_NUM_CRITICAL_PATHS];
-  double cp_weighted_delay[DV_NUM_CRITICAL_PATHS];  
+  dv_critical_path_stat_t cp_stat[DV_NUM_CRITICAL_PATHS];
+  int critical_paths_computed;
 } dv_dag_t;
 
 typedef struct dv_view dv_view_t;
@@ -495,6 +505,8 @@ typedef struct dv_histogram_entry {
   double t;
   struct dv_histogram_entry * next;
   double h[dv_histogram_layer_max];
+  double weighted_value;
+  double cumulative_value;
 } dv_histogram_entry_t;
 
 typedef struct dv_histogram {
@@ -564,10 +576,7 @@ typedef struct dv_stat_breakdown_graph {
   dr_clock_t delay[DV_MAX_DAG];
   dr_clock_t nowork[DV_MAX_DAG];
   char * fn_2;
-  double cp_work[DV_MAX_DAG][DV_NUM_CRITICAL_PATHS];
-  double cp_delay[DV_MAX_DAG][DV_NUM_CRITICAL_PATHS];
-  double cp_weighted_work[DV_MAX_DAG][DV_NUM_CRITICAL_PATHS];
-  double cp_weighted_delay[DV_MAX_DAG][DV_NUM_CRITICAL_PATHS];
+  dv_critical_path_stat_t cp_stats[DV_MAX_DAG][DV_NUM_CRITICAL_PATHS];
 } dv_stat_breakdown_graph_t;
 
 
@@ -824,10 +833,16 @@ void dv_do_button_event(dv_view_t *, GdkEventButton *);
 void dv_do_motion_event(dv_view_t *, GdkEventMotion *);
 dv_dag_node_t * dv_find_node_with_pii_r(dv_view_t *, long, dv_dag_node_t *);
 
-void dv_critical_path_compute_node(dv_dag_t *, dv_dag_node_t *);
-void dv_critical_path_compute(dv_dag_t *);
-void dv_dag_expand_all(dv_dag_t *);
-void dv_dag_compute_critical_paths(dv_dag_t *, double *, double *, double *, double *);
+void dv_dag_build_inner_all(dv_dag_t *);
+void dv_dag_compute_critical_paths(dv_dag_t *);
+
+
+
+/* graphs.c */
+void dv_statistics_graph_delay_distribution();
+void dv_statistics_graph_execution_time_breakdown();
+void dv_statistics_graph_critical_path_breakdown();
+
 
 
 /* print.c */
@@ -956,6 +971,8 @@ void dv_histogram_clean(dv_histogram_t *);
 void dv_histogram_fini(dv_histogram_t *);
 void dv_histogram_draw(dv_histogram_t *, cairo_t *, dv_view_t *);
 void dv_histogram_reset(dv_histogram_t *);
+void dv_histogram_build_all(dv_histogram_t *);
+void dv_histogram_compute_weighted_values(dv_histogram_t *);
 
 void dv_view_layout_paraprof(dv_view_t *);
 void dv_view_draw_paraprof(dv_view_t *, cairo_t *);
@@ -1082,24 +1099,24 @@ dv_free(void * a, size_t sz) {
 }
 
 _static_unused_ void
-dv_node_flag_init(char * f) {
+dv_node_flag_init(int * f) {
   *f = DV_NODE_FLAG_NONE;
 }
 
 _static_unused_ int
-dv_node_flag_check(char * f, char t) {
+dv_node_flag_check(int * f, int t) {
   int ret = ((*f & t) == t);
   return ret;
 }
 
 _static_unused_ void
-dv_node_flag_set(char * f, char t) {
+dv_node_flag_set(int * f, int t) {
   if (!dv_node_flag_check(f,t))
     *f += t;
 }
 
 _static_unused_ void
-dv_node_flag_remove(char * f, char t) {
+dv_node_flag_remove(int * f, int t) {
   if (dv_node_flag_check(f,t))
     *f -= t;
 }

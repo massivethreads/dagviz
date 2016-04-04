@@ -156,6 +156,8 @@ dv_pidag_get_node_by_offset(dv_pidag_t * P, dr_pi_dag_node * pi, long offset) {
 
 static void
 dv_node_coordinate_init(dv_node_coordinate_t * c) {
+  memset(c, 0, sizeof(dv_node_coordinate_t));
+  /*
   c->x = 0.0;
   c->y = 0.0;
   c->xp = 0.0;
@@ -165,14 +167,21 @@ dv_node_coordinate_init(dv_node_coordinate_t * c) {
   c->dw = 0.0;
   c->link_lw = 0.0;
   c->link_rw = 0.0;
-  c->link_dw = 0.0;  
+  c->link_dw = 0.0;
+  */
 }
 
 void
 dv_dag_node_init(dv_dag_node_t * node, dv_dag_node_t * parent, long pii) {
+  /* node->next: do not initialize next which is used already for linking in node pool */
+  //dv_dag_node_t * t = node->next;
+
+  //memset(node, 0, sizeof(dv_dag_node_t));
+  
   node->pii = pii;
   dv_node_flag_init(node->f);
   node->d = (parent)?(parent->d + 1):0;
+  //node->next = t;
 
   node->parent = parent;
   node->pre = NULL;
@@ -191,6 +200,13 @@ dv_dag_node_init(dv_dag_node_t * node, dv_dag_node_t * parent, long pii) {
   node->link_r = 0;
 
   node->highlight = 0;
+
+  for (i = 0; i < DV_NUM_CRITICAL_PATHS; i++) {
+    node->cps[i].work = 0.0;
+    node->cps[i].delay = 0.0;
+    node->cps[i].weighted_work = 0.0;
+    node->cps[i].weighted_delay = 0.0;
+  }    
 }
 
 int
@@ -420,11 +436,12 @@ dv_dag_init(dv_dag_t * D, dv_pidag_t * P) {
   D->time_step = 1000;
   for (i = 0; i < DV_NUM_CRITICAL_PATHS; i++) {
     D->show_critical_paths[i] = 0;
-    D->cp_work[i] = 0.0;
-    D->cp_delay[i] = 0.0;
-    D->cp_weighted_work[i] = 0.0;
-    D->cp_weighted_delay[i] = 0.0;
+    D->cp_stat[i].work = 0.0;
+    D->cp_stat[i].delay = 0.0;
+    D->cp_stat[i].weighted_work = 0.0;
+    D->cp_stat[i].weighted_delay = 0.0;
   }
+  D->critical_paths_computed = 0;
 }
 
 dv_dag_t *
