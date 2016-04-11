@@ -34,11 +34,14 @@ dv_pidag_read_new_file(char * filename) {
   P->m = G->m;
   P->start_clock = G->start_clock;
   P->num_workers = G->num_workers;
-  printf("PI DAG: %s"
+  printf("DAG file:\n"
+         "  file name = %s\n"
+         "  header = %s"
          "  nodes = %ld\n"
          "  edges = %ld\n"
          "  start clock = %llu\n"
-         "  workers = %ld\n", DAG_RECORDER_HEADER, P->n, P->m, P->start_clock, P->num_workers);
+         "  workers = %ld\n",
+         P->fn, DAG_RECORDER_HEADER, P->n, P->m, P->start_clock, P->num_workers);
   
   P->T = G->T;
   P->E = G->E;

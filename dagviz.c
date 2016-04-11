@@ -3614,6 +3614,8 @@ main(int argc, char * argv[]) {
         }
       }
     }
+    if (globbuf.gl_pathc > 0)
+      globfree(&globbuf);
   }
   
   /* Viewports */
