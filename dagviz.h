@@ -42,6 +42,8 @@
 #include <bfd.h>
 #endif
 
+#include <glob.h>
+
 
 /*-----Utilities-----*/
 typedef struct dv_linked_list {
@@ -179,7 +181,7 @@ typedef struct dv_llist {
 
 #define DV_PARAPROF_MIN_ENTRY_INTERVAL 20000
 
-#define DV_VERBOSE_LEVEL_DEFAULT 1
+#define DV_VERBOSE_LEVEL_DEFAULT 0
 
 #define DV_DAG_NODE_HIDDEN_ABOVE 0b0001
 #define DV_DAG_NODE_HIDDEN_RIGHT 0b0010
@@ -841,7 +843,8 @@ void dv_dag_compute_critical_paths(dv_dag_t *);
 /* graphs.c */
 void dv_statistics_graph_delay_distribution();
 void dv_statistics_graph_execution_time_breakdown();
-void dv_statistics_graph_critical_path_breakdown();
+void dv_statistics_graph_critical_path_breakdown(char *);
+void dv_statistics_graph_critical_path_delay_idleness(char *);
 
 
 

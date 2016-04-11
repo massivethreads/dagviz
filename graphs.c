@@ -387,16 +387,13 @@ dv_statistics_graph_execution_time_breakdown() {
 }
 
 void
-dv_statistics_graph_critical_path_breakdown() {
-  char * filename;
-  FILE * out;
-  
+dv_statistics_graph_critical_path_breakdown(char * filename) {
   /* generate plots */
-  filename = CS->SBG->fn_2;
   if (!filename || strlen(filename) == 0) {
     fprintf(stderr, "Error: no file name to output.");
     return ;
   }
+  FILE * out;
   out = fopen(filename, "w");
   dv_check(out);
   fprintf(out,
@@ -414,7 +411,8 @@ dv_statistics_graph_critical_path_breakdown() {
           "set xtics rotate by -25\n"
           "plot "
           "\"-\" u 2:xtic(1) w histogram t \"work\", "
-          "\"-\" u 3 w histogram t \"delay\"\n");
+          "\"-\" u 3 w histogram t \"delay\", "
+          "\"-\" u 4 w histogram t \"delay's idleness\"\n");
   int DAGs[DV_MAX_DAG];
   int n = 0;
   int i;
@@ -431,11 +429,12 @@ dv_statistics_graph_critical_path_breakdown() {
       CS->SBG->cp_stats[i][cp] = D->rt->cps[cp];
     }
   }
-  
+
+  /*
   int j, cp;
   for (j = 0; j < 2; j++) {
-    for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
-      for (i = 0; i < n; i++) {
+    for (i = 0; i < n; i++) {
+      for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
         fprintf(out,
                 "\"DAG%d (cp%d)\"  %lf %lf\n",
                 DAGs[i],
@@ -443,9 +442,7 @@ dv_statistics_graph_critical_path_breakdown() {
                 CS->SBG->cp_stats[DAGs[i]][cp].work,
                 CS->SBG->cp_stats[DAGs[i]][cp].delay);
       }
-    }
-    for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
-      for (i = 0; i < n; i++) {
+      for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
         fprintf(out,
                 "\"DAG%d (cp%d w.)\"  %lf %lf\n",
                 DAGs[i],
@@ -457,6 +454,28 @@ dv_statistics_graph_critical_path_breakdown() {
     fprintf(out,
             "e\n");
   }
+  */
+  
+  int j, cp;
+  for (j = 0; j < 3; j++) {
+    for (i = 0; i < n; i++) {
+      cp = 1;
+      fprintf(out,
+              "\"DAG%d (cp%d)\"  %lf %lf 0.0\n",
+              DAGs[i],
+              cp,
+              CS->SBG->cp_stats[DAGs[i]][cp].work,
+              CS->SBG->cp_stats[DAGs[i]][cp].delay);
+      fprintf(out,
+              "\"DAG%d (cp%d)\"  0.0 0.0 %lf\n",
+              DAGs[i],
+              cp,
+              CS->SBG->cp_stats[DAGs[i]][cp].weighted_delay);
+    }
+    fprintf(out,
+            "e\n");
+  }
+
   fprintf(out,
           "pause -1\n");
   fclose(out);
@@ -478,6 +497,79 @@ dv_statistics_graph_critical_path_breakdown() {
   }
 }
 
+void
+dv_statistics_graph_critical_path_delay_idleness(char * filename) {
+  /* generate plots */
+  if (!filename || strlen(filename) == 0) {
+    fprintf(stderr, "Error: no file name to output.");
+    return ;
+  }
+  FILE * out;
+  out = fopen(filename, "w");
+  dv_check(out);
+  fprintf(out,
+          "#set terminal png font arial 14 size 640,350\n"
+          "#set output ~/Desktop/00dv_stat_breakdown.png\n"
+          "set style fill solid 0.8 noborder\n"
+          "set key outside center top horizontal\n"
+          "set boxwidth 0.75 relative\n"
+          "set yrange [0:]\n"
+          /* "set xtics rotate by -25\n" */
+          /* "set xlabel \"clocks\"\n" */
+          "set ylabel \"percent\"\n"
+          "plot "
+          "\"-\" u 2:xtic(1) w boxes t \"idleness during delay\"\n");
+  int DAGs[DV_MAX_DAG];
+  int n = 0;
+  int i;
+  for (i = 0; i < CS->nD; i++) {
+    if (CS->SBG->checked_D[i] == 0)
+      continue;
+    DAGs[n++] = i;
+    
+    //dv_dag_t * D = dv_create_new_dag(CS->D[i].P);
+    dv_dag_t * D = &CS->D[i];    
+    dv_dag_compute_critical_paths(D);
+    int cp;
+    for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
+      CS->SBG->cp_stats[i][cp] = D->rt->cps[cp];
+    }
+  }
+
+  int j, cp;
+  for (j = 0; j < 3; j++) {
+    for (i = 0; i < n; i++) {
+      cp = 1;
+      fprintf(out,
+              "\"DAG%d (cp%d)\"  %lf \n",
+              DAGs[i],
+              cp,
+              CS->SBG->cp_stats[DAGs[i]][cp].weighted_delay / CS->SBG->cp_stats[DAGs[i]][cp].delay * 100);
+    }
+    fprintf(out,
+            "e\n");
+  }
+
+  fprintf(out,
+          "pause -1\n");
+  fclose(out);
+  fprintf(stdout, "generated breakdown graphs to %s\n", filename);
+  
+  /* call gnuplot */
+  GPid pid;
+  char * argv[4];
+  argv[0] = "gnuplot";
+  argv[1] = "-persist";
+  argv[2] = filename;
+  argv[3] = NULL;
+  int ret = g_spawn_async_with_pipes(NULL, argv, NULL,
+                                     G_SPAWN_SEARCH_PATH, //G_SPAWN_DEFAULT | G_SPAWN_SEARCH_PATH,
+                                     NULL, NULL, &pid,
+                                     NULL, NULL, NULL, NULL);
+  if (!ret) {
+    fprintf(stderr, "g_spawn_async_with_pipes() failed.\n");
+  }
+}
 
 /****** end of GNUPLOT graphs ******/
 

@@ -517,7 +517,7 @@ dv_histogram_compute_weighted_values(dv_histogram_t * H) {
     ee = e->next;
     e->cumulative_value = cumul;
     //double weight = 1 + H->D->P->num_workers - e->h[dv_histogram_layer_running];
-    double weight = 1 + (H->D->P->num_workers - e->h[dv_histogram_layer_running]) / H->D->P->num_workers;
+    double weight = (H->D->P->num_workers - e->h[dv_histogram_layer_running]) / H->D->P->num_workers;
     e->weighted_value = weight * (ee->t - e->t);
     cumul += e->weighted_value;
     e = ee;

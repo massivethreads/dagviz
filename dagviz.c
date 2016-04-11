@@ -1986,16 +1986,29 @@ dv_open_statistics_dialog() {
 
     hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
     gtk_box_pack_start(GTK_BOX(tab_box), hbox, FALSE, FALSE, 0);
-    label = gtk_label_new("Critical-path breakdowns: ");
+    label = gtk_label_new("Critical-path statistics: ");
     gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
     entry = gtk_entry_new();
     gtk_box_pack_start(GTK_BOX(hbox), entry, FALSE, FALSE, 0);
     gtk_entry_set_width_chars(GTK_ENTRY(entry), 15);
     gtk_entry_set_text(GTK_ENTRY(entry), CS->SBG->fn_2);
     g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_stat_breakdown_output_filename2_activate), (void *) NULL);
+    
+    hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_box_pack_start(GTK_BOX(tab_box), hbox, FALSE, FALSE, 0);
+    label = gtk_label_new("Work-delay breakdown: ");
+    gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
     button = gtk_button_new_with_mnemonic("_Show");
     gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
     g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_stat_breakdown_show2_button_clicked), (void *) NULL);
+
+    hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_box_pack_start(GTK_BOX(tab_box), hbox, FALSE, FALSE, 0);
+    label = gtk_label_new("Idleness during delay: ");
+    gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
+    button = gtk_button_new_with_mnemonic("_Show");
+    gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
+    g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_stat_breakdown_show3_button_clicked), (void *) NULL);
   }
 
 
@@ -3585,15 +3598,20 @@ main(int argc, char * argv[]) {
   /* PIDAG */
   int i;
   for (i = 1; i < argc; i++) {
-    dv_pidag_t * P = dv_create_new_pidag(argv[i]);
-    if (P) {
-      dv_dag_t * D = dv_create_new_dag(P);
-      dv_view_t * V = dv_create_new_view(D);
-      /* Expand */
-      int count = 0;
-      while (V->D->n < 10 && count < 2) {
-        dv_do_expanding_one(V);
-        count++;
+    glob_t globbuf;
+    glob(argv[i], GLOB_TILDE | GLOB_PERIOD | GLOB_BRACE, NULL, &globbuf);
+    int j;
+    for (j = 0; j < (int) globbuf.gl_pathc; j++) {
+      dv_pidag_t * P = dv_create_new_pidag(globbuf.gl_pathv[j]);
+      if (P) {
+        dv_dag_t * D = dv_create_new_dag(P);
+        dv_view_t * V = dv_create_new_view(D);
+        /* Expand */
+        int count = 0;
+        while (V->D->n < 10 && count < 2) {
+          dv_do_expanding_one(V);
+          count++;
+        }
       }
     }
   }

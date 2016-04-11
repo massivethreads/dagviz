@@ -1640,8 +1640,8 @@ dv_dag_compute_critical_paths_r(dv_dag_t * D, dv_dag_node_t * node, dv_histogram
       lastfinished_t = tail_pi->info.end.t;
     }
     if (!mostweighted_tail ||
-        (cps[DV_CRITICAL_PATH_WEIGHTED].weighted_work + cps[DV_CRITICAL_PATH_WEIGHTED].weighted_delay
-         > node->cps[DV_CRITICAL_PATH_WEIGHTED].weighted_work + node->cps[DV_CRITICAL_PATH_WEIGHTED].weighted_delay)) {
+        (cps[DV_CRITICAL_PATH_WEIGHTED].weighted_delay
+         > node->cps[DV_CRITICAL_PATH_WEIGHTED].weighted_delay)) {
       node->cps[DV_CRITICAL_PATH_WEIGHTED] = cps[DV_CRITICAL_PATH_WEIGHTED];
       mostweighted_tail = tail;
     }
@@ -1727,7 +1727,7 @@ dv_dag_compute_critical_paths(dv_dag_t * D) {
   /* output */
   int cp;
   for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
-    printf("DAG %ld (%.0lf) (cp %d): %.2lf %.2lf %.2lf %.2lf\n",
+    printf("DAG %ld (%.0lf) (cp %d): %.2lf %.2lf %.2lf %.2lf",
            D - CS->D,
            D->et - D->bt,
            cp,
@@ -1735,6 +1735,9 @@ dv_dag_compute_critical_paths(dv_dag_t * D) {
            D->rt->cps[cp].delay,
            D->rt->cps[cp].weighted_work,
            D->rt->cps[cp].weighted_delay);
+    printf("(average %.2lf workers (%.2lf%%) idle during delay)\n",
+           D->rt->cps[cp].weighted_delay / D->rt->cps[cp].delay * D->P->num_workers,
+           D->rt->cps[cp].weighted_delay / D->rt->cps[cp].delay * 100);
   }
 
   if (CS->verbose_level >= 1) {
