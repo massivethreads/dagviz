@@ -1654,18 +1654,18 @@ dv_dag_compute_critical_paths_r(dv_dag_t * D, dv_dag_node_t * node, dv_histogram
     }
     
     /* select this cps or not */
-    if (!mostwork_tail || cps[DV_CRITICAL_PATH_WORK].work > node->cps[DV_CRITICAL_PATH_WORK].work) {
-      node->cps[DV_CRITICAL_PATH_WORK] = cps[DV_CRITICAL_PATH_WORK];
+    if (!mostwork_tail || cps[DV_CRITICAL_PATH_0].work > node->cps[DV_CRITICAL_PATH_0].work) {
+      node->cps[DV_CRITICAL_PATH_0] = cps[DV_CRITICAL_PATH_0];
       mostwork_tail = tail;
     }
     if (!lastfinished_tail || tail_pi->info.end.t >= lastfinished_t) {
-      node->cps[DV_CRITICAL_PATH_WORK_DELAY] = cps[DV_CRITICAL_PATH_WORK_DELAY];
+      node->cps[DV_CRITICAL_PATH_1] = cps[DV_CRITICAL_PATH_1];
       lastfinished_tail = tail;
       lastfinished_t = tail_pi->info.end.t;
     }
     if (!mostweighted_tail ||
-        (cps[DV_CRITICAL_PATH_WEIGHTED].problematic_delay > node->cps[DV_CRITICAL_PATH_WEIGHTED].problematic_delay)) {
-      node->cps[DV_CRITICAL_PATH_WEIGHTED] = cps[DV_CRITICAL_PATH_WEIGHTED];
+        (cps[DV_CRITICAL_PATH_2].problematic_delay > node->cps[DV_CRITICAL_PATH_2].problematic_delay)) {
+      node->cps[DV_CRITICAL_PATH_2] = cps[DV_CRITICAL_PATH_2];
       mostweighted_tail = tail;
     }
     
@@ -1674,43 +1674,43 @@ dv_dag_compute_critical_paths_r(dv_dag_t * D, dv_dag_node_t * node, dv_histogram
     fprintf(stderr, "Could not find mostwork_tail.\n");
   else if (0)
     fprintf(stderr, "mostwork_tail: %.2lf %.2lf %.2lf %.2lf\n",
-            node->cps[DV_CRITICAL_PATH_WORK].work,
-            node->cps[DV_CRITICAL_PATH_WORK].delay,
-            node->cps[DV_CRITICAL_PATH_WORK].problematic_work,
-            node->cps[DV_CRITICAL_PATH_WORK].problematic_delay);
+            node->cps[DV_CRITICAL_PATH_0].work,
+            node->cps[DV_CRITICAL_PATH_0].delay,
+            node->cps[DV_CRITICAL_PATH_0].problematic_work,
+            node->cps[DV_CRITICAL_PATH_0].problematic_delay);
   if (!lastfinished_tail)
     fprintf(stderr, "Could not find lastfinished_tail.\n");
   else if (0)
     fprintf(stderr, "lastfinished_tail: %.2lf %.2lf %.2lf %.2lf\n",
-            node->cps[DV_CRITICAL_PATH_WORK_DELAY].work,
-            node->cps[DV_CRITICAL_PATH_WORK_DELAY].delay,
-            node->cps[DV_CRITICAL_PATH_WORK_DELAY].problematic_work,
-            node->cps[DV_CRITICAL_PATH_WORK_DELAY].problematic_delay);
+            node->cps[DV_CRITICAL_PATH_1].work,
+            node->cps[DV_CRITICAL_PATH_1].delay,
+            node->cps[DV_CRITICAL_PATH_1].problematic_work,
+            node->cps[DV_CRITICAL_PATH_1].problematic_delay);
   if (!mostweighted_tail)
     fprintf(stderr, "Could not find mostweighted_tail.\n");
   else if (0)
     fprintf(stderr, "mostweighted_tail: %.2lf %.2lf %.2lf %.2lf\n",
-            node->cps[DV_CRITICAL_PATH_WEIGHTED].work,
-            node->cps[DV_CRITICAL_PATH_WEIGHTED].delay,
-            node->cps[DV_CRITICAL_PATH_WEIGHTED].problematic_work,
-            node->cps[DV_CRITICAL_PATH_WEIGHTED].problematic_delay);
+            node->cps[DV_CRITICAL_PATH_2].work,
+            node->cps[DV_CRITICAL_PATH_2].delay,
+            node->cps[DV_CRITICAL_PATH_2].problematic_work,
+            node->cps[DV_CRITICAL_PATH_2].problematic_delay);
   
   /* mark nodes */
   {
     dv_dag_node_t * x;
     x = mostwork_tail;
     while (x) {
-      dv_node_flag_set(x->f, DV_NODE_FLAG_CRITICAL_PATH_WORK);
+      dv_node_flag_set(x->f, CS->oncp_flags[DV_CRITICAL_PATH_0]);
       x = x->pre;
     }
     x = lastfinished_tail;
     while (x) {
-      dv_node_flag_set(x->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY);
+      dv_node_flag_set(x->f, CS->oncp_flags[DV_CRITICAL_PATH_1]);
       x = x->pre;
     }
     x = mostweighted_tail;
     while (x) {
-      dv_node_flag_set(x->f, DV_NODE_FLAG_CRITICAL_PATH_WEIGHTED);
+      dv_node_flag_set(x->f, CS->oncp_flags[DV_CRITICAL_PATH_2]);
       x = x->pre;
     }
   }
@@ -1735,9 +1735,9 @@ dv_dag_compute_critical_paths(dv_dag_t * D) {
     dv_histogram_compute_significant_intervals(D->H);
 
     /* compute recursively */
-    dv_node_flag_set(D->rt->f, DV_NODE_FLAG_CRITICAL_PATH_WORK);
-    dv_node_flag_set(D->rt->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY);
-    dv_node_flag_set(D->rt->f, DV_NODE_FLAG_CRITICAL_PATH_WEIGHTED);  
+    dv_node_flag_set(D->rt->f, CS->oncp_flags[DV_CRITICAL_PATH_0]);
+    dv_node_flag_set(D->rt->f, CS->oncp_flags[DV_CRITICAL_PATH_1]);
+    dv_node_flag_set(D->rt->f, CS->oncp_flags[DV_CRITICAL_PATH_2]);  
     dv_dag_compute_critical_paths_r(D, D->rt, NULL);
 
     /* finish */

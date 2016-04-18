@@ -90,9 +90,9 @@ typedef struct dv_llist {
 #define DV_NODE_FLAG_EXPANDING    (1 << 4) /* expanding */
 #define DV_NODE_FLAG_SHRINKING    (1 << 5) /* shrinking */
 
-#define DV_NODE_FLAG_CRITICAL_PATH_WORK (1 << 6) /* node is on critical path of work */
-#define DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY (1 << 7) /* node is on critical path of work & delay */
-#define DV_NODE_FLAG_CRITICAL_PATH_WEIGHTED (1 << 8) /* node is on critical path of weighted work & delay */
+#define DV_NODE_FLAG_CRITICAL_PATH_0 (1 << 6) /* node is on critical path of work */
+#define DV_NODE_FLAG_CRITICAL_PATH_1 (1 << 7) /* node is on critical path of work & delay */
+#define DV_NODE_FLAG_CRITICAL_PATH_2 (1 << 8) /* node is on critical path of weighted work & delay */
 
 #define DV_ZOOM_TO_FIT_MARGIN 15
 #define DV_ZOOM_TO_FIT_MARGIN_DOWN 20
@@ -189,12 +189,12 @@ typedef struct dv_llist {
 #define DV_DAG_NODE_HIDDEN_LEFT  0b1000
 
 #define DV_NUM_CRITICAL_PATHS 3
-#define DV_CRITICAL_PATH_WORK 0
-#define DV_CRITICAL_PATH_WORK_DELAY 1
-#define DV_CRITICAL_PATH_WEIGHTED 2
-#define DV_CRITICAL_PATH_WORK_COLOR "red"
-#define DV_CRITICAL_PATH_WORK_DELAY_COLOR "green"
-#define DV_CRITICAL_PATH_WEIGHTED_COLOR "blue"
+#define DV_CRITICAL_PATH_0 0 /* most work */
+#define DV_CRITICAL_PATH_1 1 /* last finished tails */
+#define DV_CRITICAL_PATH_2 2 /* most problematic delay */
+#define DV_CRITICAL_PATH_0_COLOR "red"
+#define DV_CRITICAL_PATH_1_COLOR "green"
+#define DV_CRITICAL_PATH_2_COLOR "blue"
 
 
 /*-----------------Data Structures-----------------*/
@@ -678,6 +678,9 @@ typedef struct dv_global_state {
   dv_dag_node_t * context_node;
 
   int verbose_level;
+
+  int oncp_flags[DV_NUM_CRITICAL_PATHS];
+  char * cp_colors[DV_NUM_CRITICAL_PATHS];
 } dv_global_state_t;
 
 extern const char * const DV_COLORS[];

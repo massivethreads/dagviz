@@ -644,14 +644,14 @@ dv_view_layout_critical_path_node(dv_view_t * V, dv_dag_node_t * node) {
   case 2:
     u = node->next;  // cont node
     v = node->spawn; // task node
-    if ( (D->show_critical_paths[DV_CRITICAL_PATH_WORK] && dv_node_flag_check(u->f, DV_NODE_FLAG_CRITICAL_PATH_WORK))
-         || (D->show_critical_paths[DV_CRITICAL_PATH_WORK_DELAY] && dv_node_flag_check(u->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY))
-         || (D->show_critical_paths[DV_CRITICAL_PATH_WEIGHTED] && dv_node_flag_check(u->f, DV_NODE_FLAG_CRITICAL_PATH_WEIGHTED)) ) {
+    if ( (D->show_critical_paths[DV_CRITICAL_PATH_0] && dv_node_flag_check(u->f, CS->oncp_flags[DV_CRITICAL_PATH_0]))
+         || (D->show_critical_paths[DV_CRITICAL_PATH_1] && dv_node_flag_check(u->f, CS->oncp_flags[DV_CRITICAL_PATH_1]))
+         || (D->show_critical_paths[DV_CRITICAL_PATH_2] && dv_node_flag_check(u->f, CS->oncp_flags[DV_CRITICAL_PATH_2])) ) {
       dv_view_layout_critical_path_node(V, u);
     }
-    if ( (D->show_critical_paths[DV_CRITICAL_PATH_WORK] && dv_node_flag_check(v->f, DV_NODE_FLAG_CRITICAL_PATH_WORK))
-         || (D->show_critical_paths[DV_CRITICAL_PATH_WORK_DELAY] && dv_node_flag_check(v->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY))
-         || (D->show_critical_paths[DV_CRITICAL_PATH_WEIGHTED] && dv_node_flag_check(v->f, DV_NODE_FLAG_CRITICAL_PATH_WEIGHTED)) ) {
+    if ( (D->show_critical_paths[DV_CRITICAL_PATH_0] && dv_node_flag_check(v->f, CS->oncp_flags[DV_CRITICAL_PATH_0]))
+         || (D->show_critical_paths[DV_CRITICAL_PATH_1] && dv_node_flag_check(v->f, CS->oncp_flags[DV_CRITICAL_PATH_1]))
+         || (D->show_critical_paths[DV_CRITICAL_PATH_2] && dv_node_flag_check(v->f, CS->oncp_flags[DV_CRITICAL_PATH_2])) ) {
       dv_view_layout_critical_path_node(V, v);
     }
     break;
@@ -665,9 +665,9 @@ dv_view_layout_critical_path_node(dv_view_t * V, dv_dag_node_t * node) {
 void
 dv_view_layout_critical_path(dv_view_t * V) {
   V->D->collapsing_d = 0;  
-  if ( (V->D->show_critical_paths[DV_CRITICAL_PATH_WORK] && dv_node_flag_check(V->D->rt->f, DV_NODE_FLAG_CRITICAL_PATH_WORK))
-       || (V->D->show_critical_paths[DV_CRITICAL_PATH_WORK_DELAY] && dv_node_flag_check(V->D->rt->f, DV_NODE_FLAG_CRITICAL_PATH_WEIGHTED))
-       || (V->D->show_critical_paths[DV_CRITICAL_PATH_WEIGHTED] && dv_node_flag_check(V->D->rt->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY)) ) {
+  if ( (V->D->show_critical_paths[DV_CRITICAL_PATH_0] && dv_node_flag_check(V->D->rt->f, CS->oncp_flags[DV_CRITICAL_PATH_0]))
+       || (V->D->show_critical_paths[DV_CRITICAL_PATH_1] && dv_node_flag_check(V->D->rt->f, CS->oncp_flags[DV_CRITICAL_PATH_1]))
+       || (V->D->show_critical_paths[DV_CRITICAL_PATH_2] && dv_node_flag_check(V->D->rt->f, CS->oncp_flags[DV_CRITICAL_PATH_2])) ) {
     dv_view_layout_critical_path_node(V, V->D->rt);
   }
 }
@@ -707,7 +707,7 @@ dv_view_draw_critical_path_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * n
   w = nodeco->rw;
   h = nodeco->dw;
 
-  if ( (D->show_critical_paths[DV_CRITICAL_PATH_WORK] && dv_node_flag_check(node->f, DV_NODE_FLAG_CRITICAL_PATH_WORK)) ) {
+  if ( (D->show_critical_paths[DV_CRITICAL_PATH_0] && dv_node_flag_check(node->f, CS->oncp_flags[DV_CRITICAL_PATH_0])) ) {
   
     /* Draw path */
     cairo_new_path(cr);
@@ -754,7 +754,7 @@ dv_view_draw_critical_path_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * n
             line_width = 10 * DV_NODE_LINE_WIDTH;
           margin = - 0.5 * line_width;
     
-          gdk_rgba_parse(color, DV_CRITICAL_PATH_WORK_COLOR);
+          gdk_rgba_parse(color, CS->cp_colors[DV_CRITICAL_PATH_0]);
           cairo_set_source_rgba(cr, color->red, color->green, color->blue, color->alpha);
           cairo_set_line_width(cr, line_width );
           cairo_rectangle(cr, xx - margin, yy - margin, w + 2 * margin, h + 2 * margin);
@@ -772,7 +772,7 @@ dv_view_draw_critical_path_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * n
   yy = y + 6 * (2 * V->D->radius);
   w = nodeco->rw;
   h = nodeco->dw;
-  if ( (D->show_critical_paths[DV_CRITICAL_PATH_WORK_DELAY] && dv_node_flag_check(node->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY)) ) {
+  if ( (D->show_critical_paths[DV_CRITICAL_PATH_1] && dv_node_flag_check(node->f, CS->oncp_flags[DV_CRITICAL_PATH_1])) ) {
   
     /* Draw path */
     cairo_new_path(cr);
@@ -819,7 +819,7 @@ dv_view_draw_critical_path_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * n
             line_width = 10 * DV_NODE_LINE_WIDTH;
           margin = - 0.5 * line_width;
 
-          gdk_rgba_parse(color, DV_CRITICAL_PATH_WORK_DELAY_COLOR);
+          gdk_rgba_parse(color, CS->cp_colors[DV_CRITICAL_PATH_1]);
           cairo_set_source_rgba(cr, color->red, color->green, color->blue, color->alpha);
           cairo_set_line_width(cr, line_width );
           cairo_rectangle(cr, xx - margin, yy - margin, w + 2 * margin, h + 2 * margin);
@@ -837,7 +837,7 @@ dv_view_draw_critical_path_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * n
   yy = y + 12 * (2 * V->D->radius);
   w = nodeco->rw;
   h = nodeco->dw;
-  if ( (D->show_critical_paths[DV_CRITICAL_PATH_WEIGHTED] && dv_node_flag_check(node->f, DV_NODE_FLAG_CRITICAL_PATH_WEIGHTED)) ) {
+  if ( (D->show_critical_paths[DV_CRITICAL_PATH_2] && dv_node_flag_check(node->f, CS->oncp_flags[DV_CRITICAL_PATH_2])) ) {
   
     /* Draw path */
     cairo_new_path(cr);
@@ -884,7 +884,7 @@ dv_view_draw_critical_path_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * n
             line_width = 10 * DV_NODE_LINE_WIDTH;
           margin = - 0.5 * line_width;
 
-          gdk_rgba_parse(color, DV_CRITICAL_PATH_WEIGHTED_COLOR);
+          gdk_rgba_parse(color, CS->cp_colors[DV_CRITICAL_PATH_2]);
           cairo_set_source_rgba(cr, color->red, color->green, color->blue, color->alpha);
           cairo_set_line_width(cr, line_width );
           cairo_rectangle(cr, xx - margin, yy - margin, w + 2 * margin, h + 2 * margin);
@@ -934,8 +934,8 @@ dv_view_draw_critical_path_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * n
   if (1) { //(!(hidden & DV_DAG_NODE_HIDDEN_RIGHT)) {
     dv_dag_node_t * next = NULL;
     while ( (next = dv_dag_node_traverse_nexts(node, next)) ) {
-      if ( (V->D->show_critical_paths[DV_CRITICAL_PATH_WORK] && dv_node_flag_check(next->f, DV_NODE_FLAG_CRITICAL_PATH_WORK))
-           || (V->D->show_critical_paths[DV_CRITICAL_PATH_WORK_DELAY] && dv_node_flag_check(next->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY)) ) {
+      if ( (V->D->show_critical_paths[DV_CRITICAL_PATH_0] && dv_node_flag_check(next->f, CS->oncp_flags[DV_CRITICAL_PATH_0]))
+           || (V->D->show_critical_paths[DV_CRITICAL_PATH_1] && dv_node_flag_check(next->f, CS->oncp_flags[DV_CRITICAL_PATH_1])) ) {
         dv_view_draw_critical_path_node_r(V, cr, next);
       }
     }
@@ -945,9 +945,9 @@ dv_view_draw_critical_path_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * n
 void
 dv_view_draw_critical_path(dv_view_t * V, cairo_t * cr) {
   /* Draw critical path */
-  if ( (V->D->show_critical_paths[DV_CRITICAL_PATH_WORK] && dv_node_flag_check(V->D->rt->f, DV_NODE_FLAG_CRITICAL_PATH_WORK))
-       || (V->D->show_critical_paths[DV_CRITICAL_PATH_WORK_DELAY] && dv_node_flag_check(V->D->rt->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY))
-       || (V->D->show_critical_paths[DV_CRITICAL_PATH_WEIGHTED] && dv_node_flag_check(V->D->rt->f, DV_NODE_FLAG_CRITICAL_PATH_WEIGHTED)) ) {
+  if ( (V->D->show_critical_paths[DV_CRITICAL_PATH_0] && dv_node_flag_check(V->D->rt->f, CS->oncp_flags[DV_CRITICAL_PATH_0]))
+       || (V->D->show_critical_paths[DV_CRITICAL_PATH_1] && dv_node_flag_check(V->D->rt->f, CS->oncp_flags[DV_CRITICAL_PATH_1]))
+       || (V->D->show_critical_paths[DV_CRITICAL_PATH_2] && dv_node_flag_check(V->D->rt->f, CS->oncp_flags[DV_CRITICAL_PATH_2])) ) {
     dv_llist_init(V->D->itl);
     V->S->nd = 0;
     V->S->ndh = 0;

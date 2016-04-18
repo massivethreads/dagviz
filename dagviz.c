@@ -115,6 +115,13 @@ dv_global_state_init(dv_global_state_t * CS) {
   CS->context_node = NULL;
 
   CS->verbose_level = DV_VERBOSE_LEVEL_DEFAULT;
+
+  CS->oncp_flags[DV_CRITICAL_PATH_0] = DV_NODE_FLAG_CRITICAL_PATH_0;
+  CS->oncp_flags[DV_CRITICAL_PATH_1] = DV_NODE_FLAG_CRITICAL_PATH_1;
+  CS->oncp_flags[DV_CRITICAL_PATH_2] = DV_NODE_FLAG_CRITICAL_PATH_2;
+  CS->cp_colors[DV_CRITICAL_PATH_0] = DV_CRITICAL_PATH_0_COLOR;
+  CS->cp_colors[DV_CRITICAL_PATH_1] = DV_CRITICAL_PATH_1_COLOR;
+  CS->cp_colors[DV_CRITICAL_PATH_2] = DV_CRITICAL_PATH_2_COLOR;
 }
 
 /*-----------------end of Global State-----------------*/
