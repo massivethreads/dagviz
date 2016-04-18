@@ -104,13 +104,20 @@ dv_global_state_init(dv_global_state_t * CS) {
   CS->SD->fn = DV_STAT_DISTRIBUTION_OUTPUT_DEFAULT_NAME;
   CS->SD->bar_width = 20;
   for (i = 0; i < DV_MAX_DAG; i++) {
-    CS->SBG->checked_D[i] = 0;
+    CS->SBG->checked_D[i] = 1;
     CS->SBG->work[i] = 0.0;
     CS->SBG->delay[i] = 0.0;
     CS->SBG->nowork[i] = 0.0;
   }
   CS->SBG->fn = DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME;
   CS->SBG->fn_2 = DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME_2;
+  int cp;
+  for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
+    CS->SBG->checked_cp[cp] = 0;
+    if (cp == DV_CRITICAL_PATH_1)
+      CS->SBG->checked_cp[cp] = 1;
+  }
+  
   CS->context_view = NULL;
   CS->context_node = NULL;
 
@@ -1992,6 +1999,17 @@ dv_open_statistics_dialog() {
     gtk_entry_set_text(GTK_ENTRY(entry), CS->SBG->fn_2);
     g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_stat_breakdown_output_filename2_activate), (void *) NULL);
     
+    for (i = 0; i < DV_NUM_CRITICAL_PATHS; i++) {
+      GtkWidget * cp_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+      gtk_box_pack_start(GTK_BOX(tab_box), cp_box, FALSE, FALSE, 0);
+      char str[50];
+      sprintf(str, "Critical path %ld", i + 1);
+      GtkWidget * checkbox = gtk_check_button_new_with_label(str);
+      gtk_box_pack_start(GTK_BOX(cp_box), checkbox, FALSE, FALSE, 0);
+      gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(checkbox), CS->SBG->checked_cp[i]);
+      g_signal_connect(G_OBJECT(checkbox), "toggled", G_CALLBACK(on_stat_breakdown_cp_checkbox_toggled), (void *) i);
+    }
+
     hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
     gtk_box_pack_start(GTK_BOX(tab_box), hbox, FALSE, FALSE, 0);
     label = gtk_label_new("Work-delay breakdown: ");

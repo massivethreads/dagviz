@@ -578,6 +578,7 @@ typedef struct dv_stat_breakdown_graph {
   dr_clock_t delay[DV_MAX_DAG];
   dr_clock_t nowork[DV_MAX_DAG];
   char * fn_2;
+  int checked_cp[DV_NUM_CRITICAL_PATHS];
 } dv_stat_breakdown_graph_t;
 
 

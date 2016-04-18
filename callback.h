@@ -1672,6 +1672,13 @@ on_stat_breakdown_dag_checkbox_toggled(_unused_ GtkWidget * widget, gpointer use
 }
 
 static gboolean
+on_stat_breakdown_cp_checkbox_toggled(_unused_ GtkWidget * widget, gpointer user_data) {
+  long i = (long) user_data;
+  CS->SBG->checked_cp[i] = 1 - CS->SBG->checked_cp[i];
+  return TRUE;
+}
+
+static gboolean
 on_stat_breakdown_output_filename_activate(GtkWidget * widget, _unused_ gpointer user_data) {
   const char * new_output = gtk_entry_get_text(GTK_ENTRY(widget));
   if (strcmp(CS->SBG->fn, DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME) != 0) {

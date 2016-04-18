@@ -333,8 +333,7 @@ dv_statistics_graph_execution_time_breakdown() {
   int n = 0;
   int i;
   for (i = 0; i < CS->nD; i++) {
-    if (CS->SBG->checked_D[i] == 0)
-      continue;
+    if (!CS->SBG->checked_D[i]) continue;
     dv_dag_t * D = &CS->D[i];
     DAGs[n++] = i;
 
@@ -412,7 +411,7 @@ dv_statistics_graph_critical_path_breakdown(char * filename) {
           "\"-\" u 3 w histogram t \"delay\"\n");
   int i;
   for (i = 0; i < CS->nD; i++) {
-    if (CS->SBG->checked_D[i] == 0) continue;
+    if (!CS->SBG->checked_D[i]) continue;
     
     //dv_dag_t * D = dv_create_new_dag(CS->D[i].P);
     dv_dag_t * D = &CS->D[i];
@@ -423,10 +422,10 @@ dv_statistics_graph_critical_path_breakdown(char * filename) {
   for (ptimes = 0; ptimes < 3; ptimes++) {
     
     for (i = 0; i < CS->nD; i++) {
-      if (CS->SBG->checked_D[i] == 0) continue;
+      if (!CS->SBG->checked_D[i]) continue;
       dv_dag_t * D = &CS->D[i];
       for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
-        if (cp != 1) continue;
+        if (!CS->SBG->checked_cp[cp]) continue;
         fprintf(out,
                 "\"DAG%d (cp%d)\"  %lf %lf",
                 i,
@@ -488,7 +487,7 @@ dv_statistics_graph_critical_path_delay_breakdown(char * filename) {
           "\"-\" u 4 w histogram t \"problematic delay\"\n");
   int i;
   for (i = 0; i < CS->nD; i++) {
-    if (CS->SBG->checked_D[i] == 0) continue;
+    if (!CS->SBG->checked_D[i]) continue;
     
     //dv_dag_t * D = dv_create_new_dag(CS->D[i].P);
     dv_dag_t * D = &CS->D[i];
@@ -499,10 +498,10 @@ dv_statistics_graph_critical_path_delay_breakdown(char * filename) {
   for (ptimes = 0; ptimes < 3; ptimes++) {
     
     for (i = 0; i < CS->nD; i++) {
-      if (CS->SBG->checked_D[i] == 0) continue;
+      if (!CS->SBG->checked_D[i]) continue;
       dv_dag_t * D = &CS->D[i];
       for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
-        if (cp != 1) continue;
+        if (!CS->SBG->checked_cp[cp]) continue;
         fprintf(out,
                 "\"DAG%d (cp%d)\"  %lf %lf %lf",
                 i,
@@ -569,7 +568,7 @@ dv_statistics_graph_critical_path_edge_based_delay_breakdown(char * filename) {
           "\"-\" u 8 w histogram t \"other cont.\"\n");
   int i;
   for (i = 0; i < CS->nD; i++) {
-    if (CS->SBG->checked_D[i] == 0) continue;
+    if (!CS->SBG->checked_D[i]) continue;
     
     //dv_dag_t * D = dv_create_new_dag(CS->D[i].P);
     dv_dag_t * D = &CS->D[i];
@@ -580,8 +579,9 @@ dv_statistics_graph_critical_path_edge_based_delay_breakdown(char * filename) {
   for (ptimes = 0; ptimes < 7; ptimes++) {
     
     for (i = 0; i < CS->nD; i++) {
+      if (!CS->SBG->checked_D[i]) continue;
       for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
-        if (cp != 1) continue;
+        if (!CS->SBG->checked_cp[cp]) continue;
         dv_dag_t * D = &CS->D[i];
         fprintf(out,
                 "\"DAG%d (cp%d)\"  %lf %lf",
