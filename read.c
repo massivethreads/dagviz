@@ -29,6 +29,7 @@ dv_pidag_read_new_file(char * filename) {
   P->fn = filename;
   P->filename = (char *) dv_malloc( sizeof(char) * (strlen(filename) + 1) );
   strcpy(P->filename, filename);
+  P->filename[strlen(filename)] = '\0';
   P->short_filename = dv_filename_get_short_name(P->filename);
   dv_llist_init(P->itl);
 
@@ -92,6 +93,7 @@ dv_pidag_read_new_file_bk(char * filename) {
 
   char dr_header[DAG_RECORDER_HEADER_LEN+1];
   strncpy(dr_header, dp, DAG_RECORDER_HEADER_LEN);
+  dr_header[DAG_RECORDER_HEADER_LEN] = '\0';
   dr_header[DAG_RECORDER_HEADER_LEN] = '\0';
   long n, m, sc, nw;
   long * ldp = (long *) (dp + DAG_RECORDER_HEADER_LEN);
@@ -407,14 +409,94 @@ dv_dag_clear_shrinked_nodes(dv_dag_t * D) {
   dv_dag_clear_shrinked_nodes_r(D, D->rt);
 }
 
+static char *
+dv_get_component_from_string(char * s, int n) {
+  unsigned int i = 0;
+  while (i < strlen(s) && (s[i] == ' ' || s[i] == '_')) i++;
+  int com = 1;
+  while (i < strlen(s) && com < n) {
+    while (i < strlen(s) && s[i] != ' ' && s[i] != '_') i++;
+    while (i < strlen(s) && (s[i] == ' ' || s[i] == '_')) i++;
+    if (i < strlen(s))
+      com++;
+  }
+  if (com == n && i < strlen(s)) {
+    unsigned int ii = i;
+    while (ii < strlen(s) && s[ii] != ' ' && s[ii] != '_') ii++;
+    char * ret = (char *) dv_malloc( sizeof(char) * (ii - i + 1) );
+    unsigned int k;
+    for (k = 0; k < ii - i; k++)
+      ret[k] = s[k + i];
+    //strncpy(ret, s + i, ii - i);
+    ret[ii-i] = '\0';
+    return ret;
+  }
+  return NULL;
+}
+
+static char *
+dv_get_distinct_components_name_string(char * name) {
+  char str[100] = "";
+  int i = 1;
+  while (1) {
+    int to_get_this_component = 0;
+    char * com1 = dv_get_component_from_string(name, i);
+    if (!com1) break;
+    int j;
+    for (j = 0; j < CS->nP; j++) {
+      char * com2 = dv_get_component_from_string(CS->P[j].short_filename, i);
+      int equal = 1;
+      unsigned int t = 0;
+      if (strlen(com1) != strlen(com2)) {
+        equal = 0;
+      } else {
+        while (t < strlen(com1)) {
+          if (com1[t] != com2[t]) {
+            equal = 0;
+            break;
+          }
+          t++;
+        }
+      }
+      //if (com2 && strcmp(com1,com2) != 0) {
+      if (!equal) {
+        to_get_this_component = 1;
+        //printf("com2 = %s\n", com2);
+        //printf("get component %d (%s) (com2 = %s)\n", i, com1, com2);
+      }
+      if (com2)
+        dv_free(com2, sizeof(char) * (strlen(com2) + 1));
+      if (to_get_this_component)
+        break;
+    }
+    if (to_get_this_component) {
+      if (strlen(str))
+        sprintf(str, "%s %s", str, com1);
+      else
+        sprintf(str, "%s", com1);
+    }
+    if (com1)
+      dv_free(com1, sizeof(char) * (strlen(com1) + 1));
+    i++;
+  }
+  char * ret = (char *) dv_malloc( sizeof(char) * (strlen(str) + 1) );
+  strcpy(ret, str);
+  ret[strlen(str)] = '\0';
+  return ret;
+}
+
 void
 dv_dag_init(dv_dag_t * D, dv_pidag_t * P) {
   char str[10];
   sprintf(str, "DAG %ld", D - CS->D);
   D->name = malloc( sizeof(char) * (strlen(str) + 1) );
   strcpy(D->name, str);
-  D->name_on_graph = malloc( sizeof(char) * (strlen(str) + 1) );
-  strcpy(D->name_on_graph, str);
+  D->name[strlen(str)] = '\0';
+  //D->name_on_graph = (char *) malloc( sizeof(char) * (strlen(str) + 1) );
+  //strcpy(D->name_on_graph, str);
+  //D->name_on_graph[strlen(str)] = '\0';
+  D->name_on_graph = dv_get_distinct_components_name_string(P->short_filename);
+  //printf("%s: %s\n", D->name, D->name_on_graph);
   D->P = P;
   D->rt = dv_dag_node_pool_pop(CS->pool);
   dv_dag_node_init(D->rt, 0, 0);

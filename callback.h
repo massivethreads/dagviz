@@ -126,6 +126,7 @@ on_entry_remark_activate(GtkEntry * entry, gpointer user_data) {
   const char * str = gtk_entry_get_text(GTK_ENTRY(entry));
   char str2[strlen(str) + 1];
   strcpy(str2, str);
+  str2[strlen(str)] = '\0';
   /* Read values in string to array */
   V->D->nr = 0;
   long v;
@@ -1582,6 +1583,7 @@ on_stat_distribution_dag_changed(GtkWidget * widget, gpointer user_data) {
       dv_free(e->title, strlen(e->title) + 1);
     e->title = dv_malloc( sizeof(char) * (strlen(new_title) + 1) );
     strcpy(e->title, new_title);
+    e->title[strlen(new_title)] = '\0';
     if (e->title_entry) 
       gtk_entry_set_text(GTK_ENTRY(e->title_entry), e->title);
   }
@@ -1614,6 +1616,7 @@ on_stat_distribution_title_activate(GtkWidget * widget, gpointer user_data) {
     dv_free(e->title, strlen(e->title) + 1);
   e->title = dv_malloc( sizeof(char) * (strlen(new_title) + 1) );
   strcpy(e->title, new_title);
+  e->title[strlen(new_title)] = '\0';
   return TRUE;
 }
 
@@ -1652,6 +1655,7 @@ on_stat_distribution_output_filename_activate(GtkWidget * widget, _unused_ gpoin
   }
   CS->SD->fn = (char *) dv_malloc( sizeof(char) * ( strlen(new_output) + 1) );
   strcpy(CS->SD->fn, new_output);
+  CS->SD->fn[strlen(new_output)] = '\0';
   return TRUE;
 }
 
@@ -1684,6 +1688,7 @@ on_stat_breakdown_dag_name_on_graph_entry_activate(GtkWidget * widget, _unused_ 
   }
   D->name_on_graph = (char *) dv_malloc( sizeof(char) * ( strlen(new_name) + 1) );
   strcpy(D->name_on_graph, new_name);
+  D->name_on_graph[strlen(new_name)] = '\0';
   return TRUE;
 }
 
@@ -1695,6 +1700,7 @@ on_stat_breakdown_output_filename_activate(GtkWidget * widget, _unused_ gpointer
   }
   CS->SBG->fn = (char *) dv_malloc( sizeof(char) * ( strlen(new_output) + 1) );
   strcpy(CS->SBG->fn, new_output);
+  CS->SBG->fn[strlen(new_output)] = '\0';
   return TRUE;
 }
 
@@ -1706,6 +1712,7 @@ on_stat_breakdown_output_filename2_activate(GtkWidget * widget, _unused_ gpointe
   }
   CS->SBG->fn_2 = (char *) dv_malloc( sizeof(char) * ( strlen(new_output) + 1) );
   strcpy(CS->SBG->fn_2, new_output);
+  CS->SBG->fn_2[strlen(new_output)] = '\0';
   return TRUE;
 }
 

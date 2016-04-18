@@ -419,7 +419,7 @@ dv_statistics_graph_critical_path_breakdown(char * filename) {
   }
 
   int ptimes, cp;
-  for (ptimes = 0; ptimes < 3; ptimes++) {
+  for (ptimes = 0; ptimes < 2; ptimes++) {
     
     for (i = 0; i < CS->nD; i++) {
       if (!CS->SBG->checked_D[i]) continue;
@@ -596,8 +596,11 @@ dv_statistics_graph_critical_path_edge_based_delay_breakdown(char * filename) {
     fprintf(out, "\n");    
 
   /* print data */
+  int nptimes = 7;
+  if (!to_print_other_cont)
+    nptimes = 6;
   int ptimes, cp;
-  for (ptimes = 0; ptimes < 7; ptimes++) {
+  for (ptimes = 0; ptimes < nptimes; ptimes++) {
     
     for (i = 0; i < CS->nD; i++) {
       if (!CS->SBG->checked_D[i]) continue;

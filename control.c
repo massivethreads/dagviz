@@ -12,8 +12,12 @@ dv_filename_get_short_name(char * fn) {
     p_from++;
   if (!p_to) p_to = fn + strlen(fn);
   int n = p_to - p_from;
-  char * ret = (char *) dv_malloc( sizeof(char) * n + 1 );
+  char * ret = (char *) dv_malloc( sizeof(char) * (n + 1) );
   strncpy(ret, p_from, n);
+  //int k;
+  //  for (k = 0; k < n; k++)
+  //      ret[k] = p_from[k];  
+  ret[n] = '\0';
   return ret;
 }
 

@@ -2205,6 +2205,7 @@ dv_open_dr_stat_file(dv_pidag_t * P) {
   int n = strlen(P->fn);
   char * filename = (char *) dv_malloc( sizeof(char) * (n + 2) );
   strcpy(filename, P->fn);
+  filename[n] = '\0';
   if (strcmp(filename + n - 3, "dag") != 0)
     return;
   filename[n-3] = 's';
@@ -2233,6 +2234,7 @@ dv_open_dr_pp_file(dv_pidag_t * P) {
   int n = strlen(P->fn);
   char * filename = (char *) dv_malloc( sizeof(char) * (n + 1) );
   strcpy(filename, P->fn);
+  filename[n] = '\0';
   if (strcmp(filename + n - 3, "dag") != 0)
     return;
   filename[n-3] = 'g';
@@ -3633,20 +3635,21 @@ main(int argc, char * argv[]) {
     glob(argv[i], GLOB_TILDE | GLOB_PERIOD | GLOB_BRACE, NULL, &globbuf);
     int j;
     for (j = 0; j < (int) globbuf.gl_pathc; j++) {
-      dv_pidag_t * P = dv_create_new_pidag(globbuf.gl_pathv[j]);
-      if (P) {
-        dv_dag_t * D = dv_create_new_dag(P);
-        dv_view_t * V = dv_create_new_view(D);
-        /* Expand */
-        int count = 0;
-        while (V->D->n < 10 && count < 2) {
-          dv_do_expanding_one(V);
-          count++;
-        }
-      }
+      _unused_ dv_pidag_t * P = dv_create_new_pidag(globbuf.gl_pathv[j]);
     }
     if (globbuf.gl_pathc > 0)
       globfree(&globbuf);
+  }
+  for (i = 0; i < CS->nP; i++) {
+    dv_pidag_t * P = &CS->P[i];
+    dv_dag_t * D = dv_create_new_dag(P);
+    dv_view_t * V = dv_create_new_view(D);
+    /* Expand */
+    int count = 0;
+    while (V->D->n < 10 && count < 2) {
+      dv_do_expanding_one(V);
+      count++;
+    }
   }
   
   /* Viewports */
