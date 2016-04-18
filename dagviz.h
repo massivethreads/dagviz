@@ -238,6 +238,7 @@ typedef struct dv_critical_path_stat {
   double delay;
   double weighted_work;
   double weighted_delay;
+  double delays[dr_dag_edge_kind_max];
 } dv_critical_path_stat_t;
 
 typedef struct dv_dag_node {
@@ -975,7 +976,7 @@ void dv_histogram_fini(dv_histogram_t *);
 void dv_histogram_draw(dv_histogram_t *, cairo_t *, dv_view_t *);
 void dv_histogram_reset(dv_histogram_t *);
 void dv_histogram_build_all(dv_histogram_t *);
-void dv_histogram_compute_weighted_values(dv_histogram_t *);
+void dv_histogram_compute_significant_intervals(dv_histogram_t *);
 
 void dv_view_layout_paraprof(dv_view_t *);
 void dv_view_draw_paraprof(dv_view_t *, cairo_t *);

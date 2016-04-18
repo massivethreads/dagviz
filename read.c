@@ -209,6 +209,10 @@ dv_dag_node_init(dv_dag_node_t * node, dv_dag_node_t * parent, long pii) {
     node->cps[i].delay = 0.0;
     node->cps[i].weighted_work = 0.0;
     node->cps[i].weighted_delay = 0.0;
+    int ek;
+    for (ek = 0; ek < dr_dag_edge_kind_max; ek++) {
+      node->cps[i].delays[ek] = 0.0;
+    }
   }    
 }
 

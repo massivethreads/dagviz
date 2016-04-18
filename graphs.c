@@ -405,14 +405,16 @@ dv_statistics_graph_critical_path_breakdown(char * filename) {
           "set key outside center top horizontal\n"
           "set boxwidth 0.75 relative\n"
           "set yrange [0:]\n"
-          //          "set xtics rotate by -30\n"
-          //          "set xlabel \"clocks\"\n"
           "set ylabel \"cumul. clocks\"\n"
-          "set xtics rotate by -25\n"
+          "set xtics rotate by -30\n"
           "plot "
           "\"-\" u 2:xtic(1) w histogram t \"work\", "
-          "\"-\" u 3 w histogram t \"delay\", "
-          "\"-\" u 4 w histogram t \"delay's idleness\"\n");
+          "\"-\" u 3 w histogram t \"safe delay\", "
+          "\"-\" u 4 w histogram t \"end\", "
+          "\"-\" u 5 w histogram t \"create\", "
+          "\"-\" u 6 w histogram t \"create cont.\", "
+          "\"-\" u 7 w histogram t \"wait cont.\", "
+          "\"-\" u 8 w histogram t \"other cont.\"\n");
   int DAGs[DV_MAX_DAG];
   int n = 0;
   int i;
@@ -422,7 +424,7 @@ dv_statistics_graph_critical_path_breakdown(char * filename) {
     DAGs[n++] = i;
     
     //dv_dag_t * D = dv_create_new_dag(CS->D[i].P);
-    dv_dag_t * D = &CS->D[i];    
+    dv_dag_t * D = &CS->D[i];
     dv_dag_compute_critical_paths(D);
     int cp;
     for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
@@ -430,50 +432,26 @@ dv_statistics_graph_critical_path_breakdown(char * filename) {
     }
   }
 
-  /*
-  int j, cp;
-  for (j = 0; j < 2; j++) {
+  int ptimes, cp;
+  for (ptimes = 0; ptimes < 7; ptimes++) {
+    
     for (i = 0; i < n; i++) {
       for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
+        if (cp != 1) continue;
         fprintf(out,
-                "\"DAG%d (cp%d)\"  %lf %lf\n",
+                "\"DAG%d (cp%d)\"  %lf %lf",
                 DAGs[i],
                 cp,
                 CS->SBG->cp_stats[DAGs[i]][cp].work,
-                CS->SBG->cp_stats[DAGs[i]][cp].delay);
-      }
-      for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
-        fprintf(out,
-                "\"DAG%d (cp%d w.)\"  %lf %lf\n",
-                DAGs[i],
-                cp,
-                CS->SBG->cp_stats[DAGs[i]][cp].weighted_work,
-                CS->SBG->cp_stats[DAGs[i]][cp].weighted_delay);
+                CS->SBG->cp_stats[DAGs[i]][cp].delay - CS->SBG->cp_stats[DAGs[i]][cp].weighted_delay);
+        int ek;
+        for (ek = 0; ek < dr_dag_edge_kind_max; ek++)
+          fprintf(out, " %lf", CS->SBG->cp_stats[DAGs[i]][cp].delays[ek]);
+        fprintf(out, "\n");
       }
     }
-    fprintf(out,
-            "e\n");
-  }
-  */
-  
-  int j, cp;
-  for (j = 0; j < 3; j++) {
-    for (i = 0; i < n; i++) {
-      cp = 1;
-      fprintf(out,
-              "\"DAG%d (cp%d)\"  %lf %lf 0.0\n",
-              DAGs[i],
-              cp,
-              CS->SBG->cp_stats[DAGs[i]][cp].work,
-              CS->SBG->cp_stats[DAGs[i]][cp].delay);
-      fprintf(out,
-              "\"DAG%d (cp%d)\"  0.0 0.0 %lf\n",
-              DAGs[i],
-              cp,
-              CS->SBG->cp_stats[DAGs[i]][cp].weighted_delay);
-    }
-    fprintf(out,
-            "e\n");
+    
+    fprintf(out, "e\n");
   }
 
   fprintf(out,

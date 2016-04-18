@@ -1559,7 +1559,11 @@ dv_dag_compute_critical_paths_r(dv_dag_t * D, dv_dag_node_t * node, dv_histogram
       node->cps[cp].work = work;
       node->cps[cp].delay = 0.0;
       node->cps[cp].weighted_work = weighted_work;
-      node->cps[cp].weighted_delay = 0.0;      
+      node->cps[cp].weighted_delay = 0.0;
+      //memset(node->cps[cp].delays, 0, sizeof(double) * dr_dag_edge_kind_max);
+      int ek;
+      for (ek = 0; ek < dr_dag_edge_kind_max; ek++)
+        node->cps[cp].delays[ek] = 0.0;
     }
     return;
   }
@@ -1596,6 +1600,9 @@ dv_dag_compute_critical_paths_r(dv_dag_t * D, dv_dag_node_t * node, dv_histogram
         cps[cp].delay += x->cps[cp].delay;
         cps[cp].weighted_work += x->cps[cp].weighted_work;
         cps[cp].weighted_delay += x->cps[cp].weighted_delay;
+        int ek;
+        for (ek = 0; ek < dr_dag_edge_kind_max; ek++)
+          cps[cp].delays[ek] += x->cps[cp].delays[ek];
       }
       dv_stack_push(s, (void *) x);
       x = x->pre;
@@ -1604,6 +1611,10 @@ dv_dag_compute_critical_paths_r(dv_dag_t * D, dv_dag_node_t * node, dv_histogram
     /* compute delay along path */
     double delay, weighted_delay;
     delay = weighted_delay = 0.0;
+    double delays[dr_dag_edge_kind_max];
+    int ek;
+    for (ek = 0; ek < dr_dag_edge_kind_max; ek++)
+      delays[ek] = 0.0;
     x = dv_stack_pop(s);
     dr_pi_dag_node * x_pi = dv_pidag_get_node_by_dag_node(D->P, x);
     dv_dag_node_t * xx = NULL;
@@ -1616,6 +1627,8 @@ dv_dag_compute_critical_paths_r(dv_dag_t * D, dv_dag_node_t * node, dv_histogram
       e0 = dv_histogram_insert_entry(D->H, x_pi->info.end.t, e1);
       e1 = dv_histogram_insert_entry(D->H, xx_pi->info.start.t, e0);
       weighted_delay += e1->cumulative_value - e0->cumulative_value;
+      ek = xx_pi->info.in_edge_kind;
+      delays[ek] += e1->cumulative_value - e0->cumulative_value;
       x = xx;
       x_pi = xx_pi;
     }
@@ -1623,10 +1636,21 @@ dv_dag_compute_critical_paths_r(dv_dag_t * D, dv_dag_node_t * node, dv_histogram
     e0 = dv_histogram_insert_entry(D->H, tail_pi->info.end.t, e1);
     e1 = dv_histogram_insert_entry(D->H, pi->info.end.t, e0);
     weighted_delay += e1->cumulative_value - e0->cumulative_value;
+    ek = dr_dag_edge_kind_end;
+    delays[ek] += e1->cumulative_value - e0->cumulative_value;
     int cp;
     for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
       cps[cp].delay += delay;
       cps[cp].weighted_delay += weighted_delay;
+      double sum = 0.0;
+      for (ek = 0; ek < dr_dag_edge_kind_max; ek++) {
+        cps[cp].delays[ek] += delays[ek];
+        sum += delays[ek];
+      }
+      if (sum != weighted_delay) {
+        fprintf(stderr, "Warning: sum of edge-based delays is not equal to weighted delay: %lf <> %lf\n",
+                sum, weighted_delay);
+      }
     }
     
     /* select this cps or not */
@@ -1640,8 +1664,7 @@ dv_dag_compute_critical_paths_r(dv_dag_t * D, dv_dag_node_t * node, dv_histogram
       lastfinished_t = tail_pi->info.end.t;
     }
     if (!mostweighted_tail ||
-        (cps[DV_CRITICAL_PATH_WEIGHTED].weighted_delay
-         > node->cps[DV_CRITICAL_PATH_WEIGHTED].weighted_delay)) {
+        (cps[DV_CRITICAL_PATH_WEIGHTED].weighted_delay > node->cps[DV_CRITICAL_PATH_WEIGHTED].weighted_delay)) {
       node->cps[DV_CRITICAL_PATH_WEIGHTED] = cps[DV_CRITICAL_PATH_WEIGHTED];
       mostweighted_tail = tail;
     }
@@ -1709,7 +1732,7 @@ dv_dag_compute_critical_paths(dv_dag_t * D) {
     D->H->D = D;
     D->H->min_entry_interval = 0.0;
     dv_histogram_build_all(D->H);
-    dv_histogram_compute_weighted_values(D->H);
+    dv_histogram_compute_significant_intervals(D->H);
 
     /* compute recursively */
     dv_node_flag_set(D->rt->f, DV_NODE_FLAG_CRITICAL_PATH_WORK);
@@ -1735,9 +1758,12 @@ dv_dag_compute_critical_paths(dv_dag_t * D) {
            D->rt->cps[cp].delay,
            D->rt->cps[cp].weighted_work,
            D->rt->cps[cp].weighted_delay);
-    printf("(average %.2lf workers (%.2lf%%) idle during delay)\n",
-           D->rt->cps[cp].weighted_delay / D->rt->cps[cp].delay * D->P->num_workers,
+    printf(" (%.2lf%%:",
            D->rt->cps[cp].weighted_delay / D->rt->cps[cp].delay * 100);
+    int ek;
+    for (ek = 0; ek < dr_dag_edge_kind_max; ek++)
+      printf(" %.2lf", D->rt->cps[cp].delays[ek]);
+    printf(")\n");
   }
 
   if (CS->verbose_level >= 1) {

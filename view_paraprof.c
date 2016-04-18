@@ -229,7 +229,6 @@ dv_histogram_remove_node(dv_histogram_t * H, dv_dag_node_t * node, dv_histogram_
 
 void
 dv_histogram_clean(dv_histogram_t * H) {
-  printf("dv_histogram_clean()\n");
   dv_histogram_entry_t * e = H->head_e;
   dv_histogram_entry_t * ee;
   long n = 0;
@@ -504,10 +503,10 @@ dv_histogram_build_all(dv_histogram_t * H) {
 }
 
 void
-dv_histogram_compute_weighted_values(dv_histogram_t * H) {
+dv_histogram_compute_significant_intervals(dv_histogram_t * H) {
   double time = dv_get_time();
   if (CS->verbose_level >= 1) {
-    fprintf(stderr, "dv_histogram_compute_weighted_values()\n");
+    fprintf(stderr, "dv_histogram_compute_significant_intervals()\n");
   }
   double cumul = 0.0;
   dv_histogram_entry_t * e;
@@ -517,14 +516,17 @@ dv_histogram_compute_weighted_values(dv_histogram_t * H) {
     ee = e->next;
     e->cumulative_value = cumul;
     //double weight = 1 + H->D->P->num_workers - e->h[dv_histogram_layer_running];
-    double weight = (H->D->P->num_workers - e->h[dv_histogram_layer_running]) / H->D->P->num_workers;
-    e->weighted_value = weight * (ee->t - e->t);
+    //double weight = (H->D->P->num_workers - e->h[dv_histogram_layer_running]) / H->D->P->num_workers;
+    //e->weighted_value = weight * (ee->t - e->t);
+    e->weighted_value = ee->t - e->t;
+    if (e->h[dv_histogram_layer_running] >= H->D->P->num_workers)
+      e->weighted_value = 0.0;
     cumul += e->weighted_value;
     e = ee;
   }
   H->tail_e->cumulative_value = cumul;
   if (CS->verbose_level >= 1) {
-    fprintf(stderr, "... done dv_histogram_compute_weighted_values(): %lf ms\n", dv_get_time() - time);
+    fprintf(stderr, "... done dv_histogram_compute_significant_intervals(): %lf ms\n", dv_get_time() - time);
   }
 }
 
