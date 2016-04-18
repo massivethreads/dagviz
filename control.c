@@ -1553,17 +1553,17 @@ dv_dag_compute_critical_paths_r(dv_dag_t * D, dv_dag_node_t * node, dv_histogram
     double work = pi->info.end.t - pi->info.start.t;
     dv_histogram_entry_t * e1 = dv_histogram_insert_entry(D->H, pi->info.start.t, e_hint);
     dv_histogram_entry_t * e2 = dv_histogram_insert_entry(D->H, pi->info.end.t, e1);
-    double weighted_work = e2->cumulative_value - e1->cumulative_value;
+    double problematic_work = e2->cumulative_value - e1->cumulative_value;
     int cp;
     for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
       node->cps[cp].work = work;
       node->cps[cp].delay = 0.0;
-      node->cps[cp].weighted_work = weighted_work;
-      node->cps[cp].weighted_delay = 0.0;
-      //memset(node->cps[cp].delays, 0, sizeof(double) * dr_dag_edge_kind_max);
+      node->cps[cp].problematic_work = problematic_work;
+      node->cps[cp].problematic_delay = 0.0;
+      //memset(node->cps[cp].pdelays, 0, sizeof(double) * dr_dag_edge_kind_max);
       int ek;
       for (ek = 0; ek < dr_dag_edge_kind_max; ek++)
-        node->cps[cp].delays[ek] = 0.0;
+        node->cps[cp].pdelays[ek] = 0.0;
     }
     return;
   }
@@ -1598,23 +1598,23 @@ dv_dag_compute_critical_paths_r(dv_dag_t * D, dv_dag_node_t * node, dv_histogram
       for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
         cps[cp].work += x->cps[cp].work;
         cps[cp].delay += x->cps[cp].delay;
-        cps[cp].weighted_work += x->cps[cp].weighted_work;
-        cps[cp].weighted_delay += x->cps[cp].weighted_delay;
+        cps[cp].problematic_work += x->cps[cp].problematic_work;
+        cps[cp].problematic_delay += x->cps[cp].problematic_delay;
         int ek;
         for (ek = 0; ek < dr_dag_edge_kind_max; ek++)
-          cps[cp].delays[ek] += x->cps[cp].delays[ek];
+          cps[cp].pdelays[ek] += x->cps[cp].pdelays[ek];
       }
       dv_stack_push(s, (void *) x);
       x = x->pre;
     }
 
     /* compute delay along path */
-    double delay, weighted_delay;
-    delay = weighted_delay = 0.0;
-    double delays[dr_dag_edge_kind_max];
+    double delay, problematic_delay;
+    delay = problematic_delay = 0.0;
+    double pdelays[dr_dag_edge_kind_max];
     int ek;
     for (ek = 0; ek < dr_dag_edge_kind_max; ek++)
-      delays[ek] = 0.0;
+      pdelays[ek] = 0.0;
     x = dv_stack_pop(s);
     dr_pi_dag_node * x_pi = dv_pidag_get_node_by_dag_node(D->P, x);
     dv_dag_node_t * xx = NULL;
@@ -1626,30 +1626,30 @@ dv_dag_compute_critical_paths_r(dv_dag_t * D, dv_dag_node_t * node, dv_histogram
       delay += xx_pi->info.start.t - x_pi->info.end.t;
       e0 = dv_histogram_insert_entry(D->H, x_pi->info.end.t, e1);
       e1 = dv_histogram_insert_entry(D->H, xx_pi->info.start.t, e0);
-      weighted_delay += e1->cumulative_value - e0->cumulative_value;
+      problematic_delay += e1->cumulative_value - e0->cumulative_value;
       ek = xx_pi->info.in_edge_kind;
-      delays[ek] += e1->cumulative_value - e0->cumulative_value;
+      pdelays[ek] += e1->cumulative_value - e0->cumulative_value;
       x = xx;
       x_pi = xx_pi;
     }
     delay += pi->info.end.t - tail_pi->info.end.t;
     e0 = dv_histogram_insert_entry(D->H, tail_pi->info.end.t, e1);
     e1 = dv_histogram_insert_entry(D->H, pi->info.end.t, e0);
-    weighted_delay += e1->cumulative_value - e0->cumulative_value;
+    problematic_delay += e1->cumulative_value - e0->cumulative_value;
     ek = dr_dag_edge_kind_end;
-    delays[ek] += e1->cumulative_value - e0->cumulative_value;
+    pdelays[ek] += e1->cumulative_value - e0->cumulative_value;
     int cp;
     for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
       cps[cp].delay += delay;
-      cps[cp].weighted_delay += weighted_delay;
+      cps[cp].problematic_delay += problematic_delay;
       double sum = 0.0;
       for (ek = 0; ek < dr_dag_edge_kind_max; ek++) {
-        cps[cp].delays[ek] += delays[ek];
-        sum += delays[ek];
+        cps[cp].pdelays[ek] += pdelays[ek];
+        sum += pdelays[ek];
       }
-      if (sum != weighted_delay) {
-        fprintf(stderr, "Warning: sum of edge-based delays is not equal to weighted delay: %lf <> %lf\n",
-                sum, weighted_delay);
+      if (sum != problematic_delay) {
+        fprintf(stderr, "Warning: sum of edge-based delays is not equal to problematic delay: %lf <> %lf\n",
+                sum, problematic_delay);
       }
     }
     
@@ -1664,7 +1664,7 @@ dv_dag_compute_critical_paths_r(dv_dag_t * D, dv_dag_node_t * node, dv_histogram
       lastfinished_t = tail_pi->info.end.t;
     }
     if (!mostweighted_tail ||
-        (cps[DV_CRITICAL_PATH_WEIGHTED].weighted_delay > node->cps[DV_CRITICAL_PATH_WEIGHTED].weighted_delay)) {
+        (cps[DV_CRITICAL_PATH_WEIGHTED].problematic_delay > node->cps[DV_CRITICAL_PATH_WEIGHTED].problematic_delay)) {
       node->cps[DV_CRITICAL_PATH_WEIGHTED] = cps[DV_CRITICAL_PATH_WEIGHTED];
       mostweighted_tail = tail;
     }
@@ -1676,24 +1676,24 @@ dv_dag_compute_critical_paths_r(dv_dag_t * D, dv_dag_node_t * node, dv_histogram
     fprintf(stderr, "mostwork_tail: %.2lf %.2lf %.2lf %.2lf\n",
             node->cps[DV_CRITICAL_PATH_WORK].work,
             node->cps[DV_CRITICAL_PATH_WORK].delay,
-            node->cps[DV_CRITICAL_PATH_WORK].weighted_work,
-            node->cps[DV_CRITICAL_PATH_WORK].weighted_delay);
+            node->cps[DV_CRITICAL_PATH_WORK].problematic_work,
+            node->cps[DV_CRITICAL_PATH_WORK].problematic_delay);
   if (!lastfinished_tail)
     fprintf(stderr, "Could not find lastfinished_tail.\n");
   else if (0)
     fprintf(stderr, "lastfinished_tail: %.2lf %.2lf %.2lf %.2lf\n",
             node->cps[DV_CRITICAL_PATH_WORK_DELAY].work,
             node->cps[DV_CRITICAL_PATH_WORK_DELAY].delay,
-            node->cps[DV_CRITICAL_PATH_WORK_DELAY].weighted_work,
-            node->cps[DV_CRITICAL_PATH_WORK_DELAY].weighted_delay);
+            node->cps[DV_CRITICAL_PATH_WORK_DELAY].problematic_work,
+            node->cps[DV_CRITICAL_PATH_WORK_DELAY].problematic_delay);
   if (!mostweighted_tail)
     fprintf(stderr, "Could not find mostweighted_tail.\n");
   else if (0)
     fprintf(stderr, "mostweighted_tail: %.2lf %.2lf %.2lf %.2lf\n",
             node->cps[DV_CRITICAL_PATH_WEIGHTED].work,
             node->cps[DV_CRITICAL_PATH_WEIGHTED].delay,
-            node->cps[DV_CRITICAL_PATH_WEIGHTED].weighted_work,
-            node->cps[DV_CRITICAL_PATH_WEIGHTED].weighted_delay);
+            node->cps[DV_CRITICAL_PATH_WEIGHTED].problematic_work,
+            node->cps[DV_CRITICAL_PATH_WEIGHTED].problematic_delay);
   
   /* mark nodes */
   {
@@ -1750,19 +1750,20 @@ dv_dag_compute_critical_paths(dv_dag_t * D) {
   /* output */
   int cp;
   for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
-    printf("DAG %ld (%.0lf) (cp %d): %.2lf %.2lf %.2lf %.2lf",
+    printf("DAG %ld (%.0lf) (cp %d): %.2lf %.2lf %.2lf(%.1lf%%) %.2lf(%.1lf%%)",
            D - CS->D,
            D->et - D->bt,
            cp,
            D->rt->cps[cp].work,
            D->rt->cps[cp].delay,
-           D->rt->cps[cp].weighted_work,
-           D->rt->cps[cp].weighted_delay);
-    printf(" (%.2lf%%:",
-           D->rt->cps[cp].weighted_delay / D->rt->cps[cp].delay * 100);
+           D->rt->cps[cp].problematic_work,
+           D->rt->cps[cp].problematic_work / D->rt->cps[cp].work * 100,
+           D->rt->cps[cp].problematic_delay,
+           D->rt->cps[cp].problematic_delay / D->rt->cps[cp].delay * 100);
+    printf(" (edge-kind-based:");
     int ek;
     for (ek = 0; ek < dr_dag_edge_kind_max; ek++)
-      printf(" %.2lf", D->rt->cps[cp].delays[ek]);
+      printf(" %.1lf%%", D->rt->cps[cp].pdelays[ek] / D->rt->cps[cp].problematic_delay * 100);
     printf(")\n");
   }
 

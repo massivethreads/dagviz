@@ -668,13 +668,6 @@ dv_view_layout_critical_path(dv_view_t * V) {
   if ( (V->D->show_critical_paths[DV_CRITICAL_PATH_WORK] && dv_node_flag_check(V->D->rt->f, DV_NODE_FLAG_CRITICAL_PATH_WORK))
        || (V->D->show_critical_paths[DV_CRITICAL_PATH_WORK_DELAY] && dv_node_flag_check(V->D->rt->f, DV_NODE_FLAG_CRITICAL_PATH_WEIGHTED))
        || (V->D->show_critical_paths[DV_CRITICAL_PATH_WEIGHTED] && dv_node_flag_check(V->D->rt->f, DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY)) ) {
-    int i;
-    for (i = 0; i < DV_NUM_CRITICAL_PATHS; i++) {
-      V->D->cp_stat[i].work = 0.0;
-      V->D->cp_stat[i].delay = 0.0;
-      V->D->cp_stat[i].weighted_work = 0.0;
-      V->D->cp_stat[i].weighted_delay = 0.0;
-    }
     dv_view_layout_critical_path_node(V, V->D->rt);
   }
 }

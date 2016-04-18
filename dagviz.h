@@ -171,7 +171,7 @@ typedef struct dv_llist {
 
 #define DV_STAT_DISTRIBUTION_OUTPUT_DEFAULT_NAME "00dv_stat_distribution.gpl"
 #define DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME "00dv_stat_breakdown.gpl"
-#define DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME_2 "00dv_stat_breakdown_2.gpl"
+#define DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME_2 "00dv_stat_critical_path_breakdown.gpl"
 
 #define DV_VIEW_AUTO_ZOOMFIT_INIT 4 /* 0:none, 1:hor, 2:ver, 3:based, 4:full */
 #define DV_VIEW_ADJUST_AUTO_ZOOMFIT_INIT 1
@@ -236,9 +236,9 @@ typedef struct dv_node_coordinate {
 typedef struct dv_critical_path_stat {
   double work;
   double delay;
-  double weighted_work;
-  double weighted_delay;
-  double delays[dr_dag_edge_kind_max];
+  double problematic_work;
+  double problematic_delay;
+  double pdelays[dr_dag_edge_kind_max];
 } dv_critical_path_stat_t;
 
 typedef struct dv_dag_node {
@@ -325,7 +325,6 @@ typedef struct dv_dag {
   double current_time;
   double time_step;
   int show_critical_paths[DV_NUM_CRITICAL_PATHS];
-  dv_critical_path_stat_t cp_stat[DV_NUM_CRITICAL_PATHS];
   int critical_paths_computed;
 } dv_dag_t;
 
@@ -579,7 +578,6 @@ typedef struct dv_stat_breakdown_graph {
   dr_clock_t delay[DV_MAX_DAG];
   dr_clock_t nowork[DV_MAX_DAG];
   char * fn_2;
-  dv_critical_path_stat_t cp_stats[DV_MAX_DAG][DV_NUM_CRITICAL_PATHS];
 } dv_stat_breakdown_graph_t;
 
 
@@ -845,7 +843,8 @@ void dv_dag_compute_critical_paths(dv_dag_t *);
 void dv_statistics_graph_delay_distribution();
 void dv_statistics_graph_execution_time_breakdown();
 void dv_statistics_graph_critical_path_breakdown(char *);
-void dv_statistics_graph_critical_path_delay_idleness(char *);
+void dv_statistics_graph_critical_path_delay_breakdown(char *);
+void dv_statistics_graph_critical_path_edge_based_delay_breakdown(char *);
 
 
 

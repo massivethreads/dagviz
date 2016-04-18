@@ -1,5 +1,5 @@
 
-callback.h,5348
+callback.h,5399
 on_darea_draw_event(5,92
 on_btn_zoomfit_full_clicked(12,288
 on_btn_shrink_clicked(18,477
@@ -115,6 +115,7 @@ on_stat_breakdown_output_filename_activate(1675,55323
 on_stat_breakdown_output_filename2_activate(1686,55761
 on_stat_breakdown_show_button_clicked(1697,56212
 on_stat_breakdown_show2_button_clicked(1703,56394
+on_stat_breakdown_show3_button_clicked(1709,56589
 
 control.c,2068
 dv_filename_get_short_name(6,107
@@ -174,7 +175,7 @@ dv_find_node_with_pii_r(1499,41860
 dv_dag_build_inner_all_r(1522,42477
 dv_dag_build_inner_all(1542,42960
 dv_dag_compute_critical_paths_r(1547,43052
-dv_dag_compute_critical_paths(1697,48882
+dv_dag_compute_critical_paths(1720,49843
 
 dagviz.c,4268
 dv_global_state_t  CS[CS4,43
@@ -256,563 +257,564 @@ dv_viewport_divide_twodags_6(1770,60753
 dv_viewport_divide_twodags_7(1782,61140
 dv_viewport_divide_threedags_1(1795,61545
 dv_open_statistics_dialog(1810,62005
-dv_change_focused_view(2028,72561
-dv_change_focused_viewport(2043,72843
-dv_switch_focused_viewport_r(2070,73485
-dv_switch_focused_viewport(2102,74213
-dv_switch_focused_view(2114,74650
-dv_switch_focused_view_inside_viewport(2139,75104
-dv_choose_a_new_dag_file(2158,75655
-dv_open_dr_stat_file(2173,76362
-dv_open_dr_pp_file(2201,77204
-dv_create_new_view(2228,78030
-dv_create_new_dag(2331,82139
-dv_create_new_pidag(2424,86445
-dv_gui_init(2487,89227
-dv_gui_build_management_window(2522,90071
-dv_gui_get_management_window(2633,95240
-dv_gui_build_main_window(2640,95407
-dv_gui_get_main_window(3047,118949
-dv_dag_set_time_step(3055,119114
-dv_dag_set_current_time(3063,119333
-dv_dag_set_draw_current_time_active(3077,119765
-dv_gui_replay_sidebox_set_dag(3091,120215
-dv_gui_build_replay_sidebox(3106,120728
-dv_gui_get_replay_sidebox(3222,126947
-dv_gui_nodeinfo_set_node(3229,127095
-dv_gui_build_nodeinfo_sidebox(3306,129560
-dv_gui_get_nodeinfo_sidebox(3457,135458
-dv_open_gui_1(3465,135631
-dv_open_gui(3480,136223
-dv_alarm_set(3499,136702
-dv_signal_handler(3504,136748
-dv_alarm_init(3515,137021
-on_application_activate(3523,137181
-main_usegtkapplication(3528,137309
-main(3584,138642
+dv_change_focused_view(2028,72566
+dv_change_focused_viewport(2043,72848
+dv_switch_focused_viewport_r(2070,73490
+dv_switch_focused_viewport(2102,74218
+dv_switch_focused_view(2114,74655
+dv_switch_focused_view_inside_viewport(2139,75109
+dv_choose_a_new_dag_file(2158,75660
+dv_open_dr_stat_file(2173,76367
+dv_open_dr_pp_file(2201,77209
+dv_create_new_view(2228,78035
+dv_create_new_dag(2331,82144
+dv_create_new_pidag(2424,86450
+dv_gui_init(2487,89232
+dv_gui_build_management_window(2522,90076
+dv_gui_get_management_window(2633,95245
+dv_gui_build_main_window(2640,95412
+dv_gui_get_main_window(3047,118954
+dv_dag_set_time_step(3055,119119
+dv_dag_set_current_time(3063,119338
+dv_dag_set_draw_current_time_active(3077,119770
+dv_gui_replay_sidebox_set_dag(3091,120220
+dv_gui_build_replay_sidebox(3106,120733
+dv_gui_get_replay_sidebox(3222,126952
+dv_gui_nodeinfo_set_node(3229,127100
+dv_gui_build_nodeinfo_sidebox(3306,129565
+dv_gui_get_nodeinfo_sidebox(3457,135463
+dv_open_gui_1(3465,135636
+dv_open_gui(3480,136228
+dv_alarm_set(3499,136707
+dv_signal_handler(3504,136753
+dv_alarm_init(3515,137026
+on_application_activate(3523,137186
+main_usegtkapplication(3528,137314
+main(3584,138647
 
-dagviz.h,17661
+dagviz.h,17697
 #define DAGVIZ_HEADER_6,43
 #define UNW_LOCAL_ONLY32,499
-typedef struct dv_linked_list 47,726
-  void * item;48,758
-  struct dv_linked_list * next;49,773
-} dv_linked_list_t;50,805
-typedef struct dv_stack_cell 52,826
-  void * item;53,857
-  struct dv_stack_cell * next;54,872
-} dv_stack_cell_t;55,903
-typedef struct dv_stack 57,923
-  dv_stack_cell_t * freelist;58,949
-  dv_stack_cell_t * top;59,979
-} dv_stack_t;60,1004
-typedef struct dv_llist_cell 62,1019
-  void * item;63,1050
-  struct dv_llist_cell * next;64,1065
-} dv_llist_cell_t;65,1096
-typedef struct dv_llist 67,1116
-  int sz;68,1142
-  dv_llist_cell_t * top;69,1152
-} dv_llist_t;70,1177
-#define DV_ZOOM_INCREMENT 75,1242
-#define DV_SCALE_INCREMENT 76,1273
-#define DV_HDIS 77,1305
-#define DV_VDIS 78,1324
-#define DV_RADIUS 79,1343
-#define NUM_COLORS 80,1364
-#define DV_UNION_NODE_DOUBLE_BORDER 81,1386
-#define DV_NODE_FLAG_NONE 83,1425
-#define DV_NODE_FLAG_SET 84,1479
-#define DV_NODE_FLAG_UNION 85,1539
-#define DV_NODE_FLAG_INNER_LOADED 86,1603
-#define DV_NODE_FLAG_SHRINKED 87,1676
-#define DV_NODE_FLAG_EXPANDING 88,1745
-#define DV_NODE_FLAG_SHRINKING 89,1804
-#define DV_NODE_FLAG_CRITICAL_PATH_WORK 91,1864
-#define DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY 92,1952
-#define DV_NODE_FLAG_CRITICAL_PATH_WEIGHTED 93,2054
-#define DV_ZOOM_TO_FIT_MARGIN 95,2164
-#define DV_ZOOM_TO_FIT_MARGIN_DOWN 96,2197
-#define DV_STRING_LENGTH 97,2235
-#define DV_STATUS_PADDING 98,2265
-#define DV_SAFE_CLICK_RANGE 99,2293
-#define DV_UNION_NODE_MARGIN 100,2323
-#define DV_NODE_LINE_WIDTH 101,2354
-#define DV_NODE_LINE_WIDTH_COLLECTIVE_FACTOR 102,2385
-#define DV_RADIX_LOG 104,2467
-#define DV_RADIX_POWER 105,2492
-#define DV_RADIX_LINEAR 106,2520
-#define DV_ANIMATION_DURATION 108,2559
-#define DV_ANIMATION_STEP 109,2609
-#define DV_NUM_LAYOUT_TYPES 111,2655
-#define DV_LAYOUT_TYPE_DAG 112,2685
-#define DV_LAYOUT_TYPE_DAG_BOX 113,2714
-#define DV_LAYOUT_TYPE_TIMELINE 114,2747
-#define DV_LAYOUT_TYPE_TIMELINE_VER 115,2781
-#define DV_LAYOUT_TYPE_PARAPROF 116,2819
-#define DV_LAYOUT_TYPE_CRITICAL_PATH 117,2853
-#define DV_LAYOUT_TYPE_INIT 118,2892
-#define DV_NODE_COLOR_INIT 120,2964
-#define DV_SCALE_TYPE_INIT 121,3063
-#define DV_FROMBT_INIT 122,3120
-#define DV_EDGE_TYPE_INIT 123,3145
-#define DV_EDGE_AFFIX_LENGTH 124,3173
-#define DV_CLICK_MODE_INIT 125,3208
-#define DV_HOVER_MODE_INIT 126,3274
-#define DV_SHOW_LEGEND_INIT 127,3399
-#define DV_SHOW_STATUS_INIT 128,3429
-#define DV_REMAIN_INNER_INIT 129,3459
-#define DV_COLOR_REMARKED_ONLY 130,3490
-#define DV_COLOR_POOL_SIZE 132,3524
-#define DV_NUM_COLOR_POOLS 133,3555
-#define DV_TIMELINE_NODE_WITH_BORDER 135,3585
-#define DV_ENTRY_RADIX_MAX_LENGTH 136,3624
-#define DV_DAG_NODE_POOL_SIZE 138,3662
-#define DV_MAX_DAG_FILE 140,3699
-#define DV_MAX_DAG 141,3727
-#define DV_MAX_VIEW 142,3750
-#define DV_MAX_VIEWPORT 143,3774
-#define DV_OK 145,3803
-#define DV_ERROR_OONP 146,3819
-#define backtrace_sample_sz 148,3867
-#define DV_HISTOGRAM_PIECE_POOL_SIZE 150,3899
-#define DV_HISTOGRAM_ENTRY_POOL_SIZE 151,3943
-#define DV_CLIPPING_FRAME_MARGIN 153,3987
-#define DV_HISTOGRAM_MARGIN 154,4022
-#define DV_HISTOGRAM_MARGIN_DOWN 155,4053
-#define DV_HISTOGRAM_DIVIDE_TO_PIECES 157,4090
-#define DV_CAIRO_BOUND_MIN 159,4131
-#define DV_CAIRO_BOUND_MAX 160,4174
-#define DV_MAX_NUM_REMARKS 162,4216
-#define DV_DEFAULT_PAGE_SIZE 164,4247
-#define DV_DEFAULT_PAGE_MIN_NODES 165,4292
-#define DV_DEFAULT_PAGE_MIN_ENTRIES 166,4328
-#define DV_MAX_DISTRIBUTION 168,4367
-#define DV_STAT_DISTRIBUTION_OUTPUT_DEFAULT_NAME 170,4399
-#define DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME 171,4477
-#define DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME_2 172,4549
-#define DV_VIEW_AUTO_ZOOMFIT_INIT 174,4626
-#define DV_VIEW_ADJUST_AUTO_ZOOMFIT_INIT 175,4706
-#define _unused_ 177,4750
-#define _static_unused_ 178,4791
-#define DV_PARAPROF_MIN_ENTRY_INTERVAL 180,4847
-#define DV_VERBOSE_LEVEL_DEFAULT 182,4893
-#define DV_DAG_NODE_HIDDEN_ABOVE 184,4929
-#define DV_DAG_NODE_HIDDEN_RIGHT 185,4969
-#define DV_DAG_NODE_HIDDEN_BELOW 186,5009
-#define DV_DAG_NODE_HIDDEN_LEFT 187,5049
-#define DV_NUM_CRITICAL_PATHS 189,5090
-#define DV_CRITICAL_PATH_WORK 190,5122
-#define DV_CRITICAL_PATH_WORK_DELAY 191,5154
-#define DV_CRITICAL_PATH_WEIGHTED 192,5192
-#define DV_CRITICAL_PATH_WORK_COLOR 193,5228
-#define DV_CRITICAL_PATH_WORK_DELAY_COLOR 194,5270
-#define DV_CRITICAL_PATH_WEIGHTED_COLOR 195,5320
-  unsigned long long tsc;202,5476
-  int worker;203,5502
-  int n;204,5516
-  void * frames[frames205,5525
-} bt_sample_t;206,5563
-typedef struct dv_pidag 208,5579
-  long n;209,5605
-  long m;210,5635
-  unsigned long long start_clock;211,5665
-  long num_workers;212,5746
-  dr_pi_dag_node * T;213,5791
-  dr_pi_dag_edge * E;214,5852
-  dr_pi_string_table * S;215,5913
-  char * fn;216,5939
-  dv_llist_t itl[itl218,6023
-  dr_pi_dag * G;219,6092
-  long sz;220,6109
-  char * name;223,6151
-  GtkWidget * mini_frame;224,6166
-} dv_pidag_t;225,6192
-typedef struct dv_node_coordinate 227,6207
-  double x,228,6243
-  double x, y;228,6243
-  double xp,229,6276
-  double xp, xpre;229,6276
-  double lw,230,6334
-  double lw, rw,230,6334
-  double lw, rw, dw;230,6334
-  double link_lw,231,6384
-  double link_lw, link_rw,231,6384
-  double link_lw, link_rw, link_dw;231,6384
-} dv_node_coordinate_t;232,6420
-typedef struct dv_critical_path_stat 234,6445
-  double work;235,6484
-  double delay;236,6499
-  double weighted_work;237,6515
-  double weighted_delay;238,6539
-} dv_critical_path_stat_t;239,6564
-typedef struct dv_dag_node 241,6592
-  long pii;245,6676
-  int f[f248,6710
-  int d;249,6797
-  struct dv_dag_node * parent;252,6847
-  struct dv_dag_node * pre;253,6878
-  struct dv_dag_node * next;254,6906
-  struct dv_dag_node * spawn;255,7003
-  struct dv_dag_node * head;256,7033
-  struct dv_dag_node * tail;257,7084
-  dv_node_coordinate_t c[c260,7151
-  double started;263,7279
-  long long r;265,7330
-  long long link_r;266,7359
-  char highlight;268,7419
-  dv_critical_path_stat_t cps[cps271,7517
-} dv_dag_node_t;272,7571
-typedef struct dv_histogram dv_histogram_t;274,7589
-typedef struct dv_dag 276,7634
-  char * name;277,7658
-  dv_pidag_t * P;279,7687
-  dv_dag_node_t * rt;288,7833
-  int dmax;289,7872
-  double bt;290,7900
-  double et;291,7930
-  long n;292,7958
-  int cur_d;295,7993
-  int cur_d_ex;296,8026
-  int collapsing_d;297,8088
-  int sdt;300,8194
-  double log_radix;301,8259
-  double power_radix;302,8279
-  double linear_radix;303,8301
-  int frombt;304,8324
-  double radius;305,8338
-  int mV[mV306,8355
-  dv_llist_t itl[itl309,8432
-  dv_histogram_t * H;310,8492
-  int nviews[nviews311,8558
-  int ar[ar313,8642
-  int nr;314,8672
-  GtkWidget * mini_frame;317,8713
-  GtkWidget * views_box;318,8739
-  GtkWidget * status_label;319,8764
-  int draw_with_current_time;321,8793
-  double current_time;322,8823
-  double time_step;323,8846
-  int show_critical_paths[show_critical_paths324,8866
-  dv_critical_path_stat_t cp_stat[cp_stat325,8916
-  int critical_paths_computed;326,8974
-} dv_dag_t;327,9005
-typedef struct dv_view dv_view_t;329,9018
-typedef struct dv_animation 331,9053
-  int on;332,9083
-  double duration;333,9106
-  double step;334,9144
-  dv_llist_t movings[movings335,9178
-  dv_view_t * V;336,9230
-} dv_animation_t;337,9288
-typedef struct dv_motion 339,9307
-  int on;340,9334
-  double duration;341,9344
-  double step;342,9363
-  dv_view_t * V;343,9378
-  long target_pii;344,9395
-  double xfrom,345,9414
-  double xfrom, yfrom;345,9414
-  double zrxfrom,346,9437
-  double zrxfrom, zryfrom;346,9437
-  double xto,347,9464
-  double xto, yto;347,9464
-  double zrxto,348,9483
-  double zrxto, zryto;348,9483
-  double start_t;349,9506
-} dv_motion_t;350,9524
-typedef struct dv_view_status 352,9540
-  char drag_on;354,9592
-  double pressx,355,9639
-  double pressx, pressy;355,9639
-  double accdisx,356,9697
-  double accdisx, accdisy;356,9697
-  int nc;358,9775
-  double vpw,360,9858
-  double vpw, vph;360,9858
-  dv_animation_t a[a362,9929
-  long nd;363,9975
-  int lt;364,10014
-  int coord;365,10042
-  int et;366,10116
-  int edge_affix;367,10142
-  int cm;368,10184
-  long ndh;369,10211
-  int focused;370,10267
-  long nl;371,10282
-  long ntr;372,10324
-  char do_zoomfit;375,10395
-  double x,376,10461
-  double x, y;376,10461
-  double basex,377,10530
-  double basex, basey;377,10530
-  double zoom_ratio_x;378,10553
-  double zoom_ratio_y;379,10604
-  int do_zoom_x;380,10653
-  int do_zoom_y;381,10670
-  int do_scale_radix;382,10687
-  int do_scale_radius;383,10709
-  int auto_zoomfit;384,10732
-  int adjust_auto_zoomfit;385,10796
-  dv_motion_t m[m388,10849
-  dv_dag_node_t * last_hovered_node;390,10870
-  int hm;391,10907
-  int show_legend;392,10986
-  int show_status;393,11005
-  int remain_inner;394,11024
-  int color_remarked_only;395,11044
-  int nviewports;397,11074
-} dv_view_status_t;398,11115
-typedef struct dv_viewport dv_viewport_t;400,11136
-typedef struct dv_view dv_view_t;401,11178
-typedef struct dv_view_toolbox 403,11213
-  dv_view_t * V;404,11246
-  GtkWidget * window;405,11263
-  GtkWidget * combobox_lt;408,11301
-  GtkWidget * combobox_nc;409,11328
-  GtkWidget * combobox_sdt;410,11355
-  GtkWidget * entry_radix;411,11383
-  GtkWidget * checkbox_scale_radix;412,11410
-  GtkWidget * combobox_cm;413,11446
-  GtkWidget * combobox_hm;414,11473
-  GtkWidget * checkbox_legend;415,11500
-  GtkWidget * checkbox_status;416,11531
-  GtkWidget * combobox_azf;417,11562
-  GtkWidget * checkbox_azf;418,11590
-  GtkWidget * entry_paraprof_min_interval;419,11618
-  GtkWidget * entry_remark;422,11678
-  GtkWidget * checkbox_remain_inner;423,11706
-  GtkWidget * checkbox_color_remarked_only;424,11743
-  GtkWidget * entry_search;427,11806
-  GtkWidget * checkbox_xzoom;428,11834
-  GtkWidget * checkbox_yzoom;429,11864
-  GtkWidget * checkbox_scale_radius;430,11894
-  GtkWidget * combobox_frombt;431,11933
-  GtkWidget * combobox_et;432,11964
-  GtkWidget * togg_eaffix;433,11991
-} dv_view_toolbox_t;434,12018
-typedef struct dv_view 436,12040
-  char * name;437,12065
-  dv_dag_t * D;438,12080
-  dv_view_status_t S[S439,12109
-  dv_viewport_t * mainVP;440,12166
-  dv_view_toolbox_t T[T441,12237
-  int mVP[mVP442,12263
-} dv_view_t;443,12335
-typedef struct dv_viewport_toolbox 445,12349
-  GtkWidget * toolbar;446,12386
-  GtkWidget * label;447,12409
-} dv_viewport_toolbox_t;448,12430
-typedef struct dv_viewport 450,12456
-  int split;451,12485
-  GtkWidget * frame;452,12549
-  GtkWidget * paned;455,12615
-  GtkOrientation orientation;456,12651
-  struct dv_viewport * vp1;457,12705
-  struct dv_viewport * vp2;458,12760
-  GtkWidget * box;461,12836
-  GtkWidget * darea;462,12889
-  double vpw,463,12929
-  double vpw, vph;463,12929
-  int mV[mV464,12971
-  dv_view_t * mainV;465,13030
-  dv_viewport_toolbox_t T[T466,13051
-  GtkWidget * mini_frame;470,13130
-  GtkWidget * mini_paned;471,13156
-  GtkWidget * mini_frame_2;473,13198
-  GtkWidget * mini_frame_2_box;474,13226
-  GtkWidget * split_combobox;475,13258
-  GtkWidget * orient_combobox;476,13288
-  GtkWidget * dag_menubutton;477,13319
-  GtkWidget * dag_menu;478,13349
-} dv_viewport_t;479,13373
-typedef struct dv_btsample_viewer 481,13391
-  dv_pidag_t * P;482,13427
-  GtkWidget * label_dag_file_name;483,13445
-  GtkWidget * entry_bt_file_name;484,13480
-  GtkWidget * entry_binary_file_name;485,13514
-  GtkWidget * combobox_worker;486,13552
-  GtkWidget * entry_time_from;487,13583
-  GtkWidget * entry_time_to;488,13614
-  GtkWidget * text_view;489,13643
-  GtkWidget * entry_node_id;490,13668
-} dv_btsample_viewer_t;491,13697
-  dv_histogram_layer_running,495,13738
-  dv_histogram_layer_ready_end,496,13768
-  dv_histogram_layer_ready_create,497,13800
-  dv_histogram_layer_ready_create_cont,498,13835
-  dv_histogram_layer_ready_wait_cont,499,13875
-  dv_histogram_layer_ready_other_cont,500,13913
-  dv_histogram_layer_max,501,13952
-} dv_histogram_layer_t;502,13978
-typedef struct dv_histogram_entry 504,14003
-  double t;505,14039
-  struct dv_histogram_entry * next;506,14051
-  double h[h507,14087
-  double weighted_value;508,14123
-  double cumulative_value;509,14148
-} dv_histogram_entry_t;510,14175
-typedef struct dv_histogram 512,14200
-  dv_histogram_entry_t * head_e;513,14230
-  dv_histogram_entry_t * tail_e;514,14263
-  long n_e;515,14296
-  dv_dag_t * D;516,14308
-  double work,517,14324
-  double work, delay,517,14324
-  double work, delay, nowork;517,14324
-  double min_entry_interval;518,14354
-  double unit_thick;519,14383
-} dv_histogram_t;520,14404
-typedef struct dv_histogram_entry_page 522,14423
-  struct dv_histogram_entry_page * next;523,14464
-  long sz;524,14505
-  dv_histogram_entry_t entries[entries525,14516
-} dv_histogram_entry_page_t;526,14577
-typedef struct dv_histogram_entry_pool 528,14607
-  dv_histogram_entry_t * head;529,14648
-  dv_histogram_entry_t * tail;530,14679
-  dv_histogram_entry_page_t * pages;531,14710
-  long sz;532,14747
-  long N;533,14778
-  long n;534,14819
-} dv_histogram_entry_pool_t;535,14859
-typedef struct dv_dag_node_page 538,14890
-  struct dv_dag_node_page * next;539,14924
-  long sz;540,14958
-  dv_dag_node_t nodes[nodes541,14969
-} dv_dag_node_page_t;542,15019
-typedef struct dv_dag_node_pool 544,15042
-  dv_dag_node_t * head;545,15076
-  dv_dag_node_t * tail;546,15100
-  dv_dag_node_page_t * pages;547,15124
-  long sz;548,15154
-  long N;549,15185
-  long n;550,15224
-} dv_dag_node_pool_t;551,15262
-typedef struct dv_stat_distribution_entry 554,15286
-  int dag_id;555,15330
-  int type;556,15344
-  int stolen;557,15378
-  char * title;558,15415
-  GtkWidget * title_entry;559,15431
-} dv_stat_distribution_entry_t;560,15458
-typedef struct dv_stat_distribution 562,15491
-  int ne;563,15529
-  dv_stat_distribution_entry_t e[e564,15539
-  long xrange_from,565,15594
-  long xrange_from, xrange_to;565,15594
-  GtkWidget * node_pool_label;566,15625
-  GtkWidget * entry_pool_label;567,15656
-  char * fn;568,15688
-  int bar_width;569,15701
-} dv_stat_distribution_t;570,15718
-typedef struct dv_stat_breakdown_graph 572,15745
-  int checked_D[checked_D573,15786
-  char * fn;574,15838
-  dr_clock_t work[work575,15851
-  dr_clock_t delay[delay576,15882
-  dr_clock_t nowork[nowork577,15914
-  char * fn_2;578,15947
-  dv_critical_path_stat_t cp_stats[cp_stats579,15962
-} dv_stat_breakdown_graph_t;580,16033
-typedef struct dv_gui 583,16064
-  GtkBuilder * builder;585,16108
-  GtkWidget * window;586,16132
-  GtkWidget * window_box;587,16154
-  GtkWidget * menubar;588,16180
-  GtkWidget * main_box;589,16203
-  GtkAccelGroup * accel_group;590,16227
-  GtkWidget * context_menu;591,16258
-  GtkWidget * left_sidebar;592,16286
-  GtkWidget * toolbar;595,16331
-  GtkWidget * dag_menu;596,16354
-  GtkWidget * division_menu;597,16378
-  GtkWidget * statusbar1;600,16430
-  GtkWidget * statusbar2;601,16480
-  GtkWidget * statusbar3;602,16528
-  GtkWidget * management_window;605,16596
-  GtkWidget * notebook;606,16629
-  GtkWidget * scrolled_box;607,16653
-  GtkWidget * dag_file_scrolled_box;608,16708
-  GtkWidget * create_dag_menu;609,16777
-  struct replay 612,16832
-    GtkWidget * sidebox;613,16850
-    GtkWidget * enable;614,16875
-    GtkWidget * scale;615,16899
-    GtkWidget * entry;616,16922
-    GtkWidget * time_step_entry;617,16945
-    GtkWidget * dag_menu;618,16978
-    int mD[mD619,17004
-  } replay;620,17028
-  struct nodeinfo 623,17069
-    GtkWidget * sidebox;624,17089
-    GtkWidget * offset;625,17114
-    GtkWidget * type;626,17138
-    GtkWidget * depth;627,17160
-    GtkWidget * cur_node_count;628,17183
-    GtkWidget * start_time;629,17215
-    GtkWidget * end_time;630,17243
-    GtkWidget * duration;631,17269
-    GtkWidget * first_ready_t;632,17299
-    GtkWidget * est;633,17330
-    GtkWidget * t1inf;634,17351
-    GtkWidget * counters;635,17374
-    GtkWidget * worker;636,17400
-    GtkWidget * cpu;637,17424
-    GtkWidget * start_pos;638,17445
-    GtkWidget * end_pos;639,17472
-  } nodeinfo;640,17497
-} dv_gui_t;642,17514
-typedef struct dv_global_state 644,17527
-  dv_pidag_t P[P646,17572
-  dv_dag_t D[D647,17605
-  dv_view_t V[V648,17631
-  int nP;649,17659
-  int nD;650,17669
-  int nV;651,17679
-  dv_llist_cell_t * FL;652,17689
-  dv_view_t * activeV;653,17715
-  dv_viewport_t * activeVP;654,17738
-  int err;655,17766
-  int CP[CP658,17800
-  int CP_sizes[CP_sizes659,17893
-  dv_viewport_t VP[VP662,17944
-  int nVP;663,17981
-  dv_btsample_viewer_t btviewer[btviewer666,18018
-  dv_dag_node_pool_t pool[pool669,18076
-  dv_histogram_entry_pool_t epool[epool670,18106
-  dv_stat_distribution_t SD[SD673,18164
-  dv_stat_breakdown_graph_t SBG[SBG674,18196
-  dv_view_t * context_view;676,18233
-  dv_dag_node_t * context_node;677,18261
-  int verbose_level;679,18294
-} dv_global_state_t;680,18315
-dv_get_callpath_by_backtrace(1033,33149
-dv_get_callpath_by_libunwind(1046,33485
-dv_check_(1070,34105
-#define dv_check(1083,34490
-dv_malloc(1086,34591
-dv_free(1093,34690
-dv_node_flag_init(1102,34807
-dv_node_flag_check(1107,34885
-dv_node_flag_set(1113,34989
-dv_node_flag_remove(1119,35093
-dv_is_set(1125,35198
-dv_is_union(1131,35334
-dv_is_inner_loaded(1137,35474
-dv_is_shrinked(1143,35628
-dv_is_expanded(1149,35774
-dv_is_expanding(1155,35891
-dv_is_shrinking(1161,36039
-dv_is_single(1167,36187
-dv_is_visible(1178,36438
-dv_is_inward_callable(1189,36719
-dv_log_set_error(1199,36978
-dv_longlong_init(1207,37104
-dv_set_bit(1217,37264
-dv_get_bit(1224,37384
-dv_get_color_pool_index(1231,37493
-dv_get_time(1249,37943
+typedef struct dv_linked_list 49,745
+  void * item;50,777
+  struct dv_linked_list * next;51,792
+} dv_linked_list_t;52,824
+typedef struct dv_stack_cell 54,845
+  void * item;55,876
+  struct dv_stack_cell * next;56,891
+} dv_stack_cell_t;57,922
+typedef struct dv_stack 59,942
+  dv_stack_cell_t * freelist;60,968
+  dv_stack_cell_t * top;61,998
+} dv_stack_t;62,1023
+typedef struct dv_llist_cell 64,1038
+  void * item;65,1069
+  struct dv_llist_cell * next;66,1084
+} dv_llist_cell_t;67,1115
+typedef struct dv_llist 69,1135
+  int sz;70,1161
+  dv_llist_cell_t * top;71,1171
+} dv_llist_t;72,1196
+#define DV_ZOOM_INCREMENT 77,1261
+#define DV_SCALE_INCREMENT 78,1292
+#define DV_HDIS 79,1324
+#define DV_VDIS 80,1343
+#define DV_RADIUS 81,1362
+#define NUM_COLORS 82,1383
+#define DV_UNION_NODE_DOUBLE_BORDER 83,1405
+#define DV_NODE_FLAG_NONE 85,1444
+#define DV_NODE_FLAG_SET 86,1498
+#define DV_NODE_FLAG_UNION 87,1558
+#define DV_NODE_FLAG_INNER_LOADED 88,1622
+#define DV_NODE_FLAG_SHRINKED 89,1695
+#define DV_NODE_FLAG_EXPANDING 90,1764
+#define DV_NODE_FLAG_SHRINKING 91,1823
+#define DV_NODE_FLAG_CRITICAL_PATH_WORK 93,1883
+#define DV_NODE_FLAG_CRITICAL_PATH_WORK_DELAY 94,1971
+#define DV_NODE_FLAG_CRITICAL_PATH_WEIGHTED 95,2073
+#define DV_ZOOM_TO_FIT_MARGIN 97,2183
+#define DV_ZOOM_TO_FIT_MARGIN_DOWN 98,2216
+#define DV_STRING_LENGTH 99,2254
+#define DV_STATUS_PADDING 100,2284
+#define DV_SAFE_CLICK_RANGE 101,2312
+#define DV_UNION_NODE_MARGIN 102,2342
+#define DV_NODE_LINE_WIDTH 103,2373
+#define DV_NODE_LINE_WIDTH_COLLECTIVE_FACTOR 104,2404
+#define DV_RADIX_LOG 106,2486
+#define DV_RADIX_POWER 107,2511
+#define DV_RADIX_LINEAR 108,2539
+#define DV_ANIMATION_DURATION 110,2578
+#define DV_ANIMATION_STEP 111,2628
+#define DV_NUM_LAYOUT_TYPES 113,2674
+#define DV_LAYOUT_TYPE_DAG 114,2704
+#define DV_LAYOUT_TYPE_DAG_BOX 115,2733
+#define DV_LAYOUT_TYPE_TIMELINE 116,2766
+#define DV_LAYOUT_TYPE_TIMELINE_VER 117,2800
+#define DV_LAYOUT_TYPE_PARAPROF 118,2838
+#define DV_LAYOUT_TYPE_CRITICAL_PATH 119,2872
+#define DV_LAYOUT_TYPE_INIT 120,2911
+#define DV_NODE_COLOR_INIT 122,2983
+#define DV_SCALE_TYPE_INIT 123,3082
+#define DV_FROMBT_INIT 124,3139
+#define DV_EDGE_TYPE_INIT 125,3164
+#define DV_EDGE_AFFIX_LENGTH 126,3192
+#define DV_CLICK_MODE_INIT 127,3227
+#define DV_HOVER_MODE_INIT 128,3293
+#define DV_SHOW_LEGEND_INIT 129,3418
+#define DV_SHOW_STATUS_INIT 130,3448
+#define DV_REMAIN_INNER_INIT 131,3478
+#define DV_COLOR_REMARKED_ONLY 132,3509
+#define DV_COLOR_POOL_SIZE 134,3543
+#define DV_NUM_COLOR_POOLS 135,3574
+#define DV_TIMELINE_NODE_WITH_BORDER 137,3604
+#define DV_ENTRY_RADIX_MAX_LENGTH 138,3643
+#define DV_DAG_NODE_POOL_SIZE 140,3681
+#define DV_MAX_DAG_FILE 142,3718
+#define DV_MAX_DAG 143,3746
+#define DV_MAX_VIEW 144,3769
+#define DV_MAX_VIEWPORT 145,3793
+#define DV_OK 147,3822
+#define DV_ERROR_OONP 148,3838
+#define backtrace_sample_sz 150,3886
+#define DV_HISTOGRAM_PIECE_POOL_SIZE 152,3918
+#define DV_HISTOGRAM_ENTRY_POOL_SIZE 153,3962
+#define DV_CLIPPING_FRAME_MARGIN 155,4006
+#define DV_HISTOGRAM_MARGIN 156,4041
+#define DV_HISTOGRAM_MARGIN_DOWN 157,4072
+#define DV_HISTOGRAM_DIVIDE_TO_PIECES 159,4109
+#define DV_CAIRO_BOUND_MIN 161,4150
+#define DV_CAIRO_BOUND_MAX 162,4193
+#define DV_MAX_NUM_REMARKS 164,4235
+#define DV_DEFAULT_PAGE_SIZE 166,4266
+#define DV_DEFAULT_PAGE_MIN_NODES 167,4311
+#define DV_DEFAULT_PAGE_MIN_ENTRIES 168,4347
+#define DV_MAX_DISTRIBUTION 170,4386
+#define DV_STAT_DISTRIBUTION_OUTPUT_DEFAULT_NAME 172,4418
+#define DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME 173,4496
+#define DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME_2 174,4568
+#define DV_VIEW_AUTO_ZOOMFIT_INIT 176,4645
+#define DV_VIEW_ADJUST_AUTO_ZOOMFIT_INIT 177,4725
+#define _unused_ 179,4769
+#define _static_unused_ 180,4810
+#define DV_PARAPROF_MIN_ENTRY_INTERVAL 182,4866
+#define DV_VERBOSE_LEVEL_DEFAULT 184,4912
+#define DV_DAG_NODE_HIDDEN_ABOVE 186,4948
+#define DV_DAG_NODE_HIDDEN_RIGHT 187,4988
+#define DV_DAG_NODE_HIDDEN_BELOW 188,5028
+#define DV_DAG_NODE_HIDDEN_LEFT 189,5068
+#define DV_NUM_CRITICAL_PATHS 191,5109
+#define DV_CRITICAL_PATH_WORK 192,5141
+#define DV_CRITICAL_PATH_WORK_DELAY 193,5173
+#define DV_CRITICAL_PATH_WEIGHTED 194,5211
+#define DV_CRITICAL_PATH_WORK_COLOR 195,5247
+#define DV_CRITICAL_PATH_WORK_DELAY_COLOR 196,5289
+#define DV_CRITICAL_PATH_WEIGHTED_COLOR 197,5339
+  unsigned long long tsc;204,5495
+  int worker;205,5521
+  int n;206,5535
+  void * frames[frames207,5544
+} bt_sample_t;208,5582
+typedef struct dv_pidag 210,5598
+  long n;211,5624
+  long m;212,5654
+  unsigned long long start_clock;213,5684
+  long num_workers;214,5765
+  dr_pi_dag_node * T;215,5810
+  dr_pi_dag_edge * E;216,5871
+  dr_pi_string_table * S;217,5932
+  char * fn;218,5958
+  dv_llist_t itl[itl220,6042
+  dr_pi_dag * G;221,6111
+  long sz;222,6128
+  char * name;225,6170
+  GtkWidget * mini_frame;226,6185
+} dv_pidag_t;227,6211
+typedef struct dv_node_coordinate 229,6226
+  double x,230,6262
+  double x, y;230,6262
+  double xp,231,6295
+  double xp, xpre;231,6295
+  double lw,232,6353
+  double lw, rw,232,6353
+  double lw, rw, dw;232,6353
+  double link_lw,233,6403
+  double link_lw, link_rw,233,6403
+  double link_lw, link_rw, link_dw;233,6403
+} dv_node_coordinate_t;234,6439
+typedef struct dv_critical_path_stat 236,6464
+  double work;237,6503
+  double delay;238,6518
+  double weighted_work;239,6534
+  double weighted_delay;240,6558
+  double delays[delays241,6583
+} dv_critical_path_stat_t;242,6622
+typedef struct dv_dag_node 244,6650
+  long pii;248,6734
+  int f[f251,6768
+  int d;252,6855
+  struct dv_dag_node * parent;255,6905
+  struct dv_dag_node * pre;256,6936
+  struct dv_dag_node * next;257,6964
+  struct dv_dag_node * spawn;258,7061
+  struct dv_dag_node * head;259,7091
+  struct dv_dag_node * tail;260,7142
+  dv_node_coordinate_t c[c263,7209
+  double started;266,7337
+  long long r;268,7388
+  long long link_r;269,7417
+  char highlight;271,7477
+  dv_critical_path_stat_t cps[cps274,7575
+} dv_dag_node_t;275,7629
+typedef struct dv_histogram dv_histogram_t;277,7647
+typedef struct dv_dag 279,7692
+  char * name;280,7716
+  dv_pidag_t * P;282,7745
+  dv_dag_node_t * rt;291,7891
+  int dmax;292,7930
+  double bt;293,7958
+  double et;294,7988
+  long n;295,8016
+  int cur_d;298,8051
+  int cur_d_ex;299,8084
+  int collapsing_d;300,8146
+  int sdt;303,8252
+  double log_radix;304,8317
+  double power_radix;305,8337
+  double linear_radix;306,8359
+  int frombt;307,8382
+  double radius;308,8396
+  int mV[mV309,8413
+  dv_llist_t itl[itl312,8490
+  dv_histogram_t * H;313,8550
+  int nviews[nviews314,8616
+  int ar[ar316,8700
+  int nr;317,8730
+  GtkWidget * mini_frame;320,8771
+  GtkWidget * views_box;321,8797
+  GtkWidget * status_label;322,8822
+  int draw_with_current_time;324,8851
+  double current_time;325,8881
+  double time_step;326,8904
+  int show_critical_paths[show_critical_paths327,8924
+  dv_critical_path_stat_t cp_stat[cp_stat328,8974
+  int critical_paths_computed;329,9032
+} dv_dag_t;330,9063
+typedef struct dv_view dv_view_t;332,9076
+typedef struct dv_animation 334,9111
+  int on;335,9141
+  double duration;336,9164
+  double step;337,9202
+  dv_llist_t movings[movings338,9236
+  dv_view_t * V;339,9288
+} dv_animation_t;340,9346
+typedef struct dv_motion 342,9365
+  int on;343,9392
+  double duration;344,9402
+  double step;345,9421
+  dv_view_t * V;346,9436
+  long target_pii;347,9453
+  double xfrom,348,9472
+  double xfrom, yfrom;348,9472
+  double zrxfrom,349,9495
+  double zrxfrom, zryfrom;349,9495
+  double xto,350,9522
+  double xto, yto;350,9522
+  double zrxto,351,9541
+  double zrxto, zryto;351,9541
+  double start_t;352,9564
+} dv_motion_t;353,9582
+typedef struct dv_view_status 355,9598
+  char drag_on;357,9650
+  double pressx,358,9697
+  double pressx, pressy;358,9697
+  double accdisx,359,9755
+  double accdisx, accdisy;359,9755
+  int nc;361,9833
+  double vpw,363,9916
+  double vpw, vph;363,9916
+  dv_animation_t a[a365,9987
+  long nd;366,10033
+  int lt;367,10072
+  int coord;368,10100
+  int et;369,10174
+  int edge_affix;370,10200
+  int cm;371,10242
+  long ndh;372,10269
+  int focused;373,10325
+  long nl;374,10340
+  long ntr;375,10382
+  char do_zoomfit;378,10453
+  double x,379,10519
+  double x, y;379,10519
+  double basex,380,10588
+  double basex, basey;380,10588
+  double zoom_ratio_x;381,10611
+  double zoom_ratio_y;382,10662
+  int do_zoom_x;383,10711
+  int do_zoom_y;384,10728
+  int do_scale_radix;385,10745
+  int do_scale_radius;386,10767
+  int auto_zoomfit;387,10790
+  int adjust_auto_zoomfit;388,10854
+  dv_motion_t m[m391,10907
+  dv_dag_node_t * last_hovered_node;393,10928
+  int hm;394,10965
+  int show_legend;395,11044
+  int show_status;396,11063
+  int remain_inner;397,11082
+  int color_remarked_only;398,11102
+  int nviewports;400,11132
+} dv_view_status_t;401,11173
+typedef struct dv_viewport dv_viewport_t;403,11194
+typedef struct dv_view dv_view_t;404,11236
+typedef struct dv_view_toolbox 406,11271
+  dv_view_t * V;407,11304
+  GtkWidget * window;408,11321
+  GtkWidget * combobox_lt;411,11359
+  GtkWidget * combobox_nc;412,11386
+  GtkWidget * combobox_sdt;413,11413
+  GtkWidget * entry_radix;414,11441
+  GtkWidget * checkbox_scale_radix;415,11468
+  GtkWidget * combobox_cm;416,11504
+  GtkWidget * combobox_hm;417,11531
+  GtkWidget * checkbox_legend;418,11558
+  GtkWidget * checkbox_status;419,11589
+  GtkWidget * combobox_azf;420,11620
+  GtkWidget * checkbox_azf;421,11648
+  GtkWidget * entry_paraprof_min_interval;422,11676
+  GtkWidget * entry_remark;425,11736
+  GtkWidget * checkbox_remain_inner;426,11764
+  GtkWidget * checkbox_color_remarked_only;427,11801
+  GtkWidget * entry_search;430,11864
+  GtkWidget * checkbox_xzoom;431,11892
+  GtkWidget * checkbox_yzoom;432,11922
+  GtkWidget * checkbox_scale_radius;433,11952
+  GtkWidget * combobox_frombt;434,11991
+  GtkWidget * combobox_et;435,12022
+  GtkWidget * togg_eaffix;436,12049
+} dv_view_toolbox_t;437,12076
+typedef struct dv_view 439,12098
+  char * name;440,12123
+  dv_dag_t * D;441,12138
+  dv_view_status_t S[S442,12167
+  dv_viewport_t * mainVP;443,12224
+  dv_view_toolbox_t T[T444,12295
+  int mVP[mVP445,12321
+} dv_view_t;446,12393
+typedef struct dv_viewport_toolbox 448,12407
+  GtkWidget * toolbar;449,12444
+  GtkWidget * label;450,12467
+} dv_viewport_toolbox_t;451,12488
+typedef struct dv_viewport 453,12514
+  int split;454,12543
+  GtkWidget * frame;455,12607
+  GtkWidget * paned;458,12673
+  GtkOrientation orientation;459,12709
+  struct dv_viewport * vp1;460,12763
+  struct dv_viewport * vp2;461,12818
+  GtkWidget * box;464,12894
+  GtkWidget * darea;465,12947
+  double vpw,466,12987
+  double vpw, vph;466,12987
+  int mV[mV467,13029
+  dv_view_t * mainV;468,13088
+  dv_viewport_toolbox_t T[T469,13109
+  GtkWidget * mini_frame;473,13188
+  GtkWidget * mini_paned;474,13214
+  GtkWidget * mini_frame_2;476,13256
+  GtkWidget * mini_frame_2_box;477,13284
+  GtkWidget * split_combobox;478,13316
+  GtkWidget * orient_combobox;479,13346
+  GtkWidget * dag_menubutton;480,13377
+  GtkWidget * dag_menu;481,13407
+} dv_viewport_t;482,13431
+typedef struct dv_btsample_viewer 484,13449
+  dv_pidag_t * P;485,13485
+  GtkWidget * label_dag_file_name;486,13503
+  GtkWidget * entry_bt_file_name;487,13538
+  GtkWidget * entry_binary_file_name;488,13572
+  GtkWidget * combobox_worker;489,13610
+  GtkWidget * entry_time_from;490,13641
+  GtkWidget * entry_time_to;491,13672
+  GtkWidget * text_view;492,13701
+  GtkWidget * entry_node_id;493,13726
+} dv_btsample_viewer_t;494,13755
+  dv_histogram_layer_running,498,13796
+  dv_histogram_layer_ready_end,499,13826
+  dv_histogram_layer_ready_create,500,13858
+  dv_histogram_layer_ready_create_cont,501,13893
+  dv_histogram_layer_ready_wait_cont,502,13933
+  dv_histogram_layer_ready_other_cont,503,13971
+  dv_histogram_layer_max,504,14010
+} dv_histogram_layer_t;505,14036
+typedef struct dv_histogram_entry 507,14061
+  double t;508,14097
+  struct dv_histogram_entry * next;509,14109
+  double h[h510,14145
+  double weighted_value;511,14181
+  double cumulative_value;512,14206
+} dv_histogram_entry_t;513,14233
+typedef struct dv_histogram 515,14258
+  dv_histogram_entry_t * head_e;516,14288
+  dv_histogram_entry_t * tail_e;517,14321
+  long n_e;518,14354
+  dv_dag_t * D;519,14366
+  double work,520,14382
+  double work, delay,520,14382
+  double work, delay, nowork;520,14382
+  double min_entry_interval;521,14412
+  double unit_thick;522,14441
+} dv_histogram_t;523,14462
+typedef struct dv_histogram_entry_page 525,14481
+  struct dv_histogram_entry_page * next;526,14522
+  long sz;527,14563
+  dv_histogram_entry_t entries[entries528,14574
+} dv_histogram_entry_page_t;529,14635
+typedef struct dv_histogram_entry_pool 531,14665
+  dv_histogram_entry_t * head;532,14706
+  dv_histogram_entry_t * tail;533,14737
+  dv_histogram_entry_page_t * pages;534,14768
+  long sz;535,14805
+  long N;536,14836
+  long n;537,14877
+} dv_histogram_entry_pool_t;538,14917
+typedef struct dv_dag_node_page 541,14948
+  struct dv_dag_node_page * next;542,14982
+  long sz;543,15016
+  dv_dag_node_t nodes[nodes544,15027
+} dv_dag_node_page_t;545,15077
+typedef struct dv_dag_node_pool 547,15100
+  dv_dag_node_t * head;548,15134
+  dv_dag_node_t * tail;549,15158
+  dv_dag_node_page_t * pages;550,15182
+  long sz;551,15212
+  long N;552,15243
+  long n;553,15282
+} dv_dag_node_pool_t;554,15320
+typedef struct dv_stat_distribution_entry 557,15344
+  int dag_id;558,15388
+  int type;559,15402
+  int stolen;560,15436
+  char * title;561,15473
+  GtkWidget * title_entry;562,15489
+} dv_stat_distribution_entry_t;563,15516
+typedef struct dv_stat_distribution 565,15549
+  int ne;566,15587
+  dv_stat_distribution_entry_t e[e567,15597
+  long xrange_from,568,15652
+  long xrange_from, xrange_to;568,15652
+  GtkWidget * node_pool_label;569,15683
+  GtkWidget * entry_pool_label;570,15714
+  char * fn;571,15746
+  int bar_width;572,15759
+} dv_stat_distribution_t;573,15776
+typedef struct dv_stat_breakdown_graph 575,15803
+  int checked_D[checked_D576,15844
+  char * fn;577,15896
+  dr_clock_t work[work578,15909
+  dr_clock_t delay[delay579,15940
+  dr_clock_t nowork[nowork580,15972
+  char * fn_2;581,16005
+  dv_critical_path_stat_t cp_stats[cp_stats582,16020
+} dv_stat_breakdown_graph_t;583,16091
+typedef struct dv_gui 586,16122
+  GtkBuilder * builder;588,16166
+  GtkWidget * window;589,16190
+  GtkWidget * window_box;590,16212
+  GtkWidget * menubar;591,16238
+  GtkWidget * main_box;592,16261
+  GtkAccelGroup * accel_group;593,16285
+  GtkWidget * context_menu;594,16316
+  GtkWidget * left_sidebar;595,16344
+  GtkWidget * toolbar;598,16389
+  GtkWidget * dag_menu;599,16412
+  GtkWidget * division_menu;600,16436
+  GtkWidget * statusbar1;603,16488
+  GtkWidget * statusbar2;604,16538
+  GtkWidget * statusbar3;605,16586
+  GtkWidget * management_window;608,16654
+  GtkWidget * notebook;609,16687
+  GtkWidget * scrolled_box;610,16711
+  GtkWidget * dag_file_scrolled_box;611,16766
+  GtkWidget * create_dag_menu;612,16835
+  struct replay 615,16890
+    GtkWidget * sidebox;616,16908
+    GtkWidget * enable;617,16933
+    GtkWidget * scale;618,16957
+    GtkWidget * entry;619,16980
+    GtkWidget * time_step_entry;620,17003
+    GtkWidget * dag_menu;621,17036
+    int mD[mD622,17062
+  } replay;623,17086
+  struct nodeinfo 626,17127
+    GtkWidget * sidebox;627,17147
+    GtkWidget * offset;628,17172
+    GtkWidget * type;629,17196
+    GtkWidget * depth;630,17218
+    GtkWidget * cur_node_count;631,17241
+    GtkWidget * start_time;632,17273
+    GtkWidget * end_time;633,17301
+    GtkWidget * duration;634,17327
+    GtkWidget * first_ready_t;635,17357
+    GtkWidget * est;636,17388
+    GtkWidget * t1inf;637,17409
+    GtkWidget * counters;638,17432
+    GtkWidget * worker;639,17458
+    GtkWidget * cpu;640,17482
+    GtkWidget * start_pos;641,17503
+    GtkWidget * end_pos;642,17530
+  } nodeinfo;643,17555
+} dv_gui_t;645,17572
+typedef struct dv_global_state 647,17585
+  dv_pidag_t P[P649,17630
+  dv_dag_t D[D650,17663
+  dv_view_t V[V651,17689
+  int nP;652,17717
+  int nD;653,17727
+  int nV;654,17737
+  dv_llist_cell_t * FL;655,17747
+  dv_view_t * activeV;656,17773
+  dv_viewport_t * activeVP;657,17796
+  int err;658,17824
+  int CP[CP661,17858
+  int CP_sizes[CP_sizes662,17951
+  dv_viewport_t VP[VP665,18002
+  int nVP;666,18039
+  dv_btsample_viewer_t btviewer[btviewer669,18076
+  dv_dag_node_pool_t pool[pool672,18134
+  dv_histogram_entry_pool_t epool[epool673,18164
+  dv_stat_distribution_t SD[SD676,18222
+  dv_stat_breakdown_graph_t SBG[SBG677,18254
+  dv_view_t * context_view;679,18291
+  dv_dag_node_t * context_node;680,18319
+  int verbose_level;682,18352
+} dv_global_state_t;683,18373
+dv_get_callpath_by_backtrace(1037,33282
+dv_get_callpath_by_libunwind(1050,33618
+dv_check_(1074,34238
+#define dv_check(1087,34623
+dv_malloc(1090,34724
+dv_free(1097,34823
+dv_node_flag_init(1106,34940
+dv_node_flag_check(1111,35018
+dv_node_flag_set(1117,35122
+dv_node_flag_remove(1123,35226
+dv_is_set(1129,35331
+dv_is_union(1135,35467
+dv_is_inner_loaded(1141,35607
+dv_is_shrinked(1147,35761
+dv_is_expanded(1153,35907
+dv_is_expanding(1159,36024
+dv_is_shrinking(1165,36172
+dv_is_single(1171,36320
+dv_is_visible(1182,36571
+dv_is_inward_callable(1193,36852
+dv_log_set_error(1203,37111
+dv_longlong_init(1211,37237
+dv_set_bit(1221,37397
+dv_get_bit(1228,37517
+dv_get_color_pool_index(1235,37626
+dv_get_time(1253,38076
 
 draw.c,767
 void dv_draw_text(5,79
@@ -838,7 +840,7 @@ dv_viewport_draw_label(631,17056
 dv_view_draw_legend(653,17635
 dv_viewport_draw_focused_mark(679,18267
 
-graphs.c,730
+graphs.c,790
 dv_statistics_graph_delay_distribution(6,58
   void (*process_event)process_event89,2547
   dr_pi_dag * G;90,2616
@@ -861,6 +863,7 @@ dr_basic_stat_init(225,6454
 dr_basic_stat_process_event(247,7077
 dv_statistics_graph_execution_time_breakdown(304,8387
 dv_statistics_graph_critical_path_breakdown(390,10974
+dv_statistics_graph_critical_path_delay_idleness(479,13785
 
 layout.c,541
 dv_view_layout_with_type(6,96
@@ -895,48 +898,48 @@ static void * read_pi_string_table(192,4853
 void dv_print_dag_file(201,5097
 void dv_check_layout(258,6243
 
-read.c,1480
+read.c,1481
 dv_pidag_read_new_file(6,88
-dv_pidag_read_new_file_bk(53,1121
-dv_pidag_get_node_id(123,2720
-dv_pidag_get_node_id_with_offset(128,2815
-dv_pidag_get_node_by_id(133,2951
-dv_pidag_get_node_by_dag_node(140,3105
-dv_pidag_get_node_by_offset(146,3276
-dv_node_coordinate_init(158,3604
-dv_dag_node_init(175,3885
-dv_dag_node_set(213,4823
-dv_dag_build_node_inner(238,5490
-dv_dag_collapse_node_inner(324,8024
-dv_dag_clear_shrinked_nodes_1(351,8706
-dv_dag_clear_shrinked_nodes_r(356,8828
-dv_dag_clear_shrinked_nodes(396,9906
-dv_dag_init(401,10001
-dv_dag_create_new_with_pidag(448,11115
-dv_dag_get_radix(477,11794
-dv_dag_set_radix(496,12071
-dv_pidag_node_lookup_value(513,12323
-dv_dag_node_lookup_value(547,13245
-dv_dag_node_traverse_children(553,13447
-dv_dag_node_traverse_children_inorder(569,13796
-dv_dag_node_traverse_tails(591,14255
-dv_dag_node_traverse_nexts(613,14634
-dv_dag_node_count_nexts(623,14843
-dv_dag_node_get_next(633,15029
-dv_dag_node_get_single_head(639,15140
-dv_dag_node_get_single_last(649,15337
-void dv_btsample_viewer_init(664,15637
-static asymbol **syms;syms684,16467
-static bfd_vma pc;685,16521
-static const char *filename;filename686,16540
-static const char *functionname;functionname687,16569
-static unsigned int line;688,16602
-static bfd_boolean found;689,16628
-slurp_symtab(698,16986
-find_address_in_section(719,17511
-translate_addresses(744,18151
-process_one_sample(780,19245
-dv_btsample_viewer_extract_interval(821,20187
+dv_pidag_read_new_file_bk(56,1193
+dv_pidag_get_node_id(126,2792
+dv_pidag_get_node_id_with_offset(131,2887
+dv_pidag_get_node_by_id(136,3023
+dv_pidag_get_node_by_dag_node(143,3177
+dv_pidag_get_node_by_offset(149,3348
+dv_node_coordinate_init(161,3676
+dv_dag_node_init(178,3957
+dv_dag_node_set(220,5002
+dv_dag_build_node_inner(245,5669
+dv_dag_collapse_node_inner(331,8203
+dv_dag_clear_shrinked_nodes_1(358,8885
+dv_dag_clear_shrinked_nodes_r(363,9007
+dv_dag_clear_shrinked_nodes(403,10085
+dv_dag_init(408,10180
+dv_dag_create_new_with_pidag(455,11294
+dv_dag_get_radix(484,11973
+dv_dag_set_radix(503,12250
+dv_pidag_node_lookup_value(520,12502
+dv_dag_node_lookup_value(554,13424
+dv_dag_node_traverse_children(560,13626
+dv_dag_node_traverse_children_inorder(576,13975
+dv_dag_node_traverse_tails(598,14434
+dv_dag_node_traverse_nexts(620,14813
+dv_dag_node_count_nexts(630,15022
+dv_dag_node_get_next(640,15208
+dv_dag_node_get_single_head(646,15319
+dv_dag_node_get_single_last(656,15516
+void dv_btsample_viewer_init(671,15816
+static asymbol **syms;syms691,16646
+static bfd_vma pc;692,16700
+static const char *filename;filename693,16719
+static const char *functionname;functionname694,16748
+static unsigned int line;695,16781
+static bfd_boolean found;696,16807
+slurp_symtab(705,17165
+find_address_in_section(726,17690
+translate_addresses(751,18330
+process_one_sample(787,19424
+dv_btsample_viewer_extract_interval(828,20366
 
 resources.c,1513
 # define SECTION 4,105
@@ -1047,7 +1050,7 @@ dv_view_draw_dagbox_edge_1(504,15152
 dv_view_draw_dagbox_node_r(509,15311
 dv_view_draw_dagbox(558,16888
 
-view_paraprof.c,1076
+view_paraprof.c,1082
 dv_histogram_init(6,53
 dv_histogram_entry_init(17,298
 dv_histogram_get_max_height(29,525
@@ -1055,28 +1058,28 @@ dv_histogram_insert_entry(46,899
 dv_histogram_add_node(116,2677
 dv_histogram_remove_node(185,5010
 dv_histogram_clean(231,6620
-dv_histogram_fini(249,6980
-dv_histogram_entry_is_invisible(255,7083
-dv_histogram_entry_is_invisible_fast(274,7582
-dv_histogram_draw_piece(291,8125
-dv_histogram_draw_entry(323,9038
-dv_histogram_cal_work_delay_nowork(341,9652
-dv_histogram_draw(373,10626
-dv_histogram_reset_node(412,11843
-dv_histogram_reset(448,12779
-dv_histogram_build_all_r(462,13157
-dv_histogram_build_all(493,13951
-dv_histogram_compute_weighted_values(507,14335
-dv_view_layout_paraprof(537,15237
-dv_paraprof_draw_time_bar(547,15395
-dv_view_draw_paraprof(561,15931
-dv_critical_path_find_clicked_node_r(579,16253
-dv_critical_path_find_clicked_node(607,17126
-dv_view_layout_critical_path_node(613,17308
-dv_view_layout_critical_path(664,19289
-dv_view_draw_critical_path_node_1(682,20070
-dv_view_draw_critical_path_node_r(915,27118
-dv_view_draw_critical_path(951,28396
+dv_histogram_fini(248,6944
+dv_histogram_entry_is_invisible(254,7047
+dv_histogram_entry_is_invisible_fast(273,7546
+dv_histogram_draw_piece(290,8089
+dv_histogram_draw_entry(322,9002
+dv_histogram_cal_work_delay_nowork(340,9616
+dv_histogram_draw(372,10590
+dv_histogram_reset_node(411,11807
+dv_histogram_reset(447,12743
+dv_histogram_build_all_r(461,13121
+dv_histogram_build_all(492,13915
+dv_histogram_compute_significant_intervals(506,14299
+dv_view_layout_paraprof(539,15358
+dv_paraprof_draw_time_bar(549,15516
+dv_view_draw_paraprof(563,16052
+dv_critical_path_find_clicked_node_r(581,16374
+dv_critical_path_find_clicked_node(609,17247
+dv_view_layout_critical_path_node(615,17429
+dv_view_layout_critical_path(666,19410
+dv_view_draw_critical_path_node_1(684,20191
+dv_view_draw_critical_path_node_r(917,27239
+dv_view_draw_critical_path(953,28517
 
 view_timeline.c,334
 dv_timeline_find_clicked_node_r(6,69

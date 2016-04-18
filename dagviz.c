@@ -111,15 +111,6 @@ dv_global_state_init(dv_global_state_t * CS) {
   }
   CS->SBG->fn = DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME;
   CS->SBG->fn_2 = DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME_2;
-  for (i = 0; i < DV_MAX_DAG; i++) {
-    int j;
-    for (j = 0; j < DV_NUM_CRITICAL_PATHS; j++) {
-      CS->SBG->cp_stats[i][j].work = 0.0;
-      CS->SBG->cp_stats[i][j].delay = 0.0;
-      CS->SBG->cp_stats[i][j].weighted_work = 0.0;
-      CS->SBG->cp_stats[i][j].weighted_delay = 0.0;
-    }      
-  }
   CS->context_view = NULL;
   CS->context_node = NULL;
 
@@ -2004,11 +1995,19 @@ dv_open_statistics_dialog() {
 
     hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
     gtk_box_pack_start(GTK_BOX(tab_box), hbox, FALSE, FALSE, 0);
-    label = gtk_label_new("Idleness during delay: ");
+    label = gtk_label_new("Safe-problematic delay breakdown: ");
     gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
     button = gtk_button_new_with_mnemonic("_Show");
     gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
     g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_stat_breakdown_show3_button_clicked), (void *) NULL);
+
+    hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
+    gtk_box_pack_start(GTK_BOX(tab_box), hbox, FALSE, FALSE, 0);
+    label = gtk_label_new("Edge-based delay breakdown: ");
+    gtk_box_pack_start(GTK_BOX(hbox), label, FALSE, FALSE, 0);
+    button = gtk_button_new_with_mnemonic("_Show");
+    gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
+    g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_stat_breakdown_show4_button_clicked), (void *) NULL);
   }
 
 

@@ -207,11 +207,11 @@ dv_dag_node_init(dv_dag_node_t * node, dv_dag_node_t * parent, long pii) {
   for (i = 0; i < DV_NUM_CRITICAL_PATHS; i++) {
     node->cps[i].work = 0.0;
     node->cps[i].delay = 0.0;
-    node->cps[i].weighted_work = 0.0;
-    node->cps[i].weighted_delay = 0.0;
+    node->cps[i].problematic_work = 0.0;
+    node->cps[i].problematic_delay = 0.0;
     int ek;
     for (ek = 0; ek < dr_dag_edge_kind_max; ek++) {
-      node->cps[i].delays[ek] = 0.0;
+      node->cps[i].pdelays[ek] = 0.0;
     }
   }    
 }
@@ -443,10 +443,6 @@ dv_dag_init(dv_dag_t * D, dv_pidag_t * P) {
   D->time_step = 1000;
   for (i = 0; i < DV_NUM_CRITICAL_PATHS; i++) {
     D->show_critical_paths[i] = 0;
-    D->cp_stat[i].work = 0.0;
-    D->cp_stat[i].delay = 0.0;
-    D->cp_stat[i].weighted_work = 0.0;
-    D->cp_stat[i].weighted_delay = 0.0;
   }
   D->critical_paths_computed = 0;
 }

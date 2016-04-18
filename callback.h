@@ -1707,7 +1707,13 @@ on_stat_breakdown_show2_button_clicked(_unused_ GtkWidget * widget, _unused_ gpo
 
 static gboolean
 on_stat_breakdown_show3_button_clicked(_unused_ GtkWidget * widget, _unused_ gpointer user_data) {
-  dv_statistics_graph_critical_path_delay_idleness(CS->SBG->fn_2);
+  dv_statistics_graph_critical_path_delay_breakdown(CS->SBG->fn_2);
+  return TRUE;
+}
+
+static gboolean
+on_stat_breakdown_show4_button_clicked(_unused_ GtkWidget * widget, _unused_ gpointer user_data) {
+  dv_statistics_graph_critical_path_edge_based_delay_breakdown(CS->SBG->fn_2);
   return TRUE;
 }
 

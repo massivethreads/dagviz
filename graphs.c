@@ -409,44 +409,30 @@ dv_statistics_graph_critical_path_breakdown(char * filename) {
           "set xtics rotate by -30\n"
           "plot "
           "\"-\" u 2:xtic(1) w histogram t \"work\", "
-          "\"-\" u 3 w histogram t \"safe delay\", "
-          "\"-\" u 4 w histogram t \"end\", "
-          "\"-\" u 5 w histogram t \"create\", "
-          "\"-\" u 6 w histogram t \"create cont.\", "
-          "\"-\" u 7 w histogram t \"wait cont.\", "
-          "\"-\" u 8 w histogram t \"other cont.\"\n");
-  int DAGs[DV_MAX_DAG];
-  int n = 0;
+          "\"-\" u 3 w histogram t \"delay\"\n");
   int i;
   for (i = 0; i < CS->nD; i++) {
-    if (CS->SBG->checked_D[i] == 0)
-      continue;
-    DAGs[n++] = i;
+    if (CS->SBG->checked_D[i] == 0) continue;
     
     //dv_dag_t * D = dv_create_new_dag(CS->D[i].P);
     dv_dag_t * D = &CS->D[i];
     dv_dag_compute_critical_paths(D);
-    int cp;
-    for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
-      CS->SBG->cp_stats[i][cp] = D->rt->cps[cp];
-    }
   }
 
   int ptimes, cp;
-  for (ptimes = 0; ptimes < 7; ptimes++) {
+  for (ptimes = 0; ptimes < 3; ptimes++) {
     
-    for (i = 0; i < n; i++) {
+    for (i = 0; i < CS->nD; i++) {
+      if (CS->SBG->checked_D[i] == 0) continue;
+      dv_dag_t * D = &CS->D[i];
       for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
         if (cp != 1) continue;
         fprintf(out,
                 "\"DAG%d (cp%d)\"  %lf %lf",
-                DAGs[i],
+                i,
                 cp,
-                CS->SBG->cp_stats[DAGs[i]][cp].work,
-                CS->SBG->cp_stats[DAGs[i]][cp].delay - CS->SBG->cp_stats[DAGs[i]][cp].weighted_delay);
-        int ek;
-        for (ek = 0; ek < dr_dag_edge_kind_max; ek++)
-          fprintf(out, " %lf", CS->SBG->cp_stats[DAGs[i]][cp].delays[ek]);
+                D->rt->cps[cp].work,
+                D->rt->cps[cp].delay);
         fprintf(out, "\n");
       }
     }
@@ -457,7 +443,7 @@ dv_statistics_graph_critical_path_breakdown(char * filename) {
   fprintf(out,
           "pause -1\n");
   fclose(out);
-  fprintf(stdout, "generated breakdown graphs to %s\n", filename);
+  fprintf(stdout, "generated critical-path breakdown graphs to %s\n", filename);
   
   /* call gnuplot */
   GPid pid;
@@ -476,7 +462,7 @@ dv_statistics_graph_critical_path_breakdown(char * filename) {
 }
 
 void
-dv_statistics_graph_critical_path_delay_idleness(char * filename) {
+dv_statistics_graph_critical_path_delay_breakdown(char * filename) {
   /* generate plots */
   if (!filename || strlen(filename) == 0) {
     fprintf(stderr, "Error: no file name to output.");
@@ -488,50 +474,135 @@ dv_statistics_graph_critical_path_delay_idleness(char * filename) {
   fprintf(out,
           "#set terminal png font arial 14 size 640,350\n"
           "#set output ~/Desktop/00dv_stat_breakdown.png\n"
+          "set style data histograms\n"
+          "set style histogram rowstacked\n"
           "set style fill solid 0.8 noborder\n"
           "set key outside center top horizontal\n"
           "set boxwidth 0.75 relative\n"
           "set yrange [0:]\n"
-          /* "set xtics rotate by -25\n" */
-          /* "set xlabel \"clocks\"\n" */
-          "set ylabel \"percent\"\n"
+          "set ylabel \"cumul. clocks\"\n"
+          "set xtics rotate by -30\n"
           "plot "
-          "\"-\" u 2:xtic(1) w boxes t \"idleness during delay\"\n");
-  int DAGs[DV_MAX_DAG];
-  int n = 0;
+          "\"-\" u 2:xtic(1) w histogram t \"work\", "
+          "\"-\" u 3 w histogram t \"safe delay\", "
+          "\"-\" u 4 w histogram t \"problematic delay\"\n");
   int i;
   for (i = 0; i < CS->nD; i++) {
-    if (CS->SBG->checked_D[i] == 0)
-      continue;
-    DAGs[n++] = i;
+    if (CS->SBG->checked_D[i] == 0) continue;
     
     //dv_dag_t * D = dv_create_new_dag(CS->D[i].P);
-    dv_dag_t * D = &CS->D[i];    
+    dv_dag_t * D = &CS->D[i];
     dv_dag_compute_critical_paths(D);
-    int cp;
-    for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
-      CS->SBG->cp_stats[i][cp] = D->rt->cps[cp];
-    }
   }
 
-  int j, cp;
-  for (j = 0; j < 3; j++) {
-    for (i = 0; i < n; i++) {
-      cp = 1;
-      fprintf(out,
-              "\"DAG%d (cp%d)\"  %lf \n",
-              DAGs[i],
-              cp,
-              CS->SBG->cp_stats[DAGs[i]][cp].weighted_delay / CS->SBG->cp_stats[DAGs[i]][cp].delay * 100);
+  int ptimes, cp;
+  for (ptimes = 0; ptimes < 3; ptimes++) {
+    
+    for (i = 0; i < CS->nD; i++) {
+      if (CS->SBG->checked_D[i] == 0) continue;
+      dv_dag_t * D = &CS->D[i];
+      for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
+        if (cp != 1) continue;
+        fprintf(out,
+                "\"DAG%d (cp%d)\"  %lf %lf %lf",
+                i,
+                cp,
+                D->rt->cps[cp].work,
+                D->rt->cps[cp].delay - D->rt->cps[cp].problematic_delay,
+                D->rt->cps[cp].problematic_delay);
+        fprintf(out, "\n");
+      }
     }
-    fprintf(out,
-            "e\n");
+    
+    fprintf(out, "e\n");
   }
 
   fprintf(out,
           "pause -1\n");
   fclose(out);
-  fprintf(stdout, "generated breakdown graphs to %s\n", filename);
+  fprintf(stdout, "generated critical-path breakdown graphs to %s\n", filename);
+  
+  /* call gnuplot */
+  GPid pid;
+  char * argv[4];
+  argv[0] = "gnuplot";
+  argv[1] = "-persist";
+  argv[2] = filename;
+  argv[3] = NULL;
+  int ret = g_spawn_async_with_pipes(NULL, argv, NULL,
+                                     G_SPAWN_SEARCH_PATH, //G_SPAWN_DEFAULT | G_SPAWN_SEARCH_PATH,
+                                     NULL, NULL, &pid,
+                                     NULL, NULL, NULL, NULL);
+  if (!ret) {
+    fprintf(stderr, "g_spawn_async_with_pipes() failed.\n");
+  }
+}
+
+void
+dv_statistics_graph_critical_path_edge_based_delay_breakdown(char * filename) {
+  /* generate plots */
+  if (!filename || strlen(filename) == 0) {
+    fprintf(stderr, "Error: no file name to output.");
+    return ;
+  }
+  FILE * out;
+  out = fopen(filename, "w");
+  dv_check(out);
+  fprintf(out,
+          "#set terminal png font arial 14 size 640,350\n"
+          "#set output ~/Desktop/00dv_stat_breakdown.png\n"
+          "set style data histograms\n"
+          "set style histogram rowstacked\n"
+          "set style fill solid 0.8 noborder\n"
+          "set key outside center top horizontal\n"
+          "set boxwidth 0.75 relative\n"
+          "set yrange [0:]\n"
+          "set ylabel \"cumul. clocks\"\n"
+          "set xtics rotate by -30\n"
+          "plot "
+          "\"-\" u 2:xtic(1) w histogram t \"work\", "
+          "\"-\" u 3 w histogram t \"safe delay\", "
+          "\"-\" u 4 w histogram t \"end\", "
+          "\"-\" u 5 w histogram t \"create\", "
+          "\"-\" u 6 w histogram t \"create cont.\", "
+          "\"-\" u 7 w histogram t \"wait cont.\", "
+          "\"-\" u 8 w histogram t \"other cont.\"\n");
+  int i;
+  for (i = 0; i < CS->nD; i++) {
+    if (CS->SBG->checked_D[i] == 0) continue;
+    
+    //dv_dag_t * D = dv_create_new_dag(CS->D[i].P);
+    dv_dag_t * D = &CS->D[i];
+    dv_dag_compute_critical_paths(D);
+  }
+
+  int ptimes, cp;
+  for (ptimes = 0; ptimes < 7; ptimes++) {
+    
+    for (i = 0; i < CS->nD; i++) {
+      for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
+        if (cp != 1) continue;
+        dv_dag_t * D = &CS->D[i];
+        fprintf(out,
+                "\"DAG%d (cp%d)\"  %lf %lf",
+                i,
+                cp,
+                D->rt->cps[cp].work,
+                D->rt->cps[cp].delay - D->rt->cps[cp].problematic_delay);
+        int ek;
+        for (ek = 0; ek < dr_dag_edge_kind_max; ek++)
+          fprintf(out, " %lf", D->rt->cps[cp].pdelays[ek]);
+        fprintf(out, "\n");
+      }
+    }
+    
+    fprintf(out, "e\n");
+  }
+
+  fprintf(out,
+          "pause -1\n");
+  fclose(out);
+  fprintf(stdout, "generated critical-path delay breakdown graphs to %s\n", filename);
   
   /* call gnuplot */
   GPid pid;
