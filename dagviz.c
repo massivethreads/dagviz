@@ -1960,14 +1960,21 @@ dv_open_statistics_dialog() {
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_box, tab_label);
     long i;
     for (i = 0; i < CS->nD; i++) {
+      dv_dag_t * D = &CS->D[i];
       GtkWidget * dag_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
       gtk_box_pack_start(GTK_BOX(tab_box), dag_box, FALSE, FALSE, 0);
-      char str[20];
-      sprintf(str, "DAG %2ld ", i);
-      GtkWidget * checkbox = gtk_check_button_new_with_label(str);
+      GtkWidget * checkbox = gtk_check_button_new_with_label(D->name);
       gtk_box_pack_start(GTK_BOX(dag_box), checkbox, FALSE, FALSE, 0);
       gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(checkbox), CS->SBG->checked_D[i]);
+      gtk_widget_set_tooltip_text(GTK_WIDGET(checkbox), D->P->name);
       g_signal_connect(G_OBJECT(checkbox), "toggled", G_CALLBACK(on_stat_breakdown_dag_checkbox_toggled), (void *) i);
+      
+      GtkWidget * entry = gtk_entry_new();
+      gtk_box_pack_start(GTK_BOX(dag_box), entry, FALSE, FALSE, 0);
+      gtk_entry_set_width_chars(GTK_ENTRY(entry), 20);
+      gtk_entry_set_text(GTK_ENTRY(entry), D->name_on_graph);
+      gtk_widget_set_tooltip_text(GTK_WIDGET(entry), D->P->filename); 
+      g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_stat_breakdown_dag_name_on_graph_entry_activate), (void *) D);
     }
 
     GtkWidget * hbox, * label, * entry, * button;

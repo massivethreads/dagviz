@@ -27,6 +27,9 @@ dv_pidag_read_new_file(char * filename) {
     return NULL;
   dv_pidag_t * P = &CS->P[CS->nP++];
   P->fn = filename;
+  P->filename = (char *) dv_malloc( sizeof(char) * (strlen(filename) + 1) );
+  strcpy(P->filename, filename);
+  P->short_filename = dv_filename_get_short_name(P->filename);
   dv_llist_init(P->itl);
 
   P->sz = statbuf->st_size;
@@ -406,8 +409,12 @@ dv_dag_clear_shrinked_nodes(dv_dag_t * D) {
 
 void
 dv_dag_init(dv_dag_t * D, dv_pidag_t * P) {
-  D->name = malloc( 10 * sizeof(char) );
-  sprintf(D->name, "DAG %ld", D - CS->D);
+  char str[10];
+  sprintf(str, "DAG %ld", D - CS->D);
+  D->name = malloc( sizeof(char) * (strlen(str) + 1) );
+  strcpy(D->name, str);
+  D->name_on_graph = malloc( sizeof(char) * (strlen(str) + 1) );
+  strcpy(D->name_on_graph, str);
   D->P = P;
   D->rt = dv_dag_node_pool_pop(CS->pool);
   dv_dag_node_init(D->rt, 0, 0);

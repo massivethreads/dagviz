@@ -424,12 +424,16 @@ dv_statistics_graph_critical_path_breakdown(char * filename) {
     for (i = 0; i < CS->nD; i++) {
       if (!CS->SBG->checked_D[i]) continue;
       dv_dag_t * D = &CS->D[i];
+      int num_cp = 0;
+      for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++)
+        if (CS->SBG->checked_cp[cp]) num_cp++;
       for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
         if (!CS->SBG->checked_cp[cp]) continue;
+        fprintf(out, "\"%s", D->name_on_graph);
+        if (num_cp > 1)
+          fprintf(out, " (cp%d)", cp + 1);
         fprintf(out,
-                "\"DAG%d (cp%d)\"  %lf %lf",
-                i,
-                cp,
+                "\"  %lf %lf",
                 D->rt->cps[cp].work,
                 D->rt->cps[cp].delay);
         fprintf(out, "\n");
@@ -500,12 +504,16 @@ dv_statistics_graph_critical_path_delay_breakdown(char * filename) {
     for (i = 0; i < CS->nD; i++) {
       if (!CS->SBG->checked_D[i]) continue;
       dv_dag_t * D = &CS->D[i];
+      int num_cp = 0;
+      for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++)
+        if (CS->SBG->checked_cp[cp]) num_cp++;
       for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
         if (!CS->SBG->checked_cp[cp]) continue;
+        fprintf(out, "\"%s", D->name_on_graph);
+        if (num_cp > 1)
+          fprintf(out, " (cp%d)", cp + 1);
         fprintf(out,
-                "\"DAG%d (cp%d)\"  %lf %lf %lf",
-                i,
-                cp,
+                "\"  %lf %lf %lf",
                 D->rt->cps[cp].work,
                 D->rt->cps[cp].delay - D->rt->cps[cp].problematic_delay,
                 D->rt->cps[cp].problematic_delay);
@@ -539,11 +547,28 @@ dv_statistics_graph_critical_path_delay_breakdown(char * filename) {
 
 void
 dv_statistics_graph_critical_path_edge_based_delay_breakdown(char * filename) {
-  /* generate plots */
+  /* check */
   if (!filename || strlen(filename) == 0) {
     fprintf(stderr, "Error: no file name to output.");
     return ;
   }
+  
+  /* calculate critical paths */
+  int to_print_other_cont = 0;
+  int i;
+  for (i = 0; i < CS->nD; i++) {
+    if (!CS->SBG->checked_D[i]) continue;
+    
+    //dv_dag_t * D = dv_create_new_dag(CS->D[i].P);
+    dv_dag_t * D = &CS->D[i];
+    dv_dag_compute_critical_paths(D);
+    int cp;
+    for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++)
+      if (D->rt->cps[cp].pdelays[dr_dag_edge_kind_other_cont] > 0.0)
+        to_print_other_cont = 1;
+  }
+
+  /* generate plots */
   FILE * out;
   out = fopen(filename, "w");
   dv_check(out);
@@ -564,34 +589,35 @@ dv_statistics_graph_critical_path_edge_based_delay_breakdown(char * filename) {
           "\"-\" u 4 w histogram t \"end\", "
           "\"-\" u 5 w histogram t \"create\", "
           "\"-\" u 6 w histogram t \"create cont.\", "
-          "\"-\" u 7 w histogram t \"wait cont.\", "
-          "\"-\" u 8 w histogram t \"other cont.\"\n");
-  int i;
-  for (i = 0; i < CS->nD; i++) {
-    if (!CS->SBG->checked_D[i]) continue;
-    
-    //dv_dag_t * D = dv_create_new_dag(CS->D[i].P);
-    dv_dag_t * D = &CS->D[i];
-    dv_dag_compute_critical_paths(D);
-  }
+          "\"-\" u 7 w histogram t \"wait cont.\"");
+  if (to_print_other_cont)
+    fprintf(out, ", \"-\" u 8 w histogram t \"other cont.\"\n");
+  else
+    fprintf(out, "\n");    
 
+  /* print data */
   int ptimes, cp;
   for (ptimes = 0; ptimes < 7; ptimes++) {
     
     for (i = 0; i < CS->nD; i++) {
       if (!CS->SBG->checked_D[i]) continue;
+      dv_dag_t * D = &CS->D[i];
+      int num_cp = 0;
+      for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++)
+        if (CS->SBG->checked_cp[cp]) num_cp++;
       for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
         if (!CS->SBG->checked_cp[cp]) continue;
-        dv_dag_t * D = &CS->D[i];
+        fprintf(out, "\"%s", D->name_on_graph);
+        if (num_cp > 1)
+          fprintf(out, " (cp%d)", cp + 1);
         fprintf(out,
-                "\"DAG%d (cp%d)\"  %lf %lf",
-                i,
-                cp,
+                "\"  %lf %lf",
                 D->rt->cps[cp].work,
                 D->rt->cps[cp].delay - D->rt->cps[cp].problematic_delay);
         int ek;
         for (ek = 0; ek < dr_dag_edge_kind_max; ek++)
-          fprintf(out, " %lf", D->rt->cps[cp].pdelays[ek]);
+          if (ek != dr_dag_edge_kind_other_cont || to_print_other_cont)
+            fprintf(out, " %lf", D->rt->cps[cp].pdelays[ek]);
         fprintf(out, "\n");
       }
     }

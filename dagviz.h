@@ -208,6 +208,9 @@ typedef struct {
 } bt_sample_t;
 
 typedef struct dv_pidag {
+  char * fn; /* original dag file name string */
+  char * filename; /* dag file name */
+  char * short_filename; /* short dag file name excluding dir and extension */
   long n;			/* length of T */
   long m;			/* length of E */
   unsigned long long start_clock;             /* absolute clock time of start */
@@ -215,7 +218,6 @@ typedef struct dv_pidag {
   dr_pi_dag_node * T;		/* all nodes in a contiguous array */
   dr_pi_dag_edge * E;		/* all edges in a contiguous array */
   dr_pi_string_table * S;
-  char * fn; /* dag file name */
   //struct stat stat[1]; /* file stat structure */
   dv_llist_t itl[1]; /* list of pii's of nodes that have info tag */
   dr_pi_dag * G;
@@ -278,6 +280,7 @@ typedef struct dv_histogram dv_histogram_t;
 
 typedef struct dv_dag {
   char * name;
+  char * name_on_graph;
   /* PIDAG */
   dv_pidag_t * P;
 

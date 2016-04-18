@@ -1569,24 +1569,21 @@ static gboolean
 on_stat_distribution_dag_changed(GtkWidget * widget, gpointer user_data) {
   long i = (long) user_data;
   int new_id = gtk_combo_box_get_active(GTK_COMBO_BOX(widget)) - 1;
-  char * new_title = "";
+  char * new_title = NULL;
   if (new_id >= 0)
-    new_title = dv_filename_get_short_name(CS->D[new_id].P->fn);
+    new_title = CS->D[new_id].P->short_filename;
   dv_stat_distribution_entry_t * e = &CS->SD->e[i];
   int old_id = e->dag_id;
   char * old_title = NULL;
   if (old_id >= 0)
-    old_title = dv_filename_get_short_name(CS->D[old_id].P->fn);
-  if ( !e->title || strlen(e->title) == 0 ||
-       (old_title && strcmp(e->title, old_title) == 0) ) {
-    if (e->title && strlen(e->title))
+    old_title = CS->D[old_id].P->short_filename;
+  if ( !e->title || (old_title && strcmp(e->title, old_title) == 0) ) {
+    if (e->title)
       dv_free(e->title, strlen(e->title) + 1);
-    e->title = new_title;
+    e->title = dv_malloc( sizeof(char) * (strlen(new_title) + 1) );
+    strcpy(e->title, new_title);
     if (e->title_entry) 
       gtk_entry_set_text(GTK_ENTRY(e->title_entry), e->title);
-  } else {
-    if (strlen(new_title))
-      dv_free(new_title, strlen(new_title) + 1);
   }
   e->dag_id = new_id;
   return TRUE;
@@ -1613,7 +1610,7 @@ on_stat_distribution_title_activate(GtkWidget * widget, gpointer user_data) {
   long i = (long) user_data;
   const char * new_title = gtk_entry_get_text(GTK_ENTRY(widget));
   dv_stat_distribution_entry_t * e = &CS->SD->e[i];
-  if (strlen(e->title))
+  if (e->title)
     dv_free(e->title, strlen(e->title) + 1);
   e->title = dv_malloc( sizeof(char) * (strlen(new_title) + 1) );
   strcpy(e->title, new_title);
@@ -1675,6 +1672,18 @@ static gboolean
 on_stat_breakdown_cp_checkbox_toggled(_unused_ GtkWidget * widget, gpointer user_data) {
   long i = (long) user_data;
   CS->SBG->checked_cp[i] = 1 - CS->SBG->checked_cp[i];
+  return TRUE;
+}
+
+static gboolean
+on_stat_breakdown_dag_name_on_graph_entry_activate(GtkWidget * widget, _unused_ gpointer user_data) {
+  dv_dag_t * D = (dv_dag_t *) user_data;
+  const char * new_name = gtk_entry_get_text(GTK_ENTRY(widget));
+  if (strcmp(D->name_on_graph, new_name) != 0) {
+    dv_free(D->name_on_graph, strlen(D->name_on_graph) + 1);
+  }
+  D->name_on_graph = (char *) dv_malloc( sizeof(char) * ( strlen(new_name) + 1) );
+  strcpy(D->name_on_graph, new_name);
   return TRUE;
 }
 
