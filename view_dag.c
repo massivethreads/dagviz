@@ -326,7 +326,7 @@ dv_view_layout_dag(dv_view_t * V) {
 /****** Draw ******/
 
 static void
-dv_view_draw_dag_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
+dv_view_draw_dag_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node, int * on_global_cp) {
   cairo_save(cr);
   /* Get inputs */
   dv_dag_t * D = V->D;
@@ -526,9 +526,7 @@ dv_view_draw_dag_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
   cairo_restore(cr);
   
   /* Highlight critical paths */
-  if ( (D->show_critical_paths[DV_CRITICAL_PATH_0] && dv_node_flag_check(node->f, CS->oncp_flags[DV_CRITICAL_PATH_0]))
-       || (D->show_critical_paths[DV_CRITICAL_PATH_1] && dv_node_flag_check(node->f, CS->oncp_flags[DV_CRITICAL_PATH_1]))
-       || (D->show_critical_paths[DV_CRITICAL_PATH_2] && dv_node_flag_check(node->f, CS->oncp_flags[DV_CRITICAL_PATH_2])) ) {
+  {
     cairo_new_path(cr);
     double margin, line_width, margin_increment;
     GdkRGBA color[1];
@@ -539,7 +537,18 @@ dv_view_draw_dag_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
       line_width = DV_NODE_LINE_WIDTH;
     margin = 0.5 * DV_NODE_LINE_WIDTH + 0.5 * line_width;
     margin_increment = line_width;
-    
+
+    int i;
+    for (i = 0; i < DV_NUM_CRITICAL_PATHS; i++)
+      if (on_global_cp[i]) {
+        gdk_rgba_parse(color, CS->cp_colors[i]);
+        cairo_set_source_rgba(cr, color->red, color->green, color->blue, color->alpha);
+        cairo_set_line_width(cr, line_width );
+        cairo_rectangle(cr, xx - margin, yy - margin, w + 2 * margin, h + 2 * margin);
+        cairo_stroke(cr);
+        margin += margin_increment;
+      }
+    /*
     if ( D->show_critical_paths[DV_CRITICAL_PATH_0] && dv_node_flag_check(node->f, CS->oncp_flags[DV_CRITICAL_PATH_0]) ) {
       gdk_rgba_parse(color, CS->cp_colors[DV_CRITICAL_PATH_0]);
       cairo_set_source_rgba(cr, color->red, color->green, color->blue, color->alpha);
@@ -566,6 +575,7 @@ dv_view_draw_dag_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
       cairo_stroke(cr);
       margin += margin_increment;
     }
+    */
   }
 
   cairo_restore(cr);
@@ -577,21 +587,32 @@ dv_view_draw_dag_edge_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node, dv_da
 }
 
 static void
-dv_view_draw_dag_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
-  // Count node
+dv_view_draw_dag_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node, int * parent_on_global_cp) {
+  /* Count node */
   V->S->ndh++;
   if (!node || !dv_is_set(node))
     return;
+
+  /* Check if node is still on the global critical paths */
+  int me_on_global_cp[DV_NUM_CRITICAL_PATHS];
+  int i;
+  for (i = 0; i < DV_NUM_CRITICAL_PATHS; i++) {
+    if (parent_on_global_cp[i] && dv_node_flag_check(node->f, CS->oncp_flags[i]))
+      me_on_global_cp[i] = 1;
+    else
+      me_on_global_cp[i] = 0;
+  }
+  
 
   if (!dv_dag_node_is_invisible(V, node)) {
     /* Draw node */
     if (!dv_is_union(node) || !dv_is_inner_loaded(node)
         || dv_is_shrinked(node) || dv_is_shrinking(node)) {
-      dv_view_draw_dag_node_1(V, cr, node);
+      dv_view_draw_dag_node_1(V, cr, node, me_on_global_cp);
     }
     /* Call inward */
     if (!dv_is_single(node)) {
-      dv_view_draw_dag_node_r(V, cr, node->head);
+      dv_view_draw_dag_node_r(V, cr, node->head, me_on_global_cp);
     }
   }
   /* Call link-along */
@@ -620,7 +641,7 @@ dv_view_draw_dag_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
       cairo_stroke(cr);
       cairo_restore(cr);
       /* Call recursively then */
-      dv_view_draw_dag_node_r(V, cr, x);
+      dv_view_draw_dag_node_r(V, cr, x, parent_on_global_cp);
     }
   }
 }
@@ -628,13 +649,25 @@ dv_view_draw_dag_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
 void
 dv_view_draw_dag(dv_view_t * V, cairo_t * cr) {
   cairo_set_line_width(cr, DV_NODE_LINE_WIDTH);
-  /* Draw */
+
+  /* Prepare */
   dv_llist_init(V->D->itl);
   V->S->nd = 0;
   V->S->ndh = 0;
   V->D->cur_d = 0;
   V->D->cur_d_ex = V->D->dmax;
-  dv_view_draw_dag_node_r(V, cr, V->D->rt);
+  int on_global_cp[DV_NUM_CRITICAL_PATHS];
+  int i;
+  for (i = 0; i < DV_NUM_CRITICAL_PATHS; i++) {
+    if (V->D->show_critical_paths[i])
+      on_global_cp[i] = 1;
+    else
+      on_global_cp[i] = 0;
+  }
+  
+  
+  /* Draw */
+  dv_view_draw_dag_node_r(V, cr, V->D->rt, on_global_cp);
 }
 
 void
