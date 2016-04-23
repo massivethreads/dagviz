@@ -140,7 +140,7 @@ dv_view_layout_timeline(dv_view_t * V) {
 /****** Draw ******/
 
 static void
-dv_view_draw_timeline_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
+dv_view_draw_timeline_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node, int * on_global_cp) {
   cairo_save(cr);
   /* Get inputs */
   dv_dag_t * D = V->D;
@@ -208,9 +208,7 @@ dv_view_draw_timeline_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) 
       }
       
       /* Highlight critical paths */
-      if ( (D->show_critical_paths[DV_CRITICAL_PATH_0] && dv_node_flag_check(node->f, CS->oncp_flags[DV_CRITICAL_PATH_0]))
-           || (D->show_critical_paths[DV_CRITICAL_PATH_1] && dv_node_flag_check(node->f, CS->oncp_flags[DV_CRITICAL_PATH_1]))
-           || (D->show_critical_paths[DV_CRITICAL_PATH_2] && dv_node_flag_check(node->f, CS->oncp_flags[DV_CRITICAL_PATH_2])) ) {
+      {
         cairo_new_path(cr);
         double margin, line_width, margin_increment;
         GdkRGBA color[1];
@@ -222,32 +220,16 @@ dv_view_draw_timeline_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) 
         margin = - 0.5 * line_width;
         margin_increment = - line_width;
     
-        if ( D->show_critical_paths[DV_CRITICAL_PATH_0] && dv_node_flag_check(node->f, CS->oncp_flags[DV_CRITICAL_PATH_0]) ) {
-          gdk_rgba_parse(color, CS->cp_colors[DV_CRITICAL_PATH_0]);
-          cairo_set_source_rgba(cr, color->red, color->green, color->blue, color->alpha);
-          cairo_set_line_width(cr, line_width );
-          cairo_rectangle(cr, xx - margin, yy - margin, w + 2 * margin, h + 2 * margin);
-          cairo_stroke(cr);
-          margin += margin_increment;
-        }
-    
-        if ( D->show_critical_paths[DV_CRITICAL_PATH_1] && dv_node_flag_check(node->f, CS->oncp_flags[DV_CRITICAL_PATH_1]) ) {
-          gdk_rgba_parse(color, CS->cp_colors[DV_CRITICAL_PATH_1]);
-          cairo_set_source_rgba(cr, color->red, color->green, color->blue, color->alpha);
-          cairo_set_line_width(cr, line_width );
-          cairo_rectangle(cr, xx - margin, yy - margin, w + 2 * margin, h + 2 * margin);
-          cairo_stroke(cr);
-          margin += margin_increment;
-        }
-
-        if ( D->show_critical_paths[DV_CRITICAL_PATH_2] && dv_node_flag_check(node->f, CS->oncp_flags[DV_CRITICAL_PATH_2]) ) {
-          gdk_rgba_parse(color, CS->cp_colors[DV_CRITICAL_PATH_2]);
-          cairo_set_source_rgba(cr, color->red, color->green, color->blue, color->alpha);
-          cairo_set_line_width(cr, line_width );
-          cairo_rectangle(cr, xx - margin, yy - margin, w + 2 * margin, h + 2 * margin);
-          cairo_stroke(cr);
-          margin += margin_increment;
-        }
+        int i;
+        for (i = 0; i < DV_NUM_CRITICAL_PATHS; i++)
+          if (on_global_cp[i]) {
+            gdk_rgba_parse(color, CS->cp_colors[i]);
+            cairo_set_source_rgba(cr, color->red, color->green, color->blue, color->alpha);
+            cairo_set_line_width(cr, line_width);
+            cairo_rectangle(cr, xx - margin, yy - margin, w + 2 * margin, h + 2 * margin);
+            cairo_stroke(cr);
+            margin += margin_increment;
+          }
       }
 
     }
@@ -263,25 +245,37 @@ dv_view_draw_timeline_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) 
 }
 
 static void
-dv_view_draw_timeline_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
+dv_view_draw_timeline_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node, int * parent_on_global_cp) {
   /* Counting statistics */
   V->S->ndh++;
   if (!node || !dv_is_set(node))
     return;
+  
+  /* Check if node is still on the global critical paths */
+  int me_on_global_cp[DV_NUM_CRITICAL_PATHS];
+  int i;
+  for (i = 0; i < DV_NUM_CRITICAL_PATHS; i++) {
+    if (parent_on_global_cp[i] && dv_node_flag_check(node->f, CS->oncp_flags[i]))
+      me_on_global_cp[i] = 1;
+    else
+      me_on_global_cp[i] = 0;
+  }
+  
   /* Call inward */
   int hidden = dv_timeline_node_is_invisible(V, node);
   if (!hidden) {
     if (dv_is_union(node) && dv_is_inner_loaded(node) && dv_is_expanded(node)) {
-      dv_view_draw_timeline_node_r(V, cr, node->head);
+      dv_view_draw_timeline_node_r(V, cr, node->head, me_on_global_cp);
     } else {
-      dv_view_draw_timeline_node_1(V, cr, node);
+      dv_view_draw_timeline_node_1(V, cr, node, me_on_global_cp);
     }
   }
+  
   /* Call link-along */
   if (!(hidden & DV_DAG_NODE_HIDDEN_RIGHT)) {
     dv_dag_node_t * next = NULL;
     while ( (next = dv_dag_node_traverse_nexts(node, next)) ) {
-      dv_view_draw_timeline_node_r(V, cr, next);
+      dv_view_draw_timeline_node_r(V, cr, next, parent_on_global_cp);
     }
   }
 }
@@ -292,14 +286,17 @@ dv_view_draw_timeline(dv_view_t * V, cairo_t * cr) {
   if (CS->verbose_level >= 2) {
     fprintf(stderr, "dv_view_draw_timeline()\n");
   }
+  
   /* Set adaptive line width */
   double line_width = dv_min(DV_NODE_LINE_WIDTH, DV_NODE_LINE_WIDTH / dv_min(V->S->zoom_ratio_x, V->S->zoom_ratio_y));
   cairo_set_line_width(cr, line_width);
+  
   /* White & grey colors */
   GdkRGBA white[1];
   gdk_rgba_parse(white, "white");
   GdkRGBA grey[1];
   gdk_rgba_parse(grey, "light grey");
+  
   /* Draw background */
   /*
   cairo_new_path(cr);
@@ -311,13 +308,25 @@ dv_view_draw_timeline(dv_view_t * V, cairo_t * cr) {
   cairo_rectangle(cr, 0.0, 0.0, width, height);
   cairo_fill(cr);
   */
+  
   /* Draw nodes */
-  dv_llist_init(V->D->itl);
-  V->S->nd = 0;
-  V->S->ndh = 0;
-  V->D->cur_d = 0;
-  V->D->cur_d_ex = V->D->dmax;
-  dv_view_draw_timeline_node_r(V, cr, V->D->rt);
+  {
+    dv_llist_init(V->D->itl);
+    V->S->nd = 0;
+    V->S->ndh = 0;
+    V->D->cur_d = 0;
+    V->D->cur_d_ex = V->D->dmax;
+    int on_global_cp[DV_NUM_CRITICAL_PATHS];
+    int i;
+    for (i = 0; i < DV_NUM_CRITICAL_PATHS; i++) {
+      if (V->D->show_critical_paths[i])
+        on_global_cp[i] = 1;
+      else
+        on_global_cp[i] = 0;
+    }
+    dv_view_draw_timeline_node_r(V, cr, V->D->rt, on_global_cp);
+  }
+  
   /* Draw worker numbers */
   cairo_set_source_rgb(cr, 0.1, 0.1, 0.1);
   cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_BOLD);

@@ -543,39 +543,11 @@ dv_view_draw_dag_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node, int *
       if (on_global_cp[i]) {
         gdk_rgba_parse(color, CS->cp_colors[i]);
         cairo_set_source_rgba(cr, color->red, color->green, color->blue, color->alpha);
-        cairo_set_line_width(cr, line_width );
+        cairo_set_line_width(cr, line_width);
         cairo_rectangle(cr, xx - margin, yy - margin, w + 2 * margin, h + 2 * margin);
         cairo_stroke(cr);
         margin += margin_increment;
       }
-    /*
-    if ( D->show_critical_paths[DV_CRITICAL_PATH_0] && dv_node_flag_check(node->f, CS->oncp_flags[DV_CRITICAL_PATH_0]) ) {
-      gdk_rgba_parse(color, CS->cp_colors[DV_CRITICAL_PATH_0]);
-      cairo_set_source_rgba(cr, color->red, color->green, color->blue, color->alpha);
-      cairo_set_line_width(cr, line_width );
-      cairo_rectangle(cr, xx - margin, yy - margin, w + 2 * margin, h + 2 * margin);
-      cairo_stroke(cr);
-      margin += margin_increment;
-    }
-    
-    if ( D->show_critical_paths[DV_CRITICAL_PATH_1] && dv_node_flag_check(node->f, CS->oncp_flags[DV_CRITICAL_PATH_1]) ) {
-      gdk_rgba_parse(color, CS->cp_colors[DV_CRITICAL_PATH_1]);
-      cairo_set_source_rgba(cr, color->red, color->green, color->blue, color->alpha);
-      cairo_set_line_width(cr, line_width );
-      cairo_rectangle(cr, xx - margin, yy - margin, w + 2 * margin, h + 2 * margin);
-      cairo_stroke(cr);
-      margin += margin_increment;
-    }
-
-    if ( D->show_critical_paths[DV_CRITICAL_PATH_2] && dv_node_flag_check(node->f, CS->oncp_flags[DV_CRITICAL_PATH_2]) ) {
-      gdk_rgba_parse(color, CS->cp_colors[DV_CRITICAL_PATH_2]);
-      cairo_set_source_rgba(cr, color->red, color->green, color->blue, color->alpha);
-      cairo_set_line_width(cr, line_width );
-      cairo_rectangle(cr, xx - margin, yy - margin, w + 2 * margin, h + 2 * margin);
-      cairo_stroke(cr);
-      margin += margin_increment;
-    }
-    */
   }
 
   cairo_restore(cr);
@@ -603,7 +575,6 @@ dv_view_draw_dag_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node, int *
       me_on_global_cp[i] = 0;
   }
   
-
   if (!dv_dag_node_is_invisible(V, node)) {
     /* Draw node */
     if (!dv_is_union(node) || !dv_is_inner_loaded(node)
@@ -648,9 +619,8 @@ dv_view_draw_dag_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node, int *
 
 void
 dv_view_draw_dag(dv_view_t * V, cairo_t * cr) {
-  cairo_set_line_width(cr, DV_NODE_LINE_WIDTH);
-
   /* Prepare */
+  cairo_set_line_width(cr, DV_NODE_LINE_WIDTH);
   dv_llist_init(V->D->itl);
   V->S->nd = 0;
   V->S->ndh = 0;
