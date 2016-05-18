@@ -396,6 +396,7 @@ dv_statistics_graph_critical_path_breakdown(char * filename) {
   out = fopen(filename, "w");
   dv_check(out);
   fprintf(out,
+          "#set terminal postscript eps enhanced color size 12cm,6.5cm\n"
           "#set terminal png font arial 14 size 640,350\n"
           "#set output ~/Desktop/00dv_stat_breakdown.png\n"
           "set style data histograms\n"
@@ -405,7 +406,7 @@ dv_statistics_graph_critical_path_breakdown(char * filename) {
           "set boxwidth 0.75 relative\n"
           "set yrange [0:]\n"
           "set ylabel \"cumul. clocks\"\n"
-          "set xtics rotate by -30\n"
+          "set xtics rotate by -60\n"
           "plot "
           "\"-\" u 2:xtic(1) w histogram t \"work\", "
           "\"-\" u 3 w histogram t \"delay\"\n");
@@ -475,6 +476,7 @@ dv_statistics_graph_critical_path_delay_breakdown(char * filename) {
   out = fopen(filename, "w");
   dv_check(out);
   fprintf(out,
+          "#set terminal postscript eps enhanced color size 12cm,6.5cm\n"
           "#set terminal png font arial 14 size 640,350\n"
           "#set output ~/Desktop/00dv_stat_breakdown.png\n"
           "set style data histograms\n"
@@ -484,11 +486,11 @@ dv_statistics_graph_critical_path_delay_breakdown(char * filename) {
           "set boxwidth 0.75 relative\n"
           "set yrange [0:]\n"
           "set ylabel \"cumul. clocks\"\n"
-          "set xtics rotate by -30\n"
+          "set xtics rotate by -60\n"
           "plot "
           "\"-\" u 2:xtic(1) w histogram t \"work\", "
-          "\"-\" u 3 w histogram t \"safe delay\", "
-          "\"-\" u 4 w histogram t \"problematic delay\"\n");
+          "\"-\" u 3 w histogram t \"busy delay\", "
+          "\"-\" u 4 w histogram t \"scheduler delay\"\n");
   int i;
   for (i = 0; i < CS->nD; i++) {
     if (!CS->SBG->checked_D[i]) continue;
@@ -573,6 +575,7 @@ dv_statistics_graph_critical_path_edge_based_delay_breakdown(char * filename) {
   out = fopen(filename, "w");
   dv_check(out);
   fprintf(out,
+          "#set terminal postscript eps enhanced color size 12cm,6.5cm\n"
           "#set terminal png font arial 14 size 640,350\n"
           "#set output ~/Desktop/00dv_stat_breakdown.png\n"
           "set style data histograms\n"
@@ -582,10 +585,10 @@ dv_statistics_graph_critical_path_edge_based_delay_breakdown(char * filename) {
           "set boxwidth 0.75 relative\n"
           "set yrange [0:]\n"
           "set ylabel \"cumul. clocks\"\n"
-          "set xtics rotate by -30\n"
+          "set xtics rotate by -60\n"
           "plot "
           "\"-\" u 2:xtic(1) w histogram t \"work\", "
-          "\"-\" u 3 w histogram t \"safe delay\", "
+          "\"-\" u 3 w histogram t \"busy delay\", "
           "\"-\" u 4 w histogram t \"end\", "
           "\"-\" u 5 w histogram t \"create\", "
           "\"-\" u 6 w histogram t \"create cont.\", "
