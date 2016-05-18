@@ -3297,10 +3297,10 @@ dv_gui_nodeinfo_set_node(dv_gui_t * gui, dv_dag_node_t * node, dv_dag_t * D) {
 
   sprintf(s, "%llu",
           pi->info.t_1);
-  gtk_label_set_text(GTK_LABEL(gui->nodeinfo.t1inf), s);
+  gtk_label_set_text(GTK_LABEL(gui->nodeinfo.t1), s);
   sprintf(s, "%llu",
           pi->info.t_inf);
-  gtk_label_set_text(GTK_LABEL(gui->nodeinfo.t1inf), s);
+  gtk_label_set_text(GTK_LABEL(gui->nodeinfo.tinf), s);
 
   sprintf(s, " ");
   int i;
@@ -3341,8 +3341,12 @@ dv_gui_build_nodeinfo_sidebox(dv_gui_t * gui) {
   gtk_container_set_border_width(GTK_CONTAINER(sidebox), 5);
   g_object_ref(sidebox);
 
+  GtkWidget * scrolled_window = gtk_scrolled_window_new(NULL, NULL);
+  gtk_container_add(GTK_CONTAINER(sidebox), scrolled_window);
+  gtk_widget_set_size_request(GTK_WIDGET(scrolled_window), 230, 450);
+
   GtkWidget * sidebox_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
-  gtk_container_add(GTK_CONTAINER(sidebox), sidebox_box);
+  gtk_container_add(GTK_CONTAINER(scrolled_window), sidebox_box);
   gtk_container_set_border_width(GTK_CONTAINER(sidebox_box), 5);
 
   GtkWidget * grid = gtk_grid_new();
@@ -3429,7 +3433,7 @@ dv_gui_build_nodeinfo_sidebox(dv_gui_t * gui) {
 
   num++;
   label = gtk_label_new("t_1:");
-  widget = gui->nodeinfo.t1inf = gtk_label_new("<none>");
+  widget = gui->nodeinfo.t1 = gtk_label_new("<none>");
   gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
   gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
   gtk_widget_set_halign(label, GTK_ALIGN_END);
@@ -3437,7 +3441,7 @@ dv_gui_build_nodeinfo_sidebox(dv_gui_t * gui) {
 
   num++;
   label = gtk_label_new("t_inf:");
-  widget = gui->nodeinfo.t1inf = gtk_label_new("<none>");
+  widget = gui->nodeinfo.tinf = gtk_label_new("<none>");
   gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
   gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
   gtk_widget_set_halign(label, GTK_ALIGN_END);

@@ -636,7 +636,9 @@ typedef struct dv_gui {
     GtkWidget * duration;    
     GtkWidget * first_ready_t;
     GtkWidget * est;
-    GtkWidget * t1inf;
+    //GtkWidget * t1inf;
+    GtkWidget * t1;
+    GtkWidget * tinf;
     GtkWidget * counters;
     GtkWidget * worker;
     GtkWidget * cpu;
