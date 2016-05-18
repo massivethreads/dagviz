@@ -519,7 +519,7 @@ dv_histogram_compute_significant_intervals(dv_histogram_t * H) {
     //double weight = (H->D->P->num_workers - e->h[dv_histogram_layer_running]) / H->D->P->num_workers;
     //e->weighted_value = weight * (ee->t - e->t);
     e->weighted_value = ee->t - e->t;
-    if (e->h[dv_histogram_layer_running] >= H->D->P->num_workers)
+    if (e->h[dv_histogram_layer_running] >= (0.95 * H->D->P->num_workers))
       e->weighted_value = 0.0;
     cumul += e->weighted_value;
     e = ee;
