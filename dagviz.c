@@ -2977,18 +2977,18 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
       GtkToolItem * btn_zoomfit = gtk_menu_tool_button_new(NULL, NULL);
       gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_zoomfit, -1);
       gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_zoomfit), "zoom-fit-best");
-      gtk_widget_set_tooltip_text(GTK_WIDGET(btn_zoomfit), "Zoom DAG fully-fit (F)");
+      gtk_widget_set_tooltip_text(GTK_WIDGET(btn_zoomfit), "Fit fully (F)");
       g_signal_connect(G_OBJECT(btn_zoomfit), "clicked", G_CALLBACK(on_toolbar_zoomfit_button_clicked), (void *) 0);
 
       GtkWidget * menu = gtk_menu_new();
       gtk_menu_tool_button_set_menu(GTK_MENU_TOOL_BUTTON(btn_zoomfit), menu);
       GtkWidget * item;
       
-      item= gtk_menu_item_new_with_label("Zoom DAG horizontally-fit (H)");
+      item= gtk_menu_item_new_with_label("Fit width (H)");
       gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
       g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_zoomfit_button_clicked), (void *) 1);
       
-      item= gtk_menu_item_new_with_label("Zoom DAG vertically-fit (V)");
+      item= gtk_menu_item_new_with_label("Fit height (V)");
       gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
       g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_zoomfit_button_clicked), (void *) 2);
 
