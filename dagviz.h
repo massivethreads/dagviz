@@ -703,9 +703,11 @@ extern const int DV_RADIAL_PATTERN_STOPS_NUM;
 
 /*-----------------Headers-----------------*/
 
-/* dagviz.c */
+/* common.c */
 void dv_global_state_init(dv_global_state_t *);
 
+
+/* dagviz.c */
 void dv_queue_draw_viewport(dv_viewport_t *);
 void dv_queue_draw_view(dv_view_t *);
 void dv_queue_draw_dag(dv_dag_t *);
