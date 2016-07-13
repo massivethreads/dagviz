@@ -435,8 +435,8 @@ dv_statistics_graph_critical_path_breakdown(char * filename) {
           fprintf(out, " (cp%d)", cp + 1);
         fprintf(out,
                 "\"  %lf %lf",
-                D->rt->cps[cp].work,
-                D->rt->cps[cp].delay);
+                D->rt->cpss[cp].work,
+                D->rt->cpss[cp].delay);
         fprintf(out, "\n");
       }
     }
@@ -516,9 +516,9 @@ dv_statistics_graph_critical_path_delay_breakdown(char * filename) {
           fprintf(out, " (cp%d)", cp + 1);
         fprintf(out,
                 "\"  %lf %lf %lf",
-                D->rt->cps[cp].work,
-                D->rt->cps[cp].delay - D->rt->cps[cp].problematic_delay,
-                D->rt->cps[cp].problematic_delay);
+                D->rt->cpss[cp].work,
+                D->rt->cpss[cp].delay - D->rt->cpss[cp].sched_delay,
+                D->rt->cpss[cp].sched_delay);
         fprintf(out, "\n");
       }
     }
@@ -566,7 +566,7 @@ dv_statistics_graph_critical_path_edge_based_delay_breakdown(char * filename) {
     dv_dag_compute_critical_paths(D);
     int cp;
     for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++)
-      if (D->rt->cps[cp].pdelays[dr_dag_edge_kind_other_cont] > 0.0)
+      if (D->rt->cpss[cp].sched_delays[dr_dag_edge_kind_other_cont] > 0.0)
         to_print_other_cont = 1;
   }
 
@@ -618,12 +618,12 @@ dv_statistics_graph_critical_path_edge_based_delay_breakdown(char * filename) {
           fprintf(out, " (cp%d)", cp + 1);
         fprintf(out,
                 "\"  %lf %lf",
-                D->rt->cps[cp].work,
-                D->rt->cps[cp].delay - D->rt->cps[cp].problematic_delay);
+                D->rt->cpss[cp].work,
+                D->rt->cpss[cp].delay - D->rt->cpss[cp].sched_delay);
         int ek;
         for (ek = 0; ek < dr_dag_edge_kind_max; ek++)
           if (ek != dr_dag_edge_kind_other_cont || to_print_other_cont)
-            fprintf(out, " %lf", D->rt->cps[cp].pdelays[ek]);
+            fprintf(out, " %lf", D->rt->cpss[cp].sched_delays[ek]);
         fprintf(out, "\n");
       }
     }

@@ -21,8 +21,12 @@ dv_histogram_entry_init(dv_histogram_entry_t * e) {
     e->h[i] = 0.0;
   }
   e->next = NULL;
-  e->weighted_value = 0.0;
-  e->cumulative_value = 0.0;
+  e->value_1 = 0.0;
+  e->value_2 = 0.0;
+  e->value_3 = 0.0;
+  e->cumul_value_1 = 0.0;
+  e->cumul_value_2 = 0.0;
+  e->cumul_value_3 = 0.0;
 }
 
 double
@@ -508,23 +512,46 @@ dv_histogram_compute_significant_intervals(dv_histogram_t * H) {
   if (CS->verbose_level >= 1) {
     fprintf(stderr, "dv_histogram_compute_significant_intervals()\n");
   }
-  double cumul = 0.0;
+  int num_workers = H->D->P->num_workers;
+  double num_running_workers = 0.0;
+  double cumul_1 = 0.0;
+  double cumul_2 = 0.0;
+  double cumul_3 = 0.0;
   dv_histogram_entry_t * e;
   dv_histogram_entry_t * ee;
   e = H->head_e;
   while (e != H->tail_e) {
     ee = e->next;
-    e->cumulative_value = cumul;
-    //double weight = 1 + H->D->P->num_workers - e->h[dv_histogram_layer_running];
-    //double weight = (H->D->P->num_workers - e->h[dv_histogram_layer_running]) / H->D->P->num_workers;
-    //e->weighted_value = weight * (ee->t - e->t);
-    e->weighted_value = ee->t - e->t;
-    if (e->h[dv_histogram_layer_running] >= (1.0 * H->D->P->num_workers))
-      e->weighted_value = 0.0;
-    cumul += e->weighted_value;
+    e->cumul_value_1 = cumul_1;
+    e->cumul_value_2 = cumul_2;
+    e->cumul_value_3 = cumul_3;
+    num_running_workers = e->h[dv_histogram_layer_running];
+    /* sched. delay or not */
+    if (num_running_workers >= (1.0 * num_workers))
+      e->value_1 = 0.0;
+    else
+      e->value_1 = ee->t - e->t;
+    cumul_1 += e->value_1;
+    /* delay & nowork associated with sched. delay */
+    double num_ready_tasks = 0.0;
+    int layer = dv_histogram_layer_running;
+    while (++layer < dv_histogram_layer_max) {
+      num_ready_tasks += e->h[layer];
+    }    
+    if (num_running_workers + num_ready_tasks < num_workers) {
+      e->value_2 = (ee->t - e->t) * (num_ready_tasks);
+      e->value_3 = (ee->t - e->t) * (num_workers - num_running_workers - num_ready_tasks);
+    } else {
+      e->value_2 = (ee->t - e->t) * (num_workers - num_running_workers);
+      e->value_3 = 0.0;
+    }
+    cumul_2 += e->value_2;
+    cumul_3 += e->value_3;
     e = ee;
   }
-  H->tail_e->cumulative_value = cumul;
+  H->tail_e->cumul_value_1 = cumul_1;
+  H->tail_e->cumul_value_2 = cumul_2;
+  H->tail_e->cumul_value_3 = cumul_3;
   if (CS->verbose_level >= 1) {
     fprintf(stderr, "... done dv_histogram_compute_significant_intervals(): %lf ms\n", dv_get_time() - time);
   }

@@ -199,6 +199,8 @@ typedef struct dv_llist {
 
 /*-----------------Data Structures-----------------*/
 
+typedef long long dv_clock_t;
+
 /* a single record of backtrace */
 typedef struct {
   unsigned long long tsc;
@@ -238,9 +240,9 @@ typedef struct dv_node_coordinate {
 typedef struct dv_critical_path_stat {
   double work;
   double delay;
-  double problematic_work;
-  double problematic_delay;
-  double pdelays[dr_dag_edge_kind_max];
+  double sched_delay;
+  double sched_delays[dr_dag_edge_kind_max];
+  double sched_delay_nowork;
 } dv_critical_path_stat_t;
 
 typedef struct dv_dag_node {
@@ -273,7 +275,7 @@ typedef struct dv_dag_node {
   char highlight; /* to highlight the node when drawing */
 
   /* statistics of inner subgraphs */
-  dv_critical_path_stat_t cps[DV_NUM_CRITICAL_PATHS];
+  dv_critical_path_stat_t cpss[DV_NUM_CRITICAL_PATHS];
 } dv_dag_node_t;
 
 typedef struct dv_histogram dv_histogram_t;
@@ -510,8 +512,12 @@ typedef struct dv_histogram_entry {
   double t;
   struct dv_histogram_entry * next;
   double h[dv_histogram_layer_max];
-  double weighted_value;
-  double cumulative_value;
+  double value_1;
+  double cumul_value_1;
+  double value_2;
+  double cumul_value_2;
+  double value_3;
+  double cumul_value_3;
 } dv_histogram_entry_t;
 
 typedef struct dv_histogram {
@@ -577,9 +583,9 @@ typedef struct dv_stat_distribution {
 typedef struct dv_stat_breakdown_graph {
   int checked_D[DV_MAX_DAG]; /* show or not show */
   char * fn;
-  dr_clock_t work[DV_MAX_DAG];
-  dr_clock_t delay[DV_MAX_DAG];
-  dr_clock_t nowork[DV_MAX_DAG];
+  dv_clock_t work[DV_MAX_DAG];
+  dv_clock_t delay[DV_MAX_DAG];
+  dv_clock_t nowork[DV_MAX_DAG];
   char * fn_2;
   int checked_cp[DV_NUM_CRITICAL_PATHS];
 } dv_stat_breakdown_graph_t;

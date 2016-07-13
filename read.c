@@ -210,14 +210,14 @@ dv_dag_node_init(dv_dag_node_t * node, dv_dag_node_t * parent, long pii) {
   node->highlight = 0;
 
   for (i = 0; i < DV_NUM_CRITICAL_PATHS; i++) {
-    node->cps[i].work = 0.0;
-    node->cps[i].delay = 0.0;
-    node->cps[i].problematic_work = 0.0;
-    node->cps[i].problematic_delay = 0.0;
+    node->cpss[i].work = 0.0;
+    node->cpss[i].delay = 0.0;
+    node->cpss[i].sched_delay = 0.0;
     int ek;
     for (ek = 0; ek < dr_dag_edge_kind_max; ek++) {
-      node->cps[i].pdelays[ek] = 0.0;
+      node->cpss[i].sched_delays[ek] = 0.0;
     }
+    node->cpss[i].sched_delay_nowork = 0.0;
   }    
 }
 
