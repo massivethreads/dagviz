@@ -316,7 +316,7 @@ dr_basic_stat_process_event(chronological_traverser * ct,
 
 void
 dp_stat_graph_execution_time_breakdown(char * filename) {
-  /* generate plots */
+  /* graph 1: execution time breakdown (including serial) */
   FILE * out = dp_open_file(filename);
   if (!out) return;
   fprintf(out,
@@ -354,9 +354,19 @@ dp_stat_graph_execution_time_breakdown(char * filename) {
   dp_close_file(out);
   fprintf(stdout, "generated breakdown graphs to %s\n", filename);
 
+  /* Get max y */
+  double max_y = 0.0;
+  double max_y_percent = 0.0;
   double base = CS->SBG->work[0] + CS->SBG->delay[0] + CS->SBG->nowork[0];
+  for (i = 0; i < CS->nD; i++) {
+    double perf_loss = (CS->SBG->work[i] + CS->SBG->delay[i] + CS->SBG->nowork[i]) - base;
+    if (perf_loss > max_y) {
+      max_y = perf_loss;
+      max_y_percent = ceil(max_y / base * 100.0);
+    }
+  }
 
-  /* graph 2: performance loss */
+  /* graph 2: performance loss (without percentage) */
   char filename_[1000];
   strcpy(filename_, filename);
   filename_[strlen(filename) - 4] = '\0';
@@ -395,10 +405,10 @@ dp_stat_graph_execution_time_breakdown(char * filename) {
   dp_close_file(out);
   fprintf(stdout, "generated breakdown graphs to %s\n", filename_);
 
-  /* graph 3: performance loss with percentage */
+  /* graph 3: performance loss with percentage line */
   strcpy(filename_, filename);
   filename_[strlen(filename) - 4] = '\0';
-  sprintf(filename_, "%s_perf_loss_with_percentage.gpl", filename_);
+  sprintf(filename_, "%s_perf_loss_with_percentage_line.gpl", filename_);
   out = dp_open_file(filename_);
   if (!out) return;
   fprintf(out,
@@ -488,10 +498,55 @@ dp_stat_graph_execution_time_breakdown(char * filename) {
   dp_close_file(out);
   fprintf(stdout, "generated breakdown graphs to %s\n", filename_);
 
-  /* graph 5: performance loss by percentage */
+  /* graph 5: performance loss percentages */
   strcpy(filename_, filename);
   filename_[strlen(filename) - 4] = '\0';
-  sprintf(filename_, "%s_perf_loss_by_percentage.gpl", filename_);
+  sprintf(filename_, "%s_perf_loss_percentages.gpl", filename_);
+  out = dp_open_file(filename_);
+  if (!out) return;
+  fprintf(out,
+          "#set terminal png font arial 14 size 640,350\n"
+          "#set output ~/Desktop/00dv_stat_breakdown.png\n"
+          "set style data histograms\n"
+          "set style histogram rowstacked\n"
+          "set style fill solid 0.8 noborder\n"
+          "set key off #outside center top horizontal\n"
+          "set boxwidth 0.85 relative\n"
+          "set yrange [*<0:%lf<*]\n"
+          "#set xtics rotate by -20\n"
+          "set ylabel \"percent\"\n"
+          "plot "
+          "\"-\" u 2:xtic(1) w histogram t \"work stretch\", "
+          "\"-\" u 3 w histogram t \"delay\", "
+          "\"-\" u 4 w histogram t \"no-work\", "
+          "\"-\" u 0:5:6 w labels center offset 0,1 notitle \n",
+          max_y_percent);
+  for (j = 0; j < 4; j++) {
+    for (i = 1; i < CS->nD; i++) {
+      dv_dag_t * D = &CS->D[i];
+      double loss_work = (CS->SBG->work[i] - CS->SBG->work[0]) * 100.0 / base;
+      double loss_delay = (CS->SBG->delay[i] - CS->SBG->delay[0]) * 100.0 / base;
+      double loss_nowork = (CS->SBG->nowork[i] - CS->SBG->nowork[0]) * 100.0 / base;
+      double loss = loss_work + loss_delay + loss_nowork;
+      fprintf(out,
+              "\"%s\"  %lf %lf %lf %lf \"%.1lf%%\"\n",
+              D->name_on_graph,
+              loss_work,
+              loss_delay,
+              loss_nowork,
+              loss,
+              loss);
+    }
+    fprintf(out, "e\n");
+  }
+  fprintf(out, "pause -1\n");
+  dp_close_file(out);
+  fprintf(stdout, "generated breakdown graphs to %s\n", filename_);
+
+  /* graph 6: performance loss percentages with fixed yrange [0:100] */
+  strcpy(filename_, filename);
+  filename_[strlen(filename) - 4] = '\0';
+  sprintf(filename_, "%s_perf_loss_percentages_fixed.gpl", filename_);
   out = dp_open_file(filename_);
   if (!out) return;
   fprintf(out,
@@ -703,7 +758,7 @@ dp_stat_graph_critical_path_edge_based_delay_breakdown(char * filename) {
 }
 
 void
-dp_stat_graph_performance_loss_factors(char * filename_) {
+dp_stat_graph_performance_loss_factors_with_percentage_lines(char * filename_) {
   /* Get max y */
   int i;
   double max_y = 0.0;
@@ -1523,11 +1578,22 @@ dp_stat_graph_performance_loss_factors_with_percentage_labels_to_base(char * fil
 }
 
 void
-dp_stat_graph_performance_loss_factors_by_percentage(char * filename_) {
+dp_stat_graph_performance_loss_factor_percentages_with_labels(char * filename_) {
   int i, j;
   FILE * out;
   char filename[1000];
+
+  /* Get max y */
+  double max_y = 0.0;
+  double max_y_percent = 0.0;
   double base = CS->SBG->work[0] + CS->SBG->delay[0] + CS->SBG->nowork[0];
+  for (i = 0; i < CS->nD; i++) {
+    double perf_loss = (CS->SBG->work[i] + CS->SBG->delay[i] + CS->SBG->nowork[i]) - base;
+    if (perf_loss > max_y) {
+      max_y = perf_loss;
+      max_y_percent = ceil(max_y / base * 100.0);
+    }
+  }
 
   /* work stretch */
   strcpy(filename, filename_);
@@ -1542,12 +1608,13 @@ dp_stat_graph_performance_loss_factors_by_percentage(char * filename_) {
           "set style fill solid 0.8 noborder\n"
           "set key inside #outside center top horizontal\n"
           "set boxwidth 0.85 relative\n"
-          "set yrange [*<0:100<*]\n"
+          "set yrange [*<0:%lf<*]\n"
           "#set xtics rotate by -20\n"
           "set ylabel \"percent\"\n"
           "plot "
           "\"-\" u 2:xtic(1) w boxes lc rgb \"red\" t \"work stretch\", "
-          "\"-\" u 0:2:3 w labels center offset 0,1 notitle \n"
+          "\"-\" u 0:2:3 w labels center offset 0,1 notitle \n",
+          max_y_percent
           );
   for (j = 0; j < 2; j++) {
     for (i = 1; i < CS->nD; i++) {
@@ -1580,12 +1647,13 @@ dp_stat_graph_performance_loss_factors_by_percentage(char * filename_) {
           "set style fill solid 0.8 noborder\n"
           "set key inside #outside center top horizontal\n"
           "set boxwidth 0.85 relative\n"
-          "set yrange [*<0:100<*]\n"
+          "set yrange [*<0:%lf<*]\n"
           "#set xtics rotate by -20\n"
           "set ylabel \"percent\"\n"
           "plot "
           "\"-\" u 2:xtic(1) w boxes lc rgb \"green\" t \"delay\", "
-          "\"-\" u 0:2:3 w labels center offset 0,1 notitle \n"
+          "\"-\" u 0:2:3 w labels center offset 0,1 notitle \n",
+          max_y_percent
           );
   for (j = 0; j < 2; j++) {
     for (i = 1; i < CS->nD; i++) {
@@ -1618,12 +1686,13 @@ dp_stat_graph_performance_loss_factors_by_percentage(char * filename_) {
           "set style fill solid 0.8 noborder\n"
           "set key inside #outside center top horizontal\n"
           "set boxwidth 0.85 relative\n"
-          "set yrange [*<0:100<*]\n"
+          "set yrange [*<0:%lf<*]\n"
           "#set xtics rotate by -20\n"
           "set ylabel \"percent\"\n"
           "plot "
           "\"-\" u 2:xtic(1) w boxes lc rgb \"blue\" t \"nowork\", "
-          "\"-\" u 0:2:3 w labels center offset 0,1 notitle \n"
+          "\"-\" u 0:2:3 w labels center offset 0,1 notitle \n",
+          max_y_percent
           );
   for (j = 0; j < 2; j++) {
     for (i = 1; i < CS->nD; i++) {
@@ -1656,12 +1725,13 @@ dp_stat_graph_performance_loss_factors_by_percentage(char * filename_) {
           "set style fill solid 0.8 noborder\n"
           "set key inside #outside center top horizontal\n"
           "set boxwidth 0.85 relative\n"
-          "set yrange [*<0:100<*]\n"
+          "set yrange [*<0:%lf<*]\n"
           "#set xtics rotate by -20\n"
           "set ylabel \"percent\"\n"
           "plot "
           "\"-\" u 2:xtic(1) w boxes lc rgb \"blue\" t \"nowork sd\", "
-          "\"-\" u 0:2:3 w labels center offset 0,1 notitle \n"
+          "\"-\" u 0:2:3 w labels center offset 0,1 notitle \n",
+          max_y_percent
           );
   for (j = 0; j < 2; j++) {
     for (i = 1; i < CS->nD; i++) {
@@ -1694,12 +1764,13 @@ dp_stat_graph_performance_loss_factors_by_percentage(char * filename_) {
           "set style fill solid 0.8 noborder\n"
           "set key inside #outside center top horizontal\n"
           "set boxwidth 0.85 relative\n"
-          "set yrange [*<0:100<*]\n"
+          "set yrange [*<0:%lf<*]\n"
           "#set xtics rotate by -20\n"
           "set ylabel \"percent\"\n"
           "plot "
           "\"-\" u 2:xtic(1) w boxes lc rgb \"blue\" t \"nowork w\", "
-          "\"-\" u 0:2:3 w labels center offset 0,1 notitle \n"
+          "\"-\" u 0:2:3 w labels center offset 0,1 notitle \n",
+          max_y_percent
           );
   for (j = 0; j < 2; j++) {
     for (i = 1; i < CS->nD; i++) {
@@ -1712,6 +1783,49 @@ dp_stat_graph_performance_loss_factors_by_percentage(char * filename_) {
               D->name_on_graph,
               percentage,
               percentage);
+    }
+    fprintf(out, "e\n");
+  }
+  fprintf(out, "pause -1\n");
+  dp_close_file(out);
+  fprintf(stdout, "generated graph to %s\n", filename);
+
+  /* nowork breakdown */
+  strcpy(filename, filename_);
+  filename[strlen(filename) - 4] = '\0';
+  sprintf(filename, "%s_nowork_breakdown.gpl", filename);
+  out = dp_open_file(filename);
+  if (!out) return;
+  fprintf(out,
+          "#set terminal png font arial 14 size 640,350\n"
+          "#set terminal postscript eps enhanced color size 10cm,5cm\n"
+          "#set output ~/Desktop/00dv_stat_breakdown.png\n"
+          "set style data histograms\n"
+          "set style histogram rowstacked\n"
+          "set style fill solid 0.8 noborder\n"
+          "set key inside #outside center top horizontal\n"
+          "set boxwidth 0.85 relative\n"
+          "set yrange [*<0:%lf<*]\n"
+          "#set xtics rotate by -20\n"
+          "set ylabel \"percent\"\n"
+          "plot "
+          "\"-\" u 2:xtic(1) w histogram lc rgb \"blue\" t \"nowork w\", "
+          "\"-\" u 3 w histogram lc rgb \"royalblue\" t \"nowork sd\", "
+          "\"-\" u 0:($2+$3):4 w labels center offset 0,1 notitle \n",
+          max_y_percent
+          );
+  for (j = 0; j < 3; j++) {
+    for (i = 1; i < CS->nD; i++) {
+      dv_dag_t * D = &CS->D[i];
+      double factor = (CS->SBG->nowork[i] - CS->SBG->nowork[0]) - D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_nowork;
+      double percentage = (factor / base) * 100.0;
+      double percentage_2 = (D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_nowork / base) * 100.0;
+      fprintf(out,
+              "\"%s\"  %lf %lf \"%.1lf%%\"\n",
+              D->name_on_graph,
+              percentage,
+              percentage_2,
+              percentage + percentage_2);
     }
     fprintf(out, "e\n");
   }
@@ -1786,12 +1900,14 @@ main(int argc, char ** argv) {
     exit(1);
   }
   
+
   /* Graphs */
   char filename[1000];
   
   sprintf(filename, "%s/%s", dp_prefix, "execution_time_breakdown.gpl");
   dp_stat_graph_execution_time_breakdown(filename);
   //dp_call_gnuplot(filename);
+
   
   sprintf(filename, "%s/%s", dp_prefix, "critical_path_breakdown_0.gpl");
   dp_stat_graph_critical_path_breakdown(filename);
@@ -1804,9 +1920,10 @@ main(int argc, char ** argv) {
   sprintf(filename, "%s/%s", dp_prefix, "critical_path_breakdown_2.gpl");
   dp_stat_graph_critical_path_edge_based_delay_breakdown(filename);
   //dp_call_gnuplot(filename);
+
   
-  sprintf(filename, "%s/%s", dp_prefix, "performance_loss_factor.gpl");
-  dp_stat_graph_performance_loss_factors(filename);
+  sprintf(filename, "%s/%s", dp_prefix, "performance_loss_factor_with_lines.gpl");
+  dp_stat_graph_performance_loss_factors_with_percentage_lines(filename);
 
   sprintf(filename, "%s/%s", dp_prefix, "performance_loss_factor_with_labels.gpl");
   dp_stat_graph_performance_loss_factors_with_percentage_labels(filename);
@@ -1814,8 +1931,9 @@ main(int argc, char ** argv) {
   sprintf(filename, "%s/%s", dp_prefix, "performance_loss_factor_with_labels_to_base.gpl");
   dp_stat_graph_performance_loss_factors_with_percentage_labels_to_base(filename);
 
-  sprintf(filename, "%s/%s", dp_prefix, "performance_loss_factor_by_percentage.gpl");
-  dp_stat_graph_performance_loss_factors_by_percentage(filename);
+  sprintf(filename, "%s/%s", dp_prefix, "performance_loss_factor_percentages.gpl");
+  dp_stat_graph_performance_loss_factor_percentages_with_labels(filename);
+
 
   /* Finalization */  
   return 1;
