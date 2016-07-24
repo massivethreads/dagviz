@@ -847,17 +847,19 @@ translate_addresses(int c, bfd *abfd, bt_sample_t *s, dv_btsample_viewer_t *btvi
     bfd_map_over_sections(abfd, find_address_in_section, NULL);
     
     if (!found) {
-      sprintf(str_frame, "%d : %d : %llu : (%d) : ?? : ?? : ??\n",
-              c,
-              s->worker,
-              s->tsc - btviewer->P->start_clock,
-              i);
-    } else {
-      sprintf(str_frame, "%d : %d : %llu : (%d) : %s : %s : %d\n",
+      sprintf(str_frame, "[%d] : Worker %d : Clock %llu : Frame %d : Addr %s : ?? : ?? : ??\n",
               c,
               s->worker,
               s->tsc - btviewer->P->start_clock,
               i,
+              addr);
+    } else {
+      sprintf(str_frame, "[%d] : Worker %d : Clock %llu : Frame %d : Addr %s : %s : %s : %d\n",
+              c,
+              s->worker,
+              s->tsc - btviewer->P->start_clock,
+              i,
+              addr,
               functionname ? functionname : "??",
               filename ? filename : "??",
               line);
