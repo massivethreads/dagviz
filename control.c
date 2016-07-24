@@ -1445,8 +1445,10 @@ dv_do_motion_event(dv_view_t * V, GdkEventMotion * event) {
       /* Expand */
       if (dv_is_union(node)) {
         if ((!dv_is_inner_loaded(node) || dv_is_shrinked(node) || dv_is_shrinking(node))
-            && !dv_is_expanding(node))
+            && !dv_is_expanding(node)) {
           dv_do_expanding_one_1(V, node);
+          dv_view_layout(V);
+        }
       }
       break;
     case 3:
@@ -1586,6 +1588,8 @@ dv_dag_compute_critical_paths_r(dv_dag_t * D, dv_dag_node_t * node, dv_histogram
   double lastfinished_t = 0.0;
   dv_dag_node_t * mostweighted_tail = NULL; /* cp of weighted work & weighted delay */
   dv_dag_node_t * tail = NULL;
+
+#if 0  
   while ( (tail = dv_dag_node_traverse_tails(node, tail)) ) {
     
     dv_critical_path_stat_t cpss[DV_NUM_CRITICAL_PATHS];
@@ -1699,6 +1703,95 @@ dv_dag_compute_critical_paths_r(dv_dag_t * D, dv_dag_node_t * node, dv_histogram
             node->cpss[DV_CRITICAL_PATH_2].delay,
             node->cpss[DV_CRITICAL_PATH_2].sched_delay);
   
+#else
+  
+  while ( (tail = dv_dag_node_traverse_tails(node, tail)) ) {
+    dr_pi_dag_node * tail_pi = dv_pidag_get_node_by_dag_node(D->P, tail);
+    if (!lastfinished_tail || tail_pi->info.end.t >= lastfinished_t) {
+      lastfinished_tail = tail;
+      lastfinished_t = tail_pi->info.end.t;
+    }
+  }
+
+  tail = lastfinished_tail;
+  if (tail) {
+    
+    dv_critical_path_stat_t cpss[DV_NUM_CRITICAL_PATHS];
+    memset(cpss, 0, sizeof(dv_critical_path_stat_t) * DV_NUM_CRITICAL_PATHS);
+    dr_pi_dag_node * tail_pi = dv_pidag_get_node_by_dag_node(D->P, tail);
+
+    /* stack of nodes on path */
+    dv_stack_t s[1];
+    dv_stack_init(s);
+    dv_dag_node_t * x = tail;
+    while (x) {
+      int cp = DV_CRITICAL_PATH_1;
+      {
+        cpss[cp].work += x->cpss[cp].work;
+        cpss[cp].delay += x->cpss[cp].delay;
+        cpss[cp].sched_delay += x->cpss[cp].sched_delay;
+        int ek;
+        for (ek = 0; ek < dr_dag_edge_kind_max; ek++)
+          cpss[cp].sched_delays[ek] += x->cpss[cp].sched_delays[ek];
+        cpss[cp].sched_delay_nowork += x->cpss[cp].sched_delay_nowork;
+      }
+      dv_stack_push(s, (void *) x);
+      x = x->pre;
+    }
+
+    /* compute delay along path */
+    dv_critical_path_stat_t cps[1];
+    cps->delay = cps->sched_delay = 0.0;
+    int ek;
+    for (ek = 0; ek < dr_dag_edge_kind_max; ek++)
+      cps->sched_delays[ek] = 0.0;
+    cps->sched_delay_nowork = 0.0;
+    x = dv_stack_pop(s);
+    dr_pi_dag_node * x_pi = dv_pidag_get_node_by_dag_node(D->P, x);
+    dv_dag_node_t * xx = NULL;
+    dr_pi_dag_node * xx_pi = NULL;
+    dv_histogram_entry_t * e0 = NULL;
+    dv_histogram_entry_t * e1 = first_e;
+    while ( (xx = (dv_dag_node_t *) dv_stack_pop(s)) ) {
+      xx_pi = dv_pidag_get_node_by_dag_node(D->P, xx);
+      cps->delay += xx_pi->info.start.t - x_pi->info.end.t;
+      e0 = dv_histogram_insert_entry(D->H, x_pi->info.end.t, e1);
+      e1 = dv_histogram_insert_entry(D->H, xx_pi->info.start.t, e0);
+      cps->sched_delay += e1->cumul_value_1 - e0->cumul_value_1;
+      ek = xx_pi->info.in_edge_kind;
+      cps->sched_delays[ek] += e1->cumul_value_1 - e0->cumul_value_1;
+      cps->sched_delay_nowork += e1->cumul_value_3 - e0->cumul_value_3;
+      x = xx;
+      x_pi = xx_pi;
+    }
+    cps->delay += pi->info.end.t - tail_pi->info.end.t;
+    e0 = dv_histogram_insert_entry(D->H, tail_pi->info.end.t, e1);
+    e1 = dv_histogram_insert_entry(D->H, pi->info.end.t, e0);
+    cps->sched_delay += e1->cumul_value_1 - e0->cumul_value_1;
+    ek = dr_dag_edge_kind_end;
+    cps->sched_delays[ek] += e1->cumul_value_1 - e0->cumul_value_1;
+    cps->sched_delay_nowork += e1->cumul_value_3 - e0->cumul_value_3;
+    int cp = DV_CRITICAL_PATH_1;
+    {
+      cpss[cp].delay += cps->delay;
+      cpss[cp].sched_delay += cps->sched_delay;
+      double sum = 0.0;
+      for (ek = 0; ek < dr_dag_edge_kind_max; ek++) {
+        cpss[cp].sched_delays[ek] += cps->sched_delays[ek];
+        sum += cps->sched_delays[ek];
+      }
+      cpss[cp].sched_delay_nowork += cps->sched_delay_nowork;
+      if (sum != cps->sched_delay) {
+        fprintf(stderr, "Warning: sum of edge-based delays is not equal to scheduler delay: %lf <> %lf\n",
+                sum, cps->sched_delay);
+      }
+    }
+    node->cpss[DV_CRITICAL_PATH_1] = cpss[DV_CRITICAL_PATH_1];
+    
+  }
+  
+#endif
+  
   /* mark nodes */
   {
     dv_dag_node_t * x;
@@ -1739,9 +1832,13 @@ dv_dag_compute_critical_paths(dv_dag_t * D) {
     dv_histogram_compute_significant_intervals(D->H);
 
     /* compute recursively */
+#if 0    
     dv_node_flag_set(D->rt->f, CS->oncp_flags[DV_CRITICAL_PATH_0]);
     dv_node_flag_set(D->rt->f, CS->oncp_flags[DV_CRITICAL_PATH_1]);
-    dv_node_flag_set(D->rt->f, CS->oncp_flags[DV_CRITICAL_PATH_2]);  
+    dv_node_flag_set(D->rt->f, CS->oncp_flags[DV_CRITICAL_PATH_2]);
+#else    
+    dv_node_flag_set(D->rt->f, CS->oncp_flags[DV_CRITICAL_PATH_1]);
+#endif    
     dv_dag_compute_critical_paths_r(D, D->rt, NULL);
 
     /* finish */
@@ -1752,6 +1849,7 @@ dv_dag_compute_critical_paths(dv_dag_t * D) {
   }
 
   /* output */
+#if 0  
   int cp;
   for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
     printf("DAG %ld (%.0lf) (cp %d): %.2lf %.2lf %.2lf(%.1lf%%)",
@@ -1768,6 +1866,24 @@ dv_dag_compute_critical_paths(dv_dag_t * D) {
       printf(" %.1lf%%", D->rt->cpss[cp].sched_delays[ek] / D->rt->cpss[cp].sched_delay * 100);
     printf(")\n");
   }
+#else
+  int cp = DV_CRITICAL_PATH_1;
+  {
+    printf("DAG %ld (%.0lf) (cp %d): %.2lf %.2lf %.2lf(%.1lf%%)",
+           D - CS->D,
+           D->et - D->bt,
+           cp,
+           D->rt->cpss[cp].work,
+           D->rt->cpss[cp].delay,
+           D->rt->cpss[cp].sched_delay,
+           D->rt->cpss[cp].sched_delay / D->rt->cpss[cp].delay * 100.0);
+    printf(" (edge-kind-based:");
+    int ek;
+    for (ek = 0; ek < dr_dag_edge_kind_max; ek++)
+      printf(" %.1lf%%", D->rt->cpss[cp].sched_delays[ek] / D->rt->cpss[cp].sched_delay * 100);
+    printf(")\n");
+  }
+#endif  
 
   if (CS->verbose_level >= 1) {
     fprintf(stderr, "... done dv_dag_compute_critical_paths(): %lf\n", dv_get_time() - time);
