@@ -18,6 +18,7 @@ OBJS = $(BUILT_SRC:.c=.o) $(SRC:.c=.o)
 
 
 CFLAGS += $(cflags)
+CFLAGS += $(cflags_2) $(cflags_3)
 CFLAGS += -Wall -Wextra -g -O3
 #CFLAGS += -fno-stack-protector
 #CFLAGS += -DDV_ENABLE_LIBUNWIND
@@ -26,6 +27,7 @@ CFLAGS += -I$(prefix)/include
 CFLAGS += -DDAG_RECORDER=2 -DDAG_RECORDER_INLINE_INSTRUMENTATION
 
 LDFLAGS += $(ldflags)
+LDFLAGS += $(ldflags_2) $(ldflags_3)
 #LDFLAGS += -lunwind
 #LDFLAGS += -lbfd
 LDFLAGS += -Wl,--export-dynamic
