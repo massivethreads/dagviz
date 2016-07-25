@@ -242,7 +242,8 @@ typedef struct dv_critical_path_stat {
   double delay;
   double sched_delay;
   double sched_delays[dr_dag_edge_kind_max];
-  double sched_delay_nowork;
+  double sched_delay_nowork; /* total no-work during scheduler delays */
+  double sched_delay_delay; /* total delay during scheduler delays */
 } dv_critical_path_stat_t;
 
 typedef struct dv_dag_node {

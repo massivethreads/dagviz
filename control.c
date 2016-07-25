@@ -1569,6 +1569,7 @@ dv_dag_compute_critical_paths_r(dv_dag_t * D, dv_dag_node_t * node, dv_histogram
       for (ek = 0; ek < dr_dag_edge_kind_max; ek++)
         node->cpss[cp].sched_delays[ek] = 0.0;
       node->cpss[cp].sched_delay_nowork = 0.0;
+      node->cpss[cp].sched_delay_delay = 0.0;
     }
     return;
   }
@@ -1610,6 +1611,7 @@ dv_dag_compute_critical_paths_r(dv_dag_t * D, dv_dag_node_t * node, dv_histogram
         for (ek = 0; ek < dr_dag_edge_kind_max; ek++)
           cpss[cp].sched_delays[ek] += x->cpss[cp].sched_delays[ek];
         cpss[cp].sched_delay_nowork += x->cpss[cp].sched_delay_nowork;
+        cpss[cp].sched_delay_delay += x->cpss[cp].sched_delay_delay;
       }
       dv_stack_push(s, (void *) x);
       x = x->pre;
@@ -1622,6 +1624,7 @@ dv_dag_compute_critical_paths_r(dv_dag_t * D, dv_dag_node_t * node, dv_histogram
     for (ek = 0; ek < dr_dag_edge_kind_max; ek++)
       cps->sched_delays[ek] = 0.0;
     cps->sched_delay_nowork = 0.0;
+    cps->sched_delay_delay = 0.0;
     x = dv_stack_pop(s);
     dr_pi_dag_node * x_pi = dv_pidag_get_node_by_dag_node(D->P, x);
     dv_dag_node_t * xx = NULL;
@@ -1637,6 +1640,7 @@ dv_dag_compute_critical_paths_r(dv_dag_t * D, dv_dag_node_t * node, dv_histogram
       ek = xx_pi->info.in_edge_kind;
       cps->sched_delays[ek] += e1->cumul_value_1 - e0->cumul_value_1;
       cps->sched_delay_nowork += e1->cumul_value_3 - e0->cumul_value_3;
+      cps->sched_delay_delay += e1->cumul_value_2 - e0->cumul_value_2;
       x = xx;
       x_pi = xx_pi;
     }
@@ -1647,6 +1651,7 @@ dv_dag_compute_critical_paths_r(dv_dag_t * D, dv_dag_node_t * node, dv_histogram
     ek = dr_dag_edge_kind_end;
     cps->sched_delays[ek] += e1->cumul_value_1 - e0->cumul_value_1;
     cps->sched_delay_nowork += e1->cumul_value_3 - e0->cumul_value_3;
+    cps->sched_delay_delay += e1->cumul_value_2 - e0->cumul_value_2;
     int cp;
     for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
       cpss[cp].delay += cps->delay;
@@ -1657,6 +1662,7 @@ dv_dag_compute_critical_paths_r(dv_dag_t * D, dv_dag_node_t * node, dv_histogram
         sum += cps->sched_delays[ek];
       }
       cpss[cp].sched_delay_nowork += cps->sched_delay_nowork;
+      cpss[cp].sched_delay_delay += cps->sched_delay_delay;
       if (sum != cps->sched_delay) {
         fprintf(stderr, "Warning: sum of edge-based delays is not equal to scheduler delay: %lf <> %lf\n",
                 sum, cps->sched_delay);
@@ -1734,6 +1740,7 @@ dv_dag_compute_critical_paths_r(dv_dag_t * D, dv_dag_node_t * node, dv_histogram
         for (ek = 0; ek < dr_dag_edge_kind_max; ek++)
           cpss[cp].sched_delays[ek] += x->cpss[cp].sched_delays[ek];
         cpss[cp].sched_delay_nowork += x->cpss[cp].sched_delay_nowork;
+        cpss[cp].sched_delay_delay += x->cpss[cp].sched_delay_delay;
       }
       dv_stack_push(s, (void *) x);
       x = x->pre;
@@ -1746,6 +1753,7 @@ dv_dag_compute_critical_paths_r(dv_dag_t * D, dv_dag_node_t * node, dv_histogram
     for (ek = 0; ek < dr_dag_edge_kind_max; ek++)
       cps->sched_delays[ek] = 0.0;
     cps->sched_delay_nowork = 0.0;
+    cps->sched_delay_delay = 0.0;
     x = dv_stack_pop(s);
     dr_pi_dag_node * x_pi = dv_pidag_get_node_by_dag_node(D->P, x);
     dv_dag_node_t * xx = NULL;
@@ -1761,6 +1769,7 @@ dv_dag_compute_critical_paths_r(dv_dag_t * D, dv_dag_node_t * node, dv_histogram
       ek = xx_pi->info.in_edge_kind;
       cps->sched_delays[ek] += e1->cumul_value_1 - e0->cumul_value_1;
       cps->sched_delay_nowork += e1->cumul_value_3 - e0->cumul_value_3;
+      cps->sched_delay_delay += e1->cumul_value_2 - e0->cumul_value_2;
       x = xx;
       x_pi = xx_pi;
     }
@@ -1771,6 +1780,7 @@ dv_dag_compute_critical_paths_r(dv_dag_t * D, dv_dag_node_t * node, dv_histogram
     ek = dr_dag_edge_kind_end;
     cps->sched_delays[ek] += e1->cumul_value_1 - e0->cumul_value_1;
     cps->sched_delay_nowork += e1->cumul_value_3 - e0->cumul_value_3;
+    cps->sched_delay_delay += e1->cumul_value_2 - e0->cumul_value_2;
     int cp = DV_CRITICAL_PATH_1;
     {
       cpss[cp].delay += cps->delay;
@@ -1781,6 +1791,7 @@ dv_dag_compute_critical_paths_r(dv_dag_t * D, dv_dag_node_t * node, dv_histogram
         sum += cps->sched_delays[ek];
       }
       cpss[cp].sched_delay_nowork += cps->sched_delay_nowork;
+      cpss[cp].sched_delay_delay += cps->sched_delay_delay;
       if (sum != cps->sched_delay) {
         fprintf(stderr, "Warning: sum of edge-based delays is not equal to scheduler delay: %lf <> %lf\n",
                 sum, cps->sched_delay);

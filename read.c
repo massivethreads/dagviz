@@ -218,6 +218,7 @@ dv_dag_node_init(dv_dag_node_t * node, dv_dag_node_t * parent, long pii) {
       node->cpss[i].sched_delays[ek] = 0.0;
     }
     node->cpss[i].sched_delay_nowork = 0.0;
+    node->cpss[i].sched_delay_delay = 0.0;
   }    
 }
 

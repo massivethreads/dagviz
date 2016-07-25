@@ -359,9 +359,9 @@ dp_stat_graph_execution_time_breakdown(char * filename) {
   double max_y_percent = 0.0;
   double base = CS->SBG->work[0] + CS->SBG->delay[0] + CS->SBG->nowork[0];
   for (i = 0; i < CS->nD; i++) {
-    double perf_loss = (CS->SBG->work[i] + CS->SBG->delay[i] + CS->SBG->nowork[i]) - base;
-    if (perf_loss > max_y) {
-      max_y = perf_loss;
+    double total_loss = (CS->SBG->work[i] - CS->SBG->work[0]) + (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
+    if (total_loss > max_y) {
+      max_y = total_loss;
       max_y_percent = ceil(max_y / base * 100.0);
     }
   }
@@ -396,8 +396,8 @@ dp_stat_graph_execution_time_breakdown(char * filename) {
               "\"%s\"  %lld %lld %lld\n",
               D->name_on_graph,
               CS->SBG->work[i] - CS->SBG->work[0],
-              CS->SBG->delay[i] - CS->SBG->delay[0],
-              CS->SBG->nowork[i] - CS->SBG->nowork[0]);
+              CS->SBG->delay[i],
+              CS->SBG->nowork[i]);
     }
     fprintf(out, "e\n");
   }
@@ -435,16 +435,14 @@ dp_stat_graph_execution_time_breakdown(char * filename) {
   for (j = 0; j < 5; j++) {
     for (i = 1; i < CS->nD; i++) {
       dv_dag_t * D = &CS->D[i];
-      dv_clock_t loss = (CS->SBG->work[i] - CS->SBG->work[0])
-        + (CS->SBG->delay[i] - CS->SBG->delay[0])
-        + (CS->SBG->nowork[i] - CS->SBG->nowork[0]);
+      dv_clock_t loss = (CS->SBG->work[i] - CS->SBG->work[0])+ (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
       double percentage = loss * 100.0 / base;
       fprintf(out,
               "\"%s\"  %lld %lld %lld %lf \"%.1lf%%\"\n",
               D->name_on_graph,
               CS->SBG->work[i] - CS->SBG->work[0],
-              CS->SBG->delay[i] - CS->SBG->delay[0],
-              CS->SBG->nowork[i] - CS->SBG->nowork[0],
+              CS->SBG->delay[i],
+              CS->SBG->nowork[i],
               percentage,
               percentage);
     }
@@ -479,16 +477,14 @@ dp_stat_graph_execution_time_breakdown(char * filename) {
   for (j = 0; j < 4; j++) {
     for (i = 1; i < CS->nD; i++) {
       dv_dag_t * D = &CS->D[i];
-      dv_clock_t loss = (CS->SBG->work[i] - CS->SBG->work[0])
-        + (CS->SBG->delay[i] - CS->SBG->delay[0])
-        + (CS->SBG->nowork[i] - CS->SBG->nowork[0]);
+      dv_clock_t loss = (CS->SBG->work[i] - CS->SBG->work[0]) + (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
       double percentage = loss * 100.0 / base;
       fprintf(out,
               "\"%s\"  %lld %lld %lld %lld \"%.1lf%%\"\n",
               D->name_on_graph,
               CS->SBG->work[i] - CS->SBG->work[0],
-              CS->SBG->delay[i] - CS->SBG->delay[0],
-              CS->SBG->nowork[i] - CS->SBG->nowork[0],
+              CS->SBG->delay[i],
+              CS->SBG->nowork[i],
               loss,
               percentage);
     }
@@ -525,8 +521,8 @@ dp_stat_graph_execution_time_breakdown(char * filename) {
     for (i = 1; i < CS->nD; i++) {
       dv_dag_t * D = &CS->D[i];
       double loss_work = (CS->SBG->work[i] - CS->SBG->work[0]) * 100.0 / base;
-      double loss_delay = (CS->SBG->delay[i] - CS->SBG->delay[0]) * 100.0 / base;
-      double loss_nowork = (CS->SBG->nowork[i] - CS->SBG->nowork[0]) * 100.0 / base;
+      double loss_delay = (CS->SBG->delay[i]) * 100.0 / base;
+      double loss_nowork = (CS->SBG->nowork[i]) * 100.0 / base;
       double loss = loss_work + loss_delay + loss_nowork;
       fprintf(out,
               "\"%s\"  %lf %lf %lf %lf \"%.1lf%%\"\n",
@@ -569,8 +565,8 @@ dp_stat_graph_execution_time_breakdown(char * filename) {
     for (i = 1; i < CS->nD; i++) {
       dv_dag_t * D = &CS->D[i];
       double loss_work = (CS->SBG->work[i] - CS->SBG->work[0]) * 100.0 / base;
-      double loss_delay = (CS->SBG->delay[i] - CS->SBG->delay[0]) * 100.0 / base;
-      double loss_nowork = (CS->SBG->nowork[i] - CS->SBG->nowork[0]) * 100.0 / base;
+      double loss_delay = (CS->SBG->delay[i]) * 100.0 / base;
+      double loss_nowork = (CS->SBG->nowork[i]) * 100.0 / base;
       double loss = loss_work + loss_delay + loss_nowork;
       fprintf(out,
               "\"%s\"  %lf %lf %lf %lf \"%.1lf%%\"\n",
@@ -763,11 +759,9 @@ dp_stat_graph_performance_loss_factors_with_percentage_lines(char * filename_) {
   int i;
   double max_y = 0.0;
   for (i = 0; i < CS->nD; i++) {
-    double perf_loss = (CS->SBG->work[i] - CS->SBG->work[0])
-      + (CS->SBG->delay[i] - CS->SBG->delay[0])
-      + (CS->SBG->nowork[i] - CS->SBG->nowork[0]);
-    if (perf_loss > max_y)
-      max_y = perf_loss;
+    double total_loss = (CS->SBG->work[i] - CS->SBG->work[0]) + (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
+    if (total_loss > max_y)
+      max_y = total_loss;
   }
 
   FILE * out;
@@ -802,9 +796,7 @@ dp_stat_graph_performance_loss_factors_with_percentage_lines(char * filename_) {
   for (j = 0; j < 3; j++) {
     for (i = 1; i < CS->nD; i++) {
       dv_dag_t * D = &CS->D[i];
-      double total_loss = (CS->SBG->work[i] - CS->SBG->work[0])
-        + (CS->SBG->delay[i] - CS->SBG->delay[0])
-        + (CS->SBG->nowork[i] - CS->SBG->nowork[0]);
+      double total_loss = (CS->SBG->work[i] - CS->SBG->work[0]) + (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
       double factor = (CS->SBG->work[i] - CS->SBG->work[0]);
       double percentage = (factor / total_loss) * 100.0;
       if (total_loss < 0) percentage = 0.0;
@@ -849,10 +841,8 @@ dp_stat_graph_performance_loss_factors_with_percentage_lines(char * filename_) {
   for (j = 0; j < 3; j++) {
     for (i = 1; i < CS->nD; i++) {
       dv_dag_t * D = &CS->D[i];
-      double total_loss = (CS->SBG->work[i] - CS->SBG->work[0])
-        + (CS->SBG->delay[i] - CS->SBG->delay[0])
-        + (CS->SBG->nowork[i] - CS->SBG->nowork[0]);
-      double factor = (CS->SBG->delay[i] - CS->SBG->delay[0]);
+      double total_loss = (CS->SBG->work[i] - CS->SBG->work[0]) + (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
+      double factor = CS->SBG->delay[i];
       double percentage = (factor / total_loss) * 100.0;
       if (total_loss < 0) percentage = 0.0;
       fprintf(out,
@@ -868,6 +858,55 @@ dp_stat_graph_performance_loss_factors_with_percentage_lines(char * filename_) {
   dp_close_file(out);
   fprintf(stdout, "generated graph of total delay to %s\n", filename);
 
+  /* delay breakdown */
+  strcpy(filename, filename_);
+  filename[strlen(filename) - 4] = '\0';
+  sprintf(filename, "%s_delay_breakdown.gpl", filename);
+  out = dp_open_file(filename);
+  if (!out) return;
+  fprintf(out,
+          "#set terminal png font arial 14 size 640,350\n"
+          "#set terminal postscript eps enhanced color size 10cm,5cm\n"
+          "#set output ~/Desktop/00dv_stat_breakdown.png\n"
+          "set style data histograms\n"
+          "set style histogram rowstacked\n"
+          "set style fill solid 0.8 noborder\n"
+          "set key off #outside center top horizontal\n"
+          "set boxwidth 0.85 relative\n"
+          "set yrange [*<0:%.0lf<*]\n"
+          "set y2range [*<0:100<*]\n"
+          "#set xtics rotate by -20\n"
+          "set ylabel \"cumul. clocks\"\n"
+          "#set y2tics\n"
+          "#set ytics nomirror\n"
+          "#set y2label \"percent\"\n"
+          "plot "
+          "\"-\" u 2:xtic(1) w histogram lc rgb \"green\" t \"delay w\" axes x1y1, "
+          "\"-\" u 3 w histogram lc rgb \"greenyellow\" t \"delay sd\" axes x1y1, "
+          "\"-\" u 4 w linespoints lt 2 lc rgb \"orange\" notitle axes x1y2, "
+          "\"-\" u 0:4:5 w labels center offset 0,1 axes x1y2 notitle \n",
+          max_y);
+  for (j = 0; j < 4; j++) {
+    for (i = 1; i < CS->nD; i++) {
+      dv_dag_t * D = &CS->D[i];
+      double total_loss = (CS->SBG->work[i] - CS->SBG->work[0]) + (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
+      double factor = CS->SBG->delay[i];
+      double percentage = (factor / total_loss) * 100.0;
+      if (total_loss < 0) percentage = 0.0;
+      fprintf(out,
+              "\"%s\"  %lf %lf %lf \"%.1lf%%\"\n",
+              D->name_on_graph,
+              factor - D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_delay,
+              D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_delay,
+              percentage,
+              percentage);
+    }
+    fprintf(out, "e\n");
+  }
+  fprintf(out, "pause -1\n");
+  dp_close_file(out);
+  fprintf(stdout, "generated graph to %s\n", filename);
+  
   /* nowork */
   strcpy(filename, filename_);
   filename[strlen(filename) - 4] = '\0';
@@ -896,10 +935,8 @@ dp_stat_graph_performance_loss_factors_with_percentage_lines(char * filename_) {
   for (j = 0; j < 3; j++) {
     for (i = 1; i < CS->nD; i++) {
       dv_dag_t * D = &CS->D[i];
-      double total_loss = (CS->SBG->work[i] - CS->SBG->work[0])
-        + (CS->SBG->delay[i] - CS->SBG->delay[0])
-        + (CS->SBG->nowork[i] - CS->SBG->nowork[0]);
-      double factor = (CS->SBG->nowork[i] - CS->SBG->nowork[0]);
+      double total_loss = (CS->SBG->work[i] - CS->SBG->work[0]) + (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
+      double factor = CS->SBG->nowork[i];
       double percentage = (factor / total_loss) * 100.0;
       if (total_loss < 0) percentage = 0.0;
       fprintf(out,
@@ -943,9 +980,7 @@ dp_stat_graph_performance_loss_factors_with_percentage_lines(char * filename_) {
   for (j = 0; j < 3; j++) {
     for (i = 1; i < CS->nD; i++) {
       dv_dag_t * D = &CS->D[i];
-      double total_loss = (CS->SBG->work[i] - CS->SBG->work[0])
-        + (CS->SBG->delay[i] - CS->SBG->delay[0])
-        + (CS->SBG->nowork[i] - CS->SBG->nowork[0]);
+      double total_loss = (CS->SBG->work[i] - CS->SBG->work[0]) + (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
       double factor = D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_nowork;
       double percentage = (factor / total_loss) * 100.0;
       if (total_loss < 0) percentage = 0.0;
@@ -990,10 +1025,8 @@ dp_stat_graph_performance_loss_factors_with_percentage_lines(char * filename_) {
   for (j = 0; j < 3; j++) {
     for (i = 1; i < CS->nD; i++) {
       dv_dag_t * D = &CS->D[i];
-      double total_loss = (CS->SBG->work[i] - CS->SBG->work[0])
-        + (CS->SBG->delay[i] - CS->SBG->delay[0])
-        + (CS->SBG->nowork[i] - CS->SBG->nowork[0]);
-      double factor = (CS->SBG->nowork[i] - CS->SBG->nowork[0]) - D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_nowork;
+      double total_loss = (CS->SBG->work[i] - CS->SBG->work[0]) + (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
+      double factor = CS->SBG->nowork[i] - D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_nowork;
       double percentage = (factor / total_loss) * 100.0;
       if (total_loss < 0) percentage = 0.0;
       fprintf(out,
@@ -1040,10 +1073,8 @@ dp_stat_graph_performance_loss_factors_with_percentage_lines(char * filename_) {
   for (j = 0; j < 4; j++) {
     for (i = 1; i < CS->nD; i++) {
       dv_dag_t * D = &CS->D[i];
-      double total_loss = (CS->SBG->work[i] - CS->SBG->work[0])
-        + (CS->SBG->delay[i] - CS->SBG->delay[0])
-        + (CS->SBG->nowork[i] - CS->SBG->nowork[0]);
-      double factor = (CS->SBG->nowork[i] - CS->SBG->nowork[0]);
+      double total_loss = (CS->SBG->work[i] - CS->SBG->work[0]) + (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
+      double factor = CS->SBG->nowork[i];
       double percentage = (factor / total_loss) * 100.0;
       if (total_loss < 0) percentage = 0.0;
       fprintf(out,
@@ -1068,11 +1099,9 @@ dp_stat_graph_performance_loss_factors_with_percentage_labels(char * filename_) 
   int i;
   double max_y = 0.0;
   for (i = 0; i < CS->nD; i++) {
-    double perf_loss = (CS->SBG->work[i] - CS->SBG->work[0])
-      + (CS->SBG->delay[i] - CS->SBG->delay[0])
-      + (CS->SBG->nowork[i] - CS->SBG->nowork[0]);
-    if (perf_loss > max_y)
-      max_y = perf_loss;
+    double total_loss = (CS->SBG->work[i] - CS->SBG->work[0]) + (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
+    if (total_loss > max_y)
+      max_y = total_loss;
   }
 
   FILE * out;
@@ -1102,9 +1131,7 @@ dp_stat_graph_performance_loss_factors_with_percentage_labels(char * filename_) 
   for (j = 0; j < 2; j++) {
     for (i = 1; i < CS->nD; i++) {
       dv_dag_t * D = &CS->D[i];
-      double total_loss = (CS->SBG->work[i] - CS->SBG->work[0])
-        + (CS->SBG->delay[i] - CS->SBG->delay[0])
-        + (CS->SBG->nowork[i] - CS->SBG->nowork[0]);
+      double total_loss = (CS->SBG->work[i] - CS->SBG->work[0]) + (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
       double factor = (CS->SBG->work[i] - CS->SBG->work[0]);
       double percentage = (factor / total_loss) * 100.0;
       if (total_loss < 0) percentage = 0.0;
@@ -1143,10 +1170,8 @@ dp_stat_graph_performance_loss_factors_with_percentage_labels(char * filename_) 
   for (j = 0; j < 2; j++) {
     for (i = 1; i < CS->nD; i++) {
       dv_dag_t * D = &CS->D[i];
-      double total_loss = (CS->SBG->work[i] - CS->SBG->work[0])
-        + (CS->SBG->delay[i] - CS->SBG->delay[0])
-        + (CS->SBG->nowork[i] - CS->SBG->nowork[0]);
-      double factor = (CS->SBG->delay[i] - CS->SBG->delay[0]);
+      double total_loss = (CS->SBG->work[i] - CS->SBG->work[0]) + (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
+      double factor = CS->SBG->delay[i];
       double percentage = (factor / total_loss) * 100.0;
       if (total_loss < 0) percentage = 0.0;
       fprintf(out,
@@ -1160,6 +1185,49 @@ dp_stat_graph_performance_loss_factors_with_percentage_labels(char * filename_) 
   fprintf(out, "pause -1\n");
   dp_close_file(out);
   fprintf(stdout, "generated graph of total delay to %s\n", filename);
+
+  /* delay breakdown */
+  strcpy(filename, filename_);
+  filename[strlen(filename) - 4] = '\0';
+  sprintf(filename, "%s_delay_breakdown.gpl", filename);
+  out = dp_open_file(filename);
+  if (!out) return;
+  fprintf(out,
+          "#set terminal png font arial 14 size 640,350\n"
+          "#set terminal postscript eps enhanced color size 10cm,5cm\n"
+          "#set output ~/Desktop/00dv_stat_breakdown.png\n"
+          "set style data histograms\n"
+          "set style histogram rowstacked\n"
+          "set style fill solid 0.8 noborder\n"
+          "set key inside #outside center top horizontal\n"
+          "set boxwidth 0.85 relative\n"
+          "set yrange [*<0:%.0lf<*]\n"
+          "#set xtics rotate by -20\n"
+          "set ylabel \"cumul. clocks\"\n"
+          "plot "
+          "\"-\" u 2:xtic(1) w histogram lc rgb \"green\" t \"delay w\", "
+          "\"-\" u 3 w histogram lc rgb \"greenyellow\" t \"delay sd\", "
+          "\"-\" u 0:($2+$3):4 w labels center offset 0,1 notitle \n",
+          max_y);
+  for (j = 0; j < 3; j++) {
+    for (i = 1; i < CS->nD; i++) {
+      dv_dag_t * D = &CS->D[i];
+      double total_loss = (CS->SBG->work[i] - CS->SBG->work[0]) + (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
+      double factor = CS->SBG->delay[i];
+      double percentage = (factor / total_loss) * 100.0;
+      if (total_loss < 0) percentage = 0.0;
+      fprintf(out,
+              "\"%s\"  %lf %lf \"%.1lf%%\"\n",
+              D->name_on_graph,
+              factor - D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_delay,
+              D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_delay,
+              percentage);
+    }
+    fprintf(out, "e\n");
+  }
+  fprintf(out, "pause -1\n");
+  dp_close_file(out);
+  fprintf(stdout, "generated graph to %s\n", filename);
 
   /* nowork */
   strcpy(filename, filename_);
@@ -1184,10 +1252,8 @@ dp_stat_graph_performance_loss_factors_with_percentage_labels(char * filename_) 
   for (j = 0; j < 2; j++) {
     for (i = 1; i < CS->nD; i++) {
       dv_dag_t * D = &CS->D[i];
-      double total_loss = (CS->SBG->work[i] - CS->SBG->work[0])
-        + (CS->SBG->delay[i] - CS->SBG->delay[0])
-        + (CS->SBG->nowork[i] - CS->SBG->nowork[0]);
-      double factor = (CS->SBG->nowork[i] - CS->SBG->nowork[0]);
+      double total_loss = (CS->SBG->work[i] - CS->SBG->work[0]) + (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
+      double factor = CS->SBG->nowork[i];
       double percentage = (factor / total_loss) * 100.0;
       if (total_loss < 0) percentage = 0.0;
       fprintf(out,
@@ -1225,9 +1291,7 @@ dp_stat_graph_performance_loss_factors_with_percentage_labels(char * filename_) 
   for (j = 0; j < 2; j++) {
     for (i = 1; i < CS->nD; i++) {
       dv_dag_t * D = &CS->D[i];
-      double total_loss = (CS->SBG->work[i] - CS->SBG->work[0])
-        + (CS->SBG->delay[i] - CS->SBG->delay[0])
-        + (CS->SBG->nowork[i] - CS->SBG->nowork[0]);
+      double total_loss = (CS->SBG->work[i] - CS->SBG->work[0]) + (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
       double factor = D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_nowork;
       double percentage = (factor / total_loss) * 100.0;
       if (total_loss < 0) percentage = 0.0;
@@ -1266,10 +1330,8 @@ dp_stat_graph_performance_loss_factors_with_percentage_labels(char * filename_) 
   for (j = 0; j < 2; j++) {
     for (i = 1; i < CS->nD; i++) {
       dv_dag_t * D = &CS->D[i];
-      double total_loss = (CS->SBG->work[i] - CS->SBG->work[0])
-        + (CS->SBG->delay[i] - CS->SBG->delay[0])
-        + (CS->SBG->nowork[i] - CS->SBG->nowork[0]);
-      double factor = (CS->SBG->nowork[i] - CS->SBG->nowork[0]) - D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_nowork;
+      double total_loss = (CS->SBG->work[i] - CS->SBG->work[0]) + (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
+      double factor = CS->SBG->nowork[i] - D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_nowork;
       double percentage = (factor / total_loss) * 100.0;
       if (total_loss < 0) percentage = 0.0;
       fprintf(out,
@@ -1310,10 +1372,8 @@ dp_stat_graph_performance_loss_factors_with_percentage_labels(char * filename_) 
   for (j = 0; j < 3; j++) {
     for (i = 1; i < CS->nD; i++) {
       dv_dag_t * D = &CS->D[i];
-      double total_loss = (CS->SBG->work[i] - CS->SBG->work[0])
-        + (CS->SBG->delay[i] - CS->SBG->delay[0])
-        + (CS->SBG->nowork[i] - CS->SBG->nowork[0]);
-      double factor = (CS->SBG->nowork[i] - CS->SBG->nowork[0]);
+      double total_loss = (CS->SBG->work[i] - CS->SBG->work[0]) + (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
+      double factor = CS->SBG->nowork[i];
       double percentage = (factor / total_loss) * 100.0;
       if (total_loss < 0) percentage = 0.0;
       fprintf(out,
@@ -1337,11 +1397,9 @@ dp_stat_graph_performance_loss_factors_with_percentage_labels_to_base(char * fil
   int i;
   double max_y = 0.0;
   for (i = 0; i < CS->nD; i++) {
-    double perf_loss = (CS->SBG->work[i] - CS->SBG->work[0])
-      + (CS->SBG->delay[i] - CS->SBG->delay[0])
-      + (CS->SBG->nowork[i] - CS->SBG->nowork[0]);
-    if (perf_loss > max_y)
-      max_y = perf_loss;
+    double total_loss = (CS->SBG->work[i] - CS->SBG->work[0]) + (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
+    if (total_loss > max_y)
+      max_y = total_loss;
   }
 
   FILE * out;
@@ -1409,7 +1467,7 @@ dp_stat_graph_performance_loss_factors_with_percentage_labels_to_base(char * fil
   for (j = 0; j < 2; j++) {
     for (i = 1; i < CS->nD; i++) {
       dv_dag_t * D = &CS->D[i];
-      double factor = (CS->SBG->delay[i] - CS->SBG->delay[0]);
+      double factor = CS->SBG->delay[i];
       double percentage = (factor / base) * 100.0;
       fprintf(out,
               "\"%s\"  %lf \"%.1lf%%\"\n",
@@ -1422,6 +1480,47 @@ dp_stat_graph_performance_loss_factors_with_percentage_labels_to_base(char * fil
   fprintf(out, "pause -1\n");
   dp_close_file(out);
   fprintf(stdout, "generated graph of total delay to %s\n", filename);
+
+  /* delay breakdown */
+  strcpy(filename, filename_);
+  filename[strlen(filename) - 4] = '\0';
+  sprintf(filename, "%s_delay_breakdown.gpl", filename);
+  out = dp_open_file(filename);
+  if (!out) return;
+  fprintf(out,
+          "#set terminal png font arial 14 size 640,350\n"
+          "#set terminal postscript eps enhanced color size 10cm,5cm\n"
+          "#set output ~/Desktop/00dv_stat_breakdown.png\n"
+          "set style data histograms\n"
+          "set style histogram rowstacked\n"
+          "set style fill solid 0.8 noborder\n"
+          "set key inside #outside center top horizontal\n"
+          "set boxwidth 0.85 relative\n"
+          "set yrange [*<0:%.0lf<*]\n"
+          "#set xtics rotate by -20\n"
+          "set ylabel \"cumul. clocks\"\n"
+          "plot "
+          "\"-\" u 2:xtic(1) w histogram lc rgb \"green\" t \"delay w\", "
+          "\"-\" u 3 w histogram lc rgb \"greenyellow\" t \"delay sd\", "
+          "\"-\" u 0:($2+$3):4 w labels center offset 0,1 notitle \n",
+          max_y);
+  for (j = 0; j < 3; j++) {
+    for (i = 1; i < CS->nD; i++) {
+      dv_dag_t * D = &CS->D[i];
+      double factor = CS->SBG->delay[i];
+      double percentage = (factor / base) * 100.0;
+      fprintf(out,
+              "\"%s\"  %lf %lf \"%.1lf%%\"\n",
+              D->name_on_graph,
+              factor - D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_delay,
+              D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_delay,
+              percentage);
+    }
+    fprintf(out, "e\n");
+  }
+  fprintf(out, "pause -1\n");
+  dp_close_file(out);
+  fprintf(stdout, "generated graph to %s\n", filename);
 
   /* nowork */
   strcpy(filename, filename_);
@@ -1446,7 +1545,7 @@ dp_stat_graph_performance_loss_factors_with_percentage_labels_to_base(char * fil
   for (j = 0; j < 2; j++) {
     for (i = 1; i < CS->nD; i++) {
       dv_dag_t * D = &CS->D[i];
-      double factor = (CS->SBG->nowork[i] - CS->SBG->nowork[0]);
+      double factor = CS->SBG->nowork[i];
       double percentage = (factor / base) * 100.0;
       fprintf(out,
               "\"%s\"  %lf \"%.1lf%%\"\n",
@@ -1520,7 +1619,7 @@ dp_stat_graph_performance_loss_factors_with_percentage_labels_to_base(char * fil
   for (j = 0; j < 2; j++) {
     for (i = 1; i < CS->nD; i++) {
       dv_dag_t * D = &CS->D[i];
-      double factor = (CS->SBG->nowork[i] - CS->SBG->nowork[0]) - D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_nowork;
+      double factor = CS->SBG->nowork[i] - D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_nowork;
       double percentage = (factor / base) * 100.0;
       fprintf(out,
               "\"%s\"  %lf \"%.1lf%%\"\n",
@@ -1560,7 +1659,7 @@ dp_stat_graph_performance_loss_factors_with_percentage_labels_to_base(char * fil
   for (j = 0; j < 3; j++) {
     for (i = 1; i < CS->nD; i++) {
       dv_dag_t * D = &CS->D[i];
-      double factor = (CS->SBG->nowork[i] - CS->SBG->nowork[0]);
+      double factor = CS->SBG->nowork[i];
       double percentage = (factor / base) * 100.0;
       fprintf(out,
               "\"%s\"  %lf %lf \"%.1lf%%\"\n",
@@ -1588,9 +1687,9 @@ dp_stat_graph_performance_loss_factor_percentages_with_labels(char * filename_) 
   double max_y_percent = 0.0;
   double base = CS->SBG->work[0] + CS->SBG->delay[0] + CS->SBG->nowork[0];
   for (i = 0; i < CS->nD; i++) {
-    double perf_loss = (CS->SBG->work[i] + CS->SBG->delay[i] + CS->SBG->nowork[i]) - base;
-    if (perf_loss > max_y) {
-      max_y = perf_loss;
+    double total_loss = (CS->SBG->work[i] - CS->SBG->work[0]) + (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
+    if (total_loss > max_y) {
+      max_y = total_loss;
       max_y_percent = ceil(max_y / base * 100.0);
     }
   }
@@ -1658,7 +1757,7 @@ dp_stat_graph_performance_loss_factor_percentages_with_labels(char * filename_) 
   for (j = 0; j < 2; j++) {
     for (i = 1; i < CS->nD; i++) {
       dv_dag_t * D = &CS->D[i];
-      double factor = (CS->SBG->delay[i] - CS->SBG->delay[0]);
+      double factor = CS->SBG->delay[i];
       double percentage = (factor / base) * 100.0;
       if (factor < 0) percentage = 0.0;
       fprintf(out,
@@ -1666,6 +1765,49 @@ dp_stat_graph_performance_loss_factor_percentages_with_labels(char * filename_) 
               D->name_on_graph,
               percentage,
               percentage);
+    }
+    fprintf(out, "e\n");
+  }
+  fprintf(out, "pause -1\n");
+  dp_close_file(out);
+  fprintf(stdout, "generated graph to %s\n", filename);
+
+  /* delay breakdown */
+  strcpy(filename, filename_);
+  filename[strlen(filename) - 4] = '\0';
+  sprintf(filename, "%s_delay_breakdown.gpl", filename);
+  out = dp_open_file(filename);
+  if (!out) return;
+  fprintf(out,
+          "#set terminal png font arial 14 size 640,350\n"
+          "#set terminal postscript eps enhanced color size 10cm,5cm\n"
+          "#set output ~/Desktop/00dv_stat_breakdown.png\n"
+          "set style data histograms\n"
+          "set style histogram rowstacked\n"
+          "set style fill solid 0.8 noborder\n"
+          "set key inside #outside center top horizontal\n"
+          "set boxwidth 0.85 relative\n"
+          "set yrange [*<0:%lf<*]\n"
+          "#set xtics rotate by -20\n"
+          "set ylabel \"percent\"\n"
+          "plot "
+          "\"-\" u 2:xtic(1) w histogram lc rgb \"green\" t \"delay w\", "
+          "\"-\" u 3 w histogram lc rgb \"greenyellow\" t \"delay sd\", "
+          "\"-\" u 0:($2+$3):4 w labels center offset 0,1 notitle \n",
+          max_y_percent
+          );
+  for (j = 0; j < 3; j++) {
+    for (i = 1; i < CS->nD; i++) {
+      dv_dag_t * D = &CS->D[i];
+      double factor = CS->SBG->delay[i] - D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_delay;
+      double percentage = (factor / base) * 100.0;
+      double percentage_2 = (D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_delay / base) * 100.0;
+      fprintf(out,
+              "\"%s\"  %lf %lf \"%.1lf%%\"\n",
+              D->name_on_graph,
+              percentage,
+              percentage_2,
+              percentage + percentage_2);
     }
     fprintf(out, "e\n");
   }
@@ -1697,7 +1839,7 @@ dp_stat_graph_performance_loss_factor_percentages_with_labels(char * filename_) 
   for (j = 0; j < 2; j++) {
     for (i = 1; i < CS->nD; i++) {
       dv_dag_t * D = &CS->D[i];
-      double factor = (CS->SBG->nowork[i] - CS->SBG->nowork[0]);
+      double factor = CS->SBG->nowork[i];
       double percentage = (factor / base) * 100.0;
       if (factor < 0) percentage = 0.0;
       fprintf(out,
@@ -1775,7 +1917,7 @@ dp_stat_graph_performance_loss_factor_percentages_with_labels(char * filename_) 
   for (j = 0; j < 2; j++) {
     for (i = 1; i < CS->nD; i++) {
       dv_dag_t * D = &CS->D[i];
-      double factor = (CS->SBG->nowork[i] - CS->SBG->nowork[0]) - D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_nowork;
+      double factor = CS->SBG->nowork[i] - D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_nowork;
       double percentage = (factor / base) * 100.0;
       if (factor < 0) percentage = 0.0;
       fprintf(out,
@@ -1817,7 +1959,7 @@ dp_stat_graph_performance_loss_factor_percentages_with_labels(char * filename_) 
   for (j = 0; j < 3; j++) {
     for (i = 1; i < CS->nD; i++) {
       dv_dag_t * D = &CS->D[i];
-      double factor = (CS->SBG->nowork[i] - CS->SBG->nowork[0]) - D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_nowork;
+      double factor = CS->SBG->nowork[i] - D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_nowork;
       double percentage = (factor / base) * 100.0;
       double percentage_2 = (D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_nowork / base) * 100.0;
       fprintf(out,
