@@ -41,13 +41,13 @@ all: $(exes)
 dagprof: dagprof.o $(OBJS)
 	$(CC) -o $@ dagprof.o $(OBJS) $(GTK_LDFLAGS) $(LDFLAGS)
 
-dagviz: dagviz_main.o $(HDR) $(AUX_SRC) $(OBJS)
-	$(CC) -o $@ dagviz_main.o $(OBJS) $(GTK_LDFLAGS) $(LDFLAGS)
+dagviz: dagviz.o $(HDR) $(AUX_SRC) $(OBJS)
+	$(CC) -o $@ dagviz.o $(OBJS) $(GTK_LDFLAGS) $(LDFLAGS)
 
 dagprof.o: dagprof.c
 	$(CC) -c -o $@ $(GTK_CFLAGS) $(CFLAGS) $<
 
-dagviz_main.o: dagviz_main.c $(HDR)
+dagviz.o: dagviz.c $(HDR)
 	$(CC) -c -o $@ $(GTK_CFLAGS) $(CFLAGS) $<
 
 %.o: %.c dagviz.h
