@@ -340,6 +340,7 @@ dv_viewport_draw(dv_viewport_t * VP, cairo_t * cr) {
     }
   //dv_viewport_draw_label(VP, cr);
   dv_statusbar_update_selection_status();
+  dv_statusbar_update_pointer_status();
   if (VP == CS->activeVP && VP != CS->VP)
     dv_viewport_draw_focused_mark(VP, cr);
 }
@@ -2516,6 +2517,8 @@ dv_create_new_pidag(char * filename) {
 
 void
 dv_gui_init(dv_gui_t * gui) {
+  memset(gui, 0, sizeof(dv_gui_t));
+#if 0  
   gui->builder = NULL;
   gui->window = NULL;
   gui->window_box = NULL;
@@ -2547,6 +2550,7 @@ dv_gui_init(dv_gui_t * gui) {
     gui->replay.mD[i] = 0;
 
   gui->nodeinfo.sidebox = NULL;
+#endif  
 }
 
 static void
@@ -3040,24 +3044,36 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
   /* Statusbars */
   GtkWidget * statusbar_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
   gtk_box_pack_end(GTK_BOX(gui->window_box), statusbar_box, FALSE, FALSE, 0);
-  GtkWidget * statusbar_box_2 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-  gtk_box_pack_start(GTK_BOX(statusbar_box), statusbar_box_2, TRUE, TRUE, 0);
-  gtk_box_set_homogeneous(GTK_BOX(statusbar_box_2), TRUE);
-  gui->statusbar1 = gtk_statusbar_new();
-  gtk_box_pack_start(GTK_BOX(statusbar_box_2), gui->statusbar1, TRUE, TRUE, 0);
-  gtk_widget_set_tooltip_text(GTK_WIDGET(gui->statusbar1), "Interaction status");
   
-  GtkWidget * statusbar_box_3 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
-  gtk_box_pack_start(GTK_BOX(statusbar_box_2), statusbar_box_3, TRUE, TRUE, 0);
-  gtk_box_pack_start(GTK_BOX(statusbar_box_3), gtk_separator_new(GTK_ORIENTATION_VERTICAL), FALSE, FALSE, 0);
   gui->statusbar2 = gtk_statusbar_new();
-  gtk_box_pack_start(GTK_BOX(statusbar_box_3), gui->statusbar2, TRUE, TRUE, 0);
+  gtk_box_pack_start(GTK_BOX(statusbar_box), gui->statusbar2, FALSE, FALSE, 0);
   gtk_widget_set_tooltip_text(GTK_WIDGET(gui->statusbar2), "Selection status");
+  gtk_box_pack_start(GTK_BOX(statusbar_box), gtk_separator_new(GTK_ORIENTATION_VERTICAL), FALSE, FALSE, 0);
   
   gui->statusbar3 = gtk_statusbar_new();
-  gtk_box_pack_end(GTK_BOX(statusbar_box), gui->statusbar3, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(statusbar_box), gui->statusbar3, FALSE, FALSE, 0);
   gtk_widget_set_tooltip_text(GTK_WIDGET(gui->statusbar3), "Memory pool status");
+  gtk_box_pack_start(GTK_BOX(statusbar_box), gtk_separator_new(GTK_ORIENTATION_VERTICAL), FALSE, FALSE, 0);
+
+  GtkWidget * statusbar_grid = gtk_grid_new();
+  gtk_box_pack_end(GTK_BOX(statusbar_box), statusbar_grid, FALSE, FALSE, 0);
+  gtk_widget_set_tooltip_text(GTK_WIDGET(statusbar_grid), "Mouse pointer's coordinates and zoom ratios");
+  gtk_grid_set_row_spacing(GTK_GRID(statusbar_grid), 0);
+  gtk_grid_set_column_spacing(GTK_GRID(statusbar_grid), 2);
   gtk_box_pack_end(GTK_BOX(statusbar_box), gtk_separator_new(GTK_ORIENTATION_VERTICAL), FALSE, FALSE, 0);
+  
+  gui->status_x = gtk_label_new(NULL);
+  gtk_grid_attach(GTK_GRID(statusbar_grid), gui->status_x, 0, 0, 1, 1);
+  gui->status_zx = gtk_label_new(NULL);
+  gtk_grid_attach(GTK_GRID(statusbar_grid), gui->status_zx, 1, 0, 1, 1);
+  gui->status_y = gtk_label_new(NULL);
+  gtk_grid_attach(GTK_GRID(statusbar_grid), gui->status_y, 0, 1, 1, 1);
+  gui->status_zy = gtk_label_new(NULL);
+  gtk_grid_attach(GTK_GRID(statusbar_grid), gui->status_zy, 1, 1, 1, 1);
+  
+  gui->statusbar1 = gtk_statusbar_new();
+  gtk_box_pack_end(GTK_BOX(statusbar_box), gui->statusbar1, FALSE, FALSE, 0);
+  gtk_widget_set_tooltip_text(GTK_WIDGET(gui->statusbar1), "Interaction status");
 
   /* Context menu */
   {
@@ -3524,6 +3540,7 @@ dv_open_gui(_unused_ int argc, _unused_ char * argv[], GtkApplication * app) {
   /* Status bars */
   dv_statusbar_update_selection_status();
   dv_statusbar_update_pool_status();
+  dv_statusbar_update_pointer_status();
 
   /* Run main loop */
   gtk_widget_show_all(window);

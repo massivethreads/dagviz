@@ -612,6 +612,10 @@ typedef struct dv_gui {
   GtkWidget * statusbar1; // interaction statuses
   GtkWidget * statusbar2; // selection statuses
   GtkWidget * statusbar3; // pool status
+  GtkWidget * status_x;
+  GtkWidget * status_y;
+  GtkWidget * status_zx;
+  GtkWidget * status_zy;
 
   /* Management window */
   GtkWidget * management_window;
@@ -841,6 +845,7 @@ void dv_statusbar_update(int, int, char *);
 void dv_statusbar_remove(int, int);
 void dv_statusbar_update_selection_status();
 void dv_statusbar_update_pool_status();
+void dv_statusbar_update_pointer_status();
 
 void dv_export_viewport();
 void dv_export_all_viewports();

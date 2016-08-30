@@ -774,6 +774,31 @@ dv_statusbar_update_pool_status() {
   dv_statusbar_update(3, 0, s);
 }
 
+void
+dv_statusbar_update_pointer_status() {
+  double x = 0.0;
+  double y = 0.0;
+  double zx = 0.0;
+  double zy = 0.0;
+  if (CS->activeV) {
+    x = CS->activeV->S->x;
+    y = CS->activeV->S->y;
+    zx = CS->activeV->S->zoom_ratio_x;
+    zy = CS->activeV->S->zoom_ratio_y;
+  }
+  
+  char s[30];
+  
+  sprintf(s, "X: %8.2lf", x);
+  gtk_label_set_text(GTK_LABEL(GUI->status_x), s);
+  sprintf(s, "(z: %5.2lf%%)", zx * 100);
+  gtk_label_set_text(GTK_LABEL(GUI->status_zx), s);
+  
+  sprintf(s, "Y: %8.2lf", y);
+  gtk_label_set_text(GTK_LABEL(GUI->status_y), s);
+  sprintf(s, "(z: %5.2lf%%)", zy * 100);
+  gtk_label_set_text(GTK_LABEL(GUI->status_zy), s);
+}
 
 /****************** end of Statusbars **************************************/
 
