@@ -538,7 +538,7 @@ dv_histogram_compute_significant_intervals(dv_histogram_t * H) {
     while (++layer < dv_histogram_layer_max) {
       num_ready_tasks += e->h[layer];
     }    
-    if (num_running_workers + num_ready_tasks < num_workers) {
+    if (num_running_workers + num_ready_tasks <= num_workers) {
       e->value_2 = (ee->t - e->t) * (num_ready_tasks);
       e->value_3 = (ee->t - e->t) * (num_workers - num_running_workers - num_ready_tasks);
     } else {
