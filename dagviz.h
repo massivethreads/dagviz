@@ -94,8 +94,8 @@ typedef struct dv_llist {
 #define DV_NODE_FLAG_CRITICAL_PATH_1 (1 << 7) /* node is on critical path of work & delay */
 #define DV_NODE_FLAG_CRITICAL_PATH_2 (1 << 8) /* node is on critical path of weighted work & delay */
 
-#define DV_ZOOM_TO_FIT_MARGIN 15
-#define DV_ZOOM_TO_FIT_MARGIN_DOWN 20
+#define DV_ZOOM_TO_FIT_MARGIN 25
+#define DV_ZOOM_TO_FIT_MARGIN_DOWN 15
 #define DV_STRING_LENGTH 1000
 #define DV_STATUS_PADDING 7
 #define DV_SAFE_CLICK_RANGE 1
@@ -153,7 +153,7 @@ typedef struct dv_llist {
 #define DV_HISTOGRAM_ENTRY_POOL_SIZE 40000
 
 #define DV_CLIPPING_FRAME_MARGIN 0
-#define DV_HISTOGRAM_MARGIN 15
+#define DV_HISTOGRAM_MARGIN 25
 #define DV_HISTOGRAM_MARGIN_DOWN 15
 
 #define DV_HISTOGRAM_DIVIDE_TO_PIECES 0
@@ -195,6 +195,8 @@ typedef struct dv_llist {
 #define DV_CRITICAL_PATH_0_COLOR "red"
 #define DV_CRITICAL_PATH_1_COLOR "green"
 #define DV_CRITICAL_PATH_2_COLOR "blue"
+
+#define DV_RULER_WIDTH_DEFAULT 15
 
 
 /*-----------------Data Structures-----------------*/
@@ -952,6 +954,7 @@ void dv_view_draw(dv_view_t *, cairo_t *);
 void dv_viewport_draw_label(dv_viewport_t *, cairo_t *);
 void dv_view_draw_legend(dv_view_t *, cairo_t *);
 void dv_viewport_draw_focused_mark(dv_viewport_t *, cairo_t *);
+void dv_viewport_draw_rulers(dv_viewport_t *, cairo_t *);
 
 
 /* view_dag.c */

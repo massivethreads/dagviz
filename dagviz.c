@@ -339,6 +339,7 @@ dv_viewport_draw(dv_viewport_t * VP, cairo_t * cr) {
       count++;
     }
   //dv_viewport_draw_label(VP, cr);
+  dv_viewport_draw_rulers(VP, cr);
   dv_statusbar_update_selection_status();
   dv_statusbar_update_pointer_status();
   if (VP == CS->activeVP && VP != CS->VP)

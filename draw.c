@@ -689,5 +689,141 @@ dv_viewport_draw_focused_mark(dv_viewport_t * VP, cairo_t * cr) {
   cairo_restore(cr);
 }
 
+_static_unused_ double
+dv_convert_graph_x_to_viewport_x(dv_view_t * V, double x) {
+  return (x  * V->S->zoom_ratio_x) + V->S->basex + V->S->x;
+}
+
+_static_unused_ double
+dv_convert_graph_y_to_viewport_y(dv_view_t * V, double y) {
+  return (y * V->S->zoom_ratio_y) + V->S->basey + V->S->y;
+}
+
+_static_unused_ double
+dv_convert_viewport_x_to_graph_x(dv_view_t * V, double x) {
+  return (x - V->S->basex - V->S->x) / V->S->zoom_ratio_x;
+}
+
+_static_unused_ double
+dv_convert_viewport_y_to_graph_y(dv_view_t * V, double y) {
+  return (y - V->S->basey - V->S->y) / V->S->zoom_ratio_y;
+}
+
+static void
+dv_viewport_draw_ruler_tick(cairo_t * cr, double x0, double y0, double x1, double y1) {
+  cairo_move_to(cr, x0, y0);
+  cairo_line_to(cr, x1, y1);
+}
+
+void
+dv_viewport_draw_rulers(dv_viewport_t * VP, cairo_t * cr) {
+  dv_view_t * V = VP->mainV;
+  if (!V) {
+    fprintf(stderr, "Error: Viewport %ld does not have main View to draw rulers.\n", VP - CS->VP);
+    return;
+  }
+  cairo_save(cr);
+  cairo_new_path(cr);
+
+  /* rulers' background */
+  double x = 0.0;
+  double y = 0.0;
+  double ruler_width = DV_RULER_WIDTH_DEFAULT;
+  dv_draw_path_rectangle(cr, x, y, VP->vpw, ruler_width);
+  dv_draw_path_rectangle(cr, x, y, ruler_width, VP->vph);
+  GdkRGBA c;
+  gdk_rgba_parse(&c, "#E8E8E8");
+  cairo_set_source_rgba(cr, c.red, c.green, c.blue, c.alpha);
+  cairo_fill(cr);
+
+  /* rulers */
+  cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
+  cairo_set_font_size(cr, 7.8);
+  cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
+  char s[DV_STRING_LENGTH];
+  cairo_text_extents_t ext;
+
+  /* horizontal ruler */
+  double tick_height = ruler_width;
+  double tick_height_2 = tick_height / 2.0;
+  double tick_height_3 = tick_height / 4.0;
+
+  double tick_interval_threshold = 200;
+
+  const int A[2] = {2, 5};
+  int Ai = 0;
+  double tick_interval = 1.0;
+  double tick_interval_next = tick_interval * A[Ai];
+  double zr = V->S->zoom_ratio_x;
+  while (tick_interval_next * zr < tick_interval_threshold) {
+    tick_interval = tick_interval_next;
+    Ai = 1 - Ai;
+    tick_interval_next *= A[Ai];
+  }
+  double tick_interval_2 = tick_interval / 5.0;
+  double tick_interval_3 = tick_interval / 10.0;
+  double x_left = dv_convert_viewport_x_to_graph_x(V, ruler_width);
+  double x_right = dv_convert_viewport_x_to_graph_x(V, VP->vpw);
+  double x_0 = floor(x_left / tick_interval) * tick_interval;
+  double x_n = ceil(x_right / tick_interval) * tick_interval;
+  double y1 = ruler_width;
+  fprintf(stderr, "tick_interval = %.2lf\n", tick_interval);
+  fprintf(stderr, "x_left = %.2lf, x_right = %.2lf\n", x_left, x_right);
+  fprintf(stderr, "x_0 = %.2lf, x_n = %.2lf\n", x_0, x_n);
+  fprintf(stderr, "y1 = %.2lf\n", y1);
+
+  /* 1st level ticks */
+  {
+    double x_ = x_0;
+    while (x_ <= x_n) {
+      if (x_left <= x_ && x_ <= x_right) {
+        double x = dv_convert_graph_x_to_viewport_x(V, x_);
+        dv_viewport_draw_ruler_tick(cr, x, y1 - tick_height, x, y1);
+        if (fabs(x_) < 1E3) {
+          sprintf(s, "%.0lf", x_);
+        } else if (fabs(x_) < 1E6) {
+          sprintf(s, "%.0lfk", x_ / 1E3);
+        } else if (fabs(x_) < 1E9) {
+          sprintf(s, "%.0lfm", x_ / 1E6);
+        } else {
+          sprintf(s, "%.0lfb", x_ / 1E9);
+        }
+        cairo_text_extents(cr, s, &ext);
+        cairo_move_to(cr, x + 2 - ext.x_bearing, y1 - tick_height_2 - 2 - (ext.y_bearing + ext.height));
+        cairo_show_text(cr, s);
+      }
+      x_ += tick_interval;
+    }
+  }
+  /* 2nd level ticks */
+  {
+    double x_ = x_0;
+    while (x_ <= x_n) {
+      if (x_left <= x_ && x_ <= x_right) {
+        double x = dv_convert_graph_x_to_viewport_x(V, x_);
+        dv_viewport_draw_ruler_tick(cr, x, y1 - tick_height_2, x, y1);
+      }
+      x_ += tick_interval_2;
+    }
+  }
+  /* 3nd level ticks */
+  printf("tick int 3 vp = %.2lf -> %.2lf\n", tick_interval_3, tick_interval_3 * V->S->zoom_ratio_x);
+  if (tick_interval_3 * V->S->zoom_ratio_x >= 5.0) {
+    double x_ = x_0;
+    while (x_ <= x_n) {
+      if (x_left <= x_ && x_ <= x_right) {
+        double x = dv_convert_graph_x_to_viewport_x(V, x_);
+        dv_viewport_draw_ruler_tick(cr, x, y1 - tick_height_3, x, y1);
+      }
+      x_ += tick_interval_3;
+    }
+  }
+
+  cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
+  cairo_set_line_width(cr, 0.7);
+  cairo_stroke(cr);
+  cairo_restore(cr);
+}
+
 
 /*-----end of Main drawing functions-----*/
