@@ -898,6 +898,33 @@ dv_viewport_draw_rulers(dv_viewport_t * VP, cairo_t * cr) {
   cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
   cairo_set_line_width(cr, 0.7);
   cairo_stroke(cr);
+
+  /* horizontal slider */
+  //if (VP->x >= DV_RULER_WIDTH_DEFAULT) {
+  {
+    double x = (VP->x < DV_RULER_WIDTH_DEFAULT) ? DV_RULER_WIDTH_DEFAULT : (VP->x > VP->vpw) ? VP->vpw : VP->x;
+    double y = DV_RULER_WIDTH_DEFAULT;
+    const double base = 4.0;
+    cairo_move_to(cr, x, y);
+    cairo_rel_line_to(cr, -base, -base);
+    cairo_rel_line_to(cr, 2 * base, 0.0);
+    cairo_close_path(cr);
+  }
+
+  /* vertical slider */
+  //if (VP->y >= DV_RULER_WIDTH_DEFAULT) {
+  {
+    double x = DV_RULER_WIDTH_DEFAULT;
+    double y = (VP->y < DV_RULER_WIDTH_DEFAULT) ? DV_RULER_WIDTH_DEFAULT : (VP->y > VP->vph) ? VP->vph : VP->y;
+    const double base = 4.0;
+    cairo_move_to(cr, x, y);
+    cairo_rel_line_to(cr, -base, base);
+    cairo_rel_line_to(cr, 0.0, -2 * base);
+    cairo_close_path(cr);
+  }
+
+  /* cairo fill */
+  cairo_fill(cr);
   cairo_restore(cr);
 }
 

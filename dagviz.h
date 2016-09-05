@@ -486,6 +486,7 @@ typedef struct dv_viewport {
   GtkWidget * orient_combobox;
   GtkWidget * dag_menubutton;
   GtkWidget * dag_menu;
+  double x, y; /* current position of mouse pointer */
 } dv_viewport_t;
 
 typedef struct dv_btsample_viewer {

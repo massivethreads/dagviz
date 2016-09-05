@@ -339,7 +339,6 @@ dv_viewport_draw(dv_viewport_t * VP, cairo_t * cr) {
       count++;
     }
   //dv_viewport_draw_label(VP, cr);
-  dv_viewport_draw_rulers(VP, cr);
   if (VP->mainV) {
     switch (VP->mainV->S->lt) {
     case DV_LAYOUT_TYPE_DAG:
@@ -355,6 +354,7 @@ dv_viewport_draw(dv_viewport_t * VP, cairo_t * cr) {
       break;
     }
   }
+  dv_viewport_draw_rulers(VP, cr);
   dv_statusbar_update_selection_status();
   dv_statusbar_update_pointer_status();
   if (VP == CS->activeVP && VP != CS->VP)

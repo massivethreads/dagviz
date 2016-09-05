@@ -71,6 +71,8 @@ on_darea_button_event(_unused_ GtkWidget * widget, GdkEventButton * event, gpoin
 static gboolean
 on_darea_motion_event(_unused_ GtkWidget * widget, GdkEventMotion * event, gpointer user_data) {
   dv_viewport_t * VP = (dv_viewport_t *) user_data;
+  VP->x = event->x;
+  VP->y = event->y;
   if ( CS->activeV && VP->mV[ CS->activeV - CS->V ] ) {
     dv_do_motion_event(CS->activeV, event);
   } else {

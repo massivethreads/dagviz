@@ -707,6 +707,7 @@ dv_paraprof_draw_rulers(dv_viewport_t * VP, dv_view_t * V, cairo_t * cr) {
   cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
   char s[DV_STRING_LENGTH];
   cairo_text_extents_t ext;
+  double bound_left, bound_right, bound_top, bound_bottom;
 
   /* horizontal ruler */
   {
@@ -730,6 +731,8 @@ dv_paraprof_draw_rulers(dv_viewport_t * VP, dv_view_t * V, cairo_t * cr) {
     double tick_interval_3 = tick_interval / 10.0;
     double x_left = dv_max(0.0, dv_paraprof_convert_viewport_x_to_paraprof_x(H, V, ruler_width));
     double x_right = dv_min(dv_paraprof_convert_viewport_x_to_paraprof_x(H, V, VP->vpw), V->D->et - V->D->bt);
+    bound_left = dv_paraprof_convert_paraprof_x_to_viewport_x(H, V, x_left);
+    bound_right = dv_paraprof_convert_paraprof_x_to_viewport_x(H, V, x_right);
     double x_0 = floor(x_left / tick_interval) * tick_interval;
     double x_n = ceil(x_right / tick_interval) * tick_interval;
     double y0 = VP->vph - ruler_width;
@@ -804,13 +807,17 @@ dv_paraprof_draw_rulers(dv_viewport_t * VP, dv_view_t * V, cairo_t * cr) {
     if (dv_view_convert_viewport_y_to_graph_y(V, VP->vph - ruler_width) < H->unit_thick * H->D->radius) {
       y_bottom = dv_paraprof_convert_viewport_y_to_paraprof_y(H, V, VP->vph - ruler_width);
     }
+    bound_top = dv_paraprof_convert_parallelism_to_viewport_y(H, V, y_top);
+    bound_bottom = dv_paraprof_convert_parallelism_to_viewport_y(H, V, y_bottom);
     double y_0 = floor(y_bottom / tick_interval) * tick_interval;
     double y_n = ceil(y_top / tick_interval) * tick_interval;
     double x0 = VP->vpw - ruler_width;
+#if 0    
     fprintf(stderr, "tick_interval = %.2lf\n", tick_interval);
     fprintf(stderr, "y_top = %.2lf, y_bottom = %.2lf\n", y_top, y_bottom);
     fprintf(stderr, "y_0 = %.2lf, y_n = %.2lf\n", y_0, y_n);
     fprintf(stderr, "x0 = %.2lf\n", x0);
+#endif    
 
     /* 1st level ticks */
     {
@@ -861,6 +868,31 @@ dv_paraprof_draw_rulers(dv_viewport_t * VP, dv_view_t * V, cairo_t * cr) {
   cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
   cairo_set_line_width(cr, 0.7);
   cairo_stroke(cr);
+
+  /* horizontal slider */
+  if (bound_left <= bound_right) {
+    double x = (VP->x < bound_left) ? bound_left : (VP->x > bound_right) ? bound_right : VP->x;
+    double y = VP->vph - DV_RULER_WIDTH_DEFAULT;
+    const double base = 4.0;
+    cairo_move_to(cr, x, y);
+    cairo_rel_line_to(cr, base, base);
+    cairo_rel_line_to(cr, -2 * base, 0.0);
+    cairo_close_path(cr);
+  }
+
+  /* vertical slider */
+  if (bound_top <= bound_bottom) {
+    double x = VP->vpw - DV_RULER_WIDTH_DEFAULT;
+    double y = (VP->y < bound_top) ? bound_top : (VP->y > bound_bottom) ? bound_bottom : VP->y;
+    const double base = 4.0;
+    cairo_move_to(cr, x, y);
+    cairo_rel_line_to(cr, base, -base);
+    cairo_rel_line_to(cr, 0.0, 2 * base);
+    cairo_close_path(cr);
+  }
+
+  /* cairo fill */
+  cairo_fill(cr);
   cairo_restore(cr);
 }
 

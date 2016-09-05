@@ -781,8 +781,8 @@ dv_statusbar_update_pointer_status() {
   double zx = 0.0;
   double zy = 0.0;
   if (CS->activeV) {
-    x = CS->activeV->S->x;
-    y = CS->activeV->S->y;
+    x = dv_view_convert_viewport_x_to_graph_x(CS->activeV, CS->activeV->mainVP->x);
+    y = dv_view_convert_viewport_y_to_graph_y(CS->activeV, CS->activeV->mainVP->y);
     zx = CS->activeV->S->zoom_ratio_x;
     zy = CS->activeV->S->zoom_ratio_y;
   }
@@ -1434,6 +1434,7 @@ dv_do_button_event(dv_view_t * V, GdkEventButton * event) {
 void
 dv_do_motion_event(dv_view_t * V, GdkEventMotion * event) {
   dv_view_status_t * S = V->S;
+  
   /* Dragging */
   if (S->drag_on) {
     double deltax = event->x - S->pressx;
