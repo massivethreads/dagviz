@@ -4,6 +4,10 @@
 
 void
 dv_histogram_init(dv_histogram_t * H) {
+  memset(H, 0, sizeof(dv_histogram_t));
+  H->min_entry_interval = DV_PARAPROF_MIN_ENTRY_INTERVAL;
+  H->unit_thick = 2.0;
+#if 0  
   H->head_e = NULL;
   H->tail_e = NULL;
   H->n_e = 0;
@@ -11,6 +15,7 @@ dv_histogram_init(dv_histogram_t * H) {
   H->work = H->delay = H->nowork = 0.0;
   H->min_entry_interval = DV_PARAPROF_MIN_ENTRY_INTERVAL;
   H->unit_thick = 2.0;
+#endif  
 }
 
 static void
@@ -29,9 +34,9 @@ dv_histogram_entry_init(dv_histogram_entry_t * e) {
   e->cumul_value_3 = 0.0;
 }
 
-double
-dv_histogram_get_max_height(dv_histogram_t * H) {
-  double max_h = 0.0;
+static void
+dv_histogram_compute_tallest_entry(dv_histogram_t * H) {
+  H->max_h = 0.0;
   dv_histogram_entry_t * e = H->head_e;
   while (e != NULL) {
     double h = 0.0;
@@ -39,11 +44,20 @@ dv_histogram_get_max_height(dv_histogram_t * H) {
     for (i = 0; i < dv_histogram_layer_max; i++) {
       h += e->h[i];
     }
-    if (h > max_h)
-      max_h = h;
+    if (h > H->max_h) {
+      H->max_h = h;
+      H->tallest_e = e;
+    }
     e = e->next;
   }
-  return max_h * (H->unit_thick * H->D->radius);
+}
+
+double
+dv_histogram_get_max_height(dv_histogram_t * H) {
+  if (!H->tallest_e || H->max_h == 0.0) {
+    dv_histogram_compute_tallest_entry(H);
+  }    
+  return H->max_h * (H->unit_thick * H->D->radius);
 }
 
 dv_histogram_entry_t *
@@ -161,6 +175,10 @@ dv_histogram_add_node(dv_histogram_t * H, dv_dag_node_t * node, dv_histogram_ent
     e = e->next;
   }
   if (hint_entry) *hint_entry = e_to;
+  
+  /* invalidate current max height */
+  H->tallest_e = 0;
+  H->max_h = 0.0;
 }
 
 /*
@@ -229,6 +247,10 @@ dv_histogram_remove_node(dv_histogram_t * H, dv_dag_node_t * node, dv_histogram_
     e = e->next;
   }
   if (hint_entry) *hint_entry = e_to;
+  
+  /* invalidate current max height */
+  H->tallest_e = 0;
+  H->max_h = 0.0;
 }
 
 void
@@ -582,6 +604,262 @@ dv_paraprof_draw_time_bar(dv_view_t * V, dv_histogram_t * H, cairo_t * cr) {
   cairo_line_to(cr, x, y2);
   cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, 0.8);
   cairo_set_line_width(cr, (DV_NODE_LINE_WIDTH * 2) / V->S->zoom_ratio_x);
+  cairo_stroke(cr);
+  cairo_restore(cr);
+}
+
+/* graph x -> (normalized) time point */
+/* normalized means H->D->bt is 0 */
+_static_unused_ double
+dv_paraprof_convert_graph_x_to_paraprof_x(dv_histogram_t * H, double x) {
+  return x * H->D->linear_radix;
+}
+
+/* (normalized) time point -> graph x */
+_static_unused_ double
+dv_paraprof_convert_paraprof_x_to_graph_x(dv_histogram_t * H, double x) {
+  return dv_dag_scale_down_linear(H->D, x);
+}
+
+/* graph y -> parallelism/worker */
+_static_unused_ double
+dv_paraprof_convert_graph_y_to_paraprof_y(dv_histogram_t * H, double y) {
+  if (y < 0) {
+    /* to parallelism */
+    y = fabs(y) - H->unit_thick * H->D->radius;
+    if (y > 0) {
+      return y / (H->unit_thick * H->D->radius);
+    } else {
+      return 0.0;
+    }
+  } else {
+    /* to worker number */
+    return floor(y / (H->D->radius * 2));
+  }
+}
+
+/* parallelism -> graph y */
+_static_unused_ double
+dv_paraprof_convert_parallelism_to_graph_y(dv_histogram_t * H, double p) {
+  double y = (-1) * p * H->unit_thick * H->D->radius - H->unit_thick * H->D->radius;
+  return y;
+}
+
+/* worker number -> graph y */
+_static_unused_ double
+dv_paraprof_convert_worker_number_to_graph_y(dv_histogram_t * H, double w) {
+  return w * (H->D->radius * 2);
+}
+
+_static_unused_ double
+dv_paraprof_convert_viewport_x_to_paraprof_x(dv_histogram_t * H, dv_view_t * V, double x) {
+  return dv_paraprof_convert_graph_x_to_paraprof_x(H, dv_view_convert_viewport_x_to_graph_x(V, x));
+}
+_static_unused_ double
+dv_paraprof_convert_paraprof_x_to_viewport_x(dv_histogram_t * H, dv_view_t * V, double x) {
+  return dv_view_convert_graph_x_to_viewport_x(V, dv_paraprof_convert_paraprof_x_to_graph_x(H, x));
+}
+_static_unused_ double
+dv_paraprof_convert_viewport_y_to_paraprof_y(dv_histogram_t * H, dv_view_t * V, double y) {
+  return dv_paraprof_convert_graph_y_to_paraprof_y(H, dv_view_convert_viewport_y_to_graph_y(V, y));
+}
+_static_unused_ double
+dv_paraprof_convert_parallelism_to_viewport_y(dv_histogram_t * H, dv_view_t * V, double p) {
+  return dv_view_convert_graph_y_to_viewport_y(V, dv_paraprof_convert_parallelism_to_graph_y(H, p));
+}
+_static_unused_ double
+dv_paraprof_convert_worker_number_to_viewport_y(dv_histogram_t * H, dv_view_t * V, double w) {
+  return dv_view_convert_graph_y_to_viewport_y(V, dv_paraprof_convert_worker_number_to_graph_y(H, w));
+}
+
+static void
+dv_paraprof_draw_ruler_tick(cairo_t * cr, double x0, double y0, double x1, double y1) {
+  cairo_move_to(cr, x0, y0);
+  cairo_line_to(cr, x1, y1);
+}
+
+void
+dv_paraprof_draw_rulers(dv_viewport_t * VP, dv_view_t * V, cairo_t * cr) {
+  if (!V || !V->D->H){
+    fprintf(stderr, "Error: there is no view (V) or no historgram structure (no V->D->H).\n");
+    return;
+  }
+  dv_histogram_t * H = V->D->H;
+  cairo_save(cr);
+  cairo_new_path(cr);
+
+  /* background */
+  double x = 0.0;
+  double y = VP->vph - DV_RULER_WIDTH_DEFAULT;
+  double ruler_width = DV_RULER_WIDTH_DEFAULT;
+  dv_draw_path_rectangle(cr, x, y, VP->vpw, ruler_width);
+  x = VP->vpw - DV_RULER_WIDTH_DEFAULT;
+  y = 0.0;
+  dv_draw_path_rectangle(cr, x, y, ruler_width, VP->vph);
+  GdkRGBA c;
+  gdk_rgba_parse(&c, "#F0F0F0");
+  cairo_set_source_rgba(cr, c.red, c.green, c.blue, c.alpha);
+  cairo_fill(cr);
+
+  /* prepare */
+  cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
+  cairo_set_font_size(cr, 8.0);
+  cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
+  char s[DV_STRING_LENGTH];
+  cairo_text_extents_t ext;
+
+  /* horizontal ruler */
+  {
+    double tick_length = ruler_width;
+    double tick_length_2 = tick_length / 2.0;
+    double tick_length_3 = tick_length / 4.0;
+
+    double tick_interval_threshold = 200;
+
+    const double A[3] = {2.0, 2.0, 2.5};
+    const int An = 3;
+    int Ai = 0;
+    double tick_interval = 1.0;
+    double tick_interval_next = tick_interval * A[Ai++ % An];
+    double zr = V->S->zoom_ratio_x;
+    while (tick_interval_next / V->D->linear_radix * zr < tick_interval_threshold) {
+      tick_interval = tick_interval_next;
+      tick_interval_next *= A[Ai++ % An];
+    }
+    double tick_interval_2 = tick_interval / 5.0;
+    double tick_interval_3 = tick_interval / 10.0;
+    double x_left = dv_max(0.0, dv_paraprof_convert_viewport_x_to_paraprof_x(H, V, ruler_width));
+    double x_right = dv_min(dv_paraprof_convert_viewport_x_to_paraprof_x(H, V, VP->vpw), V->D->et - V->D->bt);
+    double x_0 = floor(x_left / tick_interval) * tick_interval;
+    double x_n = ceil(x_right / tick_interval) * tick_interval;
+    double y0 = VP->vph - ruler_width;
+#if 0    
+    fprintf(stderr, "tick_interval = %.2lf\n", tick_interval);
+    fprintf(stderr, "x_left = %.2lf, x_right = %.2lf\n", x_left, x_right);
+    fprintf(stderr, "x_0 = %.2lf, x_n = %.2lf\n", x_0, x_n);
+    fprintf(stderr, "y0 = %.2lf\n", y0);
+#endif    
+
+    /* 1st level ticks */
+    {
+      double x_ = x_0;
+      while (x_ <= x_n) {
+        if (x_left <= x_ && x_ <= x_right) {
+          double x = dv_paraprof_convert_paraprof_x_to_viewport_x(H, V, x_);
+          dv_paraprof_draw_ruler_tick(cr, x, y0, x, y0 + tick_length);
+          dv_convert_tick_value_to_simplified_string(x_, s);
+          cairo_text_extents(cr, s, &ext);
+          cairo_move_to(cr, x + 2 - ext.x_bearing, y0 + tick_length - 2 - (ext.y_bearing + ext.height));
+          cairo_show_text(cr, s);
+        }
+        x_ += tick_interval;
+      }
+    }
+    /* 2nd level ticks */
+    {
+      double x_ = x_0;
+      while (x_ <= x_n) {
+        if (x_left <= x_ && x_ <= x_right) {
+          double x = dv_paraprof_convert_paraprof_x_to_viewport_x(H, V, x_);
+          dv_paraprof_draw_ruler_tick(cr, x, y0, x, y0 + tick_length_2);
+        }
+        x_ += tick_interval_2;
+      }
+    }
+    /* 3nd level ticks */
+    if (tick_interval_3 / V->D->linear_radix * zr >= 5.0) {
+      double x_ = x_0;
+      while (x_ <= x_n) {
+        if (x_left <= x_ && x_ <= x_right) {
+          double x = dv_paraprof_convert_paraprof_x_to_viewport_x(H, V, x_);
+          dv_paraprof_draw_ruler_tick(cr, x, y0, x, y0 + tick_length_3);
+        }
+        x_ += tick_interval_3;
+      }
+    }
+  } /* horizontal ruler */
+
+  /* vertical ruler: upper part */
+  {
+    double tick_length = ruler_width;
+    double tick_length_2 = tick_length / 2.0;
+    double tick_length_3 = tick_length / 4.0;
+
+    double tick_interval_threshold = 120;
+
+    const double A[3] = {2.0, 2.0, 2.5};
+    const int An = 3;
+    int Ai = 0;
+    double tick_interval = 1.0;
+    double tick_interval_next = tick_interval * A[Ai++ % An];
+    double zr = V->S->zoom_ratio_y;
+    while (tick_interval_next * H->unit_thick * H->D->radius * zr < tick_interval_threshold) {
+      tick_interval = tick_interval_next;
+      tick_interval_next *= A[Ai++ % An];
+    }
+    double tick_interval_2 = tick_interval / 5.0;
+    double tick_interval_3 = tick_interval / 10.0;
+    double y_top = dv_min(dv_histogram_get_max_height(H) / (H->unit_thick * H->D->radius), dv_paraprof_convert_viewport_y_to_paraprof_y(H, V, ruler_width));
+    double y_bottom = 0.0;
+    if (dv_view_convert_viewport_y_to_graph_y(V, VP->vph - ruler_width) < H->unit_thick * H->D->radius) {
+      y_bottom = dv_paraprof_convert_viewport_y_to_paraprof_y(H, V, VP->vph - ruler_width);
+    }
+    double y_0 = floor(y_bottom / tick_interval) * tick_interval;
+    double y_n = ceil(y_top / tick_interval) * tick_interval;
+    double x0 = VP->vpw - ruler_width;
+    fprintf(stderr, "tick_interval = %.2lf\n", tick_interval);
+    fprintf(stderr, "y_top = %.2lf, y_bottom = %.2lf\n", y_top, y_bottom);
+    fprintf(stderr, "y_0 = %.2lf, y_n = %.2lf\n", y_0, y_n);
+    fprintf(stderr, "x0 = %.2lf\n", x0);
+
+    /* 1st level ticks */
+    {
+      double y_ = y_0;
+      while (y_ <= y_n) {
+        if (y_bottom <= y_ && y_ <= y_top) {
+          double y = dv_paraprof_convert_parallelism_to_viewport_y(H, V, y_);
+          dv_paraprof_draw_ruler_tick(cr, x0, y, x0 + tick_length, y);
+          dv_convert_tick_value_to_simplified_string(y_, s);
+          char ss[5];
+          size_t i;
+          for (i = 0; i < strlen(s); i++) {
+            sprintf(ss, "%c", s[i]);
+            cairo_text_extents(cr, ss, &ext);
+            cairo_move_to(cr, x0 + tick_length - 1 - (ext.x_bearing + ext.width), y + 2 - ext.y_bearing);
+            y += ext.height + 2;
+            cairo_show_text(cr, ss);
+          }
+        }
+        y_ += tick_interval;
+      }
+    }
+    /* 2nd level ticks */
+    {
+      double y_ = y_0;
+      while (y_ <= y_n) {
+        if (y_bottom <= y_ && y_ <= y_top) {
+          double y = dv_paraprof_convert_parallelism_to_viewport_y(H, V, y_);
+          dv_paraprof_draw_ruler_tick(cr, x0, y, x0 + tick_length_2, y);
+        }
+        y_ += tick_interval_2;
+      }
+    }
+    /* 3nd level ticks */
+    if (tick_interval_3 * H->unit_thick * H->D->radius * zr >= 5.0) {
+      double y_ = y_0;
+      while (y_ <= y_n) {
+        if (y_bottom <= y_ && y_ <= y_top) {
+          double y = dv_paraprof_convert_parallelism_to_viewport_y(H, V, y_);
+          dv_paraprof_draw_ruler_tick(cr, x0, y, x0 + tick_length_3, y);
+        }
+        y_ += tick_interval_3;
+      }
+    }
+  } /* vertical ruler: upper part */
+
+  /* cairo stroke */
+  cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
+  cairo_set_line_width(cr, 0.7);
   cairo_stroke(cr);
   cairo_restore(cr);
 }

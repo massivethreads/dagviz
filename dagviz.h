@@ -153,8 +153,8 @@ typedef struct dv_llist {
 #define DV_HISTOGRAM_ENTRY_POOL_SIZE 40000
 
 #define DV_CLIPPING_FRAME_MARGIN 0
-#define DV_HISTOGRAM_MARGIN 25
-#define DV_HISTOGRAM_MARGIN_DOWN 15
+#define DV_HISTOGRAM_MARGIN 30
+#define DV_HISTOGRAM_MARGIN_DOWN 30
 
 #define DV_HISTOGRAM_DIVIDE_TO_PIECES 0
 
@@ -531,6 +531,8 @@ typedef struct dv_histogram {
   double work, delay, nowork;
   double min_entry_interval;
   double unit_thick;
+  dv_histogram_entry_t * tallest_e;
+  double max_h;
 } dv_histogram_t;
 
 typedef struct dv_histogram_entry_page {
@@ -954,6 +956,11 @@ void dv_view_draw(dv_view_t *, cairo_t *);
 void dv_viewport_draw_label(dv_viewport_t *, cairo_t *);
 void dv_view_draw_legend(dv_view_t *, cairo_t *);
 void dv_viewport_draw_focused_mark(dv_viewport_t *, cairo_t *);
+double dv_view_convert_graph_x_to_viewport_x(dv_view_t *, double);
+double dv_view_convert_graph_y_to_viewport_y(dv_view_t *, double);
+double dv_view_convert_viewport_x_to_graph_x(dv_view_t *, double);
+double dv_view_convert_viewport_y_to_graph_y(dv_view_t *, double);
+void dv_convert_tick_value_to_simplified_string(double, char *);
 void dv_viewport_draw_rulers(dv_viewport_t *, cairo_t *);
 
 
@@ -1004,6 +1011,7 @@ void dv_histogram_build_all(dv_histogram_t *);
 void dv_histogram_compute_significant_intervals(dv_histogram_t *);
 
 void dv_view_layout_paraprof(dv_view_t *);
+void dv_paraprof_draw_rulers(dv_viewport_t *, dv_view_t *, cairo_t *);
 void dv_view_draw_paraprof(dv_view_t *, cairo_t *);
 
 dv_dag_node_t * dv_critical_path_find_clicked_node(dv_view_t *, double, double);

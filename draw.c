@@ -689,23 +689,23 @@ dv_viewport_draw_focused_mark(dv_viewport_t * VP, cairo_t * cr) {
   cairo_restore(cr);
 }
 
-_static_unused_ double
-dv_convert_graph_x_to_viewport_x(dv_view_t * V, double x) {
-  return (x  * V->S->zoom_ratio_x) + V->S->basex + V->S->x;
+double
+dv_view_convert_graph_x_to_viewport_x(dv_view_t * V, double x) {
+  return (x * V->S->zoom_ratio_x) + V->S->basex + V->S->x;
 }
 
-_static_unused_ double
-dv_convert_graph_y_to_viewport_y(dv_view_t * V, double y) {
+double
+dv_view_convert_graph_y_to_viewport_y(dv_view_t * V, double y) {
   return (y * V->S->zoom_ratio_y) + V->S->basey + V->S->y;
 }
 
-_static_unused_ double
-dv_convert_viewport_x_to_graph_x(dv_view_t * V, double x) {
+double
+dv_view_convert_viewport_x_to_graph_x(dv_view_t * V, double x) {
   return (x - V->S->basex - V->S->x) / V->S->zoom_ratio_x;
 }
 
-_static_unused_ double
-dv_convert_viewport_y_to_graph_y(dv_view_t * V, double y) {
+double
+dv_view_convert_viewport_y_to_graph_y(dv_view_t * V, double y) {
   return (y - V->S->basey - V->S->y) / V->S->zoom_ratio_y;
 }
 
@@ -713,6 +713,21 @@ static void
 dv_viewport_draw_ruler_tick(cairo_t * cr, double x0, double y0, double x1, double y1) {
   cairo_move_to(cr, x0, y0);
   cairo_line_to(cr, x1, y1);
+}
+
+void
+dv_convert_tick_value_to_simplified_string(double v, char * s) {
+  double v_abs = fabs(v);
+  const double precision_error = 0.001;
+  if (v_abs >= 1E9 && fmod(v_abs, 1E9) < precision_error) {
+    sprintf(s, "%.0lfb", v / 1E9);
+  } else if (v_abs >= 1E6 && fmod(v_abs, 1E6) < precision_error) {
+    sprintf(s, "%.0lfm", v / 1E6);
+  } else if (v_abs >= 1E3 && fmod(v_abs, 1E3) < precision_error) {
+    sprintf(s, "%.0lfk", v / 1E3);
+  } else {
+    sprintf(s, "%.0lf", v);
+  }
 }
 
 void
@@ -725,18 +740,18 @@ dv_viewport_draw_rulers(dv_viewport_t * VP, cairo_t * cr) {
   cairo_save(cr);
   cairo_new_path(cr);
 
-  /* rulers' background */
+  /* background */
   double x = 0.0;
   double y = 0.0;
   double ruler_width = DV_RULER_WIDTH_DEFAULT;
   dv_draw_path_rectangle(cr, x, y, VP->vpw, ruler_width);
   dv_draw_path_rectangle(cr, x, y, ruler_width, VP->vph);
   GdkRGBA c;
-  gdk_rgba_parse(&c, "#E8E8E8");
+  gdk_rgba_parse(&c, "#F0F0F0");
   cairo_set_source_rgba(cr, c.red, c.green, c.blue, c.alpha);
   cairo_fill(cr);
 
-  /* rulers */
+  /* prepare */
   cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
   cairo_set_font_size(cr, 8.0);
   cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
@@ -763,8 +778,8 @@ dv_viewport_draw_rulers(dv_viewport_t * VP, cairo_t * cr) {
     }
     double tick_interval_2 = tick_interval / 5.0;
     double tick_interval_3 = tick_interval / 10.0;
-    double x_left = dv_convert_viewport_x_to_graph_x(V, ruler_width);
-    double x_right = dv_convert_viewport_x_to_graph_x(V, VP->vpw);
+    double x_left = dv_view_convert_viewport_x_to_graph_x(V, ruler_width);
+    double x_right = dv_view_convert_viewport_x_to_graph_x(V, VP->vpw);
     double x_0 = floor(x_left / tick_interval) * tick_interval;
     double x_n = ceil(x_right / tick_interval) * tick_interval;
     double y1 = ruler_width;
@@ -774,17 +789,9 @@ dv_viewport_draw_rulers(dv_viewport_t * VP, cairo_t * cr) {
       double x_ = x_0;
       while (x_ <= x_n) {
         if (x_left <= x_ && x_ <= x_right) {
-          double x = dv_convert_graph_x_to_viewport_x(V, x_);
+          double x = dv_view_convert_graph_x_to_viewport_x(V, x_);
           dv_viewport_draw_ruler_tick(cr, x, y1 - tick_length, x, y1);
-          if (fabs(x_) < 1E3) {
-            sprintf(s, "%.0lf", x_);
-          } else if (fabs(x_) < 1E6) {
-            sprintf(s, "%.0lfk", x_ / 1E3);
-          } else if (fabs(x_) < 1E9) {
-            sprintf(s, "%.0lfm", x_ / 1E6);
-          } else {
-            sprintf(s, "%.0lfb", x_ / 1E9);
-          }
+          dv_convert_tick_value_to_simplified_string(x_, s);
           cairo_text_extents(cr, s, &ext);
           cairo_move_to(cr, x + 2 - ext.x_bearing, y1 - tick_length_2 - 2 - (ext.y_bearing + ext.height));
           cairo_show_text(cr, s);
@@ -797,19 +804,18 @@ dv_viewport_draw_rulers(dv_viewport_t * VP, cairo_t * cr) {
       double x_ = x_0;
       while (x_ <= x_n) {
         if (x_left <= x_ && x_ <= x_right) {
-          double x = dv_convert_graph_x_to_viewport_x(V, x_);
+          double x = dv_view_convert_graph_x_to_viewport_x(V, x_);
           dv_viewport_draw_ruler_tick(cr, x, y1 - tick_length_2, x, y1);
         }
         x_ += tick_interval_2;
       }
     }
     /* 3nd level ticks */
-    printf("tick int 3 vp = %.2lf -> %.2lf\n", tick_interval_3, tick_interval_3 * V->S->zoom_ratio_x);
     if (tick_interval_3 * zr >= 5.0) {
       double x_ = x_0;
       while (x_ <= x_n) {
         if (x_left <= x_ && x_ <= x_right) {
-          double x = dv_convert_graph_x_to_viewport_x(V, x_);
+          double x = dv_view_convert_graph_x_to_viewport_x(V, x_);
           dv_viewport_draw_ruler_tick(cr, x, y1 - tick_length_3, x, y1);
         }
         x_ += tick_interval_3;
@@ -837,32 +843,20 @@ dv_viewport_draw_rulers(dv_viewport_t * VP, cairo_t * cr) {
     }
     double tick_interval_2 = tick_interval / 5.0;
     double tick_interval_3 = tick_interval / 10.0;
-    double y_top = dv_convert_viewport_y_to_graph_y(V, ruler_width);
-    double y_bottom = dv_convert_viewport_y_to_graph_y(V, VP->vph);
+    double y_top = dv_view_convert_viewport_y_to_graph_y(V, ruler_width);
+    double y_bottom = dv_view_convert_viewport_y_to_graph_y(V, VP->vph);
     double y_0 = floor(y_top / tick_interval) * tick_interval;
     double y_n = ceil(y_bottom / tick_interval) * tick_interval;
     double x1 = ruler_width;
-    fprintf(stderr, "tick_interval = %.2lf\n", tick_interval);
-    fprintf(stderr, "y_top = %.2lf, y_bottom = %.2lf\n", y_top, y_bottom);
-    fprintf(stderr, "y_0 = %.2lf, y_n = %.2lf\n", y_0, y_n);
-    fprintf(stderr, "x1 = %.2lf\n", x1);
 
     /* 1st level ticks */
     {
       double y_ = y_0;
       while (y_ <= y_n) {
         if (y_top <= y_ && y_ <= y_bottom) {
-          double y = dv_convert_graph_y_to_viewport_y(V, y_);
+          double y = dv_view_convert_graph_y_to_viewport_y(V, y_);
           dv_viewport_draw_ruler_tick(cr, x1 - tick_length, y, x1, y);
-          if (fabs(y_) < 1E3) {
-            sprintf(s, "%.0lf", y_);
-          } else if (fabs(y_) < 1E6) {
-            sprintf(s, "%.0lfk", y_ / 1E3);
-          } else if (fabs(y_) < 1E9) {
-            sprintf(s, "%.0lfm", y_ / 1E6);
-          } else {
-            sprintf(s, "%.0lfb", y_ / 1E9);
-          }
+          dv_convert_tick_value_to_simplified_string(y_, s);
           char ss[5];
           size_t i;
           for (i = 0; i < strlen(s); i++) {
@@ -881,7 +875,7 @@ dv_viewport_draw_rulers(dv_viewport_t * VP, cairo_t * cr) {
       double y_ = y_0;
       while (y_ <= y_n) {
         if (y_top <= y_ && y_ <= y_bottom) {
-          double y = dv_convert_graph_y_to_viewport_y(V, y_);
+          double y = dv_view_convert_graph_y_to_viewport_y(V, y_);
           dv_viewport_draw_ruler_tick(cr, x1 - tick_length_2, y, x1, y);
         }
         y_ += tick_interval_2;
@@ -892,7 +886,7 @@ dv_viewport_draw_rulers(dv_viewport_t * VP, cairo_t * cr) {
       double y_ = y_0;
       while (y_ <= y_n) {
         if (y_top <= y_ && y_ <= y_bottom) {
-          double y = dv_convert_graph_y_to_viewport_y(V, y_);
+          double y = dv_view_convert_graph_y_to_viewport_y(V, y_);
           dv_viewport_draw_ruler_tick(cr, x1 - tick_length_3, y, x1, y);
         }
         y_ += tick_interval_3;
@@ -900,6 +894,7 @@ dv_viewport_draw_rulers(dv_viewport_t * VP, cairo_t * cr) {
     }
   } /* vertical ruler */
 
+  /* cairo stroke */
   cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
   cairo_set_line_width(cr, 0.7);
   cairo_stroke(cr);

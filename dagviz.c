@@ -340,6 +340,21 @@ dv_viewport_draw(dv_viewport_t * VP, cairo_t * cr) {
     }
   //dv_viewport_draw_label(VP, cr);
   dv_viewport_draw_rulers(VP, cr);
+  if (VP->mainV) {
+    switch (VP->mainV->S->lt) {
+    case DV_LAYOUT_TYPE_DAG:
+      break;
+    case DV_LAYOUT_TYPE_DAG_BOX:
+      break;
+    case DV_LAYOUT_TYPE_TIMELINE_VER:
+      break;
+    case DV_LAYOUT_TYPE_TIMELINE:
+    case DV_LAYOUT_TYPE_PARAPROF:
+    case DV_LAYOUT_TYPE_CRITICAL_PATH:
+      dv_paraprof_draw_rulers(VP, VP->mainV, cr);
+      break;
+    }
+  }
   dv_statusbar_update_selection_status();
   dv_statusbar_update_pointer_status();
   if (VP == CS->activeVP && VP != CS->VP)
