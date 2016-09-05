@@ -1,4 +1,4 @@
-#include "dagviz.c"
+#include "process.c"
 
 const char * const DV_GRAPH_COLORS[] =
   {"red", "green", "web-blue",
