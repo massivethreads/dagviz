@@ -105,7 +105,7 @@ typedef struct dv_llist {
 //#define DV_EDGE_LINE_WIDTH 1.5
 #define DV_RADIX_LOG 1.8
 #define DV_RADIX_POWER 0.42
-#define DV_RADIX_LINEAR 1000 //100000
+#define DV_RADIX_LINEAR 100000 //100000
 
 #define DV_ANIMATION_DURATION 400 // milliseconds
 #define DV_ANIMATION_STEP 80 // milliseconds
