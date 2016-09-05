@@ -753,7 +753,7 @@ dv_viewport_draw_rulers(dv_viewport_t * VP, cairo_t * cr) {
 
   /* prepare */
   cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
-  cairo_set_font_size(cr, 8.0);
+  cairo_set_font_size(cr, 8.3);
   cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
   char s[DV_STRING_LENGTH];
   cairo_text_extents_t ext;
@@ -793,7 +793,7 @@ dv_viewport_draw_rulers(dv_viewport_t * VP, cairo_t * cr) {
           dv_viewport_draw_ruler_tick(cr, x, y1 - tick_length, x, y1);
           dv_convert_tick_value_to_simplified_string(x_, s);
           cairo_text_extents(cr, s, &ext);
-          cairo_move_to(cr, x + 2 - ext.x_bearing, y1 - tick_length_2 - 2 - (ext.y_bearing + ext.height));
+          cairo_move_to(cr, x + 2 - ext.x_bearing, y1 - tick_length_2 - 1 - (ext.y_bearing + ext.height));
           cairo_show_text(cr, s);
         }
         x_ += tick_interval;
@@ -862,7 +862,7 @@ dv_viewport_draw_rulers(dv_viewport_t * VP, cairo_t * cr) {
           for (i = 0; i < strlen(s); i++) {
             sprintf(ss, "%c", s[i]);
             cairo_text_extents(cr, ss, &ext);
-            cairo_move_to(cr, x1 - tick_length - ext.x_bearing, y + 2 - ext.y_bearing);
+            cairo_move_to(cr, x1 - tick_length + 1 - ext.x_bearing, y + 3 - ext.y_bearing);
             y += ext.height + 2;
             cairo_show_text(cr, ss);
           }
@@ -896,7 +896,7 @@ dv_viewport_draw_rulers(dv_viewport_t * VP, cairo_t * cr) {
 
   /* cairo stroke */
   cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
-  cairo_set_line_width(cr, 0.7);
+  cairo_set_line_width(cr, 0.8);
   cairo_stroke(cr);
 
   /* horizontal slider */
