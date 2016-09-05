@@ -738,7 +738,7 @@ dv_viewport_draw_rulers(dv_viewport_t * VP, cairo_t * cr) {
 
   /* rulers */
   cairo_select_font_face(cr, "Courier", CAIRO_FONT_SLANT_NORMAL, CAIRO_FONT_WEIGHT_NORMAL);
-  cairo_set_font_size(cr, 7.9);
+  cairo_set_font_size(cr, 8.0);
   cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
   char s[DV_STRING_LENGTH];
   cairo_text_extents_t ext;
@@ -751,8 +751,8 @@ dv_viewport_draw_rulers(dv_viewport_t * VP, cairo_t * cr) {
 
     double tick_interval_threshold = 200;
 
-    const int A[2] = {2, 5};
-    const int An = 2;
+    const double A[3] = {2.0, 2.0, 2.5};
+    const int An = 3;
     int Ai = 0;
     double tick_interval = 1.0;
     double tick_interval_next = tick_interval * A[Ai++ % An];
@@ -825,8 +825,8 @@ dv_viewport_draw_rulers(dv_viewport_t * VP, cairo_t * cr) {
 
     double tick_interval_threshold = 200;
 
-    const int A[2] = {2, 5};
-    const int An = 2;
+    const double A[3] = {2.0, 2.0, 2.5};
+    const int An = 3;
     int Ai = 0;
     double tick_interval = 1.0;
     double tick_interval_next = tick_interval * A[Ai++ % An];
