@@ -74,13 +74,7 @@ typedef struct dv_llist {
 
 /*-----------------Constants-----------------*/
 
-#define DV_ZOOM_INCREMENT 1.06
-#define DV_SCALE_INCREMENT 1.04
-#define DV_HDIS 70
-#define DV_VDIS 70
-#define DV_RADIUS 20
 #define NUM_COLORS 34
-#define DV_UNION_NODE_DOUBLE_BORDER 3
 
 #define DV_NODE_FLAG_NONE         0        /* none */
 #define DV_NODE_FLAG_SET          1        /* none - set */
@@ -94,15 +88,10 @@ typedef struct dv_llist {
 #define DV_NODE_FLAG_CRITICAL_PATH_1 (1 << 7) /* node is on critical path of work & delay */
 #define DV_NODE_FLAG_CRITICAL_PATH_2 (1 << 8) /* node is on critical path of weighted work & delay */
 
-#define DV_ZOOM_TO_FIT_MARGIN 25
-#define DV_ZOOM_TO_FIT_MARGIN_DOWN 15
 #define DV_STRING_LENGTH 1000
 #define DV_STATUS_PADDING 7
 #define DV_SAFE_CLICK_RANGE 1
-#define DV_UNION_NODE_MARGIN 6
-#define DV_NODE_LINE_WIDTH 1.5
-#define DV_NODE_LINE_WIDTH_COLLECTIVE_FACTOR 2.0
-//#define DV_EDGE_LINE_WIDTH 1.5
+
 #define DV_RADIX_LOG 1.8
 #define DV_RADIX_POWER 0.42
 #define DV_RADIX_LINEAR 100000 //100000
@@ -152,10 +141,6 @@ typedef struct dv_llist {
 #define DV_HISTOGRAM_PIECE_POOL_SIZE 100000
 #define DV_HISTOGRAM_ENTRY_POOL_SIZE 40000
 
-#define DV_CLIPPING_FRAME_MARGIN 0
-#define DV_HISTOGRAM_MARGIN 30
-#define DV_HISTOGRAM_MARGIN_DOWN 30
-
 #define DV_HISTOGRAM_DIVIDE_TO_PIECES 0
 
 #define DV_CAIRO_BOUND_MIN -8e6 //-(1<<23)
@@ -195,8 +180,6 @@ typedef struct dv_llist {
 #define DV_CRITICAL_PATH_0_COLOR "red"
 #define DV_CRITICAL_PATH_1_COLOR "green"
 #define DV_CRITICAL_PATH_2_COLOR "blue"
-
-#define DV_RULER_WIDTH_DEFAULT 15
 
 
 /*-----------------Data Structures-----------------*/
@@ -664,6 +647,50 @@ typedef struct dv_gui {
   
 } dv_gui_t;
 
+/* runtime-adjustable options */
+typedef struct dv_options {
+  double zoom_step_ratio;
+  double scale_step_ratio;
+  
+  double hnd; /* horizontal node distance */
+  double vnd; /* vertical node distance */
+  double radius; /* node radius */
+  double vp_mark_radius; /* radius of viewport's mark */
+  double nlw; /* node line width */
+  double nlw_collective_node_factor; /* node line width's multiplying factor for collective nodes */
+
+  double ruler_width;
+  double zoom_to_fit_margin;
+  double zoom_to_fit_margin_bottom;
+  double paraprof_zoom_to_fit_margin;
+  double paraprof_zoom_to_fit_margin_bottom;
+  double union_node_puffing_margin;
+  double clipping_frame_margin;
+  
+} dv_options_t;
+
+/* default values for runtime-adjustable options */
+_static_unused_ dv_options_t dv_options_default_values = {
+  1.06, /* zoom_step_ratio */
+  1.04, /* scale_step_ratio */
+
+  70.0, /* hnd: horizontal node distance */
+  70.0, /* vnd: vertical node distance */
+  20.0, /* radius */
+  5.0,  /* vp_mark_radius */
+  1.5,  /* nlw: node line width */
+  2.0,  /* nlw_collective_node_factor */
+  
+  15.0, /* ruler_width */
+  30.0, /* zoom_to_fit_margin */
+  15.0, /* zoom_to_fit_margin_bottom */
+  30.0, /* paraprof_zoom_to_fit_margin */
+  30.0, /* paraprof_zoom_to_fit_margin_bottom */
+  6.0,  /* union_node_puffing_margin */
+  0.0,  /* clipping_frame_margin */
+
+};
+
 typedef struct dv_global_state {
   /* DAG */
   dv_pidag_t P[DV_MAX_DAG_FILE];
@@ -703,6 +730,8 @@ typedef struct dv_global_state {
 
   int oncp_flags[DV_NUM_CRITICAL_PATHS];
   char * cp_colors[DV_NUM_CRITICAL_PATHS];
+
+  dv_options_t opts;
 } dv_global_state_t;
 
 extern const char * const DV_COLORS[];

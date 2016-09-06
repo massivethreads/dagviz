@@ -207,7 +207,7 @@ dv_view_layout_dagbox_node(dv_view_t * V, dv_dag_node_t * node) {
     dv_view_layout_dagbox_node(V, v);
     
     // node's linked u,v's outward
-    hgap = rate * DV_HDIS;
+    hgap = rate * CS->opts.hnd;
     // u
     uco->xpre = (uco->link_lw - V->D->radius) + hgap;
     if (u->spawn)
@@ -336,13 +336,13 @@ dv_view_draw_dagbox_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node, in
   double xx, yy, w, h;
   if (dv_is_union(node)) {
 
-    cairo_set_line_width(cr, DV_NODE_LINE_WIDTH_COLLECTIVE_FACTOR * DV_NODE_LINE_WIDTH);
+    cairo_set_line_width(cr, CS->opts.nlw_collective_node_factor * CS->opts.nlw);
     
     if ( dv_is_inner_loaded(node)
          && (dv_is_expanding(node) || dv_is_shrinking(node))) {
 
       /* Calculate alpha, margin */
-      margin = DV_UNION_NODE_MARGIN;
+      margin = CS->opts.union_node_puffing_margin;
       if (dv_is_expanding(node)) {
         alpha *= dv_view_get_alpha_fading_out(V, node);
         margin *= dv_view_get_alpha_fading_in(V, node);
@@ -369,7 +369,7 @@ dv_view_draw_dagbox_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node, in
   } else {
     
     /* Calculate coordinates: normal-sized box (leaf node) */
-    cairo_set_line_width(cr, DV_NODE_LINE_WIDTH);
+    cairo_set_line_width(cr, CS->opts.nlw);
     xx = x - nodeco->lw;
     yy = y;
     w = nodeco->lw + nodeco->rw;
@@ -460,11 +460,11 @@ dv_view_draw_dagbox_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node, in
     double margin, line_width, margin_increment;
     GdkRGBA color[1];
     
-    //line_width = 2 * DV_NODE_LINE_WIDTH;
-    line_width = 2 * DV_NODE_LINE_WIDTH / V->S->zoom_ratio_x;
-    if (line_width < DV_NODE_LINE_WIDTH)
-      line_width = DV_NODE_LINE_WIDTH;
-    margin = 0.5 * DV_NODE_LINE_WIDTH + 0.5 * line_width;
+    //line_width = 2 * CS->opts.nlw;
+    line_width = 2 * CS->opts.nlw / V->S->zoom_ratio_x;
+    if (line_width < CS->opts.nlw)
+      line_width = CS->opts.nlw;
+    margin = 0.5 * CS->opts.nlw + 0.5 * line_width;
     margin_increment = line_width;
 
     int i;
@@ -549,7 +549,7 @@ dv_view_draw_dagbox_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node, in
 void
 dv_view_draw_dagbox(dv_view_t * V, cairo_t * cr) {
   /* Prepare */
-  cairo_set_line_width(cr, DV_NODE_LINE_WIDTH);
+  cairo_set_line_width(cr, CS->opts.nlw);
   dv_llist_init(V->D->itl);
   V->S->nd = 0;
   V->S->ndh = 0;

@@ -75,6 +75,7 @@ dv_get_env() {
 
 void
 dv_global_state_init(dv_global_state_t * CS) {
+  memset(CS, 0, sizeof(dv_global_state_t));
   CS->nP = 0;
   CS->nD = 0;
   CS->nV = 0;
@@ -129,6 +130,8 @@ dv_global_state_init(dv_global_state_t * CS) {
   CS->cp_colors[DV_CRITICAL_PATH_0] = DV_CRITICAL_PATH_0_COLOR;
   CS->cp_colors[DV_CRITICAL_PATH_1] = DV_CRITICAL_PATH_1_COLOR;
   CS->cp_colors[DV_CRITICAL_PATH_2] = DV_CRITICAL_PATH_2_COLOR;
+
+  CS->opts = dv_options_default_values;
 }
 
 /*-----------------end of Global State-----------------*/
@@ -210,28 +213,33 @@ dv_queue_draw_d_p(dv_view_t * V) {
 
 void
 dv_view_clip(dv_view_t * V, cairo_t * cr) {
-  cairo_rectangle(cr, DV_CLIPPING_FRAME_MARGIN, DV_CLIPPING_FRAME_MARGIN, V->S->vpw - DV_CLIPPING_FRAME_MARGIN * 2, V->S->vph - DV_CLIPPING_FRAME_MARGIN * 2);
+  double margin = CS->opts.clipping_frame_margin;
+  cairo_rectangle(cr, margin, margin, V->S->vpw - margin * 2, V->S->vph - margin * 2);
   cairo_clip(cr);
 }
 
 double
 dv_view_clip_get_bound_left(dv_view_t * V) {
-  return (DV_CLIPPING_FRAME_MARGIN - V->S->basex - V->S->x) / V->S->zoom_ratio_x;
+  double margin = CS->opts.clipping_frame_margin;
+  return dv_view_convert_viewport_x_to_graph_x(V, margin);
 }
 
 double
 dv_view_clip_get_bound_right(dv_view_t * V) {
-  return ((V->S->vpw - DV_CLIPPING_FRAME_MARGIN) - V->S->basex - V->S->x) / V->S->zoom_ratio_x;
+  double margin = CS->opts.clipping_frame_margin;
+  return dv_view_convert_viewport_x_to_graph_x(V, V->S->vpw - margin);
 }
 
 double
 dv_view_clip_get_bound_up(dv_view_t * V) {
-  return (DV_CLIPPING_FRAME_MARGIN - V->S->basey - V->S->y) / V->S->zoom_ratio_y;
+  double margin = CS->opts.clipping_frame_margin;
+  return dv_view_convert_viewport_y_to_graph_y(V, margin);
 }
 
 double
 dv_view_clip_get_bound_down(dv_view_t * V) {
-  return ((V->S->vph - DV_CLIPPING_FRAME_MARGIN) - V->S->basey - V->S->y) / V->S->zoom_ratio_y;
+  double margin = CS->opts.clipping_frame_margin;
+  return dv_view_convert_viewport_y_to_graph_y(V, V->S->vph - margin);
 }
 
 double
@@ -306,25 +314,25 @@ dv_viewport_draw(dv_viewport_t * VP, cairo_t * cr) {
       switch (S->lt) {
       case DV_LAYOUT_TYPE_DAG:
         S->basex = 0.5 * S->vpw;
-        S->basey = DV_ZOOM_TO_FIT_MARGIN;
+        S->basey = CS->opts.zoom_to_fit_margin;
         break;
       case DV_LAYOUT_TYPE_DAG_BOX:
         //G->basex = 0.5 * S->vpw - 0.5 * (G->rt->rw - G->rt->lw);
         S->basex = 0.5 * S->vpw;
-        S->basey = DV_ZOOM_TO_FIT_MARGIN;
+        S->basey = CS->opts.zoom_to_fit_margin;
         break;
       case DV_LAYOUT_TYPE_TIMELINE_VER:
       case DV_LAYOUT_TYPE_TIMELINE:
-        S->basex = DV_ZOOM_TO_FIT_MARGIN;
-        S->basey = DV_ZOOM_TO_FIT_MARGIN;
+        S->basex = CS->opts.zoom_to_fit_margin;
+        S->basey = CS->opts.zoom_to_fit_margin;
         break;
       case DV_LAYOUT_TYPE_PARAPROF:
-        S->basex = DV_HISTOGRAM_MARGIN;
-        S->basey = S->vph - DV_HISTOGRAM_MARGIN_DOWN;
+        S->basex = CS->opts.paraprof_zoom_to_fit_margin;
+        S->basey = S->vph - CS->opts.paraprof_zoom_to_fit_margin_bottom;
         break;
       case DV_LAYOUT_TYPE_CRITICAL_PATH:
-        S->basex = DV_HISTOGRAM_MARGIN;
-        S->basey = S->vph - DV_HISTOGRAM_MARGIN_DOWN;
+        S->basex = CS->opts.paraprof_zoom_to_fit_margin;
+        S->basey = S->vph - CS->opts.paraprof_zoom_to_fit_margin_bottom;
         break;
       default:
         dv_check(0);

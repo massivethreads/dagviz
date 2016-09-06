@@ -118,7 +118,7 @@ dv_dag_node_is_invisible(dv_view_t * V, dv_dag_node_t * node) {
   double margin = 0.0;
   if (dv_is_set(node) && dv_is_union(node) && dv_is_inner_loaded(node)
       && (dv_is_expanding(node) || dv_is_shrinking(node))) {
-    margin = DV_UNION_NODE_MARGIN;
+    margin = CS->opts.union_node_puffing_margin;
   }
   double xx, yy, w, h;
   xx = x - nodeco->lw - margin;
@@ -141,7 +141,7 @@ dv_dag_node_link_is_invisible(dv_view_t * V, dv_dag_node_t * node) {
   double margin = 0.0;
   if (dv_is_set(node) && dv_is_union(node) && dv_is_inner_loaded(node)
       && (dv_is_expanding(node) || dv_is_shrinking(node))) {
-    margin = DV_UNION_NODE_MARGIN;
+    margin = CS->opts.union_node_puffing_margin;
   }
   double xx, yy, w, h;
   xx = x - nodeco->link_lw - margin;
@@ -202,7 +202,7 @@ dv_view_layout_dag_node(dv_view_t * V, dv_dag_node_t * node) {
     rate = dv_view_calculate_rate(V, node->parent);
     // node's linked u's outward
     uco->xpre = 0.0;
-    ypre = (nodeco->dw - 2 * V->D->radius + DV_VDIS) * rate;
+    ypre = (nodeco->dw - 2 * V->D->radius + CS->opts.vnd) * rate;
     uco->y = nodeco->y + ypre;
     // Recursive call
     dv_view_layout_dag_node(V, u);
@@ -219,7 +219,7 @@ dv_view_layout_dag_node(dv_view_t * V, dv_dag_node_t * node) {
     // node & u,v's rate
     rate = dv_view_calculate_rate(V, node->parent);
     // node's linked u,v's outward
-    ypre = (nodeco->dw - 2 * V->D->radius + DV_VDIS) * rate;
+    ypre = (nodeco->dw - 2 * V->D->radius + CS->opts.vnd) * rate;
     uco->y = nodeco->y + ypre;
     vco->y = nodeco->y + ypre;
     // Recursive call
@@ -227,7 +227,7 @@ dv_view_layout_dag_node(dv_view_t * V, dv_dag_node_t * node) {
     dv_view_layout_dag_node(V, v);
     
     // node's linked u,v's outward
-    hgap = DV_HDIS * rate;
+    hgap = CS->opts.hnd * rate;
     // u
     uco->xpre = (uco->link_lw - V->D->radius) + hgap;
     if (u->spawn)
@@ -365,7 +365,7 @@ dv_view_draw_dag_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node, int *
           && (dv_is_expanding(node) || dv_is_shrinking(node))) {
 
         /* Calculate alpha, margin */
-        margin = DV_UNION_NODE_MARGIN;
+        margin = CS->opts.union_node_puffing_margin;
         if (dv_is_expanding(node)) {
           alpha *= dv_view_get_alpha_fading_out(V, node);
           margin *= dv_view_get_alpha_fading_in(V, node);
@@ -397,22 +397,11 @@ dv_view_draw_dag_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node, int *
       w += 2 * extra;
       h += 2 * extra;
       */
-      cairo_set_line_width(cr, DV_NODE_LINE_WIDTH_COLLECTIVE_FACTOR * DV_NODE_LINE_WIDTH);
+      cairo_set_line_width(cr, CS->opts.nlw_collective_node_factor * CS->opts.nlw);
       if (kind == dr_dag_node_kind_section) {
         dv_draw_path_rounded_rectangle(cr, xx, yy, w, h);
-        /*
-        dv_draw_path_rounded_rectangle(cr,
-                                       xx + DV_UNION_NODE_DOUBLE_BORDER,
-                                       yy + DV_UNION_NODE_DOUBLE_BORDER,
-                                       w - 2 * DV_UNION_NODE_DOUBLE_BORDER,
-                                       h - 2 * DV_UNION_NODE_DOUBLE_BORDER); */
       } else {
         dv_draw_path_rectangle(cr, xx, yy, w, h);
-        /* dv_draw_path_rectangle(cr,
-                               xx + DV_UNION_NODE_DOUBLE_BORDER,
-                               yy + DV_UNION_NODE_DOUBLE_BORDER,
-                               w - 2 * DV_UNION_NODE_DOUBLE_BORDER,
-                               h - 2 * DV_UNION_NODE_DOUBLE_BORDER); */
       }
 
     } else { // is collective but not union
@@ -531,11 +520,11 @@ dv_view_draw_dag_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node, int *
     double margin, line_width, margin_increment;
     GdkRGBA color[1];
     
-    //line_width = 2 * DV_NODE_LINE_WIDTH;
-    line_width = 2 * DV_NODE_LINE_WIDTH / V->S->zoom_ratio_x;
-    if (line_width < DV_NODE_LINE_WIDTH)
-      line_width = DV_NODE_LINE_WIDTH;
-    margin = 0.5 * DV_NODE_LINE_WIDTH + 0.5 * line_width;
+    //line_width = 2 * CS->opts.nlw;
+    line_width = 2 * CS->opts.nlw / V->S->zoom_ratio_x;
+    if (line_width < CS->opts.nlw)
+      line_width = CS->opts.nlw;
+    margin = 0.5 * CS->opts.nlw + 0.5 * line_width;
     margin_increment = line_width;
 
     int cp;
@@ -621,7 +610,7 @@ dv_view_draw_dag_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node, int *
 void
 dv_view_draw_dag(dv_view_t * V, cairo_t * cr) {
   /* Prepare */
-  cairo_set_line_width(cr, DV_NODE_LINE_WIDTH);
+  cairo_set_line_width(cr, CS->opts.nlw);
   dv_llist_init(V->D->itl);
   V->S->nd = 0;
   V->S->ndh = 0;
@@ -729,7 +718,7 @@ dv_view_draw_legend_dag(dv_view_t * V, cairo_t * cr) {
   cairo_show_text(cr, s);
   // boxes
   cairo_save(cr);
-  cairo_set_line_width(cr, DV_NODE_LINE_WIDTH_COLLECTIVE_FACTOR * DV_NODE_LINE_WIDTH);
+  cairo_set_line_width(cr, CS->opts.nlw_collective_node_factor * CS->opts.nlw);
   cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
   xx = xxt = x - box_dis - box_w;
   yy = y + box_down_margin - box_h;

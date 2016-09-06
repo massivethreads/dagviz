@@ -177,7 +177,7 @@ dv_view_get_zoomfit_hor(dv_view_t * V, double * zrx, double * zry, double * myx,
   case DV_LAYOUT_TYPE_DAG:
     // DAG
     d1 = rtco->lw + rtco->rw;
-    d2 = w - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    d2 = w - 2 * CS->opts.zoom_to_fit_margin;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     x -= (rtco->rw - rtco->lw) * 0.5 * zoom_ratio;
@@ -185,22 +185,22 @@ dv_view_get_zoomfit_hor(dv_view_t * V, double * zrx, double * zry, double * myx,
   case DV_LAYOUT_TYPE_DAG_BOX:
     // DAG with Boxes
     d1 = rtco->lw + rtco->rw;
-    d2 = w - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    d2 = w - 2 * CS->opts.zoom_to_fit_margin;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     x -= (rtco->rw - rtco->lw) * 0.5 * zoom_ratio;
     break;
   case DV_LAYOUT_TYPE_TIMELINE_VER:
     // Vertical Timeline
-    d1 = 2 * D->radius + (D->P->num_workers - 1) * DV_HDIS;
-    d2 = w - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    d1 = 2 * D->radius + (D->P->num_workers - 1) * CS->opts.hnd;
+    d2 = w - 2 * CS->opts.zoom_to_fit_margin;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     break;
   case DV_LAYOUT_TYPE_TIMELINE:
     // Horizontal Timeline
     d1 = 10 + rtco->rw;
-    d2 = w - 2 * DV_ZOOM_TO_FIT_MARGIN;
+    d2 = w - 2 * CS->opts.zoom_to_fit_margin;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     dw = D->P->num_workers * (D->radius * 2);
@@ -209,13 +209,13 @@ dv_view_get_zoomfit_hor(dv_view_t * V, double * zrx, double * zry, double * myx,
   case DV_LAYOUT_TYPE_PARAPROF: {
     // Parallelism profile
     d1 = dv_dag_scale_down_linear(V->D, V->D->et - V->D->bt);
-    d2 = w - 2 * DV_HISTOGRAM_MARGIN;
+    d2 = w - 2 * CS->opts.paraprof_zoom_to_fit_margin;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     y -= V->D->P->num_workers * 2 * V->D->radius * zoom_ratio;
     double max_h = dv_histogram_get_max_height(D->H);
-    double dy = (h - DV_HISTOGRAM_MARGIN_DOWN
-                 - DV_HISTOGRAM_MARGIN
+    double dy = (h - CS->opts.paraprof_zoom_to_fit_margin_bottom
+                 - CS->opts.paraprof_zoom_to_fit_margin
                  - zoom_ratio
                  * (D->P->num_workers * 2 * D->radius
                     + max_h)
@@ -227,12 +227,12 @@ dv_view_get_zoomfit_hor(dv_view_t * V, double * zrx, double * zry, double * myx,
   case DV_LAYOUT_TYPE_CRITICAL_PATH: {
     // Critical path
     d1 = dv_dag_scale_down_linear(V->D, V->D->et - V->D->bt);
-    d2 = w - 2 * DV_HISTOGRAM_MARGIN;
+    d2 = w - 2 * CS->opts.paraprof_zoom_to_fit_margin;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     y -= V->D->P->num_workers * 2 * V->D->radius * zoom_ratio;
     double max_h = dv_histogram_get_max_height(D->H);
-    double dy = (h - DV_HISTOGRAM_MARGIN_DOWN - DV_HISTOGRAM_MARGIN
+    double dy = (h - CS->opts.paraprof_zoom_to_fit_margin_bottom - CS->opts.paraprof_zoom_to_fit_margin
                  - zoom_ratio * (D->P->num_workers * 2 * D->radius + max_h)) / 2.0;
     if (dy > 0)
       y -= dy;
@@ -268,14 +268,14 @@ dv_view_get_zoomfit_ver(dv_view_t * V, double * zrx, double * zry, double * myx,
   switch (S->lt) {
   case DV_LAYOUT_TYPE_DAG:
     d1 = rtco->dw;
-    d2 = h - DV_ZOOM_TO_FIT_MARGIN - DV_ZOOM_TO_FIT_MARGIN_DOWN;
+    d2 = h - CS->opts.zoom_to_fit_margin - CS->opts.zoom_to_fit_margin_bottom;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     x -= (rtco->rw - rtco->lw) * 0.5 * zoom_ratio;
     break;
   case DV_LAYOUT_TYPE_DAG_BOX:
     d1 = rtco->dw;
-    d2 = h - DV_ZOOM_TO_FIT_MARGIN - DV_ZOOM_TO_FIT_MARGIN_DOWN;
+    d2 = h - CS->opts.zoom_to_fit_margin - CS->opts.zoom_to_fit_margin_bottom;
     if (d1 > d2)
       zoom_ratio = d2 / d1;    
     x -= (rtco->rw - rtco->lw) * 0.5 * zoom_ratio;
@@ -283,16 +283,16 @@ dv_view_get_zoomfit_ver(dv_view_t * V, double * zrx, double * zry, double * myx,
   case DV_LAYOUT_TYPE_TIMELINE_VER:
     // Vertical Timeline
     d1 = 10 + rtco->dw;
-    d2 = h - DV_ZOOM_TO_FIT_MARGIN - DV_ZOOM_TO_FIT_MARGIN_DOWN;
+    d2 = h - CS->opts.zoom_to_fit_margin - CS->opts.zoom_to_fit_margin_bottom;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
-    double lrw = 2 * D->radius + (D->P->num_workers - 1) * DV_HDIS;
+    double lrw = 2 * D->radius + (D->P->num_workers - 1) * CS->opts.hnd;
     x += (w - lrw * zoom_ratio) * 0.5;
     break;
   case DV_LAYOUT_TYPE_TIMELINE:
     // Horizontal Timeline
     d1 = D->P->num_workers * (D->radius * 2);
-    d2 = h - DV_ZOOM_TO_FIT_MARGIN - DV_ZOOM_TO_FIT_MARGIN_DOWN;
+    d2 = h - CS->opts.zoom_to_fit_margin - CS->opts.zoom_to_fit_margin_bottom;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     break;
@@ -300,11 +300,11 @@ dv_view_get_zoomfit_ver(dv_view_t * V, double * zrx, double * zry, double * myx,
     // Parallelism profile
     double max_h = dv_histogram_get_max_height(D->H);
     d1 = D->P->num_workers * (2 * D->radius) + max_h;
-    d2 = h - DV_HISTOGRAM_MARGIN - DV_HISTOGRAM_MARGIN_DOWN;
+    d2 = h - CS->opts.paraprof_zoom_to_fit_margin - CS->opts.paraprof_zoom_to_fit_margin_bottom;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     y -= D->P->num_workers * (2 * D->radius) * zoom_ratio;
-    double dx = (w - 2 * DV_HISTOGRAM_MARGIN - zoom_ratio * dv_dag_scale_down_linear(V->D, V->D->et - V->D->bt)) / 2.0;
+    double dx = (w - 2 * CS->opts.paraprof_zoom_to_fit_margin - zoom_ratio * dv_dag_scale_down_linear(V->D, V->D->et - V->D->bt)) / 2.0;
     if (dx > 0)
       x += dx;
     break;
@@ -313,11 +313,11 @@ dv_view_get_zoomfit_ver(dv_view_t * V, double * zrx, double * zry, double * myx,
     // Critical path
     double max_h = dv_histogram_get_max_height(D->H);
     d1 = D->P->num_workers * (2 * D->radius) + max_h;
-    d2 = h - DV_HISTOGRAM_MARGIN - DV_HISTOGRAM_MARGIN_DOWN;
+    d2 = h - CS->opts.paraprof_zoom_to_fit_margin - CS->opts.paraprof_zoom_to_fit_margin_bottom;
     if (d1 > d2)
       zoom_ratio = d2 / d1;
     y -= D->P->num_workers * (2 * D->radius) * zoom_ratio;
-    double dx = (w - 2 * DV_HISTOGRAM_MARGIN - zoom_ratio * dv_dag_scale_down_linear(V->D, V->D->et - V->D->bt)) / 2.0;
+    double dx = (w - 2 * CS->opts.paraprof_zoom_to_fit_margin - zoom_ratio * dv_dag_scale_down_linear(V->D, V->D->et - V->D->bt)) / 2.0;
     if (dx > 0)
       x += dx;
     break;
@@ -1034,9 +1034,9 @@ dv_do_scrolling(dv_view_t * V, GdkEventScroll * event) {
       // Cal factor    
       factor = 1.0;
       if (event->direction == GDK_SCROLL_UP)
-        factor *= DV_SCALE_INCREMENT;
+        factor *= CS->opts.scale_step_ratio;
       else if (event->direction == GDK_SCROLL_DOWN)
-        factor /= DV_SCALE_INCREMENT;
+        factor /= CS->opts.scale_step_ratio;
       // Apply factor    
       double radix = dv_dag_get_radix(V->D);
       radix *= factor;
@@ -1049,9 +1049,9 @@ dv_do_scrolling(dv_view_t * V, GdkEventScroll * event) {
       // Cal factor
       factor = 1.0;
       if (event->direction == GDK_SCROLL_UP)
-        factor *= DV_SCALE_INCREMENT;
+        factor *= CS->opts.scale_step_ratio;
       else if (event->direction == GDK_SCROLL_DOWN)
-        factor /= DV_SCALE_INCREMENT;
+        factor /= CS->opts.scale_step_ratio;
       // Apply factor    
       V->D->radius *= factor;
       
@@ -1070,9 +1070,9 @@ dv_do_scrolling(dv_view_t * V, GdkEventScroll * event) {
     // Cal factor    
     factor = 1.0;
     if (event->direction == GDK_SCROLL_UP)
-      factor *= DV_ZOOM_INCREMENT;
+      factor *= CS->opts.zoom_step_ratio;
     else if (event->direction == GDK_SCROLL_DOWN)
-      factor /= DV_ZOOM_INCREMENT;
+      factor /= CS->opts.zoom_step_ratio;
     // Apply factor    
     double zoomx = V->S->zoom_ratio_x;
     double zoomy = V->S->zoom_ratio_y;

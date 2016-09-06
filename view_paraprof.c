@@ -422,7 +422,7 @@ dv_histogram_draw(dv_histogram_t * H, cairo_t * cr, dv_view_t * V) {
   cairo_move_to(cr, x, y);
   cairo_line_to(cr, x + w, y);
   cairo_set_source_rgba(cr, 1.0, 0.0, 0.0, 0.8);
-  cairo_set_line_width(cr, DV_NODE_LINE_WIDTH / V->S->zoom_ratio_x);
+  cairo_set_line_width(cr, CS->opts.nlw / V->S->zoom_ratio_x);
   cairo_stroke(cr);
   cairo_restore(cr);
   
@@ -603,7 +603,7 @@ dv_paraprof_draw_time_bar(dv_view_t * V, dv_histogram_t * H, cairo_t * cr) {
   cairo_move_to(cr, x, y1);
   cairo_line_to(cr, x, y2);
   cairo_set_source_rgba(cr, 0.0, 0.0, 0.0, 0.8);
-  cairo_set_line_width(cr, (DV_NODE_LINE_WIDTH * 2) / V->S->zoom_ratio_x);
+  cairo_set_line_width(cr, (CS->opts.nlw * 2) / V->S->zoom_ratio_x);
   cairo_stroke(cr);
   cairo_restore(cr);
 }
@@ -689,11 +689,11 @@ dv_paraprof_draw_rulers(dv_viewport_t * VP, dv_view_t * V, cairo_t * cr) {
   cairo_new_path(cr);
 
   /* background */
+  double ruler_width = CS->opts.ruler_width;
   double x = 0.0;
-  double y = VP->vph - DV_RULER_WIDTH_DEFAULT;
-  double ruler_width = DV_RULER_WIDTH_DEFAULT;
+  double y = VP->vph - ruler_width;
   dv_draw_path_rectangle(cr, x, y, VP->vpw, ruler_width);
-  x = VP->vpw - DV_RULER_WIDTH_DEFAULT;
+  x = VP->vpw - ruler_width;
   y = 0.0;
   dv_draw_path_rectangle(cr, x, y, ruler_width, VP->vph);
   GdkRGBA c;
@@ -872,7 +872,7 @@ dv_paraprof_draw_rulers(dv_viewport_t * VP, dv_view_t * V, cairo_t * cr) {
   /* horizontal slider */
   if (bound_left <= bound_right) {
     double x = (VP->x < bound_left) ? bound_left : (VP->x > bound_right) ? bound_right : VP->x;
-    double y = VP->vph - DV_RULER_WIDTH_DEFAULT;
+    double y = VP->vph - ruler_width;
     const double base = 4.0;
     cairo_move_to(cr, x, y);
     cairo_rel_line_to(cr, base, base);
@@ -882,7 +882,7 @@ dv_paraprof_draw_rulers(dv_viewport_t * VP, dv_view_t * V, cairo_t * cr) {
 
   /* vertical slider */
   if (bound_top <= bound_bottom) {
-    double x = VP->vpw - DV_RULER_WIDTH_DEFAULT;
+    double x = VP->vpw - ruler_width;
     double y = (VP->y < bound_top) ? bound_top : (VP->y > bound_bottom) ? bound_bottom : VP->y;
     const double base = 4.0;
     cairo_move_to(cr, x, y);
@@ -1085,10 +1085,10 @@ dv_view_draw_critical_path_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * n
             double margin, line_width;
             GdkRGBA color[1];
             
-            //line_width = 2 * DV_NODE_LINE_WIDTH;
-            line_width = 2 * DV_NODE_LINE_WIDTH / V->S->zoom_ratio_x;
-            if (line_width > 10 * DV_NODE_LINE_WIDTH)
-              line_width = 10 * DV_NODE_LINE_WIDTH;
+            //line_width = 2 * CS->opts.nlw;
+            line_width = 2 * CS->opts.nlw / V->S->zoom_ratio_x;
+            if (line_width > 10 * CS->opts.nlw)
+              line_width = 10 * CS->opts.nlw;
             margin = - 0.5 * line_width;
             
             gdk_rgba_parse(color, CS->cp_colors[cp]);

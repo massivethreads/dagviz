@@ -213,10 +213,10 @@ dv_view_draw_timeline_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node, 
         double margin, line_width, margin_increment;
         GdkRGBA color[1];
         
-        //line_width = 2 * DV_NODE_LINE_WIDTH;
-        line_width = 2 * DV_NODE_LINE_WIDTH / V->S->zoom_ratio_x;
-        if (line_width > 40 * DV_NODE_LINE_WIDTH)
-          line_width = 40 * DV_NODE_LINE_WIDTH;
+        //line_width = 2 * CS->opts.nlw;
+        line_width = 2 * CS->opts.nlw / V->S->zoom_ratio_x;
+        if (line_width > 40 * CS->opts.nlw)
+          line_width = 40 * CS->opts.nlw;
         margin = - 0.5 * line_width;
         margin_increment = - line_width;
     
@@ -288,7 +288,7 @@ dv_view_draw_timeline(dv_view_t * V, cairo_t * cr) {
   }
   
   /* Set adaptive line width */
-  double line_width = dv_min(DV_NODE_LINE_WIDTH, DV_NODE_LINE_WIDTH / dv_min(V->S->zoom_ratio_x, V->S->zoom_ratio_y));
+  double line_width = dv_min(CS->opts.nlw, CS->opts.nlw / dv_min(V->S->zoom_ratio_x, V->S->zoom_ratio_y));
   cairo_set_line_width(cr, line_width);
   
   /* White & grey colors */

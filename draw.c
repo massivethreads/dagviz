@@ -678,10 +678,10 @@ dv_view_draw_legend(dv_view_t * V, cairo_t * cr) {
 void
 dv_viewport_draw_focused_mark(dv_viewport_t * VP, cairo_t * cr) {
   cairo_save(cr);
-  double margin = DV_ZOOM_TO_FIT_MARGIN / 2;
+  double margin = CS->opts.zoom_to_fit_margin / 2;
   double x = margin;
   double y = VP->vph - 2 * margin;
-  double r = DV_RADIUS / 4;
+  double r = CS->opts.vp_mark_radius;
   cairo_arc(cr, x + r, y + r, r, 0.0, 2 * M_PI);
   cairo_close_path(cr);
   cairo_set_source_rgb(cr, 1.0, 0.0, 0.0);
@@ -743,7 +743,7 @@ dv_viewport_draw_rulers(dv_viewport_t * VP, cairo_t * cr) {
   /* background */
   double x = 0.0;
   double y = 0.0;
-  double ruler_width = DV_RULER_WIDTH_DEFAULT;
+  double ruler_width = CS->opts.ruler_width;
   dv_draw_path_rectangle(cr, x, y, VP->vpw, ruler_width);
   dv_draw_path_rectangle(cr, x, y, ruler_width, VP->vph);
   GdkRGBA c;
@@ -900,10 +900,9 @@ dv_viewport_draw_rulers(dv_viewport_t * VP, cairo_t * cr) {
   cairo_stroke(cr);
 
   /* horizontal slider */
-  //if (VP->x >= DV_RULER_WIDTH_DEFAULT) {
   {
-    double x = (VP->x < DV_RULER_WIDTH_DEFAULT) ? DV_RULER_WIDTH_DEFAULT : (VP->x > VP->vpw) ? VP->vpw : VP->x;
-    double y = DV_RULER_WIDTH_DEFAULT;
+    double x = (VP->x < ruler_width) ? ruler_width : (VP->x > VP->vpw) ? VP->vpw : VP->x;
+    double y = ruler_width;
     const double base = 4.0;
     cairo_move_to(cr, x, y);
     cairo_rel_line_to(cr, -base, -base);
@@ -912,10 +911,9 @@ dv_viewport_draw_rulers(dv_viewport_t * VP, cairo_t * cr) {
   }
 
   /* vertical slider */
-  //if (VP->y >= DV_RULER_WIDTH_DEFAULT) {
   {
-    double x = DV_RULER_WIDTH_DEFAULT;
-    double y = (VP->y < DV_RULER_WIDTH_DEFAULT) ? DV_RULER_WIDTH_DEFAULT : (VP->y > VP->vph) ? VP->vph : VP->y;
+    double x = ruler_width;
+    double y = (VP->y < ruler_width) ? ruler_width : (VP->y > VP->vph) ? VP->vph : VP->y;
     const double base = 4.0;
     cairo_move_to(cr, x, y);
     cairo_rel_line_to(cr, -base, base);
