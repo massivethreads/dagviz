@@ -3594,3 +3594,196 @@ dv_alarm_init() {
   else
     dv_alarm_set();
 }
+
+
+/*-----------------BTSAMPLE_VIEWER's functions-----------*/
+
+void dv_btsample_viewer_init(dv_btsample_viewer_t * btviewer) {
+  btviewer->label_dag_file_name = gtk_label_new(0);
+  btviewer->entry_bt_file_name = gtk_entry_new();
+  btviewer->entry_binary_file_name = gtk_entry_new();
+  btviewer->combobox_worker = gtk_combo_box_text_new();
+  btviewer->entry_time_from = gtk_entry_new();
+  btviewer->entry_time_to = gtk_entry_new();
+  btviewer->text_view = gtk_text_view_new();
+  btviewer->entry_node_id = gtk_entry_new();
+  g_object_ref(btviewer->label_dag_file_name);
+  g_object_ref(btviewer->entry_bt_file_name);
+  g_object_ref(btviewer->entry_binary_file_name);
+  g_object_ref(btviewer->combobox_worker);
+  g_object_ref(btviewer->entry_time_from);
+  g_object_ref(btviewer->entry_time_to);
+  g_object_ref(btviewer->text_view);
+  g_object_ref(btviewer->entry_node_id);
+}
+
+#ifdef DV_ENABLE_BFD
+static asymbol **syms;           /* Symbol table.  */
+static bfd_vma pc;
+static const char *filename;
+static const char *functionname;
+static unsigned int line;
+static bfd_boolean found;
+
+static void slurp_symtab(bfd *);
+static void find_address_in_section(bfd *, asection *, void *);
+static void translate_addresses(int, bfd *, bt_sample_t *, dv_btsample_viewer_t *);
+static void process_one_sample(int, const char *, const char *, bt_sample_t *, dv_btsample_viewer_t *);
+
+/* Read in the symbol table.  */
+static void
+slurp_symtab(bfd *abfd) {
+  long symcount;
+  unsigned int size;
+
+  if ((bfd_get_file_flags(abfd) & HAS_SYMS) == 0)
+    return;
+
+  symcount = bfd_read_minisymbols(abfd, FALSE, (void *) &syms, &size);
+  if (symcount == 0)
+    symcount = bfd_read_minisymbols(abfd, TRUE /* dynamic */, (void *) &syms, &size);
+
+  if (symcount < 0) {
+    //bfd_fatal(bfd_get_filename(abfd));
+    perror(bfd_get_filename(abfd));
+    exit(1);
+  }
+}
+
+/* Look for an address in a section.  This is called via
+   bfd_map_over_sections.  */
+static void
+find_address_in_section(bfd *abfd, asection *section, void *data ATTRIBUTE_UNUSED) {
+  bfd_vma vma;
+  bfd_size_type size;
+
+  if (found)
+    return;
+
+  if ((bfd_get_section_flags (abfd, section) & SEC_ALLOC) == 0)
+    return;
+
+  vma = bfd_get_section_vma (abfd, section);
+  if (pc < vma)
+    return;
+
+  size = bfd_get_section_size (section);
+  if (pc >= vma + size)
+    return;
+
+  found = bfd_find_nearest_line (abfd, section, syms, pc - vma,
+                                 &filename, &functionname, &line);
+}
+
+/* Read hexadecimal addresses from stdin, translate into
+   file_name:line_number and optionally function name.  */
+static void
+translate_addresses(int c, bfd *abfd, bt_sample_t *s, dv_btsample_viewer_t *btviewer) {
+  char str_frame[200];
+  GtkTextBuffer *buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(btviewer->text_view));
+  
+  char addr[30];
+  int i;
+  for (i=0; i<s->n; i++) {
+    sprintf(addr, "%p", s->frames[i]);
+    pc = bfd_scan_vma(addr, NULL, 16);
+    
+    found = FALSE;
+    bfd_map_over_sections(abfd, find_address_in_section, NULL);
+    
+    if (!found) {
+      sprintf(str_frame, "[%d] : Worker %d : Clock %llu : Frame %d : Addr %s : ?? : ?? : ??\n",
+              c,
+              s->worker,
+              s->tsc - btviewer->P->start_clock,
+              i,
+              addr);
+    } else {
+      sprintf(str_frame, "[%d] : Worker %d : Clock %llu : Frame %d : Addr %s : %s : %s : %d\n",
+              c,
+              s->worker,
+              s->tsc - btviewer->P->start_clock,
+              i,
+              addr,
+              functionname ? functionname : "??",
+              filename ? filename : "??",
+              line);
+    }
+    gtk_text_buffer_insert_at_cursor(buffer, str_frame, -1);
+  }
+  sprintf(str_frame, "\n");
+  gtk_text_buffer_insert_at_cursor(buffer, str_frame, -1);
+}
+
+static void
+process_one_sample(int c, const char *bin_file, const char *target, bt_sample_t *s, dv_btsample_viewer_t *btviewer) {
+  bfd *abfd;
+  char **matching;
+
+  abfd = bfd_openr(bin_file, target);
+  if (abfd == NULL) {
+    //bfd_fatal(bin_file);
+    perror(bin_file);
+    exit(1);
+  }
+
+  if (bfd_check_format(abfd, bfd_archive)) {
+    //fatal (_("%s: can not get addresses from archive"), bin_file);
+    perror("can not get addresses from archive");
+    exit(1);
+  }
+
+  if (!bfd_check_format_matches(abfd, bfd_object, &matching)) {
+    //bfd_nonfatal(bfd_get_filename(abfd));
+    perror(bfd_get_filename(abfd));
+    if (bfd_get_error() == bfd_error_file_ambiguously_recognized) {
+      //list_matching_formats(matching);
+      free(matching);
+    }
+    exit(1);
+  }
+
+  slurp_symtab(abfd);
+
+  translate_addresses(c, abfd, s, btviewer);
+
+  if (syms != NULL) {
+    free (syms);
+    syms = NULL;
+  }
+
+  bfd_close(abfd);
+}
+#endif /* DV_ENABLE_BFD */
+
+int
+dv_btsample_viewer_extract_interval(dv_btsample_viewer_t * btviewer, _unused_ int worker, _unused_ unsigned long long from, _unused_ unsigned long long to) {
+#ifdef DV_ENABLE_BFD  
+  const char * binary_file = gtk_entry_get_text(GTK_ENTRY(btviewer->entry_binary_file_name));
+  const char * btsample_file = gtk_entry_get_text(GTK_ENTRY(btviewer->entry_bt_file_name));
+
+  bfd_init();
+  //set_default_bfd_target();
+
+  FILE * fi = fopen(btsample_file, "r");
+  if (!fi) {
+    perror("fopen btsample_file");
+    return 0;
+  }
+
+  int c = 0;
+  bt_sample_t s[1];
+  while (fread(s, sizeof(bt_sample_t), 1, fi))
+    if (s->worker == worker && s->tsc >= from && s->tsc <= to)
+      process_one_sample(c++, binary_file, NULL, s, btviewer);
+
+  fclose(fi);
+#else  
+  GtkTextBuffer * buffer = gtk_text_view_get_buffer(GTK_TEXT_VIEW(btviewer->text_view));
+  gtk_text_buffer_insert_at_cursor(buffer, "Error: BFD is not enabled.", -1);
+#endif /* DV_ENABLE_BFD */
+  return 0;
+}
+
+/*-----------------end of BTSAMPLE_VIEWER's functions-----------*/
+

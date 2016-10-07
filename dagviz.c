@@ -1,4 +1,4 @@
-#include "process.c"
+#include "interface.c"
 
 /*-----------------Main begins-----------------*/
 

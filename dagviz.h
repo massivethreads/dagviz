@@ -748,11 +748,11 @@ extern const int DV_RADIAL_PATTERN_STOPS_NUM;
 
 /*-----------------Headers-----------------*/
 
-/* common.c */
-void dv_global_state_init(dv_global_state_t *);
-
 
 /* dagviz.c */
+/* interface.c */
+void dv_global_state_init(dv_global_state_t *);
+
 void dv_queue_draw_viewport(dv_viewport_t *);
 void dv_queue_draw_view(dv_view_t *);
 void dv_queue_draw_dag(dv_dag_t *);
@@ -840,6 +840,8 @@ GtkWidget * dv_gui_get_nodeinfo_sidebox(dv_gui_t *);
 
 void dv_signal_handler(int);
 
+void dv_btsample_viewer_init(dv_btsample_viewer_t *);
+int dv_btsample_viewer_extract_interval(dv_btsample_viewer_t *, int, unsigned long long, unsigned long long);
 
 
 /* control.c */
@@ -941,9 +943,6 @@ int dv_dag_node_count_nexts(dv_dag_node_t *);
 dv_dag_node_t * dv_dag_node_get_next(dv_dag_node_t *);
 dv_dag_node_t * dv_dag_node_get_single_head(dv_dag_node_t *);
 dv_dag_node_t * dv_dag_node_get_single_last(dv_dag_node_t *);
-
-void dv_btsample_viewer_init(dv_btsample_viewer_t *);
-int dv_btsample_viewer_extract_interval(dv_btsample_viewer_t *, int, unsigned long long, unsigned long long);
 
 
 /* layout.c */
