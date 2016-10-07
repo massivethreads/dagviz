@@ -8,13 +8,18 @@ GTK_CFLAGS = $(shell $(PKGCONFIG) --cflags gtk+-3.0)
 GTK_LDFLAGS = $(shell $(PKGCONFIG) --libs gtk+-3.0)
 GLIB_COMPILE_RESOURCES = $(shell $(PKGCONFIG) --variable=glib_compile_resources gio-2.0)
 
-HDR = dagviz.h callback.h 
-AUX_SRC = dagviz.gresource.xml process.c
-SRC = read.c layout.c draw.c utils.c print.c view_dag.c view_dag_box.c view_timeline.c view_timeline_ver.c view_paraprof.c control.c graphs.c
+DV_HDR = dagviz.h callback.h 
+DV_AUX_SRC = dagviz.gresource.xml interface.c
+DV_SRC = read.c layout.c draw.c utils.c print.c view_dag.c view_dag_box.c view_timeline.c view_timeline_ver.c view_paraprof.c control.c graphs.c
 BUILT_SRC = resources.c
-#EXE_SRC = dagviz_main.c dagprof.c
+DV_OBJS = $(BUILT_SRC:.c=.o) $(DV_SRC:.c=.o)
 
-OBJS = $(BUILT_SRC:.c=.o) $(SRC:.c=.o)
+DS_HDR = model.h dagstat.h
+DS_SRC = model.c
+DS_OBJS = $(DS_SRC:.c=.o)
+
+EXE_SRC = dagviz.c dagprof.c dagstat.c
+OBJS = $(DV_OBJS) $(DS_OBJS) $(EXE_SRC:.c=.o)
 
 
 CFLAGS += $(cflags)
@@ -34,24 +39,37 @@ LDFLAGS += -Wl,--export-dynamic
 LDFLAGS += -L$(prefix)/lib -Wl,-R$(prefix)/lib
 LDFLAGS += -ldr -lm -lpthread
 
-exes := dagviz dagprof
+exes := $(EXE_SRC:.c=)
 
 all: $(exes)
 
-dagprof: dagprof.o $(OBJS)
-	$(CC) -o $@ dagprof.o $(OBJS) $(GTK_LDFLAGS) $(LDFLAGS)
 
-dagviz: dagviz.o $(HDR) $(AUX_SRC) $(OBJS)
-	$(CC) -o $@ dagviz.o $(OBJS) $(GTK_LDFLAGS) $(LDFLAGS)
+dagviz: dagviz.o $(DV_OBJS)
+	$(CC) -o $@ dagviz.o $(DV_OBJS) $(GTK_LDFLAGS) $(LDFLAGS)
 
-dagprof.o: dagprof.c
+dagprof: dagprof.o $(DV_OBJS)
+	$(CC) -o $@ dagprof.o $(DV_OBJS) $(GTK_LDFLAGS) $(LDFLAGS)
+
+dagstat: dagstat.o $(DS_OBJS)
+	$(CC) -o $@ dagstat.o $(DS_OBJS) $(LDFLAGS)
+
+
+dagviz.o: dagviz.c $(DV_HDR) $(DV_AUX_SRC) 
 	$(CC) -c -o $@ $(GTK_CFLAGS) $(CFLAGS) $<
 
-dagviz.o: dagviz.c $(HDR)
+dagprof.o: dagprof.c $(DV_HDR) 
 	$(CC) -c -o $@ $(GTK_CFLAGS) $(CFLAGS) $<
 
-%.o: %.c dagviz.h
+$(DV_OBJS): %.o: %.c $(DV_HDR)
 	$(CC) -c -o $@ $(GTK_CFLAGS) $(CFLAGS) $<
+
+
+dagstat.o: dagstat.c $(DS_HDR)
+	$(CC) -c -o $@ $(CFLAGS) $<
+
+$(DS_OBJS): %.o: %.c $(DS_HDR)
+	$(CC) -c -o $@ $(CFLAGS) $<
+
 
 resources.c: dagviz.gresource.xml $(shell $(GLIB_COMPILE_RESOURCES) --sourcedir=. --generate-dependencies dagviz.gresource.xml)
 	$(GLIB_COMPILE_RESOURCES) dagviz.gresource.xml --target=$@ --sourcedir=. --generate-source
