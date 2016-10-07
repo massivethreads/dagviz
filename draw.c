@@ -677,13 +677,21 @@ dv_view_draw_legend(dv_view_t * V, cairo_t * cr) {
 
 void
 dv_viewport_draw_focused_mark(dv_viewport_t * VP, cairo_t * cr) {
+  (void) VP;
+  (void) cr;
   cairo_save(cr);
-  double margin = CS->opts.zoom_to_fit_margin / 2;
+  cairo_new_path(cr);
+#if 0
+  double margin = CS->opts.ruler_width / 2;
   double x = margin;
-  double y = VP->vph - 2 * margin;
+  double y = margin;
   double r = CS->opts.vp_mark_radius;
-  cairo_arc(cr, x + r, y + r, r, 0.0, 2 * M_PI);
+  //cairo_arc(cr, x + r, y + r, r, 0.0, 2 * M_PI);
+  cairo_arc(cr, x, y, r, 0.0, 2 * M_PI);
   cairo_close_path(cr);
+#else
+  dv_draw_path_rectangle(cr, 0.0, 0.0, CS->opts.ruler_width / 2.0, CS->opts.ruler_width / 2.0);  
+#endif
   cairo_set_source_rgb(cr, 1.0, 0.0, 0.0);
   cairo_fill(cr);
   cairo_restore(cr);
