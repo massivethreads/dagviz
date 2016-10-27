@@ -12,12 +12,12 @@ const char * const DV_GRAPH_COLORS[] =
    delay during cp-sd, delay during cp-w
 */
 
-static const char * DEFAULT_BASE_DIR = "dp_graphs/fig/gpl/";
+static const char * DEFAULT_BASE_DIR = "ds_graphs/fig/gpl";
 
-#define dp_open_file(X) dp_open_file_(X, __FILE__, __LINE__)
+#define ds_open_file(X) ds_open_file_(X, __FILE__, __LINE__)
 
 static FILE *
-dp_open_file_(char * filename, char * file, int line) {
+ds_open_file_(char * filename, char * file, int line) {
   if (!filename || strlen(filename) == 0) {
     fprintf(stderr, "Warning at %s:%d: no file name to output.\n", file, line);
     return NULL;
@@ -31,235 +31,8 @@ dp_open_file_(char * filename, char * file, int line) {
 }
 
 static void
-dp_close_file(FILE * fp) {
+ds_close_file(FILE * fp) {
   fclose(fp);
-}
-
-void
-dp_stat_graph_performance_loss_factor_percentages_with_labels(char * filename_) {
-  int i, j;
-  FILE * out;
-  char filename[1000];
-
-  /* Get max y */
-  double max_y = 0.0;
-  double max_y_percent = 0.0;
-  double base = CS->SBG->work[0] + CS->SBG->delay[0] + CS->SBG->nowork[0];
-  for (i = 0; i < CS->nD; i++) {
-    double total_loss = (CS->SBG->work[i] - CS->SBG->work[0]) + (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
-    if (total_loss > max_y) {
-      max_y = total_loss;
-      max_y_percent = ceil(max_y / base * 100.0);
-    }
-  }
-
-  /* work stretch */
-  strcpy(filename, filename_);
-  filename[strlen(filename) - 4] = '\0';
-  sprintf(filename, "%s_work_stretch.gpl", filename);
-  out = dp_open_file(filename);
-  if (!out) return;
-  fprintf(out,
-          "#set terminal png font arial 14 size 640,350\n"
-          "#set terminal postscript eps enhanced color size 10cm,5cm\n"
-          "#set output ~/Desktop/00dv_stat_breakdown.png\n"
-          "set style fill solid 0.8 noborder\n"
-          "set key inside #outside center top horizontal\n"
-          "set boxwidth 0.85 relative\n"
-          "set yrange [*<0:%lf<*]\n"
-          "#set xtics rotate by -20\n"
-          "set ylabel \"percent\"\n"
-          "plot "
-          "\"-\" u 2:xtic(1) w boxes lc rgb \"%s\" t \"work stretch\", "
-          "\"-\" u 0:2:3 w labels center offset 0,1 notitle \n",
-          max_y_percent,
-          DV_GRAPH_COLORS[0]
-          );
-  for (j = 0; j < 2; j++) {
-    for (i = 1; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
-      double factor = (CS->SBG->work[i] - CS->SBG->work[0]);
-      double percentage = (factor / base) * 100.0;
-      fprintf(out,
-              "\"%s\"  %lf \"%.1lf%%\"\n",
-              D->name_on_graph,
-              percentage,
-              percentage);
-    }
-    fprintf(out, "e\n");
-  }
-  fprintf(out, "pause -1\n");
-  dp_close_file(out);
-  fprintf(stdout, "generated graph to %s\n", filename);
-
-  /* delay */
-  strcpy(filename, filename_);
-  filename[strlen(filename) - 4] = '\0';
-  sprintf(filename, "%s_delay.gpl", filename);
-  out = dp_open_file(filename);
-  if (!out) return;
-  fprintf(out,
-          "#set terminal png font arial 14 size 640,350\n"
-          "#set terminal postscript eps enhanced color size 10cm,5cm\n"
-          "#set output ~/Desktop/00dv_stat_breakdown.png\n"
-          "set style fill solid 0.8 noborder\n"
-          "set key inside #outside center top horizontal\n"
-          "set boxwidth 0.85 relative\n"
-          "set yrange [*<0:%lf<*]\n"
-          "#set xtics rotate by -20\n"
-          "set ylabel \"percent\"\n"
-          "plot "
-          "\"-\" u 2:xtic(1) w boxes lc rgb \"%s\" t \"delay\", "
-          "\"-\" u 0:2:3 w labels center offset 0,1 notitle \n",
-          max_y_percent,
-          DV_GRAPH_COLORS[1]
-          );
-  for (j = 0; j < 2; j++) {
-    for (i = 1; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
-      double factor = CS->SBG->delay[i];
-      double percentage = (factor / base) * 100.0;
-      fprintf(out,
-              "\"%s\"  %lf \"%.1lf%%\"\n",
-              D->name_on_graph,
-              percentage,
-              percentage);
-    }
-    fprintf(out, "e\n");
-  }
-  fprintf(out, "pause -1\n");
-  dp_close_file(out);
-  fprintf(stdout, "generated graph to %s\n", filename);
-
-  /* delay breakdown */
-  strcpy(filename, filename_);
-  filename[strlen(filename) - 4] = '\0';
-  sprintf(filename, "%s_delay_breakdown.gpl", filename);
-  out = dp_open_file(filename);
-  if (!out) return;
-  fprintf(out,
-          "#set terminal png font arial 14 size 640,350\n"
-          "#set terminal postscript eps enhanced color size 10cm,5cm\n"
-          "#set output ~/Desktop/00dv_stat_breakdown.png\n"
-          "set style data histograms\n"
-          "set style histogram rowstacked\n"
-          "set style fill solid 0.8 noborder\n"
-          "set key inside #outside center top horizontal\n"
-          "set boxwidth 0.85 relative\n"
-          "set yrange [*<0:%lf<*]\n"
-          "#set xtics rotate by -20\n"
-          "set ylabel \"percent\"\n"
-          "plot "
-          "\"-\" u 2:xtic(1) w histogram lc rgb \"%s\" t \"delay sd\", "
-          "\"-\" u 3 w histogram lc rgb \"%s\" t \"delay w\", "
-          "\"-\" u 0:($2+$3):4 w labels center offset 0,1 notitle \n",
-          max_y_percent,
-          DV_GRAPH_COLORS[1],
-          DV_GRAPH_COLORS[10]
-          );
-  for (j = 0; j < 3; j++) {
-    for (i = 1; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
-      double factor = CS->SBG->delay[i] - D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_delay;
-      double percentage = (factor / base) * 100.0;
-      double percentage_2 = (D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_delay / base) * 100.0;
-      fprintf(out,
-              "\"%s\"  %lf %lf \"%.1lf%%\"\n",
-              D->name_on_graph,
-              percentage_2,
-              percentage,
-              percentage + percentage_2);
-    }
-    fprintf(out, "e\n");
-  }
-  fprintf(out, "pause -1\n");
-  dp_close_file(out);
-  fprintf(stdout, "generated graph to %s\n", filename);
-
-  /* nowork */
-  strcpy(filename, filename_);
-  filename[strlen(filename) - 4] = '\0';
-  sprintf(filename, "%s_nowork.gpl", filename);
-  out = dp_open_file(filename);
-  if (!out) return;
-  fprintf(out,
-          "#set terminal png font arial 14 size 640,350\n"
-          "#set terminal postscript eps enhanced color size 10cm,5cm\n"
-          "#set output ~/Desktop/00dv_stat_breakdown.png\n"
-          "set style fill solid 0.8 noborder\n"
-          "set key inside #outside center top horizontal\n"
-          "set boxwidth 0.85 relative\n"
-          "set yrange [*<0:%lf<*]\n"
-          "#set xtics rotate by -20\n"
-          "set ylabel \"percent\"\n"
-          "plot "
-          "\"-\" u 2:xtic(1) w boxes lc rgb \"%s\" t \"no-work\", "
-          "\"-\" u 0:2:3 w labels center offset 0,1 notitle \n",
-          max_y_percent,
-          DV_GRAPH_COLORS[2]
-          );
-  for (j = 0; j < 2; j++) {
-    for (i = 1; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
-      double factor = CS->SBG->nowork[i];
-      double percentage = (factor / base) * 100.0;
-      fprintf(out,
-              "\"%s\"  %lf \"%.1lf%%\"\n",
-              D->name_on_graph,
-              percentage,
-              percentage);
-    }
-    fprintf(out, "e\n");
-  }
-  fprintf(out, "pause -1\n");
-  dp_close_file(out);
-  fprintf(stdout, "generated graph to %s\n", filename);
-
-  /* nowork breakdown */
-  strcpy(filename, filename_);
-  filename[strlen(filename) - 4] = '\0';
-  sprintf(filename, "%s_nowork_breakdown.gpl", filename);
-  out = dp_open_file(filename);
-  if (!out) return;
-  fprintf(out,
-          "#set terminal png font arial 14 size 640,350\n"
-          "#set terminal postscript eps enhanced color size 10cm,5cm\n"
-          "#set output ~/Desktop/00dv_stat_breakdown.png\n"
-          "set style data histograms\n"
-          "set style histogram rowstacked\n"
-          "set style fill solid 0.8 noborder\n"
-          "set key inside #outside center top horizontal\n"
-          "set boxwidth 0.85 relative\n"
-          "set yrange [*<0:%lf<*]\n"
-          "#set xtics rotate by -20\n"
-          "set ylabel \"percent\"\n"
-          "plot "
-          "\"-\" u 2:xtic(1) w histogram lc rgb \"%s\" t \"no-work sd\", "
-          "\"-\" u 3 w histogram lc rgb \"%s\" t \"no-work w\", "
-          "\"-\" u 0:($2+$3):4 w labels center offset 0,1 notitle \n",
-          max_y_percent,
-          DV_GRAPH_COLORS[2],
-          DV_GRAPH_COLORS[11]
-          );
-  for (j = 0; j < 3; j++) {
-    for (i = 1; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
-      double factor = CS->SBG->nowork[i] - D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_nowork;
-      double percentage = (factor / base) * 100.0;
-      double percentage_2 = (D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_nowork / base) * 100.0;
-      fprintf(out,
-              "\"%s\"  %lf %lf \"%.1lf%%\"\n",
-              D->name_on_graph,
-              percentage_2,
-              percentage,
-              percentage + percentage_2);
-    }
-    fprintf(out, "e\n");
-  }
-  fprintf(out, "pause -1\n");
-  dp_close_file(out);
-  fprintf(stdout, "generated graph to %s\n", filename);
-
 }
 
 dv_pidag_t *
@@ -283,13 +56,241 @@ dv_create_new_dag(dv_pidag_t * P) {
   return D;
 }
 
+void
+ds_stat_graph_time(char * filename_) {
+  int i, j;
+  FILE * out;
+  char filename[1000];
+
+  /* graph 1: time breakdown */
+  strcpy(filename, filename_);
+  filename[strlen(filename) - 4] = '\0';
+  sprintf(filename, "%s_breakdown.gpl", filename);
+  out = ds_open_file(filename);
+  if (!out) return;
+  fprintf(out,
+          "#set terminal png font arial 14 size 640,350\n"
+          "#set output ~/Desktop/00dv_stat_breakdown.png\n"
+          "set style data histograms\n"
+          "set style histogram rowstacked\n"
+          "set style fill solid 0.8 noborder\n"
+          "set key off #outside center top horizontal\n"
+          "set boxwidth 0.85 relative\n"
+          "set yrange [0:]\n"
+          "set xtics rotate by -20\n"
+          //          "set xlabel \"clocks\"\n"
+          "set ylabel \"cumul. clocks\"\n"
+          "plot "
+          "\"-\" u 2:xtic(1) w histogram t \"work\" lc rgb \"%s\", "
+          "\"-\" u 3 w histogram t \"delay\" lc rgb \"%s\", "
+          "\"-\" u 4 w histogram t \"no-work\" lc rgb \"%s\"\n",
+          DV_GRAPH_COLORS[0],
+          DV_GRAPH_COLORS[1],
+          DV_GRAPH_COLORS[2]
+          );
+  for (j = 0; j < 3; j++) {
+    for (i = 0; i < CS->nD; i++) {
+      dv_dag_t * D = &CS->D[i];
+      fprintf(out,
+              "\"%s\"  %lld %lld %lld\n",
+              D->name_on_graph,
+              CS->SBG->work[i],
+              CS->SBG->delay[i],
+              CS->SBG->nowork[i]);
+    }
+    fprintf(out,
+            "e\n");
+  }
+  fprintf(out,
+          "pause -1\n");
+  ds_close_file(out);
+  fprintf(stdout, "generated a graph to %s\n", filename);
+
+  /* Get max y */
+  double max_y = 0.0;
+  double max_y_percent = 0.0;
+  double base = CS->SBG->work[0] + CS->SBG->delay[0] + CS->SBG->nowork[0];
+  for (i = 0; i < CS->nD; i++) {
+    double total_loss = (CS->SBG->work[i] - CS->SBG->work[0]) + (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
+    if (total_loss > max_y) {
+      max_y = total_loss;
+      max_y_percent = ceil(max_y / base * 100.0);
+    }
+  }
+
+  /* graph 2: time work */
+  strcpy(filename, filename_);
+  filename[strlen(filename) - 4] = '\0';
+  sprintf(filename, "%s_only_work.gpl", filename);
+  out = ds_open_file(filename);
+  if (!out) return;
+  fprintf(out,
+          "#set terminal png font arial 14 size 640,350\n"
+          "#set output ~/Desktop/00dv_stat_breakdown.png\n"
+          "set style fill solid 0.8 noborder\n"
+          "set key off #outside center top horizontal\n"
+          "set boxwidth 0.85 relative\n"
+          "set yrange [0:]\n"
+          "set xtics rotate by -20\n"
+          //          "set xlabel \"clocks\"\n"
+          "set ylabel \"cumul. clocks\"\n"
+          "plot "
+          "\"-\" u 2:xtic(1) w boxes t \"work\" lc rgb \"%s\", \n",
+          DV_GRAPH_COLORS[0]
+          );
+  for (j = 0; j < 1; j++) {
+    for (i = 0; i < CS->nD; i++) {
+      dv_dag_t * D = &CS->D[i];
+      fprintf(out,
+              "\"%s\"  %lld\n",
+              D->name_on_graph,
+              CS->SBG->work[i]);
+    }
+    fprintf(out,
+            "e\n");
+  }
+  fprintf(out,
+          "pause -1\n");
+  ds_close_file(out);
+  fprintf(stdout, "generated a graph to %s\n", filename);
+  
+  /* graph 3: performance loss breakdown */
+  strcpy(filename, filename_);
+  filename[strlen(filename) - 4] = '\0';
+  sprintf(filename, "%s_performance_loss_breakdown.gpl", filename);
+  out = ds_open_file(filename);
+  if (!out) return;
+  fprintf(out,
+          "#set terminal png font arial 14 size 640,350\n"
+          "#set output ~/Desktop/00dv_stat_breakdown.png\n"
+          "set style data histograms\n"
+          "set style histogram rowstacked\n"
+          "set style fill solid 0.8 noborder\n"
+          "set key off #outside center top horizontal\n"
+          "set boxwidth 0.85 relative\n"
+          "set yrange [*<0:%lf<*]\n"
+          "set xtics rotate by -20\n"
+          "set ylabel \"percent\"\n"
+          "plot "
+          "\"-\" u 2:xtic(1) w histogram lc rgb \"%s\" t \"work stretch\", "
+          "\"-\" u 3 w histogram lc rgb \"%s\" t \"delay\", "
+          "\"-\" u 4 w histogram lc rgb \"%s\" t \"no-work (sched.)\", "
+          "\"-\" u 5 w histogram lc rgb \"%s\" t \"no-work (algo.)\", "
+          "\"-\" u 0:6:7 w labels center offset 0,1 notitle \n",
+          max_y_percent,
+          DV_GRAPH_COLORS[0],
+          DV_GRAPH_COLORS[1],
+          DV_GRAPH_COLORS[2],
+          DV_GRAPH_COLORS[11]          
+          );
+  for (j = 0; j < 5; j++) {
+    for (i = 0; i < CS->nD; i++) {
+      dv_dag_t * D = &CS->D[i];
+      double loss_work = (CS->SBG->work[i] - CS->SBG->work[0]) * 100.0 / base;
+      double loss_delay = CS->SBG->delay[i] * 100.0 / base;
+      double loss_nowork_a = D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_nowork * 100.0 / base;
+      double loss_nowork_b = (CS->SBG->nowork[i] - D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_nowork) * 100.0 / base;
+      double loss = loss_work + loss_delay + loss_nowork_a + loss_nowork_b;
+      fprintf(out,
+              "\"%s\"  %lf %lf %lf %lf %lf \"%.1lf%%\"\n",
+              D->name_on_graph,
+              loss_work,
+              loss_delay,
+              loss_nowork_a,
+              loss_nowork_b,
+              loss,
+              loss);
+    }
+    fprintf(out, "e\n");
+  }
+  fprintf(out, "pause -1\n");
+  ds_close_file(out);
+  fprintf(stdout, "generated a graph to %s\n", filename);
+}
+
+void
+ds_stat_graph_counters(char * filename_) {
+  int i, j;
+  FILE * out;
+  char filename[1000];
+
+  /* counters */
+  int c;
+  for (c = 0; c < 4; c++) {
+    strcpy(filename, filename_);
+    filename[strlen(filename) - 4] = '\0';
+    sprintf(filename, "%s_%d.gpl", filename, c);
+    out = ds_open_file(filename);
+    if (!out) return;
+    fprintf(out,
+            "set style fill solid 0.8 noborder\n"
+            "set key inside #off #outside center top horizontal\n"
+            "set boxwidth 0.85 relative\n"
+            "set yrange [0:]\n"
+            "set ylabel \"counts\"\n"
+            "set xtics rotate by -20\n"
+            "plot "
+            "\"-\" u 2:xtic(1) w boxes t \"counter %d\", "
+            "\"-\" u 0:2:3 w labels center offset 0,1 notitle \n",
+            c
+            );
+    for (j = 0; j < 1; j++) {
+      for (i = 0; i < CS->nD; i++) {
+        dv_dag_t * D = &CS->D[i];
+        dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, D->rt);
+        fprintf(out,
+                "\"%s\"  %lld\n",
+                D->name_on_graph,
+                pi->info.counters_1[c]);
+        fprintf(stderr, "%s counter %d: %lld\n", D->name_on_graph);
+      }
+      fprintf(out, "e\n");
+    }
+    fprintf(out, "pause -1\n");
+    ds_close_file(out);
+    fprintf(stdout, "generated a graph to %s\n", filename);
+  }
+
+  /* counter ($1/$2) */
+  strcpy(filename, filename_);
+  filename[strlen(filename) - 4] = '\0';
+  sprintf(filename, "%s_0d1.gpl", filename);
+  out = ds_open_file(filename);
+  if (!out) return;
+  fprintf(out,
+          "set style fill solid 0.8 noborder\n"
+          "set key inside #off #outside center top horizontal\n"
+          "set boxwidth 0.85 relative\n"
+          "set yrange [0:]\n"
+          "set ylabel \"counts\"\n"
+          "set xtics rotate by -20\n"
+          "plot "
+          "\"-\" u 2:xtic(1) w boxes t \"c. 0 div. by c. 1 (ipc)\", "
+          "\"-\" u 0:2:3 w labels center offset 0,1 notitle \n"
+          );
+  for (j = 0; j < 1; j++) {
+    for (i = 0; i < CS->nD; i++) {
+      dv_dag_t * D = &CS->D[i];
+      dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, D->rt);
+      fprintf(out,
+              "\"%s\"  %lf\n",
+              D->name_on_graph,
+              (pi->info.counters_1[1] != 0) ? ((double) pi->info.counters_1[0]) / ((double) pi->info.counters_1[1]) : 0.0);
+    }
+    fprintf(out, "e\n");
+  }
+  fprintf(out, "pause -1\n");
+  ds_close_file(out);
+  fprintf(stdout, "generated a graph to %s\n", filename);
+}
+
 int
 main(int argc, char ** argv) {
   /* Init */
-  const char * dp_prefix = getenv("DP_PREFIX");
-  if (!dp_prefix)
-    dp_prefix = DEFAULT_BASE_DIR;
-  printf("dp_prefix = %s\n", dp_prefix);
+  const char * ds_prefix = getenv("DS_PREFIX");
+  if (!ds_prefix)
+    ds_prefix = DEFAULT_BASE_DIR;
+  printf("ds_prefix = %s\n", ds_prefix);
 
   dv_global_state_init(CS);
   
@@ -335,18 +336,21 @@ main(int argc, char ** argv) {
 
   /* Create directories */
   char command[1000];
-  sprintf(command, "mkdir -p %s", dp_prefix);
+  sprintf(command, "mkdir -p %s", ds_prefix);
   int err = system(command);
   if (err == -1) {
-    printf("Error: cannot make dir of %s\n", dp_prefix);
+    printf("Error: cannot make dir of %s\n", ds_prefix);
     exit(1);
   }
   
   /* Graphs */
   char filename[1000];
   
-  sprintf(filename, "%s/%s", dp_prefix, "performance_loss_factor_percentages.gpl");
-  dp_stat_graph_performance_loss_factor_percentages_with_labels(filename);
+  sprintf(filename, "%s/%s", ds_prefix, "cumulative_execution_time.gpl");
+  ds_stat_graph_time(filename);
+
+  sprintf(filename, "%s/%s", ds_prefix, "work_counter.gpl");
+  ds_stat_graph_counters(filename);
 
   return 1;
 }
