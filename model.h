@@ -14,6 +14,7 @@
 #include <signal.h>
 #include <ctype.h> /* for isdigit() */
 
+#define DAG_RECORDER 2
 #include <dag_recorder_impl.h>
 
 #define GtkWidget void
@@ -521,6 +522,8 @@ char * dv_filename_get_short_name(char *);
 void dv_global_state_init(dv_global_state_t *);
 void dv_dag_build_inner_all(dv_dag_t *);
 void dv_dag_compute_critical_paths(dv_dag_t *);
+
+char * dm_dag_get_characteristic_string(char *);
 
 
 /***** Utilities *****/

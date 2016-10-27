@@ -1795,4 +1795,37 @@ dv_dag_compute_critical_paths(dv_dag_t * D) {
   }
 }
 
+char *
+dm_dag_get_characteristic_string(char * filename) {
+  /* read DAG */
+  dv_pidag_t * P = dv_pidag_read_new_file(filename);
+  if (!P) {
+    fprintf(stderr, "Error: cannot read DAG from %s\n", filename);
+    return NULL;
+  }
+  dv_dag_t * D = dv_dag_create_new_with_pidag(P);
+
+  /* calculate */
+  /* t1, delay, no-work */
+  dr_pi_dag * G = D->P->G;
+  dr_basic_stat bs[1];
+  dr_basic_stat_init(bs, G);
+  dr_calc_inner_delay(bs, G);
+  dr_calc_edges(bs, G);
+  dr_pi_dag_chronological_traverse(G, (chronological_traverser *)bs);
+  dr_clock_t work = bs->total_t_1;
+  dr_clock_t delay = bs->cum_delay + (bs->total_elapsed - bs->total_t_1);
+  dr_clock_t no_work = bs->cum_no_work;
+  /* critical path */
+  //dv_dag_compute_critical_paths(D);  
+
+  /* output */
+  char * str = (char *) malloc(1000 * sizeof(char));
+  sprintf(str, "work=%llu, delay=%llu, no-work=%llu", work, delay, no_work);
+  return str;
+}
+
 /***** end of Compute *****/
+
+
+
