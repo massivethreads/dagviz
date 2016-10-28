@@ -1795,15 +1795,37 @@ dv_dag_compute_critical_paths(dv_dag_t * D) {
   }
 }
 
-char *
-dm_dag_get_characteristic_string(char * filename) {
-  /* read DAG */
-  dv_pidag_t * P = dv_pidag_read_new_file(filename);
-  if (!P) {
-    fprintf(stderr, "Error: cannot read DAG from %s\n", filename);
-    return NULL;
+int
+dm_get_dag_id(char * filename) {
+  /* check existing D */
+  dv_dag_t * D = NULL;
+  int i;
+  for (i = 0; i < CS->nD; i++) {
+    if (strcmp(CS->D[i].P->filename, filename) == 0) {
+      D = &CS->D[i];
+      break;
+    }
   }
-  dv_dag_t * D = dv_dag_create_new_with_pidag(P);
+  if (!D) {
+    /* read DAG file */
+    dv_pidag_t * P = dv_pidag_read_new_file(filename);
+    if (!P) {
+      fprintf(stderr, "Error: cannot read DAG from %s\n", filename);
+      return -1;
+    }
+    /* create a new D */
+    dv_dag_t * D = dv_dag_create_new_with_pidag(P);
+    i = D - CS->D;
+  }
+  return i;
+}
+
+dv_dag_t *
+dm_compute_dag_file(char * filename) {
+  int i = dm_get_dag_id(filename);
+  if (i < 0)
+    return NULL;
+  dv_dag_t * D = &CS->D[i];
 
   /* calculate */
   /* t1, delay, no-work */
@@ -1816,16 +1838,15 @@ dm_dag_get_characteristic_string(char * filename) {
   dr_clock_t work = bs->total_t_1;
   dr_clock_t delay = bs->cum_delay + (bs->total_elapsed - bs->total_t_1);
   dr_clock_t no_work = bs->cum_no_work;
+  CS->SBG->work[i] = work;
+  CS->SBG->delay[i] = delay;
+  CS->SBG->nowork[i] = no_work;
   /* critical path */
   //dv_dag_compute_critical_paths(D);  
 
   /* output */
-  char * str = (char *) malloc(1000 * sizeof(char));
-  sprintf(str, "work=%llu, delay=%llu, no-work=%llu", work, delay, no_work);
-  return str;
+  return D;
 }
 
 /***** end of Compute *****/
-
-
 

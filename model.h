@@ -104,9 +104,6 @@
 
 #define DV_DAG_NODE_POOL_SIZE 50000
 
-#define DV_MAX_DAG_FILE 100
-#define DV_MAX_DAG 100
-#define DV_MAX_VIEW 100
 #define DV_MAX_VIEWPORT 100
 
 #define backtrace_sample_sz 15
@@ -523,7 +520,10 @@ void dv_global_state_init(dv_global_state_t *);
 void dv_dag_build_inner_all(dv_dag_t *);
 void dv_dag_compute_critical_paths(dv_dag_t *);
 
-char * dm_dag_get_characteristic_string(char *);
+int dm_get_dag_id(char *);
+dv_dag_t * dm_compute_dag_file(char *);
+
+
 
 
 /***** Utilities *****/
