@@ -5,7 +5,8 @@
 static dv_dag_node_t *
 dv_timeline_find_clicked_node_r(dv_view_t * V, double cx, double cy, dv_dag_node_t * node) {
   dv_dag_node_t * ret = NULL;
-  const int coord = (V->S->lt == DV_LAYOUT_TYPE_PARAPROF) ? DV_LAYOUT_TYPE_TIMELINE : DV_LAYOUT_TYPE_PARAPROF;
+  //const int coord = (V->S->lt == DV_LAYOUT_TYPE_PARAPROF) ? DV_LAYOUT_TYPE_TIMELINE : DV_LAYOUT_TYPE_PARAPROF;
+  const int coord = V->S->coord;
   dv_node_coordinate_t * co = &node->c[coord];
   /* Call inward */
   double x, y, w, h;
@@ -85,7 +86,7 @@ dv_view_layout_timeline_node(dv_view_t * V, dv_dag_node_t * node) {
   if (node->d > V->D->collapsing_d)
     V->D->collapsing_d = node->d;
   
-  int coord = DV_LAYOUT_TYPE_TIMELINE;
+  int coord = V->S->coord;
   dv_node_coordinate_t * nodeco = &node->c[coord];
   dv_dag_t * D = V->D;
   dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, node);
@@ -145,7 +146,7 @@ dv_view_draw_timeline_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node, 
   /* Get inputs */
   dv_dag_t * D = V->D;
   dv_view_status_t * S = V->S;
-  int coord = DV_LAYOUT_TYPE_TIMELINE;
+  int coord = V->S->coord;
   dv_node_coordinate_t * nodeco = &node->c[coord];
   
   /* Count drawn node */

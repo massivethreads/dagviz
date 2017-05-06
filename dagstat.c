@@ -242,7 +242,7 @@ ds_stat_graph_counters(char * filename_) {
                 "\"%s\"  %lld\n",
                 D->name_on_graph,
                 pi->info.counters_1[c]);
-        fprintf(stderr, "%s counter %d: %lld\n", D->name_on_graph);
+        //fprintf(stderr, "%s counter %d: %lld\n", D->name_on_graph);
       }
       fprintf(out, "e\n");
     }

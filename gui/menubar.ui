@@ -119,10 +119,22 @@
                     <signal name="activate" handler="on_menubar_layout_type_dag_activated"/>
                   </object></child>
 
-                  <child><object class="GtkMenuItem" id="layout_dag_boxes">
+                  <child><object class="GtkMenuItem" id="layout_dag_box_log">
                     <property name="use-underline">TRUE</property>
-                    <property name="label">DAG with _boxes</property>
-                    <signal name="activate" handler="on_menubar_layout_type_dag_boxes_activated"/>
+                    <property name="label">DAG with _boxes (log scale)</property>
+                    <signal name="activate" handler="on_menubar_layout_type_dag_box_log_activated"/>
+                  </object></child>
+
+                  <child><object class="GtkMenuItem" id="layout_dag_box_power">
+                    <property name="use-underline">TRUE</property>
+                    <property name="label">DAG with _boxes (power scale)</property>
+                    <signal name="activate" handler="on_menubar_layout_type_dag_box_power_activated"/>
+                  </object></child>
+
+                  <child><object class="GtkMenuItem" id="layout_dag_box_linear">
+                    <property name="use-underline">TRUE</property>
+                    <property name="label">DAG with _boxes (linear scale)</property>
+                    <signal name="activate" handler="on_menubar_layout_type_dag_box_linear_activated"/>
                   </object></child>
 
                   <child><object class="GtkMenuItem" id="layout_timeline">

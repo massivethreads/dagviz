@@ -172,7 +172,7 @@ dv_view_get_zoomfit_hor(dv_view_t * V, double * zrx, double * zry, double * myx,
   double x = 0.0;
   double y = 0.0;
   double d1, d2, dw;
-  dv_node_coordinate_t *rtco = &D->rt->c[S->coord];
+  dv_node_coordinate_t * rtco = &D->rt->c[S->coord];
   switch (S->lt) {
   case DV_LAYOUT_TYPE_DAG:
     // DAG
@@ -182,7 +182,9 @@ dv_view_get_zoomfit_hor(dv_view_t * V, double * zrx, double * zry, double * myx,
       zoom_ratio = d2 / d1;
     x -= (rtco->rw - rtco->lw) * 0.5 * zoom_ratio;
     break;
-  case DV_LAYOUT_TYPE_DAG_BOX:
+  case DV_LAYOUT_TYPE_DAG_BOX_LOG:
+  case DV_LAYOUT_TYPE_DAG_BOX_POWER:
+  case DV_LAYOUT_TYPE_DAG_BOX_LINEAR:
     // DAG with Boxes
     d1 = rtco->lw + rtco->rw;
     d2 = w - 2 * CS->opts.zoom_to_fit_margin;
@@ -273,7 +275,9 @@ dv_view_get_zoomfit_ver(dv_view_t * V, double * zrx, double * zry, double * myx,
       zoom_ratio = d2 / d1;
     x -= (rtco->rw - rtco->lw) * 0.5 * zoom_ratio;
     break;
-  case DV_LAYOUT_TYPE_DAG_BOX:
+  case DV_LAYOUT_TYPE_DAG_BOX_LOG:
+  case DV_LAYOUT_TYPE_DAG_BOX_POWER:
+  case DV_LAYOUT_TYPE_DAG_BOX_LINEAR:
     d1 = rtco->dw;
     d2 = h - CS->opts.zoom_to_fit_margin - CS->opts.zoom_to_fit_margin_bottom;
     if (d1 > d2)
@@ -345,7 +349,9 @@ void
 dv_view_do_zoomfit_based_on_lt(dv_view_t * V) {
   switch (V->S->lt) {
   case DV_LAYOUT_TYPE_DAG:
-  case DV_LAYOUT_TYPE_DAG_BOX:
+  case DV_LAYOUT_TYPE_DAG_BOX_LOG:
+  case DV_LAYOUT_TYPE_DAG_BOX_POWER:
+  case DV_LAYOUT_TYPE_DAG_BOX_LINEAR:
   case DV_LAYOUT_TYPE_TIMELINE_VER:
   case DV_LAYOUT_TYPE_TIMELINE:
   case DV_LAYOUT_TYPE_PARAPROF:
@@ -379,16 +385,48 @@ dv_view_do_zoomfit_full(dv_view_t * V) {
   dv_queue_draw(V);
 }
 
+double
+dv_view_get_radix(dv_view_t * V) {
+  double radix = 0.0;
+  switch (V->S->lt) {
+  case DV_LAYOUT_TYPE_DAG_BOX_LOG:
+    radix = V->D->log_radix;
+    break;
+  case DV_LAYOUT_TYPE_DAG_BOX_POWER:
+    radix = V->D->power_radix;
+    break;
+  case DV_LAYOUT_TYPE_DAG_BOX_LINEAR:
+    radix = V->D->linear_radix;
+    break;
+  }
+  return radix;
+}
+
+void
+dv_view_set_radix(dv_view_t * V, double radix) {
+  switch (V->S->lt) {
+  case DV_LAYOUT_TYPE_DAG_BOX_LOG:
+    V->D->log_radix = radix;
+    break;
+  case DV_LAYOUT_TYPE_DAG_BOX_POWER:
+    V->D->power_radix = radix;
+    break;
+  case DV_LAYOUT_TYPE_DAG_BOX_LINEAR:
+    V->D->linear_radix = radix;
+    break;
+  }
+}
+
 void
 dv_view_change_radix(dv_view_t * V, double radix) {
-  dv_dag_set_radix(V->D, radix);
+  dv_view_set_radix(V, radix);
   dv_view_set_entry_radix_text(V);
 }
 
 void
 dv_view_set_entry_radix_text(dv_view_t * V) {
   char str[DV_ENTRY_RADIX_MAX_LENGTH];
-  double radix = dv_dag_get_radix(V->D);
+  double radix = dv_view_get_radix(V);
   sprintf(str, "%lf", radix);
   if (GTK_IS_WIDGET(V->T->entry_radix)) {
     gtk_entry_set_width_chars(GTK_ENTRY(V->T->entry_radix), strlen(str));
@@ -413,6 +451,7 @@ dv_view_set_entry_remark_text(dv_view_t * V, char * str) {
   }
 }
 
+/*
 void
 dv_view_change_sdt(dv_view_t * V, int new_sdt) {
   if (new_sdt != V->D->sdt) {
@@ -422,6 +461,7 @@ dv_view_change_sdt(dv_view_t * V, int new_sdt) {
     dv_view_set_entry_radix_text(V);
   }
 }
+*/
 
 void
 dv_view_change_eaffix(dv_view_t * V, int active) {
@@ -455,11 +495,11 @@ dv_view_change_lt(dv_view_t * V, int new_lt) {
   if (new_lt != old_lt) {
     
     /* switching out from paraprof */
-    if (old_lt == 4) {
+    if (old_lt == DV_LAYOUT_TYPE_PARAPROF) {
       int count = 0;
       int i;
       for (i = 0; i < CS->nV; i++) {
-        if (V->D->mV[i] && CS->V[i].S->lt == 4 && CS->V[i].S->nviewports) {
+        if (V->D->mV[i] && CS->V[i].S->lt == DV_LAYOUT_TYPE_PARAPROF && CS->V[i].S->nviewports) {
           count++;
         }
       }
@@ -474,7 +514,9 @@ dv_view_change_lt(dv_view_t * V, int new_lt) {
       dv_view_change_nc(V, 0);
       dv_view_change_eaffix(V, 0);
       break;
-    case DV_LAYOUT_TYPE_DAG_BOX:
+    case DV_LAYOUT_TYPE_DAG_BOX_LOG:
+    case DV_LAYOUT_TYPE_DAG_BOX_POWER:
+    case DV_LAYOUT_TYPE_DAG_BOX_LINEAR:
       dv_view_change_nc(V, 0);
       dv_view_change_eaffix(V, 0);
       //dv_view_change_sdt(V, 0);
@@ -483,11 +525,11 @@ dv_view_change_lt(dv_view_t * V, int new_lt) {
     case DV_LAYOUT_TYPE_TIMELINE:
     case DV_LAYOUT_TYPE_PARAPROF:
       dv_view_change_nc(V, 2); // node kind
-      dv_view_change_sdt(V, 2);
+      //dv_view_change_sdt(V, 2);
       break;
     case DV_LAYOUT_TYPE_CRITICAL_PATH:
       dv_view_change_nc(V, 0);
-      dv_view_change_sdt(V, 2);
+      //dv_view_change_sdt(V, 2);
       break;
     default:
       break;
@@ -514,7 +556,38 @@ dv_view_change_lt(dv_view_t * V, int new_lt) {
     /* Update T */
     if (GTK_IS_WIDGET(V->T->combobox_lt)) {
       gtk_combo_box_set_active(GTK_COMBO_BOX(V->T->combobox_lt), new_lt);
+      /*
+      switch (new_lt) {
+      case DV_LAYOUT_TYPE_DAG:
+        gtk_combo_box_set_active(GTK_COMBO_BOX(V->T->combobox_lt), 0);
+        break;
+      case DV_LAYOUT_TYPE_DAG_BOX_LOG:
+        gtk_combo_box_set_active(GTK_COMBO_BOX(V->T->combobox_lt), 1);
+        break;
+      case DV_LAYOUT_TYPE_DAG_BOX_POWER:
+        gtk_combo_box_set_active(GTK_COMBO_BOX(V->T->combobox_lt), 2);
+        break;
+      case DV_LAYOUT_TYPE_DAG_BOX_LINEAR:
+        gtk_combo_box_set_active(GTK_COMBO_BOX(V->T->combobox_lt), 3);
+        break;
+      case DV_LAYOUT_TYPE_TIMELINE_VER:
+        gtk_combo_box_set_active(GTK_COMBO_BOX(V->T->combobox_lt), 4);
+        break;
+      case DV_LAYOUT_TYPE_TIMELINE:
+        gtk_combo_box_set_active(GTK_COMBO_BOX(V->T->combobox_lt), 5);
+        break;
+      case DV_LAYOUT_TYPE_PARAPROF:
+        gtk_combo_box_set_active(GTK_COMBO_BOX(V->T->combobox_lt), 6);
+        break;
+      case DV_LAYOUT_TYPE_CRITICAL_PATH:
+        gtk_combo_box_set_active(GTK_COMBO_BOX(V->T->combobox_lt), 7);
+        break;
+      default:
+        dv_check(0);
+      }
+      */
     }
+    dv_view_set_entry_radix_text(V);
     /* Layout */
     dv_view_layout(V);
     dv_view_auto_zoomfit(V);
@@ -558,20 +631,26 @@ dv_view_status_set_coord(dv_view_status_t * S) {
   case DV_LAYOUT_TYPE_DAG:
     S->coord = 0;
     break;
-  case DV_LAYOUT_TYPE_DAG_BOX:
+  case DV_LAYOUT_TYPE_DAG_BOX_LOG:
     S->coord = 1;
     break;
-  case DV_LAYOUT_TYPE_TIMELINE_VER:
+  case DV_LAYOUT_TYPE_DAG_BOX_POWER:
     S->coord = 2;
     break;
-  case DV_LAYOUT_TYPE_TIMELINE:
+  case DV_LAYOUT_TYPE_DAG_BOX_LINEAR:
     S->coord = 3;
+    break;
+  case DV_LAYOUT_TYPE_TIMELINE:
+    S->coord = 4;
+    break;
+  case DV_LAYOUT_TYPE_TIMELINE_VER:
+    S->coord = 5;
     break;
   case DV_LAYOUT_TYPE_PARAPROF:
-    S->coord = 3;
+    S->coord = 6;
     break;
   case DV_LAYOUT_TYPE_CRITICAL_PATH:
-    S->coord = 5;
+    S->coord = 7;
     break;
   default:
     dv_check(0);
@@ -744,17 +823,17 @@ dv_statusbar_update_selection_status() {
   }
   char s[DV_STRING_LENGTH];
   dv_view_t * V = CS->activeV;
-  sprintf(s, "DAG %ld: %ld/%ld/%ld (depth:%d/%d) - View %ld: (%.0lf,%.0lf), (%.3lf,%.3lf), (%d,%.3lf), %.0lf",
+  sprintf(s, "DAG %ld: nodes=%ld/%ld/%ld (depth:%d/%d) - View %ld: size=(%.0lf,%.0lf), zoom=(%.3lf,%.3lf), radix=%.3lf, radius=%.0lf",
           V->D - CS->D,
           V->S->nd, V->S->nl, V->D->P->n,
           V->D->cur_d, V->D->dmax,
           V - CS->V,
           V->S->vpw, V->S->vph,
           V->S->zoom_ratio_x, V->S->zoom_ratio_y,
-          V->D->sdt, (V->D->sdt==0)?V->D->log_radix:((V->D->sdt==1)?V->D->power_radix:V->D->linear_radix),
+          (V->S->lt==DV_LAYOUT_TYPE_DAG_BOX_LOG)?V->D->log_radix:((V->S->lt==DV_LAYOUT_TYPE_DAG_BOX_POWER)?V->D->power_radix:((V->S->lt==DV_LAYOUT_TYPE_DAG_BOX_LINEAR)?V->D->linear_radix:V->S->lt)),
           V->D->radius);
   dv_statusbar_update(2, 0, s);
-  sprintf(s, "Currently focused DAG (change by tab key): nodes, hidden nodes, all nodes; depths - viewport dimension; Cairo zoom ratios; scale-down radix; node radius");
+  //sprintf(s, "Currently focused DAG (change by tab key): nodes/hidden nodes/all nodes (depths) - viewport dimension; Cairo zoom ratios; scale-down radix; node radius");
   if (GUI->statusbar2)
     gtk_widget_set_tooltip_text(GTK_WIDGET(GUI->statusbar2), s);
 }
@@ -814,7 +893,7 @@ dv_viewport_export_to_surface(dv_viewport_t * VP, cairo_surface_t * surface) {
   cairo_set_source_rgba(cr, white->red, white->green, white->blue, white->alpha);
   cairo_paint(cr);
   // Draw viewport
-  dv_viewport_draw(VP, cr);
+  dv_viewport_draw(VP, cr, 0);
   // Finish
   cairo_destroy(cr);
 }
@@ -841,11 +920,13 @@ dv_export_viewport() {
   cairo_surface_destroy(surface);
 
   /* EPS */
+  /*
   surface = cairo_ps_surface_create("00dv.eps", VP->vpw, VP->vph);
   cairo_ps_surface_set_eps(surface, TRUE);
   dv_viewport_export_to_surface(VP, surface);
   fprintf(stdout, "Exported viewport %ld to 00dv.eps\n", VP - CS->VP);
   cairo_surface_destroy(surface);
+  */
 
   /* SVG */
   surface = cairo_svg_surface_create("00dv.svg", VP->vpw, VP->vph);
@@ -905,7 +986,7 @@ dv_export_viewports_to_eps_r(dv_viewport_t * VP, cairo_t * cr, double x, double 
   } else if (!VP->split) {
     cairo_save(cr);
     cairo_translate(cr, x, y);
-    dv_viewport_draw(VP, cr);
+    dv_viewport_draw(VP, cr, 0);
     cairo_restore(cr);
   } else {
     double w1, h1;
@@ -927,7 +1008,7 @@ dv_export_viewports_to_svg_r(dv_viewport_t * VP, cairo_t * cr, double x, double 
   } else if (!VP->split) {
     cairo_save(cr);
     cairo_translate(cr, x, y);
-    dv_viewport_draw(VP, cr);
+    dv_viewport_draw(VP, cr, 0);
     cairo_restore(cr);
   } else {
     double w1, h1;
@@ -1038,7 +1119,7 @@ dv_do_scrolling(dv_view_t * V, GdkEventScroll * event) {
       else if (event->direction == GDK_SCROLL_DOWN)
         factor /= CS->opts.scale_step_ratio;
       // Apply factor    
-      double radix = dv_dag_get_radix(V->D);
+      double radix = dv_view_get_radix(V);
       radix *= factor;
       dv_view_change_radix(V, radix);
       
@@ -1098,7 +1179,9 @@ dv_do_finding_clicked_node(dv_view_t * V, double x, double y) {
   dv_dag_node_t * ret = NULL;
   switch (V->S->lt) {
   case DV_LAYOUT_TYPE_DAG:
-  case DV_LAYOUT_TYPE_DAG_BOX:
+  case DV_LAYOUT_TYPE_DAG_BOX_LOG:
+  case DV_LAYOUT_TYPE_DAG_BOX_POWER:
+  case DV_LAYOUT_TYPE_DAG_BOX_LINEAR:
     ret = dv_view_dag_find_clicked_node(V, x, y);
     break;
   case DV_LAYOUT_TYPE_TIMELINE:
@@ -1132,7 +1215,9 @@ dv_do_expanding_one_1(dv_view_t * V, dv_dag_node_t * node) {
   dv_view_status_t * S = V->S;
   switch (S->lt) {
   case DV_LAYOUT_TYPE_DAG:
-  case DV_LAYOUT_TYPE_DAG_BOX:
+  case DV_LAYOUT_TYPE_DAG_BOX_LOG:
+  case DV_LAYOUT_TYPE_DAG_BOX_POWER:
+  case DV_LAYOUT_TYPE_DAG_BOX_LINEAR:
     // add to animation
     if (dv_is_shrinking(node)) {
       dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKING);
@@ -1218,7 +1303,9 @@ dv_do_collapsing_one_1(dv_view_t * V, dv_dag_node_t * node) {
   dv_view_status_t * S = V->S;
   switch (S->lt) {
   case DV_LAYOUT_TYPE_DAG:
-  case DV_LAYOUT_TYPE_DAG_BOX:
+  case DV_LAYOUT_TYPE_DAG_BOX_LOG:
+  case DV_LAYOUT_TYPE_DAG_BOX_POWER:
+  case DV_LAYOUT_TYPE_DAG_BOX_LINEAR:
     // add to animation
     if (dv_is_expanding(node)) {
       dv_node_flag_remove(node->f, DV_NODE_FLAG_EXPANDING);

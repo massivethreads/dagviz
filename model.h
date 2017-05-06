@@ -26,14 +26,27 @@
 #define DV_MAX_DAG 1000
 #define DV_MAX_VIEW 1000
 
-#define DV_NUM_LAYOUT_TYPES 6
+#define DV_NUM_LAYOUT_TYPES 8
 #define DV_LAYOUT_TYPE_DAG 0
-#define DV_LAYOUT_TYPE_DAG_BOX 1
+#define DV_LAYOUT_TYPE_DAG_BOX_LOG 1
+#define DV_LAYOUT_TYPE_DAG_BOX_POWER 2
+#define DV_LAYOUT_TYPE_DAG_BOX_LINEAR 3
+#define DV_LAYOUT_TYPE_TIMELINE 4
+#define DV_LAYOUT_TYPE_TIMELINE_VER 5
+#define DV_LAYOUT_TYPE_PARAPROF 6
+#define DV_LAYOUT_TYPE_CRITICAL_PATH 7
+#define DV_LAYOUT_TYPE_INIT 0 // not paraprof coz need to check H of D
+
+/*
+#define DV_LAYOUT_TYPE_DAG_BOX_LOG 1
 #define DV_LAYOUT_TYPE_TIMELINE 3
 #define DV_LAYOUT_TYPE_TIMELINE_VER 2
 #define DV_LAYOUT_TYPE_PARAPROF 4
 #define DV_LAYOUT_TYPE_CRITICAL_PATH 5
 #define DV_LAYOUT_TYPE_INIT 0 // not paraprof coz need to check H of D
+#define DV_LAYOUT_TYPE_DAG_BOX_POWER 6
+#define DV_LAYOUT_TYPE_DAG_BOX_LINEAR 7
+*/
 
 #define DV_NUM_CRITICAL_PATHS 3
 #define DV_CRITICAL_PATH_0 0 /* most work */
@@ -68,7 +81,7 @@
 #define DV_NODE_FLAG_CRITICAL_PATH_2 (1 << 8) /* node is on critical path of weighted work & delay */
 
 #define DV_NODE_COLOR_INIT 0 // 0:worker, 1:cpu, 2:kind, 3:code start, 4:code end, 5: code segment
-#define DV_SCALE_TYPE_INIT 0 // 0:log, 1:power, 2:linear
+//#define DV_SCALE_TYPE_INIT 0 // 0:log, 1:power, 2:linear
 #define DV_RADIX_LOG 1.8
 #define DV_RADIX_POWER 0.42
 #define DV_RADIX_LINEAR 100000 //100000
@@ -258,7 +271,7 @@ typedef struct dv_dag {
   int collapsing_d; /* current depth excluding children of collapsing nodes */
 
   /* layout parameters */
-  int sdt; /* scale down type: 0 (log), 1 (power), 2 (linear) */
+  //int sdt; /* scale down type: 0 (log), 1 (power), 2 (linear) */
   double log_radix;
   double power_radix;
   double linear_radix;

@@ -8,14 +8,14 @@ dv_view_layout_timeline_ver_node(dv_view_t * V, dv_dag_node_t * node) {
   if (node->d > V->D->collapsing_d)
     V->D->collapsing_d = node->d;
   
-  int coord = DV_LAYOUT_TYPE_TIMELINE_VER;
+  int coord = V->S->coord;
   dv_node_coordinate_t * nodeco = &node->c[coord];
   dv_dag_t * D = V->D;
   dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, node);
   
   /* Calculate inward */
-  nodeco->y = dv_view_scale_down(V, pi->info.start.t - D->bt);
-  nodeco->dw = dv_view_scale_down(V, pi->info.end.t - D->bt) - dv_view_scale_down(V, pi->info.start.t - D->bt);
+  nodeco->y = dv_view_scale_down_linear(V, pi->info.start.t - D->bt);
+  nodeco->dw = dv_view_scale_down_linear(V, pi->info.end.t - D->bt) - dv_view_scale_down_linear(V, pi->info.start.t - D->bt);
   int worker = pi->info.worker;
   nodeco->x = worker * (2 * V->D->radius);
   nodeco->lw = 0.0;
@@ -66,7 +66,7 @@ static void
 dv_view_draw_timeline_ver_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
   dv_dag_t * D = V->D;
   dv_view_status_t * S = V->S;
-  int coord = DV_LAYOUT_TYPE_TIMELINE_VER;
+  int coord = V->S->coord;
   dv_node_coordinate_t * nodeco = &node->c[coord];
   // Count node drawn
   S->nd++;

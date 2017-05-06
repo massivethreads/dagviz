@@ -2,6 +2,7 @@
 
 /****** Layout ******/
 
+/*
 double
 dv_dag_scale_down(dv_dag_t * D, double val) {
   double ret;
@@ -21,6 +22,7 @@ dv_dag_scale_down(dv_dag_t * D, double val) {
   }
   return ret;
 }
+*/
 
 double
 dv_dag_scale_down_linear(dv_dag_t * D, double val) {
@@ -28,8 +30,30 @@ dv_dag_scale_down_linear(dv_dag_t * D, double val) {
 }
 
 double
+dv_view_scale_down_linear(dv_view_t * V, double val) {
+  return val / V->D->linear_radix;
+}
+
+double
 dv_view_scale_down(dv_view_t * V, double val) {
-  return dv_dag_scale_down(V->D, val);
+  double ret;
+  switch (V->S->lt) {
+  case DV_LAYOUT_TYPE_DAG_BOX_LOG:
+    ret = log(val) / log(V->D->log_radix);
+    break;
+  case DV_LAYOUT_TYPE_DAG_BOX_POWER:
+    ret = pow(val, V->D->power_radix);
+    break;
+  case DV_LAYOUT_TYPE_DAG_BOX_LINEAR:
+    ret = val / V->D->linear_radix;
+    break;
+  default:
+    fprintf(stderr, "Error: V->S->lt = %d\n", V->S->lt);
+    ret = val;
+    //dv_check(0);
+    break;
+  }
+  return ret;
 }
 
 static double
@@ -103,8 +127,8 @@ dv_layout_node_get_last_finished_tail(dv_view_t * V, dv_dag_node_t * node) {
 }
 
 static double
-dv_layout_node_get_xp_by_accumulating_xpre(dv_dag_node_t * node) {
-  int coord = 1;
+dv_layout_node_get_xp_by_accumulating_xpre(dv_view_t * V, dv_dag_node_t * node) {
+  int coord = V->S->coord;
   dv_dag_node_t * u = node;
   double dis = 0.0;
   while (u) {
@@ -121,7 +145,7 @@ dv_layout_node_get_last_tail_xp_r(dv_view_t * V, dv_dag_node_t * node) {
   if (!dv_is_single(node)) {
     dv_dag_node_t * last = dv_layout_node_get_last_finished_tail(V, node);
     if (last) {
-      ret += dv_layout_node_get_xp_by_accumulating_xpre(last);
+      ret += dv_layout_node_get_xp_by_accumulating_xpre(V, last);
       ret += dv_layout_node_get_last_tail_xp_r(V, last);
     }
   }
@@ -133,7 +157,7 @@ dv_view_layout_dagbox_node(dv_view_t * V, dv_dag_node_t * node) {
   V->S->nl++;
   if (dv_is_shrinking(node) && (V->D->collapsing_d == 0 || node->d < V->D->collapsing_d))
     V->D->collapsing_d = node->d;
-  int coord = 1;
+  int coord = V->S->coord;
   dv_node_coordinate_t * nodeco = &node->c[coord];
   /* Calculate inward */
   if (dv_is_inward_callable(node)) {
@@ -231,8 +255,8 @@ dv_view_layout_dagbox_node(dv_view_t * V, dv_dag_node_t * node) {
 }
 
 static void
-dv_view_layout_dagbox_node_2nd(dv_dag_node_t * node) {
-  int coord = 1;
+dv_view_layout_dagbox_node_2nd(dv_view_t * V, dv_dag_node_t * node) {
+  int coord = V->S->coord;
   dv_node_coordinate_t * nodeco = &node->c[coord];
   /* Calculate inward */
   if (dv_is_inward_callable(node)) {
@@ -242,7 +266,7 @@ dv_view_layout_dagbox_node_2nd(dv_dag_node_t * node) {
     headco->xp = 0.0;
     headco->x = nodeco->x;
     // Recursive call
-    dv_view_layout_dagbox_node_2nd(node->head);
+    dv_view_layout_dagbox_node_2nd(V, node->head);
   }
     
   /* Calculate link-along */
@@ -258,7 +282,7 @@ dv_view_layout_dagbox_node_2nd(dv_dag_node_t * node) {
     uco->xp = uco->xpre + nodeco->xp;
     uco->x = uco->xp + u->parent->c[coord].x;
     // Recursive call
-    dv_view_layout_dagbox_node_2nd(u);
+    dv_view_layout_dagbox_node_2nd(V, u);
     break;
   case 2:
     u = node->next;  // cont node
@@ -271,8 +295,8 @@ dv_view_layout_dagbox_node_2nd(dv_dag_node_t * node) {
     vco->xp = vco->xpre + nodeco->xp;
     vco->x = vco->xp + v->parent->c[coord].x;
     // Recursive call
-    dv_view_layout_dagbox_node_2nd(u);
-    dv_view_layout_dagbox_node_2nd(v);
+    dv_view_layout_dagbox_node_2nd(V, u);
+    dv_view_layout_dagbox_node_2nd(V, v);
     break;
   default:
     dv_check(0);
@@ -283,7 +307,7 @@ dv_view_layout_dagbox_node_2nd(dv_dag_node_t * node) {
 
 void dv_view_layout_dagbox(dv_view_t *V) {
   dv_dag_t *D = V->D;
-  int coord = 1;
+  int coord = V->S->coord;
   dv_node_coordinate_t *rtco = &D->rt->c[coord];
 
   // Relative coord
@@ -295,7 +319,7 @@ void dv_view_layout_dagbox(dv_view_t *V) {
   // Absolute coord
   rtco->xp = 0.0; // parent-based
   rtco->x = 0.0;
-  dv_view_layout_dagbox_node_2nd(D->rt);
+  dv_view_layout_dagbox_node_2nd(V, D->rt);
 
   // Check
   //print_layout(D);
@@ -313,7 +337,7 @@ dv_view_draw_dagbox_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node, in
   /* Get inputs */
   dv_dag_t * D = V->D;
   dv_view_status_t * S = V->S;
-  int coord = 1;
+  int coord = S->coord;
   dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, node);
   dv_node_coordinate_t * nodeco = &node->c[coord];
   double x = nodeco->x;

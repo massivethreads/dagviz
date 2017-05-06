@@ -589,7 +589,9 @@ dv_view_draw(dv_view_t * V, cairo_t * cr) {
   case DV_LAYOUT_TYPE_DAG:
     dv_view_draw_dag(V, cr);
     break;
-  case DV_LAYOUT_TYPE_DAG_BOX:
+  case DV_LAYOUT_TYPE_DAG_BOX_LOG:
+  case DV_LAYOUT_TYPE_DAG_BOX_POWER:
+  case DV_LAYOUT_TYPE_DAG_BOX_LINEAR:
     dv_view_draw_dagbox(V, cr);
     break;
   case DV_LAYOUT_TYPE_TIMELINE_VER:
@@ -655,7 +657,9 @@ dv_view_draw_legend(dv_view_t * V, cairo_t * cr) {
   case DV_LAYOUT_TYPE_DAG:
     dv_view_draw_legend_dag(V, cr);
     break;
-  case DV_LAYOUT_TYPE_DAG_BOX:
+  case DV_LAYOUT_TYPE_DAG_BOX_LOG:
+  case DV_LAYOUT_TYPE_DAG_BOX_POWER:
+  case DV_LAYOUT_TYPE_DAG_BOX_LINEAR:
     //dv_view_draw_legend_dagbox(V, cr);
     break;
   case DV_LAYOUT_TYPE_TIMELINE_VER:

@@ -2,20 +2,77 @@
 
 /*-----------Main layout functions-------------------------*/
 
+/*
 static void
 dv_view_layout_with_type(dv_view_t * V, int lt) {
+  int current_coord = V->S->coord;
   switch (lt) {
+  case DV_LAYOUT_TYPE_DAG:
+    V->S->coord = 0;
+    dv_view_layout_dag(V);
+    break;
+  case DV_LAYOUT_TYPE_DAG_BOX_LOG:
+    V->S->coord = 1;
+    dv_view_layout_dagbox(V);
+    break;
+  case DV_LAYOUT_TYPE_DAG_BOX_POWER:
+    V->S->coord = 2;
+    dv_view_layout_dagbox(V);
+    break;
+  case DV_LAYOUT_TYPE_DAG_BOX_LINEAR:
+    V->S->coord = 3;
+    dv_view_layout_dagbox(V);
+    break;
+  case DV_LAYOUT_TYPE_TIMELINE:
+    V->S->coord = 4;
+    dv_view_layout_timeline(V);
+    break;
+  case DV_LAYOUT_TYPE_TIMELINE_VER:
+    V->S->coord = 5;
+    dv_view_layout_timeline_ver(V);
+    break;
+  case DV_LAYOUT_TYPE_PARAPROF:
+    V->S->coord = 6;
+    if (V->D->H) {
+      //double start = dv_get_time();
+      dv_view_layout_paraprof(V);
+      //double end = dv_get_time();
+      //fprintf(stderr, "layout time: %lf\n", end - start);
+    } else {
+      fprintf(stderr, "Warning: trying to lay out type PARAPROF without H.\n");
+    }
+    break;
+  case DV_LAYOUT_TYPE_CRITICAL_PATH:
+    V->S->coord = 7;
+    if (V->D->H) {
+      dv_view_layout_critical_path(V);
+    } else {
+      fprintf(stderr, "Warning: trying to lay out type CRITICAL PATH without H.\n");
+    }
+    break;
+  default:
+    dv_check(0);
+  }
+  V->S->coord = current_coord;
+}
+*/
+
+static void
+dv_view_layout_(dv_view_t * V) {
+  switch (V->S->lt) {
   case DV_LAYOUT_TYPE_DAG:
     dv_view_layout_dag(V);
     break;
-  case DV_LAYOUT_TYPE_DAG_BOX:
+  case DV_LAYOUT_TYPE_DAG_BOX_LOG:
+  case DV_LAYOUT_TYPE_DAG_BOX_POWER:
+  case DV_LAYOUT_TYPE_DAG_BOX_LINEAR:
     dv_view_layout_dagbox(V);
-    break;
-  case DV_LAYOUT_TYPE_TIMELINE_VER:
-    dv_view_layout_timeline_ver(V);
     break;
   case DV_LAYOUT_TYPE_TIMELINE:
     dv_view_layout_timeline(V);
+    break;
+  case DV_LAYOUT_TYPE_TIMELINE_VER:
+    dv_view_layout_timeline_ver(V);
     break;
   case DV_LAYOUT_TYPE_PARAPROF:
     if (V->D->H) {
@@ -36,7 +93,7 @@ dv_view_layout_with_type(dv_view_t * V, int lt) {
     break;
   default:
     dv_check(0);
-  }  
+  }
 }
 
 void
@@ -47,17 +104,23 @@ dv_view_layout(dv_view_t * V) {
   }
 
   V->S->nl = 0;
-  int tolayout[DV_NUM_LAYOUT_TYPES];
+  int laidOut[DV_NUM_LAYOUT_TYPES];
   int i;
   for (i = 0; i < DV_NUM_LAYOUT_TYPES; i++)
-    tolayout[i] = 0;  
-  tolayout[V->S->lt]++;
-  for (i = 0; i < CS->nV; i++)
-    if (V->D->mV[i] && CS->V[i].S->nviewports > 0)
-      tolayout[CS->V[i].S->lt]++;
+    laidOut[i] = 0;  
+  dv_view_layout_(V);
+  laidOut[V->S->lt] = 1;
+  for (i = 0; i < CS->nV; i++) {
+    if (V->D->mV[i] && (CS->V[i].S->nviewports > 0) && !laidOut[CS->V[i].S->lt]) {
+      dv_view_layout_(&CS->V[i]);
+      laidOut[CS->V[i].S->lt] = 1;
+    }
+  }
+  /*
   for (i = 0; i < DV_NUM_LAYOUT_TYPES; i++)
-    if (tolayout[i])
+    if (laidOut[i])
       dv_view_layout_with_type(V, i);
+  */
   for (i = 0; i < CS->nV; i++)
     if (V->D->mV[i] && CS->V[i].S->nviewports > 0)
       dv_view_auto_zoomfit(&CS->V[i]);

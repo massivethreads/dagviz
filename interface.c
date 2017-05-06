@@ -302,7 +302,7 @@ dv_view_prepare_drawing(dv_view_t * V, cairo_t * cr) {
 }
 
 void
-dv_viewport_draw(dv_viewport_t * VP, cairo_t * cr) {
+dv_viewport_draw(dv_viewport_t * VP, cairo_t * cr, int to_draw_rulers) {
   dv_view_t * V;
   dv_view_status_t * S;
   int count = 0;
@@ -316,7 +316,9 @@ dv_viewport_draw(dv_viewport_t * VP, cairo_t * cr) {
         S->basex = 0.5 * S->vpw;
         S->basey = CS->opts.zoom_to_fit_margin;
         break;
-      case DV_LAYOUT_TYPE_DAG_BOX:
+      case DV_LAYOUT_TYPE_DAG_BOX_LOG:
+      case DV_LAYOUT_TYPE_DAG_BOX_POWER:
+      case DV_LAYOUT_TYPE_DAG_BOX_LINEAR:
         //G->basex = 0.5 * S->vpw - 0.5 * (G->rt->rw - G->rt->lw);
         S->basex = 0.5 * S->vpw;
         S->basey = CS->opts.zoom_to_fit_margin;
@@ -347,26 +349,30 @@ dv_viewport_draw(dv_viewport_t * VP, cairo_t * cr) {
       count++;
     }
   //dv_viewport_draw_label(VP, cr);
-  if (VP->mainV) {
-    switch (VP->mainV->S->lt) {
-    case DV_LAYOUT_TYPE_DAG:
-      break;
-    case DV_LAYOUT_TYPE_DAG_BOX:
-      break;
-    case DV_LAYOUT_TYPE_TIMELINE_VER:
-      break;
-    case DV_LAYOUT_TYPE_TIMELINE:
-    case DV_LAYOUT_TYPE_PARAPROF:
-    case DV_LAYOUT_TYPE_CRITICAL_PATH:
-      dv_paraprof_draw_rulers(VP, VP->mainV, cr);
-      break;
+  if (to_draw_rulers) {
+    if (VP->mainV) {
+      switch (VP->mainV->S->lt) {
+      case DV_LAYOUT_TYPE_DAG:
+        break;
+      case DV_LAYOUT_TYPE_DAG_BOX_LOG:
+      case DV_LAYOUT_TYPE_DAG_BOX_POWER:
+      case DV_LAYOUT_TYPE_DAG_BOX_LINEAR:
+        break;
+      case DV_LAYOUT_TYPE_TIMELINE_VER:
+        break;
+      case DV_LAYOUT_TYPE_TIMELINE:
+      case DV_LAYOUT_TYPE_PARAPROF:
+      case DV_LAYOUT_TYPE_CRITICAL_PATH:
+        dv_paraprof_draw_rulers(VP, VP->mainV, cr);
+        break;
+      }
     }
+    dv_viewport_draw_rulers(VP, cr);
+    if (VP == CS->activeVP && VP != CS->VP)
+      dv_viewport_draw_focused_mark(VP, cr);
   }
-  dv_viewport_draw_rulers(VP, cr);
   dv_statusbar_update_selection_status();
   dv_statusbar_update_pointer_status();
-  if (VP == CS->activeVP && VP != CS->VP)
-    dv_viewport_draw_focused_mark(VP, cr);
 }
 
 /*--------end of Interactive processing functions------------*/
@@ -380,7 +386,7 @@ dv_view_toolbox_init(dv_view_toolbox_t * T, dv_view_t * V) {
   T->window = NULL;
   T->combobox_lt = NULL;
   T->combobox_nc = NULL;
-  T->combobox_sdt = NULL;
+  //T->combobox_sdt = NULL;
   T->entry_radix = NULL;
   T->combobox_frombt = NULL;
   T->combobox_et = NULL;
@@ -468,9 +474,11 @@ dv_view_toolbox_get_combobox_lt(dv_view_toolbox_t * T) {
     GtkWidget * combobox_lt = T->combobox_lt = gtk_combo_box_text_new();
     gtk_widget_set_tooltip_text(GTK_WIDGET(combobox_lt), "How to layout nodes");
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "dag", "DAG");
-    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "dagbox", "DAG with boxes");
-    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "timelinev", "Vertical timeline");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "dagboxlog", "DAG with timing (log scale)");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "dagboxpower", "DAG with timing (power scale)");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "dagboxlinear", "DAG with timing (linear scale)");
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "timeline", "Horizontal timeline");
+    gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "timelinev", "Vertical timeline");
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "paraprof", "Parallelism profile");
     gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox_lt), "criticalpath", "Critical path");
     gtk_combo_box_set_active(GTK_COMBO_BOX(combobox_lt), T->V->S->lt);
@@ -496,6 +504,7 @@ dv_view_toolbox_get_combobox_nc(dv_view_toolbox_t * T) {
   return T->combobox_nc;
 }
 
+/*
 GtkWidget *
 dv_view_toolbox_get_combobox_sdt(dv_view_toolbox_t * T) {
   if (!GTK_IS_WIDGET(T->combobox_sdt)) {
@@ -509,6 +518,7 @@ dv_view_toolbox_get_combobox_sdt(dv_view_toolbox_t * T) {
   }
   return T->combobox_sdt;
 }
+*/
 
 GtkWidget *
 dv_view_toolbox_get_entry_radix(dv_view_toolbox_t * T) {
@@ -674,12 +684,14 @@ dv_view_toolbox_get_window(dv_view_toolbox_t * T) {
     gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
 
+    /*
     num++;
     label = gtk_label_new("Scale-down type:");
     widget = dv_view_toolbox_get_combobox_sdt(T);
     gtk_widget_set_halign(label, GTK_ALIGN_END);
     gtk_grid_attach(GTK_GRID(grid), label, 0, num, 1, 1);
     gtk_grid_attach(GTK_GRID(grid), widget, 1, num, 1, 1);
+    */
 
     num++;
     label = gtk_label_new("Scale-down radix:");
@@ -1105,7 +1117,7 @@ dv_viewport_init(dv_viewport_t * VP) {
   g_object_ref(G_OBJECT(VP->darea));
   gtk_box_pack_end(GTK_BOX(VP->box), VP->darea, TRUE, TRUE, 0);
   GtkWidget * darea = VP->darea;
-  gtk_widget_override_background_color(GTK_WIDGET(darea), GTK_STATE_FLAG_NORMAL, white);
+  //gtk_widget_override_background_color(GTK_WIDGET(darea), GTK_STATE_FLAG_NORMAL, white);
   gtk_widget_set_can_focus(darea, TRUE);
   gtk_widget_add_events(GTK_WIDGET(darea), GDK_SCROLL_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK | GDK_POINTER_MOTION_MASK);
   g_signal_connect(G_OBJECT(darea), "draw", G_CALLBACK(on_darea_draw_event), (void *) VP);
@@ -1472,7 +1484,7 @@ dv_viewport_remove_view(dv_viewport_t * VP, dv_view_t * V) {
 }
 
 
-/* Divisions for one DAG: D , T , D|T , D/T , (D|B)/T */
+/* Divisions for one DAG: D , T , D|T , D/T , (D|Dlog)/T, D|Dlog, (Dpower|Dlinear)/T  */
 void
 dv_viewport_divide_onedag_1(dv_viewport_t * VP, dv_dag_t * D) {
   /* D */
@@ -1486,7 +1498,7 @@ dv_viewport_divide_onedag_1(dv_viewport_t * VP, dv_dag_t * D) {
     }
   if (!V)
     V = dv_create_new_view(D);
-  dv_view_change_lt(V, 0);
+  dv_view_change_lt(V, DV_LAYOUT_TYPE_DAG);
   
   /* Viewport */
   dv_viewport_change_split(VP, 0);
@@ -1512,7 +1524,7 @@ dv_viewport_divide_onedag_2(dv_viewport_t * VP, dv_dag_t * D) {
     }
   if (!V)
     V = dv_create_new_view(D);
-  dv_view_change_lt(V, 4);
+  dv_view_change_lt(V, DV_LAYOUT_TYPE_PARAPROF);
   
   /* Viewport */
   dv_viewport_change_split(VP, 0);
@@ -1544,8 +1556,8 @@ dv_viewport_divide_onedag_3(dv_viewport_t * VP, dv_dag_t * D) {
     V1 = dv_create_new_view(D);
   if (!V2)
     V2 = dv_create_new_view(D);
-  dv_view_change_lt(V1, 0);
-  dv_view_change_lt(V2, 4);
+  dv_view_change_lt(V1, DV_LAYOUT_TYPE_DAG);
+  dv_view_change_lt(V2, DV_LAYOUT_TYPE_PARAPROF);
   
   /* Viewport */
   dv_viewport_change_split(VP, 1);
@@ -1589,8 +1601,8 @@ dv_viewport_divide_onedag_4(dv_viewport_t * VP, dv_dag_t * D) {
     V1 = dv_create_new_view(D);
   if (!V2)
     V2 = dv_create_new_view(D);
-  dv_view_change_lt(V1, 0);
-  dv_view_change_lt(V2, 4);
+  dv_view_change_lt(V1, DV_LAYOUT_TYPE_DAG);
+  dv_view_change_lt(V2, DV_LAYOUT_TYPE_PARAPROF);
   
   /* Viewport */
   dv_viewport_change_split(VP, 1);
@@ -1638,9 +1650,9 @@ dv_viewport_divide_onedag_5(dv_viewport_t * VP, dv_dag_t * D) {
     V2 = dv_create_new_view(D);
   if (!V3)
     V3 = dv_create_new_view(D);
-  dv_view_change_lt(V1, 0);
-  dv_view_change_lt(V2, 1);
-  dv_view_change_lt(V3, 4);
+  dv_view_change_lt(V1, DV_LAYOUT_TYPE_DAG);
+  dv_view_change_lt(V2, DV_LAYOUT_TYPE_DAG_BOX_LOG);
+  dv_view_change_lt(V3, DV_LAYOUT_TYPE_PARAPROF);
   
   /* Viewport */
   dv_viewport_t * VP1 = NULL;
@@ -1709,8 +1721,8 @@ dv_viewport_divide_onedag_6(dv_viewport_t * VP, dv_dag_t * D) {
     V1 = dv_create_new_view(D);
   if (!V2)
     V2 = dv_create_new_view(D);
-  dv_view_change_lt(V1, 0);
-  dv_view_change_lt(V2, 1);
+  dv_view_change_lt(V1, DV_LAYOUT_TYPE_DAG);
+  dv_view_change_lt(V2, DV_LAYOUT_TYPE_DAG_BOX_LOG);
   
   /* Viewport */
   dv_viewport_change_split(VP, 1);
@@ -1733,6 +1745,81 @@ dv_viewport_divide_onedag_6(dv_viewport_t * VP, dv_dag_t * D) {
   dv_view_add_viewport(V2, VP2);
   dv_view_change_mainvp(V1, VP1);
   dv_view_change_mainvp(V2, VP2);
+}
+
+void
+dv_viewport_divide_onedag_7(dv_viewport_t * VP, dv_dag_t * D) {
+  /* (D | B) / T */
+  /* View */
+  dv_view_t * V1 = NULL;
+  dv_view_t * V2 = NULL;
+  dv_view_t * V3 = NULL;
+  int i;
+  for (i = 0; i < CS->nV; i++)
+    if (D->mV[i]) {
+      if (!V1) V1 = &CS->V[i];
+      else if (!V2) V2 = &CS->V[i];
+      else if (!V3) {
+        V3 = &CS->V[i];
+        break;
+      }
+    }
+  if (!V1)
+    V1 = dv_create_new_view(D);
+  if (!V2)
+    V2 = dv_create_new_view(D);
+  if (!V3)
+    V3 = dv_create_new_view(D);
+  dv_view_change_lt(V1, DV_LAYOUT_TYPE_DAG_BOX_POWER);
+  dv_view_change_lt(V2, DV_LAYOUT_TYPE_DAG_BOX_LINEAR);
+  dv_view_change_lt(V3, DV_LAYOUT_TYPE_PARAPROF);
+  
+  /* Viewport */
+  dv_viewport_t * VP1 = NULL;
+  dv_viewport_t * VP2 = NULL;
+  {
+    dv_viewport_change_split(VP, 1);
+    dv_viewport_change_orientation(VP, GTK_ORIENTATION_VERTICAL);
+    VP1 = VP->vp1;
+    VP2 = VP->vp2;
+    dv_viewport_change_split(VP2, 0);
+    for (i = 0; i < CS->nV; i++) {
+      if (VP1->mV[i]) {
+        dv_view_t * V = &CS->V[i];
+        dv_view_remove_viewport(V, VP1);
+      }
+      if (VP2->mV[i]) {
+        dv_view_t * V = &CS->V[i];
+        dv_view_remove_viewport(V, VP2);
+      }
+    }
+    dv_view_add_viewport(V3, VP2);
+    dv_view_change_mainvp(V3, VP2);
+  }
+  
+  VP = VP1;
+  {
+    dv_viewport_change_split(VP, 1);
+    dv_viewport_change_orientation(VP, GTK_ORIENTATION_HORIZONTAL);
+    VP1 = VP->vp1;
+    VP2 = VP->vp2;
+    dv_viewport_change_split(VP1, 0);
+    dv_viewport_change_split(VP2, 0);
+    for (i = 0; i < CS->nV; i++) {
+      if (VP1->mV[i]) {
+        dv_view_t * V = &CS->V[i];
+        dv_view_remove_viewport(V, VP1);
+      }
+      if (VP2->mV[i]) {
+        dv_view_t * V = &CS->V[i];
+        dv_view_remove_viewport(V, VP2);
+      }
+    }
+    dv_view_add_viewport(V1, VP1);
+    dv_view_add_viewport(V2, VP2);
+    dv_view_change_mainvp(V1, VP1);
+    dv_view_change_mainvp(V2, VP2);
+  }
 }
 
 /* Divisions for 2 DAGs: D|D , T|T , T/T , (D/T)|(D/T) , (D|T)/(D|T) , (D|B)/T | (D|B)/T */
@@ -2830,29 +2917,33 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
         submenu = gtk_menu_new();
         gtk_menu_item_set_submenu(GTK_MENU_ITEM(item), submenu);
 
-        item = gtk_menu_item_new_with_label("D");
+        item = gtk_menu_item_new_with_label("DAG");
         gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);        
         g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_onedag_activated), (void *) 1);
 
-        item = gtk_menu_item_new_with_label("T");
+        item = gtk_menu_item_new_with_label("Timelines");
         gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);        
         g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_onedag_activated), (void *) 2);
 
-        item = gtk_menu_item_new_with_label("D | T");
+        item = gtk_menu_item_new_with_label("DAG | Timelines");
         gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);        
         g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_onedag_activated), (void *) 3);
         
-        item = gtk_menu_item_new_with_label("D / T");
+        item = gtk_menu_item_new_with_label("DAG / Timelines");
         gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);        
         g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_onedag_activated), (void *) 4);
 
-        item = gtk_menu_item_new_with_label("D | B");
+        item = gtk_menu_item_new_with_label("DAG | DAG (log)");
         gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);        
         g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_onedag_activated), (void *) 6);
         
-        item = gtk_menu_item_new_with_label("(D | B) / T");
+        item = gtk_menu_item_new_with_label("( DAG | DAG (log) ) / T");
         gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);
         g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_onedag_activated), (void *) 5);
+
+        item = gtk_menu_item_new_with_label("( DAG (power) | DAG (linear) ) / Timelines");
+        gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);
+        g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_onedag_activated), (void *) 7);
       }
       
       if (1) {//CS->nP >= 2) {
@@ -2862,31 +2953,31 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
         submenu = gtk_menu_new();
         gtk_menu_item_set_submenu(GTK_MENU_ITEM(item), submenu);
 
-        item = gtk_menu_item_new_with_label("D | D");
+        item = gtk_menu_item_new_with_label("DAG | DAG");
         gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);        
         g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_twodags_activated), (void *) 1);
 
-        item = gtk_menu_item_new_with_label("T | T");
+        item = gtk_menu_item_new_with_label("Timelines | Timelines");
         gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);        
         g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_twodags_activated), (void *) 2);
         
-        item = gtk_menu_item_new_with_label("T / T");
+        item = gtk_menu_item_new_with_label("Timelines / Timelines");
         gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);        
         g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_twodags_activated), (void *) 3);
 
-        item = gtk_menu_item_new_with_label("D | T");
+        item = gtk_menu_item_new_with_label("DAG | Timelines");
         gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);        
         g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_twodags_activated), (void *) 7);
 
-        item = gtk_menu_item_new_with_label("(D / T) | (D / T)");
+        item = gtk_menu_item_new_with_label("(DAG / Timelines) | (DAG / Timelines)");
         gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);
         g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_twodags_activated), (void *) 4);
 
-        item = gtk_menu_item_new_with_label("(D | T) / (D | T)");
+        item = gtk_menu_item_new_with_label("(DAG | Timelines) / (DAG | Timelines)");
         gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);
         g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_twodags_activated), (void *) 5);
 
-        item = gtk_menu_item_new_with_label("((D | B) / T) | ((D | B) / T)");
+        item = gtk_menu_item_new_with_label("( ( DAG | DAG (log) ) / Timelines ) | ( ( DAG | DAG (log) ) / Timelines )");
         gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);
         g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_twodags_activated), (void *) 6);
       }
@@ -2898,7 +2989,7 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
         submenu = gtk_menu_new();
         gtk_menu_item_set_submenu(GTK_MENU_ITEM(item), submenu);
         
-        item = gtk_menu_item_new_with_label("D | D | D");
+        item = gtk_menu_item_new_with_label("DAG | DAG | DAG");
         gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);
         g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_threedags_activated), (void *) 1);
       }
@@ -2965,7 +3056,7 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
       //gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(button), icon);
       gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(button), "dagviz-dag-boxes");
       gtk_widget_set_tooltip_text(GTK_WIDGET(button), "DAG-with-boxes layout (Ctrl+2)");
-      g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_toolbar_dag_layout_buttons_clicked), (void *) DV_LAYOUT_TYPE_DAG_BOX);
+      g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_toolbar_dag_layout_buttons_clicked), (void *) DV_LAYOUT_TYPE_DAG_BOX_LOG);
       gtk_menu_tool_button_set_arrow_tooltip_text(GTK_MENU_TOOL_BUTTON(button), "Select scale type");
       
       GtkWidget * menu = gtk_menu_new();
@@ -2973,13 +3064,13 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
       GtkWidget * item;
       item= gtk_menu_item_new_with_label("Log");
       gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
-      g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_dag_boxes_scale_type_menu_activated), (void *) 0);
+      g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_dag_layout_buttons_clicked), (void *) DV_LAYOUT_TYPE_DAG_BOX_LOG);
       item= gtk_menu_item_new_with_label("Power");
       gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
-      g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_dag_boxes_scale_type_menu_activated), (void *) 1);
+      g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_dag_layout_buttons_clicked), (void *) DV_LAYOUT_TYPE_DAG_BOX_POWER);
       item= gtk_menu_item_new_with_label("Linear");
       gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
-      g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_dag_boxes_scale_type_menu_activated), (void *) 2);
+      g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_dag_layout_buttons_clicked), (void *) DV_LAYOUT_TYPE_DAG_BOX_LINEAR);
       gtk_widget_show_all(menu);
 
       button = gtk_tool_button_new(NULL, NULL);

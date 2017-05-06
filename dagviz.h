@@ -99,17 +99,30 @@ typedef struct dv_llist {
 #define DV_ANIMATION_DURATION 400 // milliseconds
 #define DV_ANIMATION_STEP 80 // milliseconds
 
-#define DV_NUM_LAYOUT_TYPES 6
+#define DV_NUM_LAYOUT_TYPES 8
 #define DV_LAYOUT_TYPE_DAG 0
-#define DV_LAYOUT_TYPE_DAG_BOX 1
+#define DV_LAYOUT_TYPE_DAG_BOX_LOG 1
+#define DV_LAYOUT_TYPE_DAG_BOX_POWER 2
+#define DV_LAYOUT_TYPE_DAG_BOX_LINEAR 3
+#define DV_LAYOUT_TYPE_TIMELINE 4
+#define DV_LAYOUT_TYPE_TIMELINE_VER 5
+#define DV_LAYOUT_TYPE_PARAPROF 6
+#define DV_LAYOUT_TYPE_CRITICAL_PATH 7
+#define DV_LAYOUT_TYPE_INIT 0 // not paraprof coz need to check H of D
+
+/*
+#define DV_LAYOUT_TYPE_DAG_BOX_LOG 1
 #define DV_LAYOUT_TYPE_TIMELINE 3
 #define DV_LAYOUT_TYPE_TIMELINE_VER 2
 #define DV_LAYOUT_TYPE_PARAPROF 4
 #define DV_LAYOUT_TYPE_CRITICAL_PATH 5
 #define DV_LAYOUT_TYPE_INIT 0 // not paraprof coz need to check H of D
+#define DV_LAYOUT_TYPE_DAG_BOX_POWER 6
+#define DV_LAYOUT_TYPE_DAG_BOX_LINEAR 7
+*/
 
 #define DV_NODE_COLOR_INIT 0 // 0:worker, 1:cpu, 2:kind, 3:code start, 4:code end, 5: code segment
-#define DV_SCALE_TYPE_INIT 0 // 0:log, 1:power, 2:linear
+//#define DV_SCALE_TYPE_INIT 0 // 0:log, 1:power, 2:linear
 #define DV_FROMBT_INIT 0
 #define DV_EDGE_TYPE_INIT 3
 #define DV_EDGE_AFFIX_LENGTH 0//10
@@ -291,7 +304,7 @@ typedef struct dv_dag {
   int collapsing_d; /* current depth excluding children of collapsing nodes */
 
   /* layout parameters */
-  int sdt; /* scale down type: 0 (log), 1 (power), 2 (linear) */
+  //int sdt; /* scale down type: 0 (log), 1 (power), 2 (linear) */
   double log_radix;
   double power_radix;
   double linear_radix;
@@ -400,7 +413,7 @@ typedef struct dv_view_toolbox {
   /* Common */
   GtkWidget * combobox_lt;
   GtkWidget * combobox_nc;
-  GtkWidget * combobox_sdt;
+  //GtkWidget * combobox_sdt;
   GtkWidget * entry_radix;
   GtkWidget * checkbox_scale_radix;
   GtkWidget * combobox_cm;
@@ -773,7 +786,7 @@ double dv_view_cairo_coordinate_bound_right(dv_view_t *);
 double dv_view_cairo_coordinate_bound_up(dv_view_t *);
 double dv_view_cairo_coordinate_bound_down(dv_view_t *);
 
-void dv_viewport_draw(dv_viewport_t *, cairo_t *);
+void dv_viewport_draw(dv_viewport_t *, cairo_t *, int);
 
 void dv_view_toolbox_init(dv_view_toolbox_t *, dv_view_t *);
 
@@ -801,6 +814,7 @@ void dv_viewport_divide_onedag_3(dv_viewport_t *, dv_dag_t *);
 void dv_viewport_divide_onedag_4(dv_viewport_t *, dv_dag_t *);
 void dv_viewport_divide_onedag_5(dv_viewport_t *, dv_dag_t *);
 void dv_viewport_divide_onedag_6(dv_viewport_t *, dv_dag_t *);
+void dv_viewport_divide_onedag_7(dv_viewport_t *, dv_dag_t *);
 
 void dv_viewport_divide_twodags_1(dv_viewport_t *, dv_dag_t *, dv_dag_t *);
 void dv_viewport_divide_twodags_2(dv_viewport_t *, dv_dag_t *, dv_dag_t *);
@@ -861,11 +875,13 @@ void dv_view_get_zoomfit_ver(dv_view_t *, double *, double *, double *, double *
 void dv_view_do_zoomfit_ver(dv_view_t *);
 void dv_view_do_zoomfit_based_on_lt(dv_view_t *);
 void dv_view_do_zoomfit_full(dv_view_t *);
+double dv_view_get_radix(dv_view_t *);
+void dv_view_set_radix(dv_view_t *, double);
 void dv_view_change_radix(dv_view_t *, double);
 void dv_view_set_entry_radix_text(dv_view_t *);
 void dv_view_set_entry_paraprof_resolution(dv_view_t *);
 void dv_view_set_entry_remark_text(dv_view_t *, char *);
-void dv_view_change_sdt(dv_view_t *, int);
+//void dv_view_change_sdt(dv_view_t *, int);
 void dv_view_change_eaffix(dv_view_t *, int);
 void dv_view_change_nc(dv_view_t *, int);
 void dv_view_change_lt(dv_view_t *, int);
@@ -931,8 +947,6 @@ int dv_dag_collapse_node_inner(dv_dag_t *, dv_dag_node_t *);
 void dv_dag_clear_shrinked_nodes(dv_dag_t *);
 void dv_dag_init(dv_dag_t *, dv_pidag_t *);
 dv_dag_t * dv_dag_create_new_with_pidag(dv_pidag_t *);
-double dv_dag_get_radix(dv_dag_t *);
-void dv_dag_set_radix(dv_dag_t *, double);
 int dv_pidag_node_lookup_value(dr_pi_dag_node *, int);
 int dv_dag_node_lookup_value(dv_dag_t *, dv_dag_node_t *, int);
 dv_dag_node_t * dv_dag_node_traverse_children(dv_dag_node_t *, dv_dag_node_t *);
@@ -1005,8 +1019,9 @@ void dv_view_draw_legend_dag(dv_view_t *, cairo_t *);
 
 
 /* view_dag_box.c */
-double dv_dag_scale_down(dv_dag_t *, double);
+//double dv_dag_scale_down(dv_dag_t *, double);
 double dv_dag_scale_down_linear(dv_dag_t *, double);
+double dv_view_scale_down_linear(dv_view_t *, double);
 double dv_view_scale_down(dv_view_t *, double);
 double dv_view_calculate_vsize(dv_view_t *, dv_dag_node_t *);
 void dv_view_layout_dagbox(dv_view_t *);

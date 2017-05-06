@@ -4,7 +4,7 @@
 static gboolean
 on_darea_draw_event(_unused_ GtkWidget * widget, cairo_t * cr, gpointer user_data) {
   dv_viewport_t * VP = (dv_viewport_t *) user_data;
-  dv_viewport_draw(VP, cr);
+  dv_viewport_draw(VP, cr, 1);
   return FALSE;
 }
 
@@ -87,9 +87,39 @@ on_darea_motion_event(_unused_ GtkWidget * widget, GdkEventMotion * event, gpoin
 static gboolean
 on_combobox_lt_changed(GtkComboBox * widget, gpointer user_data) {
   dv_view_t * V = (dv_view_t *) user_data;
-  int new_lt = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
-  dv_check(0 <= new_lt && new_lt < DV_NUM_LAYOUT_TYPES);
-  dv_view_change_lt(V, new_lt);
+  int new_index = gtk_combo_box_get_active(GTK_COMBO_BOX(widget));
+  dv_check(0 <= new_index && new_index < DV_NUM_LAYOUT_TYPES);
+  dv_view_change_lt(V, new_index);
+  /*
+  switch (new_index) {
+  case 0:
+    dv_view_change_lt(V, DV_LAYOUT_TYPE_DAG);
+    break;
+  case 1:
+    dv_view_change_lt(V, DV_LAYOUT_TYPE_DAG_BOX_LOG);
+    break;
+  case 2:
+    dv_view_change_lt(V, DV_LAYOUT_TYPE_DAG_BOX_POWER);
+    break;
+  case 3:
+    dv_view_change_lt(V, DV_LAYOUT_TYPE_DAG_BOX_LINEAR);
+    break;
+  case 4:
+    dv_view_change_lt(V, DV_LAYOUT_TYPE_TIMELINE_VER);
+    break;
+  case 5:
+    dv_view_change_lt(V, DV_LAYOUT_TYPE_TIMELINE);
+    break;
+  case 6:
+    dv_view_change_lt(V, DV_LAYOUT_TYPE_PARAPROF);
+    break;
+  case 7:
+    dv_view_change_lt(V, DV_LAYOUT_TYPE_CRITICAL_PATH);
+    break;
+  default:
+    dv_view_change_lt(V, DV_LAYOUT_TYPE_DAG);
+  }
+  */
   return TRUE;  
 }
 
@@ -101,6 +131,7 @@ on_combobox_nc_changed(GtkComboBox * widget, gpointer user_data) {
   return TRUE;
 }
 
+/*
 static gboolean
 on_combobox_sdt_changed(GtkComboBox * widget, gpointer user_data) {
   dv_view_t * V = (dv_view_t *) user_data;
@@ -110,6 +141,7 @@ on_combobox_sdt_changed(GtkComboBox * widget, gpointer user_data) {
   dv_queue_draw_d(V);
   return TRUE;
 }
+*/
 
 static gboolean
 on_entry_radix_activate(GtkEntry * entry, gpointer user_data) {
@@ -159,17 +191,18 @@ on_entry_remark_activate(GtkEntry * entry, gpointer user_data) {
   return TRUE;
 }
 
-static gboolean on_entry_search_activate(GtkEntry *entry, gpointer user_data) {
-  dv_view_t *V = (dv_view_t *) user_data;
-  dv_dag_t *D = V->D;
-  dv_view_status_t *S = V->S;
+static gboolean
+on_entry_search_activate(GtkEntry * entry, gpointer user_data) {
+  dv_view_t * V = (dv_view_t *) user_data;
+  dv_dag_t * D = V->D;
+  dv_view_status_t * S = V->S;
   // Get node
   long pii = atol(gtk_entry_get_text(GTK_ENTRY(entry)));
-  dv_dag_node_t *node = dv_find_node_with_pii_r(V, pii, D->rt);
+  dv_dag_node_t * node = dv_find_node_with_pii_r(V, pii, D->rt);
   if (!node)
     return TRUE;
   // Get target zoom ratio, x, y
-  dv_node_coordinate_t *co = &node->c[S->coord];
+  dv_node_coordinate_t * co = &node->c[S->coord];
   double zoom_ratio = 1.0;
   double x = 0.0;
   double y = 0.0;
@@ -189,7 +222,9 @@ static gboolean on_entry_search_activate(GtkEntry *entry, gpointer user_data) {
     x -= (co->x + (co->rw - co->lw) * 0.5) * zoom_ratio;
     y -= co->y * zoom_ratio - (S->vph - CS->opts.zoom_to_fit_margin - CS->opts.zoom_to_fit_margin_bottom - co->dw * zoom_ratio) * 0.5;
     break;
-  case DV_LAYOUT_TYPE_DAG_BOX:
+  case DV_LAYOUT_TYPE_DAG_BOX_LOG:
+  case DV_LAYOUT_TYPE_DAG_BOX_POWER:
+  case DV_LAYOUT_TYPE_DAG_BOX_LINEAR:
     // DAG box
     d1 = co->lw + co->rw;
     d2 = S->vpw - 2 * CS->opts.zoom_to_fit_margin;
@@ -1098,10 +1133,26 @@ on_menubar_layout_type_dag_activated(_unused_ GtkMenuItem * menuitem, _unused_ g
 }
 
 G_MODULE_EXPORT void
-on_menubar_layout_type_dag_boxes_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
+on_menubar_layout_type_dag_box_log_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
   dv_view_t * V = CS->activeV;
   if (V) {
-    dv_view_change_lt(V, DV_LAYOUT_TYPE_DAG_BOX);
+    dv_view_change_lt(V, DV_LAYOUT_TYPE_DAG_BOX_LOG);
+  }
+}
+
+G_MODULE_EXPORT void
+on_menubar_layout_type_dag_box_power_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
+  dv_view_t * V = CS->activeV;
+  if (V) {
+    dv_view_change_lt(V, DV_LAYOUT_TYPE_DAG_BOX_POWER);
+  }
+}
+
+G_MODULE_EXPORT void
+on_menubar_layout_type_dag_box_linear_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
+  dv_view_t * V = CS->activeV;
+  if (V) {
+    dv_view_change_lt(V, DV_LAYOUT_TYPE_DAG_BOX_LINEAR);
   }
 }
 
@@ -1315,6 +1366,9 @@ on_toolbar_division_menu_onedag_activated(_unused_ GtkMenuItem * menuitem, _unus
   case 6:
     dv_viewport_divide_onedag_6(VP, D);
     break;
+  case 7:
+    dv_viewport_divide_onedag_7(VP, D);
+    break;
   }
 }
 
@@ -1372,6 +1426,7 @@ on_toolbar_dag_layout_buttons_clicked(_unused_ GtkToolButton * toolbtn, _unused_
   dv_view_change_lt(CS->activeV, i);
 }
 
+/*
 void
 on_toolbar_dag_boxes_scale_type_menu_activated(_unused_ GtkToolButton * toolbtn, _unused_ gpointer user_data) {
   if (!CS->activeV) return;
@@ -1383,6 +1438,7 @@ on_toolbar_dag_boxes_scale_type_menu_activated(_unused_ GtkToolButton * toolbtn,
   dv_view_auto_zoomfit(V);
   dv_queue_draw_d(V);
 }
+*/
 
 G_MODULE_EXPORT void
 on_menubar_view_replay_sidebox_activated(GtkCheckMenuItem * checkmenuitem, _unused_ gpointer user_data) {
