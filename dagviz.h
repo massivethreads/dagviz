@@ -876,7 +876,6 @@ void dv_view_do_zoomfit_ver(dv_view_t *);
 void dv_view_do_zoomfit_based_on_lt(dv_view_t *);
 void dv_view_do_zoomfit_full(dv_view_t *);
 double dv_view_get_radix(dv_view_t *);
-void dv_view_set_radix(dv_view_t *, double);
 void dv_view_change_radix(dv_view_t *, double);
 void dv_view_set_entry_radix_text(dv_view_t *);
 void dv_view_set_entry_paraprof_resolution(dv_view_t *);

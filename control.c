@@ -396,13 +396,16 @@ dv_view_get_radix(dv_view_t * V) {
     radix = V->D->power_radix;
     break;
   case DV_LAYOUT_TYPE_DAG_BOX_LINEAR:
+  case DV_LAYOUT_TYPE_TIMELINE:
+  case DV_LAYOUT_TYPE_TIMELINE_VER:
+  case DV_LAYOUT_TYPE_PARAPROF:
     radix = V->D->linear_radix;
     break;
   }
   return radix;
 }
 
-void
+static void
 dv_view_set_radix(dv_view_t * V, double radix) {
   switch (V->S->lt) {
   case DV_LAYOUT_TYPE_DAG_BOX_LOG:
@@ -412,6 +415,9 @@ dv_view_set_radix(dv_view_t * V, double radix) {
     V->D->power_radix = radix;
     break;
   case DV_LAYOUT_TYPE_DAG_BOX_LINEAR:
+  case DV_LAYOUT_TYPE_TIMELINE:
+  case DV_LAYOUT_TYPE_TIMELINE_VER:
+  case DV_LAYOUT_TYPE_PARAPROF:
     V->D->linear_radix = radix;
     break;
   }
