@@ -3125,23 +3125,36 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
     g_signal_connect(G_OBJECT(btn_expand), "clicked", G_CALLBACK(on_toolbar_expand_button_clicked), NULL);
 
     /* Critical path buttons */
-    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), gtk_separator_tool_item_new(), -1);
-    GtkToolItem * btn_cp_compute = gtk_tool_button_new(gtk_label_new("Compute critical paths"), NULL);
-    GtkToolItem * btn_cp_1 = gtk_tool_button_new(gtk_label_new("Critical path 1"), NULL);
-    GtkToolItem * btn_cp_2 = gtk_tool_button_new(gtk_label_new("Critical path 2"), NULL);
-    GtkToolItem * btn_cp_3 = gtk_tool_button_new(gtk_label_new("Critical path 3"), NULL);
-    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_cp_compute, -1);
-    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_cp_1, -1);
-    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_cp_2, -1);
-    gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_cp_3, -1);
-    gtk_widget_set_tooltip_text(GTK_WIDGET(btn_cp_compute), "Compute all critical paths so that they can be shown"); 
-    gtk_widget_set_tooltip_text(GTK_WIDGET(btn_cp_1), "Show critical path of the most work"); 
-    gtk_widget_set_tooltip_text(GTK_WIDGET(btn_cp_2), "Show critical path of last finished child nodes");
-    gtk_widget_set_tooltip_text(GTK_WIDGET(btn_cp_3), "Show critical path of the most weighted work & delay");
-    g_signal_connect(G_OBJECT(btn_cp_compute), "clicked", G_CALLBACK(on_toolbar_critical_path_compute_button_clicked), NULL);
-    g_signal_connect(G_OBJECT(btn_cp_1), "clicked", G_CALLBACK(on_toolbar_critical_path_button_clicked), (void *) 0);  
-    g_signal_connect(G_OBJECT(btn_cp_2), "clicked", G_CALLBACK(on_toolbar_critical_path_button_clicked), (void *) 1);
-    g_signal_connect(G_OBJECT(btn_cp_3), "clicked", G_CALLBACK(on_toolbar_critical_path_button_clicked), (void *) 2);
+    {
+      gtk_toolbar_insert(GTK_TOOLBAR(toolbar), gtk_separator_tool_item_new(), -1);
+      //GtkToolItem * btn_cp_compute = gtk_tool_button_new(gtk_label_new("Compute critical paths"), NULL);
+      GtkToolItem * btn_cp_compute = gtk_menu_tool_button_new(NULL, NULL);
+      gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_cp_compute, -1);
+      gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_cp_compute), "dagviz-critical-path");
+      gtk_widget_set_tooltip_text(GTK_WIDGET(btn_cp_compute), "Compute all critical paths so that they can be shown"); 
+      g_signal_connect(G_OBJECT(btn_cp_compute), "clicked", G_CALLBACK(on_toolbar_critical_path_compute_button_clicked), NULL);
+
+      GtkWidget * menu = gtk_menu_new();
+      gtk_menu_tool_button_set_menu(GTK_MENU_TOOL_BUTTON(btn_cp_compute), menu);
+      GtkWidget * item;
+      
+      item = gtk_menu_item_new_with_label("With largest work");
+      gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
+      gtk_widget_set_tooltip_text(GTK_WIDGET(item), "Show critical path of the most work"); 
+      g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_critical_path_button_clicked), (void *) 0);
+      
+      item = gtk_menu_item_new_with_label("Ready path");
+      gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
+      gtk_widget_set_tooltip_text(GTK_WIDGET(item), "Show critical path of last finished child nodes");
+      g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_critical_path_button_clicked), (void *) 1);
+
+      item = gtk_menu_item_new_with_label("Weighted work & delay");
+      gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
+      gtk_widget_set_tooltip_text(GTK_WIDGET(item), "Show critical path of the most weighted work & delay");
+      g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_critical_path_button_clicked), (void *) 2);
+
+      gtk_widget_show_all(menu);
+    }
     
   }
 

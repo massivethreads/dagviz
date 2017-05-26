@@ -81,6 +81,7 @@ install:
 	cp gui/viewport_division_icon.svg /usr/share/icons/hicolor/scalable/apps/dagviz-viewport-division.svg
 	cp gui/dag_boxes_icon.svg /usr/share/icons/hicolor/scalable/apps/dagviz-dag-boxes.svg
 	cp gui/paraprof_icon.svg /usr/share/icons/hicolor/scalable/apps/dagviz-paraprof.svg
+	cp gui/critical_path_icon.svg /usr/share/icons/hicolor/scalable/apps/dagviz-critical-path.svg
 	gtk-update-icon-cache-3.0 -f -t /usr/share/icons/hicolor/
 	cp dagviz /usr/bin/dagviz
 	cp gui/dagviz.desktop /usr/share/applications/
@@ -92,6 +93,7 @@ uninstall:
 	rm -f /usr/share/icons/hicolor/scalable/apps/dagviz-viewport-division.svg
 	rm -f /usr/share/icons/hicolor/scalable/apps/dagviz-dag-boxes.svg
 	rm -f /usr/share/icons/hicolor/scalable/apps/dagviz-paraprof.svg
+	rm -f /usr/share/icons/hicolor/scalable/apps/dagviz-critical-path.svg
 	gtk-update-icon-cache-3.0 -f -t /usr/share/icons/hicolor/
 	rm -f /usr/bin/dagviz
 	rm -f /usr/share/applications/dagviz.desktop
