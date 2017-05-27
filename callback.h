@@ -46,13 +46,13 @@ on_darea_button_event(_unused_ GtkWidget * widget, GdkEventButton * event, gpoin
   if (CS->verbose_level >= 2) {
     fprintf(stderr, "on_darea_button_event()\n");
   }
-  
-  dv_viewport_t * VP = (dv_viewport_t *) user_data;
 
   /* grab focus */
+  dv_viewport_t * VP = (dv_viewport_t *) user_data;
   dv_change_focused_viewport(VP);
   
   /* node clicking, dag dragging */
+  if (!CS->activeV) return TRUE;
   if ( VP->mV[ CS->activeV - CS->V ] ) {
     dv_do_button_event(CS->activeV, event);
   } else {
@@ -1335,6 +1335,8 @@ on_management_window_viewport_dag_menu_item_toggled(GtkCheckMenuItem * checkmenu
   gboolean active = gtk_check_menu_item_get_active(GTK_CHECK_MENU_ITEM(checkmenuitem));
   if (active) {
     dv_view_add_viewport(V, VP);
+    if (!CS->activeVP || !CS->activeV)
+      dv_change_focused_viewport(VP);
   } else {
     dv_view_remove_viewport(V, VP);
   }

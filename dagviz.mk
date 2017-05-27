@@ -82,6 +82,11 @@ install:
 	cp gui/dag_boxes_icon.svg /usr/share/icons/hicolor/scalable/apps/dagviz-dag-boxes.svg
 	cp gui/paraprof_icon.svg /usr/share/icons/hicolor/scalable/apps/dagviz-paraprof.svg
 	cp gui/critical_path_icon.svg /usr/share/icons/hicolor/scalable/apps/dagviz-critical-path.svg
+	cp gui/compute_critical_path_icon.svg /usr/share/icons/hicolor/scalable/apps/dagviz-critical-path-compute.svg
+	cp gui/view_settings_icon.svg /usr/share/icons/hicolor/scalable/apps/dagviz-view-settings.svg
+	cp gui/plus_button_icon.svg /usr/share/icons/hicolor/scalable/apps/dagviz-plus-button.svg
+	cp gui/minus_button_icon.svg /usr/share/icons/hicolor/scalable/apps/dagviz-minus-button.svg
+	cp gui/fit_button_icon.svg /usr/share/icons/hicolor/scalable/apps/dagviz-fit-button.svg
 	gtk-update-icon-cache-3.0 -f -t /usr/share/icons/hicolor/
 	cp dagviz /usr/bin/dagviz
 	cp gui/dagviz.desktop /usr/share/applications/
@@ -94,6 +99,11 @@ uninstall:
 	rm -f /usr/share/icons/hicolor/scalable/apps/dagviz-dag-boxes.svg
 	rm -f /usr/share/icons/hicolor/scalable/apps/dagviz-paraprof.svg
 	rm -f /usr/share/icons/hicolor/scalable/apps/dagviz-critical-path.svg
+	rm -f /usr/share/icons/hicolor/scalable/apps/dagviz-critical-path-compute.svg
+	rm -f /usr/share/icons/hicolor/scalable/apps/dagviz-view-settings.svg
+	rm -f /usr/share/icons/hicolor/scalable/apps/dagviz-plus-button.svg
+	rm -f /usr/share/icons/hicolor/scalable/apps/dagviz-minus-button.svg
+	rm -f /usr/share/icons/hicolor/scalable/apps/dagviz-fit-button.svg
 	gtk-update-icon-cache-3.0 -f -t /usr/share/icons/hicolor/
 	rm -f /usr/bin/dagviz
 	rm -f /usr/share/applications/dagviz.desktop

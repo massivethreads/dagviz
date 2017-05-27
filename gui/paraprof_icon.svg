@@ -13,7 +13,7 @@
    height="32"
    id="svg2"
    version="1.1"
-   inkscape:version="0.48.4 r9939"
+   inkscape:version="0.91 r13725"
    sodipodi:docname="paraprof_icon.svg">
   <defs
      id="defs4" />
@@ -24,14 +24,14 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="22.4"
-     inkscape:cx="19.697475"
-     inkscape:cy="14.066186"
+     inkscape:zoom="7.919596"
+     inkscape:cx="13.799807"
+     inkscape:cy="-4.3748025"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="true"
-     inkscape:window-width="2048"
-     inkscape:window-height="1128"
+     inkscape:window-width="2560"
+     inkscape:window-height="1416"
      inkscape:window-x="0"
      inkscape:window-y="24"
      inkscape:window-maximized="1">
@@ -61,46 +61,39 @@
      id="layer1"
      transform="translate(0,-1020.3622)">
     <rect
-       style="color:#000000;fill:#ff0000;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
+       style="color:#000000;display:inline;overflow:visible;visibility:visible;fill:#ff0000;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;marker:none;enable-background:accumulate"
        id="rect3129"
-       width="17.958191"
-       height="14.995513"
-       x="2.0130305"
+       width="18.99991"
+       height="16.984251"
+       x="0.97131073"
        y="1034.3805" />
     <rect
-       style="color:#000000;fill:#ff00ff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
-       id="rect3901"
-       width="17.91778"
-       height="5.5137315"
-       x="2.0218444"
-       y="1026.8009" />
-    <rect
-       style="color:#000000;fill:#ff0000;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
+       style="color:#000000;display:inline;overflow:visible;visibility:visible;fill:#ff0000;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;marker:none;enable-background:accumulate"
        id="rect3129-1"
        width="5.2257967"
-       height="9.5556555"
+       height="11.954768"
        x="19.950497"
-       y="1039.8121" />
+       y="1039.4017" />
     <rect
-       style="color:#000000;fill:#ff0000;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
+       style="color:#000000;display:inline;overflow:visible;visibility:visible;fill:#ff0000;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;marker:none;enable-background:accumulate"
        id="rect3129-1-0"
-       width="5.3039217"
-       height="4.9686017"
+       width="5.8089981"
+       height="6.9573398"
        x="25.18264"
        y="1044.3881" />
     <rect
-       style="color:#000000;fill:#0000ff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
+       style="color:#000000;display:inline;overflow:visible;visibility:visible;fill:#0000ff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;marker:none;enable-background:accumulate"
        id="rect3901-5"
-       width="17.933868"
-       height="2.0244832"
-       x="2.0148182"
-       y="1032.3022" />
+       width="18.944021"
+       height="9.9649324"
+       x="1.0046656"
+       y="1024.3618" />
     <rect
-       style="color:#000000;fill:#00ffff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;marker:none;visibility:visible;display:inline;overflow:visible;enable-background:accumulate"
-       id="rect3901-5-4"
-       width="17.933868"
-       height="0.7744832"
-       x="1.9969611"
-       y="1026.0344" />
+       y="1021.3663"
+       x="1.0046656"
+       height="3.3577888"
+       width="14.993129"
+       id="rect4140"
+       style="color:#000000;display:inline;overflow:visible;visibility:visible;fill:#0000ff;fill-opacity:1;fill-rule:nonzero;stroke:none;stroke-width:1;marker:none;enable-background:accumulate" />
   </g>
 </svg>
