@@ -116,7 +116,7 @@ main(int argc, char * argv[]) {
   
   /* Open GUI */
   dv_open_gui(argc, argv, NULL);
-  dv_switch_focused_viewport(); // darea can grab focus only when it is visible already
+  //dv_switch_focused_viewport(); // darea can grab focus only when it is visible already
   gtk_main();
   return 1;
 }

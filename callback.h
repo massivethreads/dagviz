@@ -1082,6 +1082,10 @@ on_menubar_change_focused_view_activated(_unused_ GtkMenuItem * menuitem, _unuse
 
 G_MODULE_EXPORT void
 on_menubar_expand_dag_activated(_unused_ GtkMenuItem * menuitem, _unused_ gpointer user_data) {
+  if (!CS->activeVP) {
+    fprintf(stderr, "Warning (__FILENAME__:__LINE__): There is no active VP to expand!\n");
+    return;
+  }
   dv_viewport_t * VP = CS->activeVP;
   int action[CS->nV];
   int i;
