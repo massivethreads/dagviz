@@ -940,6 +940,12 @@ dv_export_viewport() {
   fprintf(stdout, "Exported viewport %ld to 00dv.svg\n", VP - CS->VP);
   cairo_surface_destroy(surface);
 
+  /* PDF */
+  surface = cairo_pdf_surface_create("00dv.pdf", VP->vpw, VP->vph);
+  dv_viewport_export_to_surface(VP, surface);
+  fprintf(stdout, "Exported viewport %ld to 00dv.pdf\n", VP - CS->VP);
+  cairo_surface_destroy(surface);
+
   return;  
 }
 
@@ -1029,6 +1035,28 @@ dv_export_viewports_to_svg_r(dv_viewport_t * VP, cairo_t * cr, double x, double 
   }
 }
 
+static void
+dv_export_viewports_to_pdf_r(dv_viewport_t * VP, cairo_t * cr, double x, double y) {
+  if (!VP) {
+    return;
+  } else if (!VP->split) {
+    cairo_save(cr);
+    cairo_translate(cr, x, y);
+    dv_viewport_draw(VP, cr, 0);
+    cairo_restore(cr);
+  } else {
+    double w1, h1;
+    dv_export_viewports_get_size_r(VP->vp1, &w1, &h1);
+    if (VP->orientation == GTK_ORIENTATION_HORIZONTAL) {
+      dv_export_viewports_to_pdf_r(VP->vp1, cr, x, y);
+      dv_export_viewports_to_pdf_r(VP->vp2, cr, x + w1, y);
+    } else {
+      dv_export_viewports_to_pdf_r(VP->vp1, cr, x, y);
+      dv_export_viewports_to_pdf_r(VP->vp2, cr, x, y + h1);
+    }
+  }
+}
+
 void
 dv_export_all_viewports() {
   double w, h;
@@ -1047,6 +1075,7 @@ dv_export_all_viewports() {
   gdk_rgba_parse(white, "white");
 
   /* EPS */
+  /*
   surface = cairo_ps_surface_create("00dv.eps", w, h);
   cairo_ps_surface_set_eps(surface, TRUE);
   cr = cairo_create(surface);
@@ -1057,6 +1086,7 @@ dv_export_all_viewports() {
   fprintf(stdout, "Exported all viewports to 00dv.eps\n");
   cairo_destroy(cr);
   cairo_surface_destroy(surface);
+  */
   
   /* SVG */
   surface = cairo_svg_surface_create("00dv.svg", w, h);
@@ -1066,6 +1096,17 @@ dv_export_all_viewports() {
   cairo_paint(cr);
   dv_export_viewports_to_svg_r(CS->VP, cr, 0.0, 0.0);
   fprintf(stdout, "Exported all viewports to 00dv.svg\n");
+  cairo_destroy(cr);
+  cairo_surface_destroy(surface);
+  
+  /* PDF */
+  surface = cairo_pdf_surface_create("00dv.pdf", w, h);
+  cr = cairo_create(surface);
+  // Whiten background
+  cairo_set_source_rgba(cr, white->red, white->green, white->blue, white->alpha);
+  cairo_paint(cr);
+  dv_export_viewports_to_pdf_r(CS->VP, cr, 0.0, 0.0);
+  fprintf(stdout, "Exported all viewports to 00dv.pdf\n");
   cairo_destroy(cr);
   cairo_surface_destroy(surface);
   
