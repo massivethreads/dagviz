@@ -14,11 +14,12 @@ DV_SRC = read.c layout.c draw.c utils.c print.c view_dag.c view_dag_box.c view_t
 BUILT_SRC = resources.c
 DV_OBJS = $(BUILT_SRC:.c=.o) $(DV_SRC:.c=.o)
 
-DS_HDR = model.h dagstat.h
-DS_SRC = model.c
+DSv1_HDR = dagmodel.h dagstat_v1.h
+DS_HDR = dagmodel.h dagstat.h
+DS_SRC = dagmodel.c
 DS_OBJS = $(DS_SRC:.c=.o)
 
-EXE_SRC = dagviz.c dagprof.c dagstat.c
+EXE_SRC = dagviz.c dagprof.c dagstat_v1.c dagstat.c
 OBJS = $(DV_OBJS) $(DS_OBJS) $(EXE_SRC:.c=.o)
 
 
@@ -50,6 +51,9 @@ dagviz: dagviz.o $(DV_OBJS)
 dagprof: dagprof.o $(DV_OBJS)
 	$(CC) -o $@ dagprof.o $(DV_OBJS) $(GTK_LDFLAGS) $(LDFLAGS)
 
+dagstat_v1: dagstat_v1.o $(DS_OBJS)
+	$(CC) -o $@ dagstat_v1.o $(DS_OBJS) $(LDFLAGS)
+
 dagstat: dagstat.o $(DS_OBJS)
 	$(CC) -o $@ dagstat.o $(DS_OBJS) $(LDFLAGS)
 
@@ -63,6 +67,9 @@ dagprof.o: dagprof.c $(DV_HDR)
 $(DV_OBJS): %.o: %.c $(DV_HDR)
 	$(CC) -c -o $@ $(GTK_CFLAGS) $(CFLAGS) $<
 
+
+dagstat_v1.o: dagstat_v1.c $(DSv1_HDR)
+	$(CC) -c -o $@ $(CFLAGS) $<
 
 dagstat.o: dagstat.c $(DS_HDR)
 	$(CC) -c -o $@ $(CFLAGS) $<
