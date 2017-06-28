@@ -1,0 +1,810 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <math.h>
+#include <assert.h>
+#include <errno.h>
+
+#include <fcntl.h>
+#include <sys/mman.h>
+#include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/time.h>
+#include <unistd.h>
+#include <signal.h>
+#include <ctype.h> /* for isdigit() */
+
+#define DAG_RECORDER 2
+#include <dag_recorder_impl.h>
+
+#define GtkWidget void
+
+#define _unused_ __attribute__((unused))
+#define _static_unused_ static __attribute__((unused))
+
+#define DM_MAX_DAG_FILE 1000
+#define DM_MAX_DAG 1000
+#define DM_MAX_VIEW 1000
+
+#define DM_NUM_LAYOUT_TYPES 8
+#define DM_LAYOUT_TYPE_DAG 0
+#define DM_LAYOUT_TYPE_DAG_BOX_LOG 1
+#define DM_LAYOUT_TYPE_DAG_BOX_POWER 2
+#define DM_LAYOUT_TYPE_DAG_BOX_LINEAR 3
+#define DM_LAYOUT_TYPE_TIMELINE 4
+#define DM_LAYOUT_TYPE_TIMELINE_VER 5
+#define DM_LAYOUT_TYPE_PARAPROF 6
+#define DM_LAYOUT_TYPE_CRITICAL_PATH 7
+#define DM_LAYOUT_TYPE_INIT 0 /* cannot be paraprof because it needs to check existence of H structure */
+
+#define DM_NUM_CRITICAL_PATHS 3
+#define DM_CRITICAL_PATH_0 0 /* most work */
+#define DM_CRITICAL_PATH_1 1 /* last finished tails */
+#define DM_CRITICAL_PATH_2 2 /* most problematic delay */
+#define DM_CRITICAL_PATH_0_COLOR "red"
+#define DM_CRITICAL_PATH_1_COLOR "green"
+#define DM_CRITICAL_PATH_2_COLOR "blue"
+
+#define DM_DEFAULT_PAGE_SIZE 1 << 20 // 1 MB
+#define DM_DEFAULT_PAGE_MIN_NODES 2
+#define DM_DEFAULT_PAGE_MIN_ENTRIES 2
+
+#define DM_NODE_FLAG_NONE         0        /* none */
+#define DM_NODE_FLAG_SET          1        /* none - set */
+#define DM_NODE_FLAG_UNION        (1 << 1) /* single - union */
+#define DM_NODE_FLAG_INNER_LOADED (1 << 2) /* no inner - inner loaded */
+#define DM_NODE_FLAG_SHRINKED     (1 << 3) /* expanded - shrinked */
+#define DM_NODE_FLAG_EXPANDING    (1 << 4) /* expanding */
+#define DM_NODE_FLAG_SHRINKING    (1 << 5) /* shrinking */
+
+#define DM_OK 0
+#define DM_ERROR_OONP 1 /* out of node pool */
+
+#define DM_STACK_CELL_SZ 1
+#define DM_LLIST_CELL_SZ 1
+
+#define DM_NODE_FLAG_CRITICAL_PATH_0 (1 << 6) /* node is on critical path of work */
+#define DM_NODE_FLAG_CRITICAL_PATH_1 (1 << 7) /* node is on critical path of work & delay */
+#define DM_NODE_FLAG_CRITICAL_PATH_2 (1 << 8) /* node is on critical path of weighted work & delay */
+
+#define DM_RADIX_LOG 1.8
+#define DM_RADIX_POWER 0.42
+#define DM_RADIX_LINEAR 100000 //100000
+
+#define DM_PARAPROF_MIN_ENTRY_INTERVAL 2000
+
+
+/* Stack & linked list */
+
+typedef struct dm_stack_cell {
+  void * item;
+  struct dm_stack_cell * next;
+} dm_stack_cell_t;
+
+typedef struct dm_stack {
+  dm_stack_cell_t * freelist;
+  dm_stack_cell_t * top;
+} dm_stack_t;
+
+typedef struct dm_llist_cell {
+  void * item;
+  struct dm_llist_cell * next;
+} dm_llist_cell_t;
+
+typedef struct dm_llist {
+  int sz;
+  dm_llist_cell_t * top;
+} dm_llist_t;
+
+
+/* DAG structures */
+
+typedef struct dm_pidag {
+  char * fn; /* original dag file name string */
+  char * filename; /* dag file name */
+  char * short_filename; /* short dag file name excluding dir and extension */
+  long n;			/* length of T */
+  long m;			/* length of E */
+  unsigned long long start_clock;             /* absolute clock time of start */
+  long num_workers;		/* number of workers */
+  dr_pi_dag_node * T;		/* all nodes in a contiguous array */
+  dr_pi_dag_edge * E;		/* all edges in a contiguous array */
+  dr_pi_string_table * S;
+  //struct stat stat[1]; /* file stat structure */
+  dm_llist_t itl[1]; /* list of pii's of nodes that have info tag */
+  dr_pi_dag * G;
+  long sz;
+
+  /* DAG management window */
+  char * name;
+  GtkWidget * mini_frame;
+} dm_pidag_t;
+
+typedef struct dm_node_coordinate {
+  double x, y; /* coordinates */
+  double xp, xpre; /* coordinates based on parent, pre */
+  double lw, rw, dw; /* left/right/down widths */
+  double link_lw, link_rw, link_dw;
+} dm_node_coordinate_t;
+
+typedef struct dm_critical_path_stat {
+  double work;
+  double delay;
+  double sched_delay;
+  double sched_delays[dr_dag_edge_kind_max];
+  double sched_delay_nowork; /* total no-work during scheduler delays */
+  double sched_delay_delay; /* total delay during scheduler delays */
+} dm_critical_path_stat_t;
+
+typedef struct dm_dag_node {
+  /* task-parallel data */
+  long pii;
+
+  /* state data */  
+  int f[1]; /* node flags, 0x0: single, 0x01: union/collapsed, 0x11: union/expanded */
+  int d; /* depth */
+  
+  /* linking structure */
+  struct dm_dag_node * parent;
+  struct dm_dag_node * pre;
+  struct dm_dag_node * next; /* is used for linking in pool before node is really initialized */
+  struct dm_dag_node * spawn;
+  struct dm_dag_node * head; /* inner head node */
+  struct dm_dag_node * tail; /* inner tail node */
+
+  /* layout */
+  dm_node_coordinate_t c[DM_NUM_LAYOUT_TYPES]; /* 0:dag, 1:dagbox, 2:timeline_ver, 3:timeline, 4:paraprof */
+
+  /* animation */
+  double started; /* started time of animation */
+
+  long long r; /* remarks */
+  long long link_r; /* summed remarks with linked paths */
+
+  char highlight; /* to highlight the node when drawing */
+
+  /* statistics of inner subgraphs */
+  dm_critical_path_stat_t cpss[DM_NUM_CRITICAL_PATHS];
+} dm_dag_node_t;
+
+typedef struct dm_histogram dm_histogram_t;
+
+typedef struct dm_dag {
+  char * name;
+  char * name_on_graph;
+  /* PIDAG */
+  dm_pidag_t * P;
+
+  /* DAG's skeleton */
+  //dm_dag_node_t * T;  /* array of all nodes */
+  //char * To;
+  //long Tsz;
+  //long Tn;
+
+  /* DAG */
+  dm_dag_node_t * rt;  /* root task */
+  int dmax; /* depth max */
+  double bt; /* begin time */
+  double et; /* end time */
+  long n;
+
+  /* expansion state */
+  int cur_d; /* current depth */
+  int cur_d_ex; /* current depth of extensible union nodes */
+  int collapsing_d; /* current depth excluding children of collapsing nodes */
+
+  /* layout parameters */
+  //int sdt; /* scale down type: 0 (log), 1 (power), 2 (linear) */
+  double log_radix;
+  double power_radix;
+  double linear_radix;
+  int frombt;
+  double radius;
+  int mV[DM_MAX_VIEW]; /* mark Vs that are bound to this D */
+
+  /* other */
+  dm_llist_t itl[1]; /* list of nodes that have info tag */
+  dm_histogram_t * H; /* structure for the paraprof view (5th) */
+
+  /* DAG management window */
+  GtkWidget * mini_frame;
+  GtkWidget * views_box;
+  GtkWidget * status_label;
+
+  int draw_with_current_time;
+  double current_time;
+  double time_step;
+  int show_critical_paths[DM_NUM_CRITICAL_PATHS];
+  int critical_paths_computed;
+} dm_dag_t;
+
+
+/* Histogram structures */
+
+typedef enum {
+  dm_histogram_layer_running,
+  dm_histogram_layer_ready_end,
+  dm_histogram_layer_ready_create,
+  dm_histogram_layer_ready_create_cont,
+  dm_histogram_layer_ready_wait_cont,
+  dm_histogram_layer_ready_other_cont,
+  dm_histogram_layer_max,
+} dm_histogram_layer_t;
+
+typedef struct dm_histogram_entry {
+  double t;
+  struct dm_histogram_entry * next;
+  double h[dm_histogram_layer_max];
+  double value_1;
+  double cumul_value_1;
+  double value_2;
+  double cumul_value_2;
+  double value_3;
+  double cumul_value_3;
+} dm_histogram_entry_t;
+
+typedef struct dm_histogram {
+  dm_histogram_entry_t * head_e;
+  dm_histogram_entry_t * tail_e;
+  long n_e;
+  dm_dag_t * D;
+  double work, delay, nowork;
+  double min_entry_interval;
+  double unit_thick;
+  dm_histogram_entry_t * tallest_e;
+  double max_h;
+} dm_histogram_t;
+
+
+/* Memory pool structures */
+
+typedef struct dm_histogram_entry_page {
+  struct dm_histogram_entry_page * next;
+  long sz;
+  dm_histogram_entry_t entries[DM_DEFAULT_PAGE_MIN_ENTRIES];
+} dm_histogram_entry_page_t;
+
+typedef struct dm_histogram_entry_pool {
+  dm_histogram_entry_t * head;
+  dm_histogram_entry_t * tail;
+  dm_histogram_entry_page_t * pages;
+  long sz; /* size in bytes */
+  long N;  /* total number of entries */
+  long n;  /* number of free entries */
+} dm_histogram_entry_pool_t;
+
+
+typedef struct dm_dag_node_page {
+  struct dm_dag_node_page * next;
+  long sz;
+  dm_dag_node_t nodes[DM_DEFAULT_PAGE_MIN_NODES];
+} dm_dag_node_page_t;
+
+typedef struct dm_dag_node_pool {
+  dm_dag_node_t * head;
+  dm_dag_node_t * tail;
+  dm_dag_node_page_t * pages;
+  long sz; /* size in bytes */
+  long N;  /* total number of nodes */
+  long n;  /* number of free nodes */
+} dm_dag_node_pool_t;
+
+
+/* Global state structure */
+typedef long long dm_clock_t;
+
+typedef struct dm_stat_breakdown_graph {
+  int checked_D[DM_MAX_DAG]; /* show or not show */
+  char * fn;
+  dm_clock_t work[DM_MAX_DAG];
+  dm_clock_t delay[DM_MAX_DAG];
+  dm_clock_t nowork[DM_MAX_DAG];
+  char * fn_2;
+  int checked_cp[DM_NUM_CRITICAL_PATHS];
+} dm_stat_breakdown_graph_t;
+
+/* runtime-adjustable options */
+typedef struct dm_options {
+  double radius; /* node radius */
+} dm_options_t;
+
+/* default values for runtime-adjustable options */
+_static_unused_ dm_options_t dm_options_default_values = {
+  20.0, /* radius */
+};
+
+typedef struct dm_global_state {
+  /* DAG */
+  dm_pidag_t P[DM_MAX_DAG_FILE];
+  dm_dag_t D[DM_MAX_DAG];
+  int nP;
+  int nD;
+  dm_llist_cell_t * FL;
+  int err;
+  
+  /* Memory Pools */
+  dm_dag_node_pool_t pool[1];
+  dm_histogram_entry_pool_t epool[1];
+
+  /* Statistics */
+  dm_stat_breakdown_graph_t SBG[1];
+
+  int verbose_level;
+
+  int oncp_flags[DM_NUM_CRITICAL_PATHS];
+
+  dm_options_t opts;
+} dm_global_state_t;
+
+extern dm_global_state_t DMG[]; /* global common state */
+
+
+/* PIDAG */
+dm_pidag_t *     dm_pidag_read_new_file(char *);
+dr_pi_dag_node * dm_pidag_get_node_by_id(dm_pidag_t *, long);
+dr_pi_dag_node * dm_pidag_get_node_by_dag_node(dm_pidag_t *, dm_dag_node_t *);
+
+/* DAG */
+void dm_dag_node_init(dm_dag_node_t *, dm_dag_node_t *, long);
+int dm_dag_node_set(dm_dag_t *, dm_dag_node_t *);
+int dm_dag_build_node_inner(dm_dag_t *, dm_dag_node_t *);
+int dm_dag_collapse_node_inner(dm_dag_t *, dm_dag_node_t *);
+void dm_dag_clear_shrinked_nodes(dm_dag_t *);
+void dm_dag_init(dm_dag_t *, dm_pidag_t *);
+dm_dag_t * dm_dag_create_new_with_pidag(dm_pidag_t *);
+double dm_dag_get_radix(dm_dag_t *);
+void dm_dag_set_radix(dm_dag_t *, double);
+
+dm_dag_node_t * dm_dag_node_traverse_children(dm_dag_node_t *, dm_dag_node_t *);
+dm_dag_node_t * dm_dag_node_traverse_children_inorder(dm_dag_node_t *, dm_dag_node_t *);
+dm_dag_node_t * dm_dag_node_traverse_tails(dm_dag_node_t *, dm_dag_node_t *);
+dm_dag_node_t * dm_dag_node_traverse_nexts(dm_dag_node_t *, dm_dag_node_t *);
+
+int dm_dag_node_count_nexts(dm_dag_node_t *);
+dm_dag_node_t * dm_dag_node_get_next(dm_dag_node_t *);
+dm_dag_node_t * dm_dag_node_get_single_head(dm_dag_node_t *);
+dm_dag_node_t * dm_dag_node_get_single_last(dm_dag_node_t *);
+
+/* Memory pools */
+void dm_dag_node_pool_init(dm_dag_node_pool_t *);
+dm_dag_node_t * dm_dag_node_pool_pop(dm_dag_node_pool_t *);
+void dm_dag_node_pool_push(dm_dag_node_pool_t *, dm_dag_node_t *);
+dm_dag_node_t * dm_dag_node_pool_pop_contiguous(dm_dag_node_pool_t *, long);
+
+void dm_histogram_entry_pool_init(dm_histogram_entry_pool_t *);
+dm_histogram_entry_t * dm_histogram_entry_pool_pop(dm_histogram_entry_pool_t *);
+void dm_histogram_entry_pool_push(dm_histogram_entry_pool_t *, dm_histogram_entry_t *);
+
+/* Basic data structures */
+void dm_stack_init(dm_stack_t *);
+void dm_stack_fini(dm_stack_t *);
+void dm_stack_push(dm_stack_t *, void *);
+void * dm_stack_pop(dm_stack_t *);
+
+void dm_llist_init(dm_llist_t *);
+void dm_llist_fini(dm_llist_t *);
+dm_llist_t * dm_llist_create();
+void dm_llist_destroy(dm_llist_t *);
+int dm_llist_is_empty(dm_llist_t *);
+void dm_llist_add(dm_llist_t *, void *);
+void * dm_llist_pop(dm_llist_t *);
+void * dm_llist_get(dm_llist_t *, int);
+void * dm_llist_get_top(dm_llist_t *);
+void * dm_llist_remove(dm_llist_t *, void *);
+int dm_llist_has(dm_llist_t *, void *);
+void * dm_llist_iterate_next(dm_llist_t *, void *);
+int dm_llist_size(dm_llist_t *);
+
+/* Histogram */
+void dm_histogram_init(dm_histogram_t *);
+double dm_histogram_get_max_height(dm_histogram_t *);
+dm_histogram_entry_t * dm_histogram_insert_entry(dm_histogram_t *, double, dm_histogram_entry_t *);
+void dm_histogram_add_node(dm_histogram_t *, dm_dag_node_t *, dm_histogram_entry_t **);
+void dm_histogram_remove_node(dm_histogram_t *, dm_dag_node_t *, dm_histogram_entry_t **);
+void dm_histogram_clean(dm_histogram_t *);
+void dm_histogram_fini(dm_histogram_t *);
+void dm_histogram_reset(dm_histogram_t *);
+void dm_histogram_build_all(dm_histogram_t *);
+void dm_histogram_compute_significant_intervals(dm_histogram_t *);
+
+/* Compute */
+char * dm_filename_get_short_name(char *);
+void dm_global_state_init();
+void dm_dag_build_inner_all(dm_dag_t *);
+void dm_dag_compute_critical_paths(dm_dag_t *);
+
+int dm_get_dag_id(char *);
+dm_dag_t * dm_compute_dag_file(char *);
+
+
+
+
+/***** Utilities *****/
+
+_static_unused_ int
+dm_check_(int condition, const char * condition_s, 
+                     const char * __file__, int __line__, 
+                     const char * func) {
+  if (!condition) {
+    fprintf(stderr, "%s:%d:%s: check failed : %s\n", 
+            __file__, __line__, func, condition_s);
+    exit(1);
+  }
+  return 1;
+}
+
+#define dm_check(x) (dm_check_(((x)?1:0), #x, __FILE__, __LINE__, __func__))
+
+_static_unused_ void *
+dm_malloc(size_t sz) {
+  void * a = malloc(sz);
+  dm_check(a);
+  return a;
+}
+
+_static_unused_ void
+dm_free(void * a, size_t sz) {
+  if (a) {
+    free(a);
+  } else {
+    dm_check(sz == 0);
+  }
+}
+
+/* Node flag */
+
+_static_unused_ void
+dm_node_flag_init(int * f) {
+  *f = DM_NODE_FLAG_NONE;
+}
+
+_static_unused_ int
+dm_node_flag_check(int * f, int t) {
+  int ret = ((*f & t) == t);
+  return ret;
+}
+
+_static_unused_ void
+dm_node_flag_set(int * f, int t) {
+  if (!dm_node_flag_check(f,t))
+    *f += t;
+}
+
+_static_unused_ void
+dm_node_flag_remove(int * f, int t) {
+  if (dm_node_flag_check(f,t))
+    *f -= t;
+}
+
+_static_unused_ int
+dm_is_set(dm_dag_node_t * node) {
+  if (!node) return 0;
+  return dm_node_flag_check(node->f, DM_NODE_FLAG_SET);
+}
+
+_static_unused_ int
+dm_is_union(dm_dag_node_t * node) {
+  if (!node) return 0;
+  return dm_node_flag_check(node->f, DM_NODE_FLAG_UNION);
+}
+
+_static_unused_ int
+dm_is_inner_loaded(dm_dag_node_t * node) {
+  if (!node) return 0;
+  return dm_node_flag_check(node->f, DM_NODE_FLAG_INNER_LOADED);
+}
+
+_static_unused_ int
+dm_is_shrinked(dm_dag_node_t * node) {
+  if (!node) return 0;
+  return dm_node_flag_check(node->f, DM_NODE_FLAG_SHRINKED);
+}
+
+_static_unused_ int
+dm_is_expanded(dm_dag_node_t * node) {
+  if (!node) return 0;
+  return !dm_is_shrinked(node);
+}
+
+_static_unused_ int
+dm_is_expanding(dm_dag_node_t * node) {
+  if (!node) return 0;
+  return dm_node_flag_check(node->f, DM_NODE_FLAG_EXPANDING);
+}
+
+_static_unused_ int
+dm_is_shrinking(dm_dag_node_t * node) {
+  if (!node) return 0;
+  return dm_node_flag_check(node->f, DM_NODE_FLAG_SHRINKING);
+}
+
+_static_unused_ int
+dm_is_single(dm_dag_node_t * node) {
+  if (!node) return 0;
+  if (!dm_is_set(node)
+      || !dm_is_union(node) || !dm_is_inner_loaded(node)
+      || (dm_is_shrinked(node) && !dm_is_expanding(node)))
+    return 1;
+  
+  return 0;
+}
+
+_static_unused_ int
+dm_is_visible(dm_dag_node_t * node) {
+  if (!node) return 0;
+  dm_check(dm_is_set(node));
+  if (!node->parent || dm_is_expanded(node->parent)) {
+    if (!dm_is_union(node) || !dm_is_inner_loaded(node) || dm_is_shrinked(node))
+      return 1;
+  }
+  return 0;
+}
+
+_static_unused_ int
+dm_is_inward_callable(dm_dag_node_t * node) {
+  if (!node) return 0;
+  dm_check(dm_is_set(node));
+  if (dm_is_union(node) && dm_is_inner_loaded(node)
+      && ( dm_is_expanded(node) || dm_is_expanding(node) ))
+    return 1;
+  return 0;
+}
+
+_static_unused_ int
+dm_log_set_error(int err) {
+  DMG->err = err;
+  fprintf(stderr, "DMG->err = %d\n", err);
+  return err;
+}
+
+/* Environment variables */
+
+_static_unused_ int
+dm_get_env_int(char * s, int * t) {
+  char * v = getenv(s);
+  if (v) {
+    *t = atoi(v);
+    return 1;
+  }
+  return 0;
+}
+
+_static_unused_ int
+dm_get_env_long(char * s, long * t) {
+  char * v = getenv(s);
+  if (v) {
+    *t = atol(v);
+    return 1;
+  }
+  return 0;
+}
+
+_static_unused_ int
+dm_get_env_string(char * s, char ** t) {
+  char * v = getenv(s);
+  if (v) {
+    *t = strdup(v);
+    return 1;
+  }
+  return 0;
+}
+
+_static_unused_ double
+dm_get_time() {
+  /* millisecond */
+  struct timeval tv;
+  gettimeofday(&tv, NULL);
+  return tv.tv_sec * 1.0E3 + ((double)tv.tv_usec) / 1.0E3;
+}
+
+/***** end of Utilities *****/
+
+/***** Chronological Traverser *****/
+
+typedef struct {
+  void (*process_event)(chronological_traverser * ct, dr_event evt);
+  dr_pi_dag * G;
+  dr_clock_t cum_running;
+  dr_clock_t cum_delay;
+  dr_clock_t cum_no_work;
+  dr_clock_t t;
+  long n_running;
+  long n_ready;
+  long n_workers;
+  dr_clock_t total_elapsed;
+  dr_clock_t total_t_1;
+  long * edge_counts;		/* kind,u,v */
+} dr_basic_stat;
+
+_static_unused_ void 
+dr_basic_stat_process_event(chronological_traverser * ct, 
+			    dr_event evt);
+
+_static_unused_ void
+dr_calc_inner_delay(dr_basic_stat * bs, dr_pi_dag * G) {
+  long n = G->n;
+  long i;
+  dr_clock_t total_elapsed = 0;
+  dr_clock_t total_t_1 = 0;
+  dr_pi_dag_node * T = G->T;
+  long n_negative_inner_delays = 0;
+  for (i = 0; i < n; i++) {
+    dr_pi_dag_node * t = &T[i];
+    dr_clock_t t_1 = t->info.t_1;
+    dr_clock_t elapsed = t->info.end.t - t->info.start.t;
+    if (t->info.kind < dr_dag_node_kind_section
+	|| t->subgraphs_begin_offset == t->subgraphs_end_offset) {
+      total_elapsed += elapsed;
+      total_t_1 += t_1;
+      if (elapsed < t_1 && t->info.worker != -1) {
+	if (1 || (n_negative_inner_delays == 0)) {
+	  fprintf(stderr,
+		  "warning: node %ld has negative"
+		  " inner delay (worker=%d, start=%llu, end=%llu,"
+		  " t_1=%llu, end - start - t_1 = -%llu\n",
+		  i, t->info.worker,
+		  t->info.start.t, t->info.end.t, t->info.t_1,
+		  t_1 - elapsed);
+	}
+	n_negative_inner_delays++;
+      }
+    }
+  }
+  if (n_negative_inner_delays > 0) {
+    fprintf(stderr,
+	    "warning: there are %ld nodes that have negative delays",
+	    n_negative_inner_delays);
+  }
+  bs->total_elapsed = total_elapsed;
+  bs->total_t_1 = total_t_1;
+}
+
+_static_unused_ void
+dr_calc_edges(dr_basic_stat * bs, dr_pi_dag * G) {
+  long n = G->n;
+  long m = G->m;
+  long nw = G->num_workers;
+  /* C : a three dimensional array
+     C(kind,i,j) is the number of type k edges from 
+     worker i to worker j.
+     we may counter nodes with worker id = -1
+     (executed by more than one workers);
+     we use worker id = nw for such entries
+  */
+  long * C_ = (long *)dr_malloc(sizeof(long) * dr_dag_edge_kind_max * (nw + 1) * (nw + 1));
+#define EDGE_COUNTS(k,i,j) C_[k*(nw+1)*(nw+1)+i*(nw+1)+j]
+  dr_dag_edge_kind_t k;
+  long i, j;
+  for (k = 0; k < dr_dag_edge_kind_max; k++) {
+    for (i = 0; i < nw + 1; i++) {
+      for (j = 0; j < nw + 1; j++) {
+	EDGE_COUNTS(k,i,j) = 0;
+      }
+    }
+  }
+  for (i = 0; i < n; i++) {
+    dr_pi_dag_node * t = &G->T[i];
+    if (t->info.kind >= dr_dag_node_kind_section
+	&& t->subgraphs_begin_offset == t->subgraphs_end_offset) {
+      for (k = 0; k < dr_dag_edge_kind_max; k++) {
+	int w = t->info.worker;
+	if (w == -1) {
+#if 0
+	  fprintf(stderr, 
+		  "warning: node %ld (kind=%s) has worker = %d)\n",
+		  i, dr_dag_node_kind_to_str(t->info.kind), w);
+#endif
+	  EDGE_COUNTS(k, nw, nw) += t->info.logical_edge_counts[k];
+	} else {
+	  (void)dr_check(w >= 0);
+	  (void)dr_check(w < nw);
+	  EDGE_COUNTS(k, w, w) += t->info.logical_edge_counts[k];
+	}
+      }
+    }    
+  }
+  for (i = 0; i < m; i++) {
+    dr_pi_dag_edge * e = &G->E[i];
+    int uw = G->T[e->u].info.worker;
+    int vw = G->T[e->v].info.worker;
+    if (uw == -1) {
+#if 0
+      fprintf(stderr, "warning: source node (%ld) of edge %ld %ld (kind=%s) -> %ld (kind=%s) has worker = %d\n",
+	      e->u,
+	      i, 
+	      e->u, dr_dag_node_kind_to_str(G->T[e->u].info.kind), 
+	      e->v, dr_dag_node_kind_to_str(G->T[e->v].info.kind), uw);
+#endif
+      uw = nw;
+    }
+    if (vw == -1) {
+#if 0
+      fprintf(stderr, "warning: dest node (%ld) of edge %ld %ld (kind=%s) -> %ld (kind=%s) has worker = %d\n",
+	      e->v,
+	      i, 
+	      e->u, dr_dag_node_kind_to_str(G->T[e->u].info.kind), 
+	      e->v, dr_dag_node_kind_to_str(G->T[e->v].info.kind), vw);
+#endif
+      vw = nw;
+    }
+    (void)dr_check(uw >= 0);
+    (void)dr_check(uw <= nw);
+    (void)dr_check(vw >= 0);
+    (void)dr_check(vw <= nw);
+    EDGE_COUNTS(e->kind, uw, vw)++;
+  }
+#undef EDGE_COUNTS
+  bs->edge_counts = C_;
+}
+
+_static_unused_ void 
+dr_basic_stat_init(dr_basic_stat * bs, dr_pi_dag * G) {
+  bs->process_event = dr_basic_stat_process_event;
+  bs->G = G;
+  bs->n_running = 0;
+  bs->n_ready = 0;
+  bs->n_workers = G->num_workers;
+  bs->cum_running = 0;		/* cumulative running cpu time */
+  bs->cum_delay = 0;		/* cumulative delay cpu time */
+  bs->cum_no_work = 0;		/* cumulative no_work cpu time */
+  bs->t = 0;			/* time of the last event */
+}
+
+_static_unused_ void 
+dr_basic_stat_process_event(chronological_traverser * ct, 
+			    dr_event evt) {
+  dr_basic_stat * bs = (dr_basic_stat *)ct;
+  dr_clock_t dt = evt.t - bs->t;
+
+  int n_running = bs->n_running;
+  int n_delay, n_no_work;
+  if (bs->n_running >= bs->n_workers) {
+    /* great, all workers are running */
+    n_delay = 0;
+    n_no_work = 0;
+    if (bs->n_running > bs->n_workers) {
+      fprintf(stderr, 
+	      "warning: n_running = %ld"
+	      " > n_workers = %ld (clock skew?)\n",
+	      bs->n_running, bs->n_workers);
+    }
+    n_delay = 0;
+    n_no_work = 0;
+  } else if (bs->n_running + bs->n_ready <= bs->n_workers) {
+    /* there were enough workers to run ALL ready tasks */
+    n_delay = bs->n_ready;
+    n_no_work = bs->n_workers - (bs->n_running + bs->n_ready);
+  } else {
+    n_delay = bs->n_workers - bs->n_running;
+    n_no_work = 0;
+  }
+  bs->cum_running += n_running * dt;
+  bs->cum_delay   += n_delay * dt;
+  bs->cum_no_work += n_no_work * dt;
+
+  switch (evt.kind) {
+  case dr_event_kind_ready: {
+    bs->n_ready++;
+    break;
+  }
+  case dr_event_kind_start: {
+    bs->n_running++;
+    break;
+  }
+  case dr_event_kind_last_start: {
+    bs->n_ready--;
+    break;
+  }
+  case dr_event_kind_end: {
+    bs->n_running--;
+    break;
+  }
+  default:
+    assert(0);
+    break;
+  }
+
+  bs->t = evt.t;
+}
+
+/***** Chronological Traverser *****/
