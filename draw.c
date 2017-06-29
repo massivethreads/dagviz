@@ -161,13 +161,14 @@ cairo_pattern_t *
 dv_get_color_linear_pattern(dv_view_t * V, double w, double alpha, long long remark) {
   cairo_pattern_t * pat = cairo_pattern_create_linear(0.0, 0.0, w, 0.0);
 
+  dv_dag_t * g = (dv_dag_t *) V->D->g;
   int a[DV_MAX_NUM_REMARKS];
   int n = 0;
   long v = 0;
   int i;
-  for (i = 0; i < V->D->nr; i++) {
+  for (i = 0; i < g->nr; i++) {
     if (dv_get_bit(remark, i)) {
-      v = V->D->ar[i];
+      v = g->ar[i];
       a[n++] = v;
     }
   }
@@ -214,8 +215,8 @@ dv_get_color_radial_pattern(double radius, double alpha) {
 }
 
 double
-dv_view_get_alpha_fading_out(dv_view_t * V, dv_dag_node_t * node) {
-  double ratio = (dv_get_time() - node->started) / V->S->a->duration;
+dv_view_get_alpha_fading_out(dv_view_t * V, dm_dag_node_t * node) {
+  double ratio = (dm_get_time() - node->started) / V->S->a->duration;
   double ret;
   //ret = (1.0 - ratio) * 0.75;
   ret = 1.0 - ratio * ratio;
@@ -223,8 +224,8 @@ dv_view_get_alpha_fading_out(dv_view_t * V, dv_dag_node_t * node) {
 }
 
 double
-dv_view_get_alpha_fading_in(dv_view_t * V, dv_dag_node_t * node) {
-  double ratio = (dv_get_time() - node->started) / V->S->a->duration;
+dv_view_get_alpha_fading_in(dv_view_t * V, dm_dag_node_t * node) {
+  double ratio = (dm_get_time() - node->started) / V->S->a->duration;
   double ret;
   //ret = ratio * 1.5;
   ret = ratio * ratio;
@@ -232,15 +233,15 @@ dv_view_get_alpha_fading_in(dv_view_t * V, dv_dag_node_t * node) {
 }
 
 void
-dv_view_draw_edge_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * u, dv_dag_node_t * v) {
+dv_view_draw_edge_1(dv_view_t * V, cairo_t * cr, dm_dag_node_t * u, dm_dag_node_t * v) {
   dv_view_status_t * S = V->S;
   if (S->et == 0)
     return;
   
   /* Get coordinates */
   double x1, y1, x2, y2;
-  dv_node_coordinate_t * uc = &u->c[S->coord];
-  dv_node_coordinate_t * vc = &v->c[S->coord];
+  dm_node_coordinate_t * uc = &u->c[S->coord];
+  dm_node_coordinate_t * vc = &v->c[S->coord];
   x1 = uc->x;
   y1 = uc->y + uc->dw;
   x2 = vc->x;
@@ -251,12 +252,12 @@ dv_view_draw_edge_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * u, dv_dag_node_
   /* Get alpha */
   /*
   double alpha;
-  if ((!u->parent || dv_is_shrinking(u->parent))
-      //&& (!v->parent || dv_is_shrinking(v->parent))
+  if ((!u->parent || dm_is_shrinking(u->parent))
+      //&& (!v->parent || dm_is_shrinking(v->parent))
       && (u->parent == v->parent))
     alpha = dv_view_get_alpha_fading_out(V, u->parent);
-  else if ((!u->parent || dv_is_expanding(u->parent))
-           //&& (!v->parent || dv_is_expanding(v->parent))
+  else if ((!u->parent || dm_is_expanding(u->parent))
+           //&& (!v->parent || dm_is_expanding(v->parent))
            && (u->parent == v->parent))
     alpha = dv_view_get_alpha_fading_in(V, u->parent);
   */
@@ -291,7 +292,7 @@ dv_view_draw_edge_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * u, dv_dag_node_
     break;
   case 3:
     // winding
-    pi = dv_pidag_get_node_by_dag_node(V->D->P, u);
+    pi = dm_pidag_get_node_by_dag_node(V->D->P, u);
     if (pi->info.kind == dr_dag_node_kind_create_task)
       cairo_line_to(cr, x2, y1);
     else
@@ -316,7 +317,7 @@ dv_view_draw_edge_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * u, dv_dag_node_
 
 void
 dv_view_draw_status(dv_view_t * V, cairo_t * cr, int count) {
-  dv_dag_t * D = V->D;
+  dm_dag_t * D = V->D;
   dv_view_status_t * S = V->S;
   cairo_save(cr);
   cairo_set_source_rgb(cr, 0.0, 0.0, 0.0);
@@ -332,7 +333,7 @@ dv_view_draw_status(dv_view_t * V, cairo_t * cr, int count) {
 
   // Identifier
   /*
-  sprintf(s, "P%ld-D%ld-V%ld", D->P - CS->P, D - CS->D, V - CS->V);
+  sprintf(s, "P%ld-D%ld-V%ld", D->P - DMG->P, D - DMG->D, V - DVG->V);
   x -= strlen(s) * char_width;
   cairo_move_to(cr, x, y);
   cairo_show_text(cr, s);
@@ -346,7 +347,7 @@ dv_view_draw_status(dv_view_t * V, cairo_t * cr, int count) {
   cairo_show_text(cr, s);
 
   // Node pool
-  sprintf(s, "pool:%ld/%ld(%ldMB), ", CS->pool->N - CS->pool->n, CS->pool->N, CS->pool->sz / (1 << 20));
+  sprintf(s, "pool:%ld/%ld(%ldMB), ", DMG->pool->N - DMG->pool->n, DMG->pool->N, DMG->pool->sz / (1 << 20));
   x -= strlen(s) * char_width;
   cairo_move_to(cr, x, y);
   cairo_show_text(cr, s);
@@ -377,7 +378,7 @@ dv_view_draw_status(dv_view_t * V, cairo_t * cr, int count) {
   // Nodes animating
   /*
   if (S->a->on) {
-    sprintf(s, "na=%d, ", dv_llist_size(S->a->movings));
+    sprintf(s, "na=%d, ", dm_llist_size(S->a->movings));
     x -= strlen(s) * char_width;
     cairo_move_to(cr, x, y);
     cairo_show_text(cr, s);
@@ -401,9 +402,9 @@ dv_view_draw_status(dv_view_t * V, cairo_t * cr, int count) {
 }
 
 void
-dv_view_draw_infotag_1(dv_view_t * V, cairo_t * cr, cairo_matrix_t * mt, dv_dag_node_t * node) {
+dv_view_draw_infotag_1(dv_view_t * V, cairo_t * cr, cairo_matrix_t * mt, dm_dag_node_t * node) {
   cairo_save(cr);
-  dv_dag_t * D = V->D;
+  dm_dag_t * D = V->D;
   dv_view_status_t * S = V->S;
   double line_height = 13;
   double padding = 3;
@@ -413,7 +414,7 @@ dv_view_draw_infotag_1(dv_view_t * V, cairo_t * cr, cairo_matrix_t * mt, dv_dag_
   
   // Get coordinates
   double xx, yy;
-  dv_node_coordinate_t * c = &node->c[S->coord];
+  dm_node_coordinate_t * c = &node->c[S->coord];
   xx = c->x + c->rw + 2 * padding;
   yy = c->y - 2 * padding;
   //cairo_matrix_transform_point(mt, &xx, &yy);
@@ -455,18 +456,18 @@ dv_view_draw_infotag_1(dv_view_t * V, cairo_t * cr, cairo_matrix_t * mt, dv_dag_
 
   // Line 1
   /* TODO: adaptable string length */
-  dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, node);
+  dr_pi_dag_node * pi = dm_pidag_get_node_by_dag_node(D->P, node);
   char s[DV_STRING_LENGTH];
   sprintf(s, "[%ld] %s d=%d f=%d%d%d%d%d%d n=%ld/%ld/%ld",
           pi - D->P->T,
           dv_get_node_kind_name(pi->info.kind),
           node->d,
-          dv_is_set(node),
-          dv_is_union(node),
-          dv_is_inner_loaded(node),
-          dv_is_shrinked(node),
-          dv_is_expanding(node),
-          dv_is_shrinking(node),
+          dm_is_set(node),
+          dm_is_union(node),
+          dm_is_inner_loaded(node),
+          dm_is_shrinked(node),
+          dm_is_expanding(node),
+          dm_is_shrinking(node),
           pi->info.cur_node_count,
           pi->info.min_node_count,
           pi->info.n_child_create_tasks);
@@ -526,14 +527,14 @@ dv_view_draw_infotag_1(dv_view_t * V, cairo_t * cr, cairo_matrix_t * mt, dv_dag_
           node->r);
   cairo_move_to(cr, xx, yy);
   cairo_show_text(cr, s);
-  char s2[V->D->nr * 2 + 1];
+  char s2[((dv_dag_t*)V->D->g)->nr * 2 + 1];
   char s3[5];
   s2[0] = 0;
   long long r = node->r;
   long v;
-  while (i < V->D->nr) {
+  while (i < ((dv_dag_t*)V->D->g)->nr) {
     if (dv_get_bit(r, i)) {
-      v = V->D->ar[i];
+      v = ((dv_dag_t*)V->D->g)->ar[i];
       if (strlen(s2) == 0)
         sprintf(s3, " {%ld", v);
       else
@@ -571,16 +572,16 @@ dv_view_draw_infotag_1(dv_view_t * V, cairo_t * cr, cairo_matrix_t * mt, dv_dag_
 
 void
 dv_view_draw_infotags(dv_view_t * V, cairo_t * cr, cairo_matrix_t * mt) {
-  dv_dag_node_t * node = NULL;
-  while ( (node = (dv_dag_node_t *) dv_llist_pop(V->D->itl)) ) {
+  dm_dag_node_t * node = NULL;
+  while ( (node = (dm_dag_node_t *) dm_llist_pop(V->D->itl)) ) {
     dv_view_draw_infotag_1(V, cr, mt, node);
   }  
 }
 
 void
 dv_view_draw(dv_view_t * V, cairo_t * cr) {
-  double time = dv_get_time();
-  if (CS->verbose_level >= 2) {
+  double time = dm_get_time();
+  if (DVG->verbose_level >= 2) {
     fprintf(stderr, "dv_view_draw()\n");
     //fprintf(stderr, "  d=%d, nd=%ld, nl=%ld, ntr=%ld\n", V->D->cur_d, V->S->nd, V->S->nl, V->S->ntr);
   }
@@ -602,9 +603,9 @@ dv_view_draw(dv_view_t * V, cairo_t * cr) {
     break;
   case DV_LAYOUT_TYPE_PARAPROF:
     if (V->D->H) {
-      //double start = dv_get_time();
+      //double start = dm_get_time();
       dv_view_draw_paraprof(V, cr);
-      //double end = dv_get_time();
+      //double end = dm_get_time();
       //fprintf(stderr, "draw time: %lf\n", end - start);
     } else {
       fprintf(stderr, "Warning: trying to draw type PARAPROF without H.\n");
@@ -622,10 +623,10 @@ dv_view_draw(dv_view_t * V, cairo_t * cr) {
   }
   /* Draw infotags */
   dv_view_draw_infotags(V, cr, NULL);
-  if (CS->verbose_level >= 2) {
-    //fprintf(stderr, "  ... done dv_view_draw(V %ld)\n", V - CS->V);
+  if (DVG->verbose_level >= 2) {
+    //fprintf(stderr, "  ... done dv_view_draw(V %ld)\n", V - DVG->V);
     //fprintf(stderr, "  d=%d, nd=%ld, nl=%ld, ntr=%ld\n", V->D->cur_d, V->S->nd, V->S->nl, V->S->ntr);
-    fprintf(stderr, "... done dv_view_draw(): %lf ms\n", dv_get_time() - time);
+    fprintf(stderr, "... done dv_view_draw(): %lf ms\n", dm_get_time() - time);
   }
 }
 
@@ -644,7 +645,7 @@ dv_viewport_draw_label(dv_viewport_t * VP, cairo_t * cr) {
   cairo_new_path(cr);
 
   // Identifier
-  sprintf(s, "VIEWPORT %ld", VP - CS->VP);
+  sprintf(s, "VIEWPORT %ld", VP - DVG->VP);
   cairo_move_to(cr, x, y);
   cairo_show_text(cr, s);  
 
@@ -686,15 +687,15 @@ dv_viewport_draw_focused_mark(dv_viewport_t * VP, cairo_t * cr) {
   cairo_save(cr);
   cairo_new_path(cr);
 #if 0
-  double margin = CS->opts.ruler_width / 2;
+  double margin = DVG->opts.ruler_width / 2;
   double x = margin;
   double y = margin;
-  double r = CS->opts.vp_mark_radius;
+  double r = DVG->opts.vp_mark_radius;
   //cairo_arc(cr, x + r, y + r, r, 0.0, 2 * M_PI);
   cairo_arc(cr, x, y, r, 0.0, 2 * M_PI);
   cairo_close_path(cr);
 #else
-  dv_draw_path_rectangle(cr, 0.0, 0.0, CS->opts.ruler_width / 2.0, CS->opts.ruler_width / 2.0);  
+  dv_draw_path_rectangle(cr, 0.0, 0.0, DVG->opts.ruler_width / 2.0, DVG->opts.ruler_width / 2.0);  
 #endif
   cairo_set_source_rgb(cr, 1.0, 0.0, 0.0);
   cairo_fill(cr);
@@ -746,7 +747,7 @@ void
 dv_viewport_draw_rulers(dv_viewport_t * VP, cairo_t * cr) {
   dv_view_t * V = VP->mainV;
   if (!V) {
-    fprintf(stderr, "Error: Viewport %ld does not have main View to draw rulers.\n", VP - CS->VP);
+    fprintf(stderr, "Error: Viewport %ld does not have main View to draw rulers.\n", VP - DVG->VP);
     return;
   }
   cairo_save(cr);
@@ -755,7 +756,7 @@ dv_viewport_draw_rulers(dv_viewport_t * VP, cairo_t * cr) {
   /* background */
   double x = 0.0;
   double y = 0.0;
-  double ruler_width = CS->opts.ruler_width;
+  double ruler_width = DVG->opts.ruler_width;
   dv_draw_path_rectangle(cr, x, y, VP->vpw, ruler_width);
   dv_draw_path_rectangle(cr, x, y, ruler_width, VP->vph);
   GdkRGBA c;

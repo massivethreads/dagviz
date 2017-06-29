@@ -6,6 +6,13 @@
 
 /* DV LINKED_LIST  */ /* (obsolete) */
 
+#if 0
+
+typedef struct dv_linked_list {
+  void * item;
+  struct dv_linked_list * next;
+} dv_linked_list_t;
+
 dv_linked_list_t * dv_linked_list_create() {
   dv_linked_list_t * l = (dv_linked_list_t *) dv_malloc( sizeof(dv_linked_list_t) );
   return l;
@@ -58,9 +65,11 @@ void dv_linked_list_add(dv_linked_list_t *list, void *item) {
   }
 }
 
+#endif
+
 /* end of DV LINKED_LIST  */
 
-
+#if 0
 
 /* DV STACK  */
 
@@ -290,37 +299,7 @@ int dv_llist_size(dv_llist_t *l) {
 
 /*----------end of LLIST's functions-------------------------------*/
 
-
-
-/*----------Convenient Functions-------------------------------*/
-
-const char * dv_convert_char_to_binary(int x)
-{
-  static char b[9];
-  b[0] = '\0';
-  int z;
-  for (z=1; z<=1<<3; z<<=1)
-    strcat(b, ((x & z) == z) ? "1" : "0");
-  return b;
-}
-
-double dv_max(double d1, double d2) {
-  if (d1 > d2)
-    return d1;
-  else
-    return d2;
-}
-
-double dv_min(double d1, double d2) {
-  if (d1 < d2)
-    return d1;
-  else
-    return d2;
-}
-
-/*----------end of Convenient Functions-----------------------*/
-
-
+#endif
 
 
 

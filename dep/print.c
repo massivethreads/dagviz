@@ -1,43 +1,5 @@
 #include "dagviz.h"
 
-char * dv_get_node_kind_name(dr_dag_node_kind_t kind) {
-  switch (kind) {
-  case dr_dag_node_kind_create_task:
-    return "create";
-  case dr_dag_node_kind_wait_tasks:
-    return "wait";
-  case dr_dag_node_kind_other:
-    return "other";
-  case dr_dag_node_kind_end_task:
-    return "end";
-  case dr_dag_node_kind_section:
-    return "section";
-  case dr_dag_node_kind_task:
-    return "task";
-  default:
-    return "unknown";
-  }
-}
-
-char * dv_get_edge_kind_name(dr_dag_edge_kind_t kind) {
-  switch (kind) {
-  case dr_dag_edge_kind_end:
-    return "end";
-  case dr_dag_edge_kind_create:
-    return "create";
-  case dr_dag_edge_kind_create_cont:
-    return "create_cont";
-  case dr_dag_edge_kind_wait_cont:
-    return "wait_cont";
-  case dr_dag_edge_kind_other_cont:
-    return "other_cont";
-  case dr_dag_edge_kind_max:
-    return "max";
-  default:
-    return "unknown";
-  }
-}
-
 void dv_print_pidag_node(dr_pi_dag_node * dn, int i) {
   printf(
     "DAG node %d:\n"
@@ -127,7 +89,7 @@ void dv_print_pi_string_table(dr_pi_string_table * stp, int i) {
 
 /*
 static void print_dvdag_node(dv_dag_t *D, dv_dag_node_t *node, int i) {
-  dr_pi_dag_node *pi = dv_pidag_get_node_by_dag_node(D->P, node);
+  dr_pi_dag_node *pi = dm_pidag_get_node_by_dag_node(D->P, node);
   int kind = pi->info.kind;
   printf("Node %d (%p): %d(%s)\n",         
          i,
@@ -148,7 +110,7 @@ void dv_print_dvdag(dv_dag_t *D) {
 
 /*
 static void print_layout_node(dv_dag_t *D, dv_dag_node_t *node, int i) {
-  dr_pi_dag_node *pi = dv_pidag_get_node_by_dag_node(D->P, node);
+  dr_pi_dag_node *pi = dm_pidag_get_node_by_dag_node(D->P, node);
   int kind = pi->info.kind;
   printf(
          "  Node %d: (%s)\n"

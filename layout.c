@@ -34,9 +34,9 @@ dv_view_layout_with_type(dv_view_t * V, int lt) {
   case DV_LAYOUT_TYPE_PARAPROF:
     V->S->coord = 6;
     if (V->D->H) {
-      //double start = dv_get_time();
+      //double start = dm_get_time();
       dv_view_layout_paraprof(V);
-      //double end = dv_get_time();
+      //double end = dm_get_time();
       //fprintf(stderr, "layout time: %lf\n", end - start);
     } else {
       fprintf(stderr, "Warning: trying to lay out type PARAPROF without H.\n");
@@ -76,9 +76,9 @@ dv_view_layout_(dv_view_t * V) {
     break;
   case DV_LAYOUT_TYPE_PARAPROF:
     if (V->D->H) {
-      //double start = dv_get_time();
+      //double start = dm_get_time();
       dv_view_layout_paraprof(V);
-      //double end = dv_get_time();
+      //double end = dm_get_time();
       //fprintf(stderr, "layout time: %lf\n", end - start);
     } else {
       fprintf(stderr, "Warning: trying to lay out type PARAPROF without H.\n");
@@ -98,8 +98,8 @@ dv_view_layout_(dv_view_t * V) {
 
 void
 dv_view_layout(dv_view_t * V) {
-  double time = dv_get_time();
-  if (CS->verbose_level >= 2) {
+  double time = dm_get_time();
+  if (DVG->verbose_level >= 2) {
     fprintf(stderr, "dv_view_layout()\n");
   }
 
@@ -110,10 +110,10 @@ dv_view_layout(dv_view_t * V) {
     laidOut[i] = 0;  
   dv_view_layout_(V);
   laidOut[V->S->lt] = 1;
-  for (i = 0; i < CS->nV; i++) {
-    if (V->D->mV[i] && (CS->V[i].S->nviewports > 0) && !laidOut[CS->V[i].S->lt]) {
-      dv_view_layout_(&CS->V[i]);
-      laidOut[CS->V[i].S->lt] = 1;
+  for (i = 0; i < DVG->nV; i++) {
+    if (((dv_dag_t*)V->D->g)->mV[i] && (DVG->V[i].S->nviewports > 0) && !laidOut[DVG->V[i].S->lt]) {
+      dv_view_layout_(&DVG->V[i]);
+      laidOut[DVG->V[i].S->lt] = 1;
     }
   }
   /*
@@ -121,12 +121,12 @@ dv_view_layout(dv_view_t * V) {
     if (laidOut[i])
       dv_view_layout_with_type(V, i);
   */
-  for (i = 0; i < CS->nV; i++)
-    if (V->D->mV[i] && CS->V[i].S->nviewports > 0)
-      dv_view_auto_zoomfit(&CS->V[i]);
+  for (i = 0; i < DVG->nV; i++)
+    if (((dv_dag_t*)V->D->g)->mV[i] && DVG->V[i].S->nviewports > 0)
+      dv_view_auto_zoomfit(&DVG->V[i]);
   
-  if (CS->verbose_level >= 2) {
-    fprintf(stderr, "... done dv_view_layout(): %lf\n", dv_get_time() - time);
+  if (DVG->verbose_level >= 2) {
+    fprintf(stderr, "... done dv_view_layout(): %lf\n", dm_get_time() - time);
     //fprintf(stderr, "  d=%d, nd=%ld, nl=%ld, ntr=%ld\n", V->D->cur_d, V->S->nd, V->S->nl, V->S->ntr);
   }
 }
@@ -136,29 +136,29 @@ dv_view_layout(dv_view_t * V) {
 /*-----Common functions-----*/
 
 double
-dv_view_calculate_rate(dv_view_t * V, dv_dag_node_t * node) {
+dv_view_calculate_rate(dv_view_t * V, dm_dag_node_t * node) {
   double rate = 1.0;
   if (!node) return rate;
-  double ratio = (dv_get_time() - node->started) / V->S->a->duration;
+  double ratio = (dm_get_time() - node->started) / V->S->a->duration;
   if (ratio > 1.0)
     ratio = 1.0;
-  if (dv_is_shrinking(node)) {
+  if (dm_is_shrinking(node)) {
     //rate = 1.0 - ratio;
     rate = (1.0 - ratio) * (1.0 - ratio);
-  } else if (dv_is_expanding(node)) {
+  } else if (dm_is_expanding(node)) {
     //rate = ratio;
     rate = 1.0 - (1.0 - ratio) * (1.0 - ratio);
   }
   return rate;
 }
 
-double dv_view_calculate_reverse_rate(dv_view_t *V, dv_dag_node_t *node) {
+double dv_view_calculate_reverse_rate(dv_view_t *V, dm_dag_node_t *node) {
   double ret = 0.0;
   if (!node) return ret;
   double rate = dv_view_calculate_rate(V, node);
-  if (dv_is_shrinking(node)) {
+  if (dm_is_shrinking(node)) {
     ret = 1.0 - sqrt(1.0 - rate);
-  } else if (dv_is_expanding(node)) {
+  } else if (dm_is_expanding(node)) {
     ret = 1.0 - sqrt(rate);
   }
   return ret;
@@ -172,64 +172,64 @@ void dv_animation_init(dv_view_t *V, dv_animation_t *a) {
   a->on = 0;
   a->duration = DV_ANIMATION_DURATION;
   a->step = DV_ANIMATION_STEP;
-  dv_llist_init(a->movings);
+  dm_llist_init(a->movings);
   a->V = V;
 }
 
 static gboolean dv_animation_tick(gpointer data) {
-  if (CS->verbose_level >= 2) {
+  if (DVG->verbose_level >= 2) {
     fprintf(stderr, "dv_animation_tick() starts\n");
   }
   dv_animation_t *a = (dv_animation_t *) data;
   dv_check(a->on);
-  double cur = dv_get_time();
-  dv_dag_node_t *node = NULL;
+  double cur = dm_get_time();
+  dm_dag_node_t *node = NULL;
   // iterate moving nodes
   long count_all = 0;
   long count_del = 0;
-  dv_llist_cell_t *c = a->movings->top;
+  dm_llist_cell_t *c = a->movings->top;
   while (c) {
     count_all++;
-    node = (dv_dag_node_t *) c->item;
+    node = (dm_dag_node_t *) c->item;
     c = c->next;
     if (cur - node->started >= a->duration) {
       //printf("  %.0lf >= %.0lf\n", cur - node->started, a->duration);
       count_del++;
       dv_animation_remove(a, node);
-      if (dv_is_shrinking(node)) {
-        dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKING);
-        dv_node_flag_set(node->f, DV_NODE_FLAG_SHRINKED);
-      } else if (dv_is_expanding(node)) {
-        dv_node_flag_remove(node->f, DV_NODE_FLAG_EXPANDING);
-        dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKED);
+      if (dm_is_shrinking(node)) {
+        dm_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKING);
+        dm_node_flag_set(node->f, DV_NODE_FLAG_SHRINKED);
+      } else if (dm_is_expanding(node)) {
+        dm_node_flag_remove(node->f, DV_NODE_FLAG_EXPANDING);
+        dm_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKED);
       }
     }
   }
-  if (CS->verbose_level >= 2) {
+  if (DVG->verbose_level >= 2) {
     fprintf(stderr, "  removed %ld nodes (of %ld in total)\n", count_del, count_all);
   }
   /*
-  while (node = (dv_dag_node_t *) dv_llist_iterate_next(a->movings, node)) {
+  while (node = (dm_dag_node_t *) dm_llist_iterate_next(a->movings, node)) {
     if (cur - node->started >= a->duration) {
-      dv_llist_remove(a->movings, node);
-      if (dv_is_shrinking(node)) {
-        dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKING);
-        dv_node_flag_set(node->f, DV_NODE_FLAG_SHRINKED);
-      } else if (dv_is_expanding(node)) {
-        dv_node_flag_remove(node->f, DV_NODE_FLAG_EXPANDING);
-        dv_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKED);
+      dm_llist_remove(a->movings, node);
+      if (dm_is_shrinking(node)) {
+        dm_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKING);
+        dm_node_flag_set(node->f, DV_NODE_FLAG_SHRINKED);
+      } else if (dm_is_expanding(node)) {
+        dm_node_flag_remove(node->f, DV_NODE_FLAG_EXPANDING);
+        dm_node_flag_remove(node->f, DV_NODE_FLAG_SHRINKED);
       }
     }
   }
   */
-  if (CS->verbose_level >= 2) {
+  if (DVG->verbose_level >= 2) {
     fprintf(stderr, "  to call dv_view_layout(), \n");
   }
   dv_view_layout(a->V);
   dv_view_auto_zoomfit(a->V);
   dv_queue_draw_d(a->V);
   // stop timer when there is no moving node 
-  if (dv_llist_size(a->movings) == 0) {
+  if (dm_llist_size(a->movings) == 0) {
     dv_animation_stop(a);
     return 0;
   } else {
@@ -246,24 +246,24 @@ void dv_animation_stop(dv_animation_t *a) {
   a->on = 0;
 }
 
-void dv_animation_add(dv_animation_t *a, dv_dag_node_t *node) {
-  double cur = dv_get_time();
+void dv_animation_add(dv_animation_t *a, dm_dag_node_t *node) {
+  double cur = dm_get_time();
   node->started = cur;
-  dv_llist_add(a->movings, node);
+  dm_llist_add(a->movings, node);
   if (!a->on)
     dv_animation_start(a);
 }
 
-void dv_animation_remove(dv_animation_t *a, dv_dag_node_t *node) {
-  dv_llist_remove(a->movings, node);
+void dv_animation_remove(dv_animation_t *a, dm_dag_node_t *node) {
+  dm_llist_remove(a->movings, node);
 }
 
-void dv_animation_reverse(dv_animation_t *a, dv_dag_node_t *node) {
-  dv_llist_remove(a->movings, node);
-  double cur = dv_get_time();
+void dv_animation_reverse(dv_animation_t *a, dm_dag_node_t *node) {
+  dm_llist_remove(a->movings, node);
+  double cur = dm_get_time();
   //node->started = 2 * cur - a->duration - node->started;
   node->started = cur - a->duration * dv_view_calculate_reverse_rate(a->V, node);
-  dv_llist_add(a->movings, node);
+  dm_llist_add(a->movings, node);
 }
 
 /*-----------end of Animation functions----------------------*/
@@ -295,7 +295,7 @@ static gboolean
 dv_motion_tick(gpointer data) {
   dv_motion_t * m = (dv_motion_t *) data;
   dv_check(m->on);
-  double cur = dv_get_time();
+  double cur = dm_get_time();
   dv_check(cur > m->start_t);
   if (cur - m->start_t < m->duration) {
     double ratio = (cur - m->start_t) / m->duration;
@@ -322,7 +322,7 @@ dv_motion_reset_target(dv_motion_t * m, long pii, double xto, double yto, double
   m->yto = yto;
   m->zrxto = zrxto;
   m->zryto = zryto;
-  m->start_t = dv_get_time();
+  m->start_t = dm_get_time();
 }
 
 void

@@ -37,60 +37,60 @@ dp_close_file(FILE * fp) {
 
 static void
 dp_global_state_init_nogtk(dv_global_state_t * CS) {
-  CS->nP = 0;
-  CS->nD = 0;
-  CS->nV = 0;
-  CS->nVP = 0;
-  CS->FL = NULL;
-  CS->activeV = NULL;
-  CS->activeVP = NULL;
-  CS->err = DV_OK;
+  memset(CS, 0, sizeof(dv_global_state_t));
+  DMG->nP = 0;
+  DMG->nD = 0;
+  DVG->nV = 0;
+  DVG->nVP = 0;
+  DVG->activeV = NULL;
+  DVG->activeVP = NULL;
+  DVG->error = DV_OK;
   int i;
   for (i = 0; i < DV_NUM_COLOR_POOLS; i++)
-    CS->CP_sizes[i] = 0;
-  //dv_btsample_viewer_init(CS->btviewer);
-  dv_dag_node_pool_init(CS->pool);
-  dv_histogram_entry_pool_init(CS->epool);
-  CS->SD->ne = 0;
+    DVG->CP_sizes[i] = 0;
+  //dv_btsample_viewer_init(DVG->btviewer);
+  dm_dag_node_pool_init(DMG->pool);
+  dm_histogram_entry_pool_init(DMG->epool);
+  DVG->SD->ne = 0;
   for (i = 0; i < DV_MAX_DISTRIBUTION; i++) {
-    CS->SD->e[i].dag_id = -1; /* none */
-    CS->SD->e[i].type = 0;
-    CS->SD->e[i].stolen = 0;
-    CS->SD->e[i].title = NULL;
-    CS->SD->e[i].title_entry = NULL;
+    DVG->SD->e[i].dag_id = -1; /* none */
+    DVG->SD->e[i].type = 0;
+    DVG->SD->e[i].stolen = 0;
+    DVG->SD->e[i].title = NULL;
+    DVG->SD->e[i].title_entry = NULL;
   }
-  CS->SD->xrange_from = 0;
-  CS->SD->xrange_to = 10000;
-  CS->SD->node_pool_label = NULL;
-  CS->SD->entry_pool_label = NULL;
-  CS->SD->fn = DV_STAT_DISTRIBUTION_OUTPUT_DEFAULT_NAME;
-  CS->SD->bar_width = 20;
-  for (i = 0; i < DV_MAX_DAG; i++) {
-    CS->SBG->checked_D[i] = 1;
-    CS->SBG->work[i] = 0.0;
-    CS->SBG->delay[i] = 0.0;
-    CS->SBG->nowork[i] = 0.0;
+  DVG->SD->xrange_from = 0;
+  DVG->SD->xrange_to = 10000;
+  DVG->SD->node_pool_label = NULL;
+  DVG->SD->entry_pool_label = NULL;
+  DVG->SD->fn = DV_STAT_DISTRIBUTION_OUTPUT_DEFAULT_NAME;
+  DVG->SD->bar_width = 20;
+  for (i = 0; i < DM_MAX_DAG; i++) {
+    DMG->SBG->checked_D[i] = 1;
+    DMG->SBG->work[i] = 0.0;
+    DMG->SBG->delay[i] = 0.0;
+    DMG->SBG->nowork[i] = 0.0;
   }
-  CS->SBG->fn = DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME;
-  CS->SBG->fn_2 = DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME_2;
+  DMG->SBG->fn = DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME;
+  DMG->SBG->fn_2 = DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME_2;
   int cp;
   for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
-    CS->SBG->checked_cp[cp] = 0;
+    DMG->SBG->checked_cp[cp] = 0;
     if (cp == DV_CRITICAL_PATH_1)
-      CS->SBG->checked_cp[cp] = 1;
+      DMG->SBG->checked_cp[cp] = 1;
   }
   
-  CS->context_view = NULL;
-  CS->context_node = NULL;
+  DVG->context_view = NULL;
+  DVG->context_node = NULL;
 
-  CS->verbose_level = DV_VERBOSE_LEVEL_DEFAULT;
+  DVG->verbose_level = DV_VERBOSE_LEVEL_DEFAULT;
 
-  CS->oncp_flags[DV_CRITICAL_PATH_0] = DV_NODE_FLAG_CRITICAL_PATH_0;
-  CS->oncp_flags[DV_CRITICAL_PATH_1] = DV_NODE_FLAG_CRITICAL_PATH_1;
-  CS->oncp_flags[DV_CRITICAL_PATH_2] = DV_NODE_FLAG_CRITICAL_PATH_2;
-  CS->cp_colors[DV_CRITICAL_PATH_0] = DV_CRITICAL_PATH_0_COLOR;
-  CS->cp_colors[DV_CRITICAL_PATH_1] = DV_CRITICAL_PATH_1_COLOR;
-  CS->cp_colors[DV_CRITICAL_PATH_2] = DV_CRITICAL_PATH_2_COLOR;
+  DMG->oncp_flags[DV_CRITICAL_PATH_0] = DV_NODE_FLAG_CRITICAL_PATH_0;
+  DMG->oncp_flags[DV_CRITICAL_PATH_1] = DV_NODE_FLAG_CRITICAL_PATH_1;
+  DMG->oncp_flags[DV_CRITICAL_PATH_2] = DV_NODE_FLAG_CRITICAL_PATH_2;
+  DVG->cp_colors[DV_CRITICAL_PATH_0] = DV_CRITICAL_PATH_0_COLOR;
+  DVG->cp_colors[DV_CRITICAL_PATH_1] = DV_CRITICAL_PATH_1_COLOR;
+  DVG->cp_colors[DV_CRITICAL_PATH_2] = DV_CRITICAL_PATH_2_COLOR;
 }
 
 _static_unused_ void
@@ -110,221 +110,6 @@ dp_call_gnuplot(char * filename) {
   }
 }
 
-
-typedef struct {
-  void (*process_event)(chronological_traverser * ct, dr_event evt);
-  dr_pi_dag * G;
-  dr_clock_t cum_running;
-  dr_clock_t cum_delay;
-  dr_clock_t cum_no_work;
-  dr_clock_t t;
-  long n_running;
-  long n_ready;
-  long n_workers;
-  dr_clock_t total_elapsed;
-  dr_clock_t total_t_1;
-  long * edge_counts;		/* kind,u,v */
-} dr_basic_stat;
-
-static void 
-dr_basic_stat_process_event(chronological_traverser * ct, 
-			    dr_event evt);
-
-static void
-dr_calc_inner_delay(dr_basic_stat * bs, dr_pi_dag * G) {
-  long n = G->n;
-  long i;
-  dr_clock_t total_elapsed = 0;
-  dr_clock_t total_t_1 = 0;
-  dr_pi_dag_node * T = G->T;
-  long n_negative_inner_delays = 0;
-  for (i = 0; i < n; i++) {
-    dr_pi_dag_node * t = &T[i];
-    dr_clock_t t_1 = t->info.t_1;
-    dr_clock_t elapsed = t->info.end.t - t->info.start.t;
-    if (t->info.kind < dr_dag_node_kind_section
-	|| t->subgraphs_begin_offset == t->subgraphs_end_offset) {
-      total_elapsed += elapsed;
-      total_t_1 += t_1;
-      if (elapsed < t_1 && t->info.worker != -1) {
-	if (1 || (n_negative_inner_delays == 0)) {
-	  fprintf(stderr,
-		  "warning: node %ld has negative"
-		  " inner delay (worker=%d, start=%llu, end=%llu,"
-		  " t_1=%llu, end - start - t_1 = -%llu\n",
-		  i, t->info.worker,
-		  t->info.start.t, t->info.end.t, t->info.t_1,
-		  t_1 - elapsed);
-	}
-	n_negative_inner_delays++;
-      }
-    }
-  }
-  if (n_negative_inner_delays > 0) {
-    fprintf(stderr,
-	    "warning: there are %ld nodes that have negative delays",
-	    n_negative_inner_delays);
-  }
-  bs->total_elapsed = total_elapsed;
-  bs->total_t_1 = total_t_1;
-}
-
-static void
-dr_calc_edges(dr_basic_stat * bs, dr_pi_dag * G) {
-  long n = G->n;
-  long m = G->m;
-  long nw = G->num_workers;
-  /* C : a three dimensional array
-     C(kind,i,j) is the number of type k edges from 
-     worker i to worker j.
-     we may counter nodes with worker id = -1
-     (executed by more than one workers);
-     we use worker id = nw for such entries
-  */
-  long * C_ = (long *)dr_malloc(sizeof(long) * dr_dag_edge_kind_max * (nw + 1) * (nw + 1));
-#define EDGE_COUNTS(k,i,j) C_[k*(nw+1)*(nw+1)+i*(nw+1)+j]
-  dr_dag_edge_kind_t k;
-  long i, j;
-  for (k = 0; k < dr_dag_edge_kind_max; k++) {
-    for (i = 0; i < nw + 1; i++) {
-      for (j = 0; j < nw + 1; j++) {
-	EDGE_COUNTS(k,i,j) = 0;
-      }
-    }
-  }
-  for (i = 0; i < n; i++) {
-    dr_pi_dag_node * t = &G->T[i];
-    if (t->info.kind >= dr_dag_node_kind_section
-	&& t->subgraphs_begin_offset == t->subgraphs_end_offset) {
-      for (k = 0; k < dr_dag_edge_kind_max; k++) {
-	int w = t->info.worker;
-	if (w == -1) {
-#if 0
-	  fprintf(stderr, 
-		  "warning: node %ld (kind=%s) has worker = %d)\n",
-		  i, dr_dag_node_kind_to_str(t->info.kind), w);
-#endif
-	  EDGE_COUNTS(k, nw, nw) += t->info.logical_edge_counts[k];
-	} else {
-	  (void)dr_check(w >= 0);
-	  (void)dr_check(w < nw);
-	  EDGE_COUNTS(k, w, w) += t->info.logical_edge_counts[k];
-	}
-      }
-    }    
-  }
-  for (i = 0; i < m; i++) {
-    dr_pi_dag_edge * e = &G->E[i];
-    int uw = G->T[e->u].info.worker;
-    int vw = G->T[e->v].info.worker;
-    if (uw == -1) {
-#if 0
-      fprintf(stderr, "warning: source node (%ld) of edge %ld %ld (kind=%s) -> %ld (kind=%s) has worker = %d\n",
-	      e->u,
-	      i, 
-	      e->u, dr_dag_node_kind_to_str(G->T[e->u].info.kind), 
-	      e->v, dr_dag_node_kind_to_str(G->T[e->v].info.kind), uw);
-#endif
-      uw = nw;
-    }
-    if (vw == -1) {
-#if 0
-      fprintf(stderr, "warning: dest node (%ld) of edge %ld %ld (kind=%s) -> %ld (kind=%s) has worker = %d\n",
-	      e->v,
-	      i, 
-	      e->u, dr_dag_node_kind_to_str(G->T[e->u].info.kind), 
-	      e->v, dr_dag_node_kind_to_str(G->T[e->v].info.kind), vw);
-#endif
-      vw = nw;
-    }
-    (void)dr_check(uw >= 0);
-    (void)dr_check(uw <= nw);
-    (void)dr_check(vw >= 0);
-    (void)dr_check(vw <= nw);
-    EDGE_COUNTS(e->kind, uw, vw)++;
-  }
-#undef EDGE_COUNTS
-  bs->edge_counts = C_;
-}
-
-static void 
-dr_basic_stat_init(dr_basic_stat * bs, dr_pi_dag * G) {
-  bs->process_event = dr_basic_stat_process_event;
-  bs->G = G;
-  bs->n_running = 0;
-  bs->n_ready = 0;
-  bs->n_workers = G->num_workers;
-  bs->cum_running = 0;		/* cumulative running cpu time */
-  bs->cum_delay = 0;		/* cumulative delay cpu time */
-  bs->cum_no_work = 0;		/* cumulative no_work cpu time */
-  bs->t = 0;			/* time of the last event */
-}
-
-/*
-static void
-dr_basic_stat_destroy(dr_basic_stat * bs, dr_pi_dag * G) {
-  long nw = G->num_workers;
-  dr_free(bs->edge_counts, 
-	  sizeof(long) * dr_dag_edge_kind_max * (nw + 1) * (nw + 1));
-}
-*/
-
-static void 
-dr_basic_stat_process_event(chronological_traverser * ct, 
-			    dr_event evt) {
-  dr_basic_stat * bs = (dr_basic_stat *)ct;
-  dr_clock_t dt = evt.t - bs->t;
-
-  int n_running = bs->n_running;
-  int n_delay, n_no_work;
-  if (bs->n_running >= bs->n_workers) {
-    /* great, all workers are running */
-    n_delay = 0;
-    n_no_work = 0;
-    if (bs->n_running > bs->n_workers) {
-      fprintf(stderr, 
-	      "warning: n_running = %ld"
-	      " > n_workers = %ld (clock skew?)\n",
-	      bs->n_running, bs->n_workers);
-    }
-    n_delay = 0;
-    n_no_work = 0;
-  } else if (bs->n_running + bs->n_ready <= bs->n_workers) {
-    /* there were enough workers to run ALL ready tasks */
-    n_delay = bs->n_ready;
-    n_no_work = bs->n_workers - (bs->n_running + bs->n_ready);
-  } else {
-    n_delay = bs->n_workers - bs->n_running;
-    n_no_work = 0;
-  }
-  bs->cum_running += n_running * dt;
-  bs->cum_delay   += n_delay * dt;
-  bs->cum_no_work += n_no_work * dt;
-
-  switch (evt.kind) {
-  case dr_event_kind_ready: {
-    bs->n_ready++;
-    break;
-  }
-  case dr_event_kind_start: {
-    bs->n_running++;
-    break;
-  }
-  case dr_event_kind_last_start: {
-    bs->n_ready--;
-    break;
-  }
-  case dr_event_kind_end: {
-    bs->n_running--;
-    break;
-  }
-  default:
-    assert(0);
-    break;
-  }
-
-  bs->t = evt.t;
-}
 
 void
 dp_stat_graph_execution_time_breakdown(char * filename) {
@@ -353,14 +138,14 @@ dp_stat_graph_execution_time_breakdown(char * filename) {
           );
   int i, j;
   for (j = 0; j < 3; j++) {
-    for (i = 0; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
+    for (i = 0; i < DMG->nD; i++) {
+      dm_dag_t * D = &DMG->D[i];
       fprintf(out,
               "\"%s\"  %lld %lld %lld\n",
               D->name_on_graph,
-              CS->SBG->work[i],
-              CS->SBG->delay[i],
-              CS->SBG->nowork[i]);
+              DMG->SBG->work[i],
+              DMG->SBG->delay[i],
+              DMG->SBG->nowork[i]);
     }
     fprintf(out,
             "e\n");
@@ -373,9 +158,9 @@ dp_stat_graph_execution_time_breakdown(char * filename) {
   /* Get max y */
   double max_y = 0.0;
   double max_y_percent = 0.0;
-  double base = CS->SBG->work[0] + CS->SBG->delay[0] + CS->SBG->nowork[0];
-  for (i = 0; i < CS->nD; i++) {
-    double total_loss = (CS->SBG->work[i] - CS->SBG->work[0]) + (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
+  double base = DMG->SBG->work[0] + DMG->SBG->delay[0] + DMG->SBG->nowork[0];
+  for (i = 0; i < DMG->nD; i++) {
+    double total_loss = (DMG->SBG->work[i] - DMG->SBG->work[0]) + (DMG->SBG->delay[i]) + (DMG->SBG->nowork[i]);
     if (total_loss > max_y) {
       max_y = total_loss;
       max_y_percent = ceil(max_y / base * 100.0);
@@ -410,14 +195,14 @@ dp_stat_graph_execution_time_breakdown(char * filename) {
           DV_GRAPH_COLORS[2]          
           );
   for (j = 0; j < 3; j++) {
-    for (i = 0; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
+    for (i = 0; i < DMG->nD; i++) {
+      dm_dag_t * D = &DMG->D[i];
       fprintf(out,
               "\"%s\"  %lld %lld %lld\n",
               D->name_on_graph,
-              CS->SBG->work[i] - CS->SBG->work[0],
-              CS->SBG->delay[i],
-              CS->SBG->nowork[i]);
+              DMG->SBG->work[i] - DMG->SBG->work[0],
+              DMG->SBG->delay[i],
+              DMG->SBG->nowork[i]);
     }
     fprintf(out, "e\n");
   }
@@ -457,16 +242,16 @@ dp_stat_graph_execution_time_breakdown(char * filename) {
           DV_GRAPH_COLORS[2]          
           );
   for (j = 0; j < 5; j++) {
-    for (i = 0; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
-      dv_clock_t loss = (CS->SBG->work[i] - CS->SBG->work[0])+ (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
+    for (i = 0; i < DMG->nD; i++) {
+      dm_dag_t * D = &DMG->D[i];
+      dm_clock_t loss = (DMG->SBG->work[i] - DMG->SBG->work[0])+ (DMG->SBG->delay[i]) + (DMG->SBG->nowork[i]);
       double percentage = loss * 100.0 / base;
       fprintf(out,
               "\"%s\"  %lld %lld %lld %lf \"%.1lf%%\"\n",
               D->name_on_graph,
-              CS->SBG->work[i] - CS->SBG->work[0],
-              CS->SBG->delay[i],
-              CS->SBG->nowork[i],
+              DMG->SBG->work[i] - DMG->SBG->work[0],
+              DMG->SBG->delay[i],
+              DMG->SBG->nowork[i],
               percentage,
               percentage);
     }
@@ -503,16 +288,16 @@ dp_stat_graph_execution_time_breakdown(char * filename) {
           DV_GRAPH_COLORS[2]          
           );
   for (j = 0; j < 4; j++) {
-    for (i = 0; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
-      dv_clock_t loss = (CS->SBG->work[i] - CS->SBG->work[0]) + (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
+    for (i = 0; i < DMG->nD; i++) {
+      dm_dag_t * D = &DMG->D[i];
+      dm_clock_t loss = (DMG->SBG->work[i] - DMG->SBG->work[0]) + (DMG->SBG->delay[i]) + (DMG->SBG->nowork[i]);
       double percentage = loss * 100.0 / base;
       fprintf(out,
               "\"%s\"  %lld %lld %lld %lld \"%.1lf%%\"\n",
               D->name_on_graph,
-              CS->SBG->work[i] - CS->SBG->work[0],
-              CS->SBG->delay[i],
-              CS->SBG->nowork[i],
+              DMG->SBG->work[i] - DMG->SBG->work[0],
+              DMG->SBG->delay[i],
+              DMG->SBG->nowork[i],
               loss,
               percentage);
     }
@@ -550,11 +335,11 @@ dp_stat_graph_execution_time_breakdown(char * filename) {
           DV_GRAPH_COLORS[2]          
           );
   for (j = 0; j < 4; j++) {
-    for (i = 0; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
-      double loss_work = (CS->SBG->work[i] - CS->SBG->work[0]) * 100.0 / base;
-      double loss_delay = (CS->SBG->delay[i]) * 100.0 / base;
-      double loss_nowork = (CS->SBG->nowork[i]) * 100.0 / base;
+    for (i = 0; i < DMG->nD; i++) {
+      dm_dag_t * D = &DMG->D[i];
+      double loss_work = (DMG->SBG->work[i] - DMG->SBG->work[0]) * 100.0 / base;
+      double loss_delay = (DMG->SBG->delay[i]) * 100.0 / base;
+      double loss_nowork = (DMG->SBG->nowork[i]) * 100.0 / base;
       double loss = loss_work + loss_delay + loss_nowork;
       fprintf(out,
               "\"%s\"  %lf %lf %lf %lf \"%.1lf%%\"\n",
@@ -598,11 +383,11 @@ dp_stat_graph_execution_time_breakdown(char * filename) {
           DV_GRAPH_COLORS[2]          
           );
   for (j = 0; j < 4; j++) {
-    for (i = 0; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
-      double loss_work = (CS->SBG->work[i] - CS->SBG->work[0]) * 100.0 / base;
-      double loss_delay = (CS->SBG->delay[i]) * 100.0 / base;
-      double loss_nowork = (CS->SBG->nowork[i]) * 100.0 / base;
+    for (i = 0; i < DMG->nD; i++) {
+      dm_dag_t * D = &DMG->D[i];
+      double loss_work = (DMG->SBG->work[i] - DMG->SBG->work[0]) * 100.0 / base;
+      double loss_delay = (DMG->SBG->delay[i]) * 100.0 / base;
+      double loss_nowork = (DMG->SBG->nowork[i]) * 100.0 / base;
       double loss = loss_work + loss_delay + loss_nowork;
       fprintf(out,
               "\"%s\"  %lf %lf %lf %lf \"%.1lf%%\"\n",
@@ -650,17 +435,17 @@ dp_stat_graph_execution_time_breakdown(char * filename) {
           DV_GRAPH_COLORS[11]          
           );
   for (j = 0; j < 6; j++) {
-    for (i = 0; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
-      dv_clock_t loss = (CS->SBG->work[i] - CS->SBG->work[0]) + (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
+    for (i = 0; i < DMG->nD; i++) {
+      dm_dag_t * D = &DMG->D[i];
+      dm_clock_t loss = (DMG->SBG->work[i] - DMG->SBG->work[0]) + (DMG->SBG->delay[i]) + (DMG->SBG->nowork[i]);
       double percentage = loss * 100.0 / base;
       fprintf(out,
               "\"%s\"  %lld %lf %lf %lf %lf %lld \"%.1lf%%\"\n",
               D->name_on_graph,
-              CS->SBG->work[i] - CS->SBG->work[0],
-              (i != 0) ? (CS->SBG->delay[i] - D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_delay) : 0,
-              (i != 0) ? (D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_delay) : (CS->SBG->delay[i]),
-              CS->SBG->nowork[i] - D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_nowork,
+              DMG->SBG->work[i] - DMG->SBG->work[0],
+              (i != 0) ? (DMG->SBG->delay[i] - D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_delay) : 0,
+              (i != 0) ? (D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_delay) : (DMG->SBG->delay[i]),
+              DMG->SBG->nowork[i] - D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_nowork,
               D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_delay,
               loss,
               percentage);
@@ -703,12 +488,12 @@ dp_stat_graph_execution_time_breakdown(char * filename) {
           DV_GRAPH_COLORS[11]          
           );
   for (j = 0; j < 6; j++) {
-    for (i = 0; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
-      double loss_work = (CS->SBG->work[i] - CS->SBG->work[0]) * 100.0 / base;
-      double loss_delay_w = (i != 0) ? ((CS->SBG->delay[i] - D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_delay) * 100.0 / base) : 0.0;
-      double loss_delay_sd = (i != 0) ? (D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_delay * 100.0 / base) : (CS->SBG->delay[i] * 100.0 / base);
-      double loss_nowork_w = (CS->SBG->nowork[i] - D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_nowork) * 100.0 / base;
+    for (i = 0; i < DMG->nD; i++) {
+      dm_dag_t * D = &DMG->D[i];
+      double loss_work = (DMG->SBG->work[i] - DMG->SBG->work[0]) * 100.0 / base;
+      double loss_delay_w = (i != 0) ? ((DMG->SBG->delay[i] - D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_delay) * 100.0 / base) : 0.0;
+      double loss_delay_sd = (i != 0) ? (D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_delay * 100.0 / base) : (DMG->SBG->delay[i] * 100.0 / base);
+      double loss_nowork_w = (DMG->SBG->nowork[i] - D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_nowork) * 100.0 / base;
       double loss_nowork_sd = D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_nowork * 100.0 / base;
       double loss = loss_work + loss_delay_w + loss_delay_sd + loss_nowork_w + loss_nowork_sd;
       fprintf(out,
@@ -758,12 +543,12 @@ dp_stat_graph_execution_time_breakdown(char * filename) {
           DV_GRAPH_COLORS[11]          
           );
   for (j = 0; j < 5; j++) {
-    for (i = 0; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
-      double loss_work = (CS->SBG->work[i] - CS->SBG->work[0]) * 100.0 / base;
-      double loss_delay = CS->SBG->delay[i] * 100.0 / base;
+    for (i = 0; i < DMG->nD; i++) {
+      dm_dag_t * D = &DMG->D[i];
+      double loss_work = (DMG->SBG->work[i] - DMG->SBG->work[0]) * 100.0 / base;
+      double loss_delay = DMG->SBG->delay[i] * 100.0 / base;
       double loss_nowork_a = D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_nowork * 100.0 / base;
-      double loss_nowork_b = (CS->SBG->nowork[i] - D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_nowork) * 100.0 / base;
+      double loss_nowork_b = (DMG->SBG->nowork[i] - D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_nowork) * 100.0 / base;
       double loss = loss_work + loss_delay + loss_nowork_a + loss_nowork_b;
       fprintf(out,
               "\"%s\"  %lf %lf %lf %lf %lf \"%.1lf%%\"\n",
@@ -810,8 +595,8 @@ dp_stat_graph_critical_path_breakdown(char * filename) {
   for (ptimes = 0; ptimes < 2; ptimes++) {
     
     int i;
-    for (i = 0; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
+    for (i = 0; i < DMG->nD; i++) {
+      dm_dag_t * D = &DMG->D[i];
       /* exclude serial DAGs */
       if (strstr(D->name_on_graph, "serial")) continue;
       cp = DV_CRITICAL_PATH_1;
@@ -862,8 +647,8 @@ dp_stat_graph_critical_path_delay_breakdown(char * filename) {
   for (ptimes = 0; ptimes < 3; ptimes++) {
 
     int i;
-    for (i = 0; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
+    for (i = 0; i < DMG->nD; i++) {
+      dm_dag_t * D = &DMG->D[i];
       /* exclude serial DAGs */
       if (strstr(D->name_on_graph, "serial")) continue;
       cp = DV_CRITICAL_PATH_1;
@@ -890,8 +675,8 @@ dp_stat_graph_critical_path_edge_based_delay_breakdown(char * filename) {
   /* calculate critical paths */
   int to_print_other_cont = 0;
   int i;
-  for (i = 0; i < CS->nD; i++) {
-    dv_dag_t * D = &CS->D[i];
+  for (i = 0; i < DMG->nD; i++) {
+    dm_dag_t * D = &DMG->D[i];
     int cp;
     for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++)
       if (D->rt->cpss[cp].sched_delays[dr_dag_edge_kind_other_cont] > 0.0)
@@ -940,8 +725,8 @@ dp_stat_graph_critical_path_edge_based_delay_breakdown(char * filename) {
   int ptimes, cp;
   for (ptimes = 0; ptimes < nptimes; ptimes++) {
     
-    for (i = 0; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
+    for (i = 0; i < DMG->nD; i++) {
+      dm_dag_t * D = &DMG->D[i];
       /* exclude serial DAGs */
       if (strstr(D->name_on_graph, "serial")) continue;
       cp = DV_CRITICAL_PATH_1;
@@ -971,8 +756,8 @@ dp_stat_graph_performance_loss_factors_with_percentage_lines(char * filename_) {
   /* Get max y */
   int i;
   double max_y = 0.0;
-  for (i = 0; i < CS->nD; i++) {
-    double total_loss = (CS->SBG->work[i] - CS->SBG->work[0]) + (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
+  for (i = 0; i < DMG->nD; i++) {
+    double total_loss = (DMG->SBG->work[i] - DMG->SBG->work[0]) + (DMG->SBG->delay[i]) + (DMG->SBG->nowork[i]);
     if (total_loss > max_y)
       max_y = total_loss;
   }
@@ -1009,10 +794,10 @@ dp_stat_graph_performance_loss_factors_with_percentage_lines(char * filename_) {
           );
   int j;
   for (j = 0; j < 3; j++) {
-    for (i = 1; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
-      double total_loss = (CS->SBG->work[i] - CS->SBG->work[0]) + (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
-      double factor = (CS->SBG->work[i] - CS->SBG->work[0]);
+    for (i = 1; i < DMG->nD; i++) {
+      dm_dag_t * D = &DMG->D[i];
+      double total_loss = (DMG->SBG->work[i] - DMG->SBG->work[0]) + (DMG->SBG->delay[i]) + (DMG->SBG->nowork[i]);
+      double factor = (DMG->SBG->work[i] - DMG->SBG->work[0]);
       double percentage = (factor / total_loss) * 100.0;
       if (total_loss < 0) percentage = 0.0;
       fprintf(out,
@@ -1056,10 +841,10 @@ dp_stat_graph_performance_loss_factors_with_percentage_lines(char * filename_) {
           DV_GRAPH_COLORS[1]
           );
   for (j = 0; j < 3; j++) {
-    for (i = 1; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
-      double total_loss = (CS->SBG->work[i] - CS->SBG->work[0]) + (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
-      double factor = CS->SBG->delay[i];
+    for (i = 1; i < DMG->nD; i++) {
+      dm_dag_t * D = &DMG->D[i];
+      double total_loss = (DMG->SBG->work[i] - DMG->SBG->work[0]) + (DMG->SBG->delay[i]) + (DMG->SBG->nowork[i]);
+      double factor = DMG->SBG->delay[i];
       double percentage = (factor / total_loss) * 100.0;
       if (total_loss < 0) percentage = 0.0;
       fprintf(out,
@@ -1107,10 +892,10 @@ dp_stat_graph_performance_loss_factors_with_percentage_lines(char * filename_) {
           DV_GRAPH_COLORS[10]
           );
   for (j = 0; j < 4; j++) {
-    for (i = 1; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
-      double total_loss = (CS->SBG->work[i] - CS->SBG->work[0]) + (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
-      double factor = CS->SBG->delay[i];
+    for (i = 1; i < DMG->nD; i++) {
+      dm_dag_t * D = &DMG->D[i];
+      double total_loss = (DMG->SBG->work[i] - DMG->SBG->work[0]) + (DMG->SBG->delay[i]) + (DMG->SBG->nowork[i]);
+      double factor = DMG->SBG->delay[i];
       double percentage = (factor / total_loss) * 100.0;
       if (total_loss < 0) percentage = 0.0;
       fprintf(out,
@@ -1156,10 +941,10 @@ dp_stat_graph_performance_loss_factors_with_percentage_lines(char * filename_) {
           );
             
   for (j = 0; j < 3; j++) {
-    for (i = 1; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
-      double total_loss = (CS->SBG->work[i] - CS->SBG->work[0]) + (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
-      double factor = CS->SBG->nowork[i];
+    for (i = 1; i < DMG->nD; i++) {
+      dm_dag_t * D = &DMG->D[i];
+      double total_loss = (DMG->SBG->work[i] - DMG->SBG->work[0]) + (DMG->SBG->delay[i]) + (DMG->SBG->nowork[i]);
+      double factor = DMG->SBG->nowork[i];
       double percentage = (factor / total_loss) * 100.0;
       if (total_loss < 0) percentage = 0.0;
       fprintf(out,
@@ -1207,10 +992,10 @@ dp_stat_graph_performance_loss_factors_with_percentage_lines(char * filename_) {
           DV_GRAPH_COLORS[11]
           );
   for (j = 0; j < 4; j++) {
-    for (i = 1; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
-      double total_loss = (CS->SBG->work[i] - CS->SBG->work[0]) + (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
-      double factor = CS->SBG->nowork[i];
+    for (i = 1; i < DMG->nD; i++) {
+      dm_dag_t * D = &DMG->D[i];
+      double total_loss = (DMG->SBG->work[i] - DMG->SBG->work[0]) + (DMG->SBG->delay[i]) + (DMG->SBG->nowork[i]);
+      double factor = DMG->SBG->nowork[i];
       double percentage = (factor / total_loss) * 100.0;
       if (total_loss < 0) percentage = 0.0;
       fprintf(out,
@@ -1234,15 +1019,15 @@ dp_stat_graph_performance_loss_factors_with_percentage_labels_to_base(char * fil
   /* Get max y */
   int i;
   double max_y = 0.0;
-  for (i = 0; i < CS->nD; i++) {
-    double total_loss = (CS->SBG->work[i] - CS->SBG->work[0]) + (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
+  for (i = 0; i < DMG->nD; i++) {
+    double total_loss = (DMG->SBG->work[i] - DMG->SBG->work[0]) + (DMG->SBG->delay[i]) + (DMG->SBG->nowork[i]);
     if (total_loss > max_y)
       max_y = total_loss;
   }
 
   FILE * out;
   char filename[1000];
-  double base = CS->SBG->work[0] + CS->SBG->delay[0] + CS->SBG->nowork[0];
+  double base = DMG->SBG->work[0] + DMG->SBG->delay[0] + DMG->SBG->nowork[0];
 
   /* work stretch */
   strcpy(filename, filename_);
@@ -1268,9 +1053,9 @@ dp_stat_graph_performance_loss_factors_with_percentage_labels_to_base(char * fil
           );
   int j;
   for (j = 0; j < 2; j++) {
-    for (i = 1; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
-      double factor = (CS->SBG->work[i] - CS->SBG->work[0]);
+    for (i = 1; i < DMG->nD; i++) {
+      dm_dag_t * D = &DMG->D[i];
+      double factor = (DMG->SBG->work[i] - DMG->SBG->work[0]);
       double percentage = (factor / base) * 100.0;
       fprintf(out,
               "\"%s\"  %lf \"%.1lf%%\"\n",
@@ -1307,9 +1092,9 @@ dp_stat_graph_performance_loss_factors_with_percentage_labels_to_base(char * fil
           DV_GRAPH_COLORS[1]
           );
   for (j = 0; j < 2; j++) {
-    for (i = 1; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
-      double factor = CS->SBG->delay[i];
+    for (i = 1; i < DMG->nD; i++) {
+      dm_dag_t * D = &DMG->D[i];
+      double factor = DMG->SBG->delay[i];
       double percentage = (factor / base) * 100.0;
       fprintf(out,
               "\"%s\"  %lf \"%.1lf%%\"\n",
@@ -1350,9 +1135,9 @@ dp_stat_graph_performance_loss_factors_with_percentage_labels_to_base(char * fil
           DV_GRAPH_COLORS[10]
           );
   for (j = 0; j < 3; j++) {
-    for (i = 1; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
-      double factor = CS->SBG->delay[i];
+    for (i = 1; i < DMG->nD; i++) {
+      dm_dag_t * D = &DMG->D[i];
+      double factor = DMG->SBG->delay[i];
       double percentage = (factor / base) * 100.0;
       fprintf(out,
               "\"%s\"  %lf %lf \"%.1lf%%\"\n",
@@ -1390,9 +1175,9 @@ dp_stat_graph_performance_loss_factors_with_percentage_labels_to_base(char * fil
           DV_GRAPH_COLORS[2]
           );
   for (j = 0; j < 2; j++) {
-    for (i = 1; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
-      double factor = CS->SBG->nowork[i];
+    for (i = 1; i < DMG->nD; i++) {
+      dm_dag_t * D = &DMG->D[i];
+      double factor = DMG->SBG->nowork[i];
       double percentage = (factor / base) * 100.0;
       fprintf(out,
               "\"%s\"  %lf \"%.1lf%%\"\n",
@@ -1433,9 +1218,9 @@ dp_stat_graph_performance_loss_factors_with_percentage_labels_to_base(char * fil
           DV_GRAPH_COLORS[11]
           );
   for (j = 0; j < 3; j++) {
-    for (i = 1; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
-      double factor = CS->SBG->nowork[i];
+    for (i = 1; i < DMG->nD; i++) {
+      dm_dag_t * D = &DMG->D[i];
+      double factor = DMG->SBG->nowork[i];
       double percentage = (factor / base) * 100.0;
       fprintf(out,
               "\"%s\"  %lf %lf \"%.1lf%%\"\n",
@@ -1461,9 +1246,9 @@ dp_stat_graph_performance_loss_factor_percentages_with_labels(char * filename_) 
   /* Get max y */
   double max_y = 0.0;
   double max_y_percent = 0.0;
-  double base = CS->SBG->work[0] + CS->SBG->delay[0] + CS->SBG->nowork[0];
-  for (i = 0; i < CS->nD; i++) {
-    double total_loss = (CS->SBG->work[i] - CS->SBG->work[0]) + (CS->SBG->delay[i]) + (CS->SBG->nowork[i]);
+  double base = DMG->SBG->work[0] + DMG->SBG->delay[0] + DMG->SBG->nowork[0];
+  for (i = 0; i < DMG->nD; i++) {
+    double total_loss = (DMG->SBG->work[i] - DMG->SBG->work[0]) + (DMG->SBG->delay[i]) + (DMG->SBG->nowork[i]);
     if (total_loss > max_y) {
       max_y = total_loss;
       max_y_percent = ceil(max_y / base * 100.0);
@@ -1493,9 +1278,9 @@ dp_stat_graph_performance_loss_factor_percentages_with_labels(char * filename_) 
           DV_GRAPH_COLORS[0]
           );
   for (j = 0; j < 2; j++) {
-    for (i = 1; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
-      double factor = (CS->SBG->work[i] - CS->SBG->work[0]);
+    for (i = 1; i < DMG->nD; i++) {
+      dm_dag_t * D = &DMG->D[i];
+      double factor = (DMG->SBG->work[i] - DMG->SBG->work[0]);
       double percentage = (factor / base) * 100.0;
       fprintf(out,
               "\"%s\"  %lf \"%.1lf%%\"\n",
@@ -1532,9 +1317,9 @@ dp_stat_graph_performance_loss_factor_percentages_with_labels(char * filename_) 
           DV_GRAPH_COLORS[1]
           );
   for (j = 0; j < 2; j++) {
-    for (i = 1; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
-      double factor = CS->SBG->delay[i];
+    for (i = 1; i < DMG->nD; i++) {
+      dm_dag_t * D = &DMG->D[i];
+      double factor = DMG->SBG->delay[i];
       double percentage = (factor / base) * 100.0;
       fprintf(out,
               "\"%s\"  %lf \"%.1lf%%\"\n",
@@ -1575,9 +1360,9 @@ dp_stat_graph_performance_loss_factor_percentages_with_labels(char * filename_) 
           DV_GRAPH_COLORS[10]
           );
   for (j = 0; j < 3; j++) {
-    for (i = 1; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
-      double factor = CS->SBG->delay[i] - D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_delay;
+    for (i = 1; i < DMG->nD; i++) {
+      dm_dag_t * D = &DMG->D[i];
+      double factor = DMG->SBG->delay[i] - D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_delay;
       double percentage = (factor / base) * 100.0;
       double percentage_2 = (D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_delay / base) * 100.0;
       fprintf(out,
@@ -1616,9 +1401,9 @@ dp_stat_graph_performance_loss_factor_percentages_with_labels(char * filename_) 
           DV_GRAPH_COLORS[2]
           );
   for (j = 0; j < 2; j++) {
-    for (i = 1; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
-      double factor = CS->SBG->nowork[i];
+    for (i = 1; i < DMG->nD; i++) {
+      dm_dag_t * D = &DMG->D[i];
+      double factor = DMG->SBG->nowork[i];
       double percentage = (factor / base) * 100.0;
       fprintf(out,
               "\"%s\"  %lf \"%.1lf%%\"\n",
@@ -1659,9 +1444,9 @@ dp_stat_graph_performance_loss_factor_percentages_with_labels(char * filename_) 
           DV_GRAPH_COLORS[11]
           );
   for (j = 0; j < 3; j++) {
-    for (i = 1; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
-      double factor = CS->SBG->nowork[i] - D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_nowork;
+    for (i = 1; i < DMG->nD; i++) {
+      dm_dag_t * D = &DMG->D[i];
+      double factor = DMG->SBG->nowork[i] - D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_nowork;
       double percentage = (factor / base) * 100.0;
       double percentage_2 = (D->rt->cpss[DV_CRITICAL_PATH_1].sched_delay_nowork / base) * 100.0;
       fprintf(out,
@@ -1691,7 +1476,7 @@ main(int argc, char ** argv) {
   gtk_init(&argc, &argv);
 
   /* CS, GUI */
-  dp_global_state_init_nogtk(CS);
+  dp_global_state_init_nogtk(DVG);
   dv_gui_init(GUI);
 
   /* PIDAG */
@@ -1701,20 +1486,20 @@ main(int argc, char ** argv) {
     glob(argv[i], GLOB_TILDE | GLOB_PERIOD | GLOB_BRACE, NULL, &globbuf);
     int j;
     for (j = 0; j < (int) globbuf.gl_pathc; j++) {
-      _unused_ dv_pidag_t * P = dv_create_new_pidag(globbuf.gl_pathv[j]);
+      _unused_ dm_pidag_t * P = dv_create_new_pidag(globbuf.gl_pathv[j]);
     }
     if (globbuf.gl_pathc > 0)
       globfree(&globbuf);
   }
-  for (i = 0; i < CS->nP; i++) {
-    dv_pidag_t * P = &CS->P[i];
-    _unused_ dv_dag_t * D = dv_create_new_dag(P);
+  for (i = 0; i < DMG->nP; i++) {
+    dm_pidag_t * P = &DMG->P[i];
+    _unused_ dm_dag_t * D = dv_create_new_dag(P);
     //_unused_ dv_view_t * V = dv_create_new_view(D);
   }
 
   /* Preparation */
-  for (i = 0; i < CS->nD; i++) {
-    dv_dag_t * D = &CS->D[i];
+  for (i = 0; i < DMG->nD; i++) {
+    dm_dag_t * D = &DMG->D[i];
 
     dr_pi_dag * G = D->P->G;
     dr_basic_stat bs[1];
@@ -1726,13 +1511,13 @@ main(int argc, char ** argv) {
     dr_clock_t work = bs->total_t_1;
     dr_clock_t delay = bs->cum_delay + (bs->total_elapsed - bs->total_t_1);
     dr_clock_t no_work = bs->cum_no_work;
-    CS->SBG->work[i] = work;
-    CS->SBG->delay[i] = delay;
-    CS->SBG->nowork[i] = no_work;
+    DMG->SBG->work[i] = work;
+    DMG->SBG->delay[i] = delay;
+    DMG->SBG->nowork[i] = no_work;
   }
-  for (i = 0; i < CS->nD; i++) {
-    dv_dag_t * D = &CS->D[i];
-    dv_dag_compute_critical_paths(D);
+  for (i = 0; i < DMG->nD; i++) {
+    dm_dag_t * D = &DMG->D[i];
+    dm_dag_compute_critical_paths(D);
   }
 
   /* Create directories */

@@ -3,15 +3,15 @@
 /****** Layout ******/
 
 static void
-dv_view_layout_timeline_ver_node(dv_view_t * V, dv_dag_node_t * node) {
+dv_view_layout_timeline_ver_node(dv_view_t * V, dm_dag_node_t * node) {
   V->S->nl++;
   if (node->d > V->D->collapsing_d)
     V->D->collapsing_d = node->d;
   
   int coord = V->S->coord;
-  dv_node_coordinate_t * nodeco = &node->c[coord];
-  dv_dag_t * D = V->D;
-  dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, node);
+  dm_node_coordinate_t * nodeco = &node->c[coord];
+  dm_dag_t * D = V->D;
+  dr_pi_dag_node * pi = dm_pidag_get_node_by_dag_node(D->P, node);
   
   /* Calculate inward */
   nodeco->y = dv_view_scale_down_linear(V, pi->info.start.t - D->bt);
@@ -20,18 +20,18 @@ dv_view_layout_timeline_ver_node(dv_view_t * V, dv_dag_node_t * node) {
   nodeco->x = worker * (2 * V->D->radius);
   nodeco->lw = 0.0;
   nodeco->rw = 2 * V->D->radius;
-  if (dv_is_union(node)) {
+  if (dm_is_union(node)) {
     if (worker < 0) {
       nodeco->x = 0.0;
       nodeco->rw = V->D->P->num_workers * (2 * V->D->radius);
     }
-    if (dv_is_inner_loaded(node) && dv_is_expanded(node))
+    if (dm_is_inner_loaded(node) && dm_is_expanded(node))
       dv_view_layout_timeline_ver_node(V, node->head);
   }
     
   /* Calculate link-along */
-  dv_dag_node_t * u, * v;
-  switch ( dv_dag_node_count_nexts(node) ) {
+  dm_dag_node_t * u, * v;
+  switch ( dm_dag_node_count_nexts(node) ) {
   case 0:
     break;
   case 1:
@@ -63,24 +63,24 @@ dv_view_layout_timeline_ver(dv_view_t * V) {
 /****** Draw ******/
 
 static void
-dv_view_draw_timeline_ver_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
-  dv_dag_t * D = V->D;
+dv_view_draw_timeline_ver_node_1(dv_view_t * V, cairo_t * cr, dm_dag_node_t * node) {
+  dm_dag_t * D = V->D;
   dv_view_status_t * S = V->S;
   int coord = V->S->coord;
-  dv_node_coordinate_t * nodeco = &node->c[coord];
+  dm_node_coordinate_t * nodeco = &node->c[coord];
   // Count node drawn
   S->nd++;
   if (node->d > D->cur_d)
     D->cur_d = node->d;
-  if (dv_is_union(node) && dv_is_inner_loaded(node)
-      && dv_is_shrinked(node)
+  if (dm_is_union(node) && dm_is_inner_loaded(node)
+      && dm_is_shrinked(node)
       && node->d < D->cur_d_ex)
     D->cur_d_ex = node->d;
   // Node color
   double x = nodeco->x;
   double y = nodeco->y;
   double c[4];
-  dr_pi_dag_node *pi = dv_pidag_get_node_by_dag_node(D->P, node);
+  dr_pi_dag_node *pi = dm_pidag_get_node_by_dag_node(D->P, node);
   dv_lookup_color(pi, S->nc, c, c+1, c+2, c+3);
   // Alpha
   double alpha = 1.0;
@@ -105,7 +105,7 @@ dv_view_draw_timeline_ver_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * no
     cairo_close_path(cr);
 
     /* Draw node */
-    if (dv_is_union(node)) {
+    if (dm_is_union(node)) {
       double c[4] = { 0.15, 0.15, 0.15, 0.2 };
       cairo_set_source_rgba(cr, c[0], c[1], c[2], c[3]);
       cairo_fill(cr);
@@ -122,7 +122,7 @@ dv_view_draw_timeline_ver_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * no
         cairo_fill_preserve(cr);
       }
       /* Draw opaque for infotag node */
-      if (dv_llist_has(V->D->P->itl, (void *) node->pii)) {
+      if (dm_llist_has(V->D->P->itl, (void *) node->pii)) {
         cairo_set_source_rgba(cr, 0.1, 0.1, 0.1, 0.6);
         cairo_fill(cr);
       }
@@ -130,22 +130,22 @@ dv_view_draw_timeline_ver_node_1(dv_view_t * V, cairo_t * cr, dv_dag_node_t * no
     
   }
   // Flag to draw infotag
-  if (dv_llist_has(V->D->P->itl, (void *) node->pii)) {
-    dv_llist_add(V->D->itl, (void *) node);
+  if (dm_llist_has(V->D->P->itl, (void *) node->pii)) {
+    dm_llist_add(V->D->itl, (void *) node);
   }
   cairo_restore(cr);
 }
 
 static void
-dv_view_draw_timeline_ver_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * node) {
+dv_view_draw_timeline_ver_node_r(dv_view_t * V, cairo_t * cr, dm_dag_node_t * node) {
   /* Counting statistics */
   V->S->ndh++;
-  if (!node || !dv_is_set(node))
+  if (!node || !dm_is_set(node))
     return;
   /* Call inward */
   int hidden = dv_timeline_node_is_invisible(V, node);
   if (!hidden) {
-    if (dv_is_union(node) && dv_is_inner_loaded(node) && dv_is_expanded(node)) {
+    if (dm_is_union(node) && dm_is_inner_loaded(node) && dm_is_expanded(node)) {
       dv_view_draw_timeline_ver_node_r(V, cr, node->head);
     } else {
       dv_view_draw_timeline_ver_node_1(V, cr, node);
@@ -153,8 +153,8 @@ dv_view_draw_timeline_ver_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * no
   }
   /* Call link-along */
   if (!(hidden & DV_DAG_NODE_HIDDEN_BELOW)) {
-    dv_dag_node_t * next = NULL;
-    while ( (next = dv_dag_node_traverse_nexts(node, next)) ) {
+    dm_dag_node_t * next = NULL;
+    while ( (next = dm_dag_node_traverse_nexts(node, next)) ) {
       dv_view_draw_timeline_ver_node_r(V, cr, next);
     }
   }
@@ -163,11 +163,11 @@ dv_view_draw_timeline_ver_node_r(dv_view_t * V, cairo_t * cr, dv_dag_node_t * no
 void
 dv_view_draw_timeline_ver(dv_view_t * V, cairo_t * cr) {
   // Set adaptive line width
-  double line_width = dv_min(CS->opts.nlw, CS->opts.nlw / dv_min(V->S->zoom_ratio_x, V->S->zoom_ratio_y));
+  double line_width = dv_min(DVG->opts.nlw, DVG->opts.nlw / dv_min(V->S->zoom_ratio_x, V->S->zoom_ratio_y));
   cairo_set_line_width(cr, line_width);
   int i;
   // Draw nodes
-  dv_llist_init(V->D->itl);
+  dm_llist_init(V->D->itl);
   V->S->nd = 0;
   V->S->ndh = 0;
   V->D->cur_d = 0;

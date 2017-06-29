@@ -1,7 +1,7 @@
 #include "dagviz.h"
 #include "callback.h"
 
-dv_global_state_t  CS[1];
+dv_global_state_t  DVG[1];
 dv_gui_t GUI[1];
 
 const char * const DV_COLORS[] =
@@ -74,64 +74,64 @@ dv_get_env() {
 /*-----------------Global State-----------------*/
 
 void
-dv_global_state_init(dv_global_state_t * CS) {
-  memset(CS, 0, sizeof(dv_global_state_t));
-  CS->nP = 0;
-  CS->nD = 0;
-  CS->nV = 0;
-  CS->nVP = 0;
-  CS->FL = NULL;
-  CS->activeV = NULL;
-  CS->activeVP = NULL;
-  CS->err = DV_OK;
+dv_global_state_init() {
+  memset(DVG, 0, sizeof(dv_global_state_t));
+  DMG->nP = 0;
+  DMG->nD = 0;
+  DVG->nV = 0;
+  DVG->nVP = 0;
+  DVG->activeV = NULL;
+  DVG->activeVP = NULL;
+  DVG->error = DV_OK;
   int i;
   for (i = 0; i < DV_NUM_COLOR_POOLS; i++)
-    CS->CP_sizes[i] = 0;
-  dv_btsample_viewer_init(CS->btviewer);
-  dv_dag_node_pool_init(CS->pool);
-  dv_histogram_entry_pool_init(CS->epool);
-  CS->SD->ne = 0;
+    DVG->CP_sizes[i] = 0;
+  dv_btsample_viewer_init(DVG->btviewer);
+  dm_dag_node_pool_init(DMG->pool);
+  dm_histogram_entry_pool_init(DMG->epool);
+  DVG->SD->ne = 0;
   for (i = 0; i < DV_MAX_DISTRIBUTION; i++) {
-    CS->SD->e[i].dag_id = -1; /* none */
-    CS->SD->e[i].type = 0;
-    CS->SD->e[i].stolen = 0;
-    CS->SD->e[i].title = NULL;
-    CS->SD->e[i].title_entry = NULL;
+    DVG->SD->e[i].dag_id = -1; /* none */
+    DVG->SD->e[i].type = 0;
+    DVG->SD->e[i].stolen = 0;
+    DVG->SD->e[i].title = NULL;
+    DVG->SD->e[i].title_entry = NULL;
   }
-  CS->SD->xrange_from = 0;
-  CS->SD->xrange_to = 10000;
-  CS->SD->node_pool_label = NULL;
-  CS->SD->entry_pool_label = NULL;
-  CS->SD->fn = DV_STAT_DISTRIBUTION_OUTPUT_DEFAULT_NAME;
-  CS->SD->bar_width = 20;
-  for (i = 0; i < DV_MAX_DAG; i++) {
-    CS->SBG->checked_D[i] = 1;
-    CS->SBG->work[i] = 0.0;
-    CS->SBG->delay[i] = 0.0;
-    CS->SBG->nowork[i] = 0.0;
+  DVG->SD->xrange_from = 0;
+  DVG->SD->xrange_to = 10000;
+  DVG->SD->node_pool_label = NULL;
+  DVG->SD->entry_pool_label = NULL;
+  DVG->SD->fn = DV_STAT_DISTRIBUTION_OUTPUT_DEFAULT_NAME;
+  DVG->SD->bar_width = 20;
+  for (i = 0; i < DM_MAX_DAG; i++) {
+    DMG->SBG->checked_D[i] = 1;
+    DMG->SBG->work[i] = 0.0;
+    DMG->SBG->delay[i] = 0.0;
+    DMG->SBG->nowork[i] = 0.0;
   }
-  CS->SBG->fn = DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME;
-  CS->SBG->fn_2 = DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME_2;
+  DMG->SBG->fn = DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME;
+  DMG->SBG->fn_2 = DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME_2;
   int cp;
   for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
-    CS->SBG->checked_cp[cp] = 0;
+    DMG->SBG->checked_cp[cp] = 0;
     if (cp == DV_CRITICAL_PATH_1)
-      CS->SBG->checked_cp[cp] = 1;
+      DMG->SBG->checked_cp[cp] = 1;
   }
   
-  CS->context_view = NULL;
-  CS->context_node = NULL;
+  DVG->context_view = NULL;
+  DVG->context_node = NULL;
 
-  CS->verbose_level = DV_VERBOSE_LEVEL_DEFAULT;
+  DVG->verbose_level = DV_VERBOSE_LEVEL_DEFAULT;
 
-  CS->oncp_flags[DV_CRITICAL_PATH_0] = DV_NODE_FLAG_CRITICAL_PATH_0;
-  CS->oncp_flags[DV_CRITICAL_PATH_1] = DV_NODE_FLAG_CRITICAL_PATH_1;
-  CS->oncp_flags[DV_CRITICAL_PATH_2] = DV_NODE_FLAG_CRITICAL_PATH_2;
-  CS->cp_colors[DV_CRITICAL_PATH_0] = DV_CRITICAL_PATH_0_COLOR;
-  CS->cp_colors[DV_CRITICAL_PATH_1] = DV_CRITICAL_PATH_1_COLOR;
-  CS->cp_colors[DV_CRITICAL_PATH_2] = DV_CRITICAL_PATH_2_COLOR;
+  DMG->oncp_flags[DV_CRITICAL_PATH_0] = DV_NODE_FLAG_CRITICAL_PATH_0;
+  DMG->oncp_flags[DV_CRITICAL_PATH_1] = DV_NODE_FLAG_CRITICAL_PATH_1;
+  DMG->oncp_flags[DV_CRITICAL_PATH_2] = DV_NODE_FLAG_CRITICAL_PATH_2;
+  DVG->cp_colors[DV_CRITICAL_PATH_0] = DV_CRITICAL_PATH_0_COLOR;
+  DVG->cp_colors[DV_CRITICAL_PATH_1] = DV_CRITICAL_PATH_1_COLOR;
+  DVG->cp_colors[DV_CRITICAL_PATH_2] = DV_CRITICAL_PATH_2_COLOR;
 
-  CS->opts = dv_options_default_values;
+  DVG->opts = dv_options_default_values;
+  dm_global_state_init();
 }
 
 /*-----------------end of Global State-----------------*/
@@ -142,7 +142,7 @@ dv_global_state_init(dv_global_state_t * CS) {
 
 void
 dv_queue_draw_viewport(dv_viewport_t * VP) {
-  if (CS->verbose_level >= 2) {
+  if (DVG->verbose_level >= 2) {
     fprintf(stderr, "dv_queue_draw_viewport()\n");
   }
   fflush(stdin);
@@ -152,34 +152,34 @@ dv_queue_draw_viewport(dv_viewport_t * VP) {
 void
 dv_queue_draw_view(dv_view_t * V) {
   int i;
-  for (i=0; i<CS->nVP; i++)
+  for (i=0; i<DVG->nVP; i++)
     if (V->mVP[i])
-      dv_queue_draw_viewport(&CS->VP[i]);
+      dv_queue_draw_viewport(&DVG->VP[i]);
 }
 
 void
-dv_queue_draw_dag(dv_dag_t * D) {
-  int todraw[CS->nVP];
+dv_queue_draw_dag(dm_dag_t * D) {
+  int todraw[DVG->nVP];
   int i, j;
-  for (i = 0; i < CS->nVP; i++)
+  for (i = 0; i < DVG->nVP; i++)
     todraw[i] = 0;
-  for (i = 0; i < CS->nV; i++)
-    if (D->mV[i]) {
-      for (j = 0; j < CS->nVP; j++)
-        if (CS->V[i].mVP[j])
+  for (i = 0; i < DVG->nV; i++)
+    if (((dv_dag_t*)D->g)->mV[i]) {
+      for (j = 0; j < DVG->nVP; j++)
+        if (DVG->V[i].mVP[j])
           todraw[j]++;
     }
-  for (i = 0; i < CS->nVP; i++)
+  for (i = 0; i < DVG->nVP; i++)
     if (todraw[i])
-      dv_queue_draw_viewport(&CS->VP[i]);
+      dv_queue_draw_viewport(&DVG->VP[i]);
 }
 
 void
-dv_queue_draw_pidag(dv_pidag_t * P) {
+dv_queue_draw_pidag(dm_pidag_t * P) {
   int i;
-  for (i = 0; i < CS->nD; i++)
-    if (CS->D[i].P == P)
-      dv_queue_draw_dag(&CS->D[i]);
+  for (i = 0; i < DMG->nD; i++)
+    if (DMG->D[i].P == P)
+      dv_queue_draw_dag(&DMG->D[i]);
 }
 
 void
@@ -189,56 +189,56 @@ dv_queue_draw(dv_view_t * V) {
 
 void
 dv_queue_draw_d(dv_view_t * V) {
-  dv_dag_t * D = V->D;
+  dm_dag_t * D = V->D;
   dv_queue_draw_dag(D);
   /*
   int i;
-  for (i=0; i<CS->nV; i++)
-    if (CS->V[i].D == D)
-      dv_queue_draw(&CS->V[i]);
+  for (i=0; i<DVG->nV; i++)
+    if (DVG->V[i].D == D)
+      dv_queue_draw(&DVG->V[i]);
   */
 }
 
 void
 dv_queue_draw_d_p(dv_view_t * V) {
-  dv_pidag_t * P = V->D->P;
+  dm_pidag_t * P = V->D->P;
   dv_queue_draw_pidag(P);
   /*
   int i;
-  for (i=0; i<CS->nV; i++)
-    if (CS->V[i].D->P == P)
-      dv_queue_draw(&CS->V[i]);
+  for (i=0; i<DVG->nV; i++)
+    if (DVG->V[i].D->P == P)
+      dv_queue_draw(&DVG->V[i]);
   */
 }
 
 void
 dv_view_clip(dv_view_t * V, cairo_t * cr) {
-  double margin = CS->opts.clipping_frame_margin;
+  double margin = DVG->opts.clipping_frame_margin;
   cairo_rectangle(cr, margin, margin, V->S->vpw - margin * 2, V->S->vph - margin * 2);
   cairo_clip(cr);
 }
 
 double
 dv_view_clip_get_bound_left(dv_view_t * V) {
-  double margin = CS->opts.clipping_frame_margin;
+  double margin = DVG->opts.clipping_frame_margin;
   return dv_view_convert_viewport_x_to_graph_x(V, margin);
 }
 
 double
 dv_view_clip_get_bound_right(dv_view_t * V) {
-  double margin = CS->opts.clipping_frame_margin;
+  double margin = DVG->opts.clipping_frame_margin;
   return dv_view_convert_viewport_x_to_graph_x(V, V->S->vpw - margin);
 }
 
 double
 dv_view_clip_get_bound_up(dv_view_t * V) {
-  double margin = CS->opts.clipping_frame_margin;
+  double margin = DVG->opts.clipping_frame_margin;
   return dv_view_convert_viewport_y_to_graph_y(V, margin);
 }
 
 double
 dv_view_clip_get_bound_down(dv_view_t * V) {
-  double margin = CS->opts.clipping_frame_margin;
+  double margin = DVG->opts.clipping_frame_margin;
   return dv_view_convert_viewport_y_to_graph_y(V, V->S->vph - margin);
 }
 
@@ -307,34 +307,34 @@ dv_viewport_draw(dv_viewport_t * VP, cairo_t * cr, int to_draw_rulers) {
   dv_view_status_t * S;
   int count = 0;
   int i;
-  for (i=0; i<CS->nV; i++)
+  for (i=0; i<DVG->nV; i++)
     if (VP->mV[i]) {
-      V = CS->V + i;
+      V = DVG->V + i;
       S = V->S;
       switch (S->lt) {
       case DV_LAYOUT_TYPE_DAG:
         S->basex = 0.5 * S->vpw;
-        S->basey = CS->opts.zoom_to_fit_margin;
+        S->basey = DVG->opts.zoom_to_fit_margin;
         break;
       case DV_LAYOUT_TYPE_DAG_BOX_LOG:
       case DV_LAYOUT_TYPE_DAG_BOX_POWER:
       case DV_LAYOUT_TYPE_DAG_BOX_LINEAR:
         //G->basex = 0.5 * S->vpw - 0.5 * (G->rt->rw - G->rt->lw);
         S->basex = 0.5 * S->vpw;
-        S->basey = CS->opts.zoom_to_fit_margin;
+        S->basey = DVG->opts.zoom_to_fit_margin;
         break;
       case DV_LAYOUT_TYPE_TIMELINE_VER:
       case DV_LAYOUT_TYPE_TIMELINE:
-        S->basex = CS->opts.zoom_to_fit_margin;
-        S->basey = CS->opts.zoom_to_fit_margin;
+        S->basex = DVG->opts.zoom_to_fit_margin;
+        S->basey = DVG->opts.zoom_to_fit_margin;
         break;
       case DV_LAYOUT_TYPE_PARAPROF:
-        S->basex = CS->opts.paraprof_zoom_to_fit_margin;
-        S->basey = S->vph - CS->opts.paraprof_zoom_to_fit_margin_bottom;
+        S->basex = DVG->opts.paraprof_zoom_to_fit_margin;
+        S->basey = S->vph - DVG->opts.paraprof_zoom_to_fit_margin_bottom;
         break;
       case DV_LAYOUT_TYPE_CRITICAL_PATH:
-        S->basex = CS->opts.paraprof_zoom_to_fit_margin;
-        S->basey = S->vph - CS->opts.paraprof_zoom_to_fit_margin_bottom;
+        S->basex = DVG->opts.paraprof_zoom_to_fit_margin;
+        S->basey = S->vph - DVG->opts.paraprof_zoom_to_fit_margin_bottom;
         break;
       default:
         dv_check(0);
@@ -368,7 +368,7 @@ dv_viewport_draw(dv_viewport_t * VP, cairo_t * cr, int to_draw_rulers) {
       }
     }
     dv_viewport_draw_rulers(VP, cr);
-    if (VP == CS->activeVP && VP != CS->VP)
+    if (VP == DVG->activeVP && VP != DVG->VP)
       dv_viewport_draw_focused_mark(VP, cr);
   }
   dv_statusbar_update_selection_status();
@@ -639,7 +639,7 @@ dv_view_toolbox_get_window(dv_view_toolbox_t * T) {
   /* Build toolbox window */
   GtkWidget * window = gtk_window_new(GTK_WINDOW_TOPLEVEL);
   char s[DV_STRING_LENGTH];
-  sprintf(s, "Toolbox of View %ld (DAG %ld)", T->V - CS->V, T->V->D - CS->D);
+  sprintf(s, "Toolbox of View %ld (DAG %ld)", T->V - DVG->V, T->V->D - DMG->D);
   gtk_window_set_title(GTK_WINDOW(window), s);
   gtk_window_set_position(GTK_WINDOW(window), GTK_WIN_POS_MOUSE);
   gtk_window_set_modal(GTK_WINDOW(window), 0);
@@ -896,7 +896,7 @@ dv_view_toolbox_get_window(dv_view_toolbox_t * T) {
 void
 dv_view_init(dv_view_t * V) {
   V->name = malloc( 10 * sizeof(char) );
-  sprintf(V->name, "View %ld", V - CS->V);
+  sprintf(V->name, "View %ld", V - DVG->V);
   V->D = NULL;
   dv_view_status_init(V, V->S);
   int i;
@@ -907,19 +907,20 @@ dv_view_init(dv_view_t * V) {
 }
 
 dv_view_t *
-dv_view_create_new_with_dag(dv_dag_t * D) {
+dv_view_create_new_with_dag(dm_dag_t * D) {
   /* Allocate and Initialize */
-  if (CS->nV >= DV_MAX_VIEW) {
-    fprintf(stderr, "Error: too many Views (%d>=%d).\n", CS->nV, DV_MAX_VIEW);
+  if (DVG->nV >= DV_MAX_VIEW) {
+    fprintf(stderr, "Error: too many Views (%d>=%d).\n", DVG->nV, DV_MAX_VIEW);
     return NULL;
   }
-  dv_view_t * V = &CS->V[CS->nV++];
+  dv_view_t * V = &DVG->V[DVG->nV++];
   dv_view_init(V);
 
   /* Set values */
   V->D = D;
-  D->nviews[V->S->lt]++;
-  D->mV[V - CS->V] = 1;
+  dv_dag_t * g = (dv_dag_t *) D->g;
+  g->nviews[V->S->lt]++;
+  g->mV[V - DVG->V] = 1;
   
   return V;
 }
@@ -944,7 +945,7 @@ dv_view_change_mainvp(dv_view_t * V, dv_viewport_t * VP) {
 
 void
 dv_view_add_viewport(dv_view_t * V, dv_viewport_t * VP) {
-  int idx = VP - CS->VP;
+  int idx = VP - DVG->VP;
   if (V->mVP[idx])
     return;
   V->mVP[idx] = 1;
@@ -956,7 +957,7 @@ dv_view_add_viewport(dv_view_t * V, dv_viewport_t * VP) {
 
 void
 dv_view_remove_viewport(dv_view_t * V, dv_viewport_t * VP) {
-  int idx = VP - CS->VP;
+  int idx = VP - DVG->VP;
   if (!V->mVP[idx])
     return;
   V->mVP[idx] = 0;
@@ -965,9 +966,9 @@ dv_view_remove_viewport(dv_view_t * V, dv_viewport_t * VP) {
   if (V->mainVP == VP) {
     dv_viewport_t * new_vp = NULL;
     int i;
-    for (i = 0; i < CS->nVP; i++)
+    for (i = 0; i < DVG->nVP; i++)
       if (V->mVP[i]) {
-        new_vp = &CS->VP[i];
+        new_vp = &DVG->VP[i];
         break;
       }
     dv_view_change_mainvp(V, new_vp);
@@ -977,7 +978,7 @@ dv_view_remove_viewport(dv_view_t * V, dv_viewport_t * VP) {
 void
 dv_view_switch_viewport(dv_view_t * V, dv_viewport_t * VP1, dv_viewport_t * VP2) {
   int sw = 0;
-  //fprintf(stderr, "mainvp:%ld, vp1:%ld\n", V->mainVP - CS->VP, VP1 - CS->VP);
+  //fprintf(stderr, "mainvp:%ld, vp1:%ld\n", V->mainVP - DVG->VP, VP1 - DVG->VP);
   if (V->mainVP == VP1)
     sw = 1;
   dv_view_remove_viewport(V, VP1);
@@ -995,18 +996,18 @@ dv_view_switch_viewport(dv_view_t * V, dv_viewport_t * VP1, dv_viewport_t * VP2)
 dv_viewport_t *
 dv_viewport_create_new() {
   /* Get new Viewport */
-  if (CS->nVP >= DV_MAX_VIEWPORT) {
-    fprintf(stderr, "Error: too many Viewports (%d>=%d).\n", CS->nVP, DV_MAX_VIEWPORT);
+  if (DVG->nVP >= DV_MAX_VIEWPORT) {
+    fprintf(stderr, "Error: too many Viewports (%d>=%d).\n", DVG->nVP, DV_MAX_VIEWPORT);
     return NULL;
   }
-  dv_viewport_t * VP = &CS->VP[CS->nVP++];
+  dv_viewport_t * VP = &DVG->VP[DVG->nVP++];
   return VP;
 }
 
 void
 dv_viewport_toolbox_init(dv_viewport_t * VP) {
   char s[DV_STRING_LENGTH];
-  sprintf(s, "DAG %ld", VP->mainV - CS->V);
+  sprintf(s, "DAG %ld", VP->mainV - DVG->V);
 
   // White color
   GdkRGBA white[1];
@@ -1090,7 +1091,7 @@ dv_viewport_toolbox_init(dv_viewport_t * VP) {
 void
 dv_viewport_init(dv_viewport_t * VP) {
   char s[DV_STRING_LENGTH];
-  sprintf(s, "Viewport %ld", VP - CS->VP);
+  sprintf(s, "Viewport %ld", VP - DVG->VP);
   GdkRGBA white[1];
   gdk_rgba_parse(white, "white");
 
@@ -1187,19 +1188,19 @@ dv_viewport_init(dv_viewport_t * VP) {
     gtk_menu_button_set_popup(GTK_MENU_BUTTON(dag_menubutton), dag_menu);
 
     int i, j;
-    for (i = 0; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
+    for (i = 0; i < DMG->nD; i++) {
+      dm_dag_t * D = &DMG->D[i];
       dv_view_t * V = NULL;
       int c = 0;
-      for (j = 0; j < CS->nV; j++)
-        if (D->mV[j]) {
+      for (j = 0; j < DVG->nV; j++)
+        if (((dv_dag_t*)D->g)->mV[j]) {
           c++;
-          V = &CS->V[j];        
+          V = &DVG->V[j];        
         }
       if (c == 1) {
         GtkWidget * item = gtk_check_menu_item_new_with_label(D->name);
         gtk_menu_shell_append(GTK_MENU_SHELL(dag_menu), item);
-        if (VP->mV[V - CS->V])
+        if (VP->mV[V - DVG->V])
           gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), TRUE);
         g_signal_connect(G_OBJECT(item), "toggled", G_CALLBACK(on_management_window_viewport_dag_menu_item_toggled), (void *) VP);
       } else if (c > 1) {
@@ -1207,9 +1208,9 @@ dv_viewport_init(dv_viewport_t * VP) {
         gtk_menu_shell_append(GTK_MENU_SHELL(dag_menu), item);
         GtkWidget * submenu = gtk_menu_new();
         gtk_menu_item_set_submenu(GTK_MENU_ITEM(item), submenu);
-        for (j = 0; j < CS->nV; j++)
-          if (D->mV[j]) {
-            item = gtk_check_menu_item_new_with_label(CS->V[j].name);
+        for (j = 0; j < DVG->nV; j++)
+          if (((dv_dag_t*)D->g)->mV[j]) {
+            item = gtk_check_menu_item_new_with_label(DVG->V[j].name);
             gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);
             if (VP->mV[j])
               gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), TRUE);
@@ -1319,9 +1320,9 @@ dv_viewport_change_split(dv_viewport_t * VP, int split) {
         dv_viewport_init(VP->vp1);
     }
     int i;
-    for (i=0; i<CS->nV; i++)
+    for (i=0; i<DVG->nV; i++)
       if (VP->mV[i]) {
-        dv_view_switch_viewport(&CS->V[i], VP, VP->vp1);
+        dv_view_switch_viewport(&DVG->V[i], VP, VP->vp1);
       }
     if (!VP->vp2) {
       VP->vp2 = dv_viewport_create_new();
@@ -1329,23 +1330,23 @@ dv_viewport_change_split(dv_viewport_t * VP, int split) {
         dv_viewport_init(VP->vp2);
     }
     /* switch active VP */
-    if (CS->activeVP == VP)
-      CS->activeVP = VP->vp1;
+    if (DVG->activeVP == VP)
+      DVG->activeVP = VP->vp1;
   } else {
     dv_viewport_change_split(VP->vp1, 0);
     dv_viewport_change_split(VP->vp2, 0);
     int i;
-    for (i=0; i<CS->nV; i++) {
+    for (i=0; i<DVG->nV; i++) {
       if (VP->vp1->mV[i]) {
-        dv_view_switch_viewport(&CS->V[i], VP->vp1, VP);
+        dv_view_switch_viewport(&DVG->V[i], VP->vp1, VP);
       }
       if (VP->vp2->mV[i]) {
-        dv_view_switch_viewport(&CS->V[i], VP->vp2, VP);
+        dv_view_switch_viewport(&DVG->V[i], VP->vp2, VP);
       }
     }
     /* switch active VP */
-    if (CS->activeVP == VP->vp1 || CS->activeVP == VP->vp2)
-      CS->activeVP = VP;
+    if (DVG->activeVP == VP->vp1 || DVG->activeVP == VP->vp2)
+      DVG->activeVP = VP;
   }
 
   /* Update widgets */
@@ -1410,7 +1411,7 @@ dv_viewport_change_mainv(dv_viewport_t * VP, dv_view_t * V) {
   if (!V) {
     sprintf(s, "None");
   } else {
-    sprintf(s, "DAG %ld", V - CS->V);
+    sprintf(s, "DAG %ld", V - DVG->V);
     //V->S->do_zoomfit = 1;
   }
   gtk_label_set_text(GTK_LABEL(VP->T->label), s);
@@ -1418,7 +1419,7 @@ dv_viewport_change_mainv(dv_viewport_t * VP, dv_view_t * V) {
 
 static void
 dv_viewport_dag_menu_item_set_active(dv_viewport_t * VP, dv_view_t * V, gboolean active) {
-  dv_dag_t * D = V->D;
+  dm_dag_t * D = V->D;
   /* Seek D's item */
   GList * children = gtk_container_get_children(GTK_CONTAINER(VP->dag_menu));
   GList * child = children;
@@ -1452,7 +1453,7 @@ dv_viewport_dag_menu_item_set_active(dv_viewport_t * VP, dv_view_t * V, gboolean
 
 void
 dv_viewport_add_view(dv_viewport_t * VP, dv_view_t * V) {
-  int idx = V - CS->V;
+  int idx = V - DVG->V;
   VP->mV[idx] = 1;
   if (!VP->mainV)
     dv_viewport_change_mainv(VP, V);
@@ -1464,15 +1465,15 @@ dv_viewport_add_view(dv_viewport_t * VP, dv_view_t * V) {
 
 void
 dv_viewport_remove_view(dv_viewport_t * VP, dv_view_t * V) {
-  int idx = V - CS->V;
+  int idx = V - DVG->V;
   dv_check(VP->mV[idx]);
   VP->mV[idx] = 0;
   if (VP->mainV == V) {
     dv_view_t * new_main_v = NULL;
     int i;
-    for (i = 0; i < CS->nV; i++)
+    for (i = 0; i < DVG->nV; i++)
       if (VP->mV[i]) {
-        new_main_v = &CS->V[i];
+        new_main_v = &DVG->V[i];
         break;
       }
     dv_viewport_change_mainv(VP, new_main_v);
@@ -1486,14 +1487,14 @@ dv_viewport_remove_view(dv_viewport_t * VP, dv_view_t * V) {
 
 /* Divisions for one DAG: D , T , D|T , D/T , (D|Dlog)/T, D|Dlog, (Dpower|Dlinear)/T  */
 void
-dv_viewport_divide_onedag_1(dv_viewport_t * VP, dv_dag_t * D) {
+dv_viewport_divide_onedag_1(dv_viewport_t * VP, dm_dag_t * D) {
   /* D */
   /* View */
   dv_view_t * V = NULL;
   int i;
-  for (i = 0; i < CS->nV; i++)
-    if (D->mV[i]) {
-      V = &CS->V[i];
+  for (i = 0; i < DVG->nV; i++)
+    if (((dv_dag_t*)D->g)->mV[i]) {
+      V = &DVG->V[i];
       break;
     }
   if (!V)
@@ -1502,9 +1503,9 @@ dv_viewport_divide_onedag_1(dv_viewport_t * VP, dv_dag_t * D) {
   
   /* Viewport */
   dv_viewport_change_split(VP, 0);
-  for (i = 0; i < CS->nV; i++)
+  for (i = 0; i < DVG->nV; i++)
     if (VP->mV[i]) {
-      dv_view_t * V = &CS->V[i];
+      dv_view_t * V = &DVG->V[i];
       dv_view_remove_viewport(V, VP);
     }
   dv_view_add_viewport(V, VP);
@@ -1512,14 +1513,14 @@ dv_viewport_divide_onedag_1(dv_viewport_t * VP, dv_dag_t * D) {
 }
 
 void
-dv_viewport_divide_onedag_2(dv_viewport_t * VP, dv_dag_t * D) {
+dv_viewport_divide_onedag_2(dv_viewport_t * VP, dm_dag_t * D) {
   /* T */
   /* View */
   dv_view_t * V = NULL;
   int i;
-  for (i = 0; i < CS->nV; i++)
-    if (D->mV[i]) {
-      V = &CS->V[i];
+  for (i = 0; i < DVG->nV; i++)
+    if (((dv_dag_t*)D->g)->mV[i]) {
+      V = &DVG->V[i];
       break;
     }
   if (!V)
@@ -1528,9 +1529,9 @@ dv_viewport_divide_onedag_2(dv_viewport_t * VP, dv_dag_t * D) {
   
   /* Viewport */
   dv_viewport_change_split(VP, 0);
-  for (i = 0; i < CS->nV; i++)
+  for (i = 0; i < DVG->nV; i++)
     if (VP->mV[i]) {
-      dv_view_t * V = &CS->V[i];
+      dv_view_t * V = &DVG->V[i];
       dv_view_remove_viewport(V, VP);
     }
   dv_view_add_viewport(V, VP);
@@ -1538,17 +1539,17 @@ dv_viewport_divide_onedag_2(dv_viewport_t * VP, dv_dag_t * D) {
 }
 
 void
-dv_viewport_divide_onedag_3(dv_viewport_t * VP, dv_dag_t * D) {
+dv_viewport_divide_onedag_3(dv_viewport_t * VP, dm_dag_t * D) {
   /* D | T */
   /* View */
   dv_view_t * V1 = NULL;
   dv_view_t * V2 = NULL;
   int i;
-  for (i = 0; i < CS->nV; i++)
-    if (D->mV[i]) {
-      if (!V1) V1 = &CS->V[i];
+  for (i = 0; i < DVG->nV; i++)
+    if (((dv_dag_t*)D->g)->mV[i]) {
+      if (!V1) V1 = &DVG->V[i];
       else if (!V2) {
-        V2 = &CS->V[i];
+        V2 = &DVG->V[i];
         break;
       }
     }
@@ -1566,13 +1567,13 @@ dv_viewport_divide_onedag_3(dv_viewport_t * VP, dv_dag_t * D) {
   dv_viewport_t * VP2 = VP->vp2;
   dv_viewport_change_split(VP1, 0);
   dv_viewport_change_split(VP2, 0);
-  for (i = 0; i < CS->nV; i++) {
+  for (i = 0; i < DVG->nV; i++) {
     if (VP1->mV[i]) {
-      dv_view_t * V = &CS->V[i];
+      dv_view_t * V = &DVG->V[i];
       dv_view_remove_viewport(V, VP1);
     }
     if (VP2->mV[i]) {
-      dv_view_t * V = &CS->V[i];
+      dv_view_t * V = &DVG->V[i];
       dv_view_remove_viewport(V, VP2);
     }
   }
@@ -1583,17 +1584,17 @@ dv_viewport_divide_onedag_3(dv_viewport_t * VP, dv_dag_t * D) {
 }
 
 void
-dv_viewport_divide_onedag_4(dv_viewport_t * VP, dv_dag_t * D) {
+dv_viewport_divide_onedag_4(dv_viewport_t * VP, dm_dag_t * D) {
   /* D / T */
   /* View */
   dv_view_t * V1 = NULL;
   dv_view_t * V2 = NULL;
   int i;
-  for (i = 0; i < CS->nV; i++)
-    if (D->mV[i]) {
-      if (!V1) V1 = &CS->V[i];
+  for (i = 0; i < DVG->nV; i++)
+    if (((dv_dag_t*)D->g)->mV[i]) {
+      if (!V1) V1 = &DVG->V[i];
       else if (!V2) {
-        V2 = &CS->V[i];
+        V2 = &DVG->V[i];
         break;
       }
     }
@@ -1611,13 +1612,13 @@ dv_viewport_divide_onedag_4(dv_viewport_t * VP, dv_dag_t * D) {
   dv_viewport_t * VP2 = VP->vp2;
   dv_viewport_change_split(VP1, 0);
   dv_viewport_change_split(VP2, 0);
-  for (i = 0; i < CS->nV; i++) {
+  for (i = 0; i < DVG->nV; i++) {
     if (VP1->mV[i]) {
-      dv_view_t * V = &CS->V[i];
+      dv_view_t * V = &DVG->V[i];
       dv_view_remove_viewport(V, VP1);
     }
     if (VP2->mV[i]) {
-      dv_view_t * V = &CS->V[i];
+      dv_view_t * V = &DVG->V[i];
       dv_view_remove_viewport(V, VP2);
     }
   }
@@ -1628,19 +1629,19 @@ dv_viewport_divide_onedag_4(dv_viewport_t * VP, dv_dag_t * D) {
 }
 
 void
-dv_viewport_divide_onedag_5(dv_viewport_t * VP, dv_dag_t * D) {
+dv_viewport_divide_onedag_5(dv_viewport_t * VP, dm_dag_t * D) {
   /* (D | B) / T */
   /* View */
   dv_view_t * V1 = NULL;
   dv_view_t * V2 = NULL;
   dv_view_t * V3 = NULL;
   int i;
-  for (i = 0; i < CS->nV; i++)
-    if (D->mV[i]) {
-      if (!V1) V1 = &CS->V[i];
-      else if (!V2) V2 = &CS->V[i];
+  for (i = 0; i < DVG->nV; i++)
+    if (((dv_dag_t*)D->g)->mV[i]) {
+      if (!V1) V1 = &DVG->V[i];
+      else if (!V2) V2 = &DVG->V[i];
       else if (!V3) {
-        V3 = &CS->V[i];
+        V3 = &DVG->V[i];
         break;
       }
     }
@@ -1663,13 +1664,13 @@ dv_viewport_divide_onedag_5(dv_viewport_t * VP, dv_dag_t * D) {
     VP1 = VP->vp1;
     VP2 = VP->vp2;
     dv_viewport_change_split(VP2, 0);
-    for (i = 0; i < CS->nV; i++) {
+    for (i = 0; i < DVG->nV; i++) {
       if (VP1->mV[i]) {
-        dv_view_t * V = &CS->V[i];
+        dv_view_t * V = &DVG->V[i];
         dv_view_remove_viewport(V, VP1);
       }
       if (VP2->mV[i]) {
-        dv_view_t * V = &CS->V[i];
+        dv_view_t * V = &DVG->V[i];
         dv_view_remove_viewport(V, VP2);
       }
     }
@@ -1685,13 +1686,13 @@ dv_viewport_divide_onedag_5(dv_viewport_t * VP, dv_dag_t * D) {
     VP2 = VP->vp2;
     dv_viewport_change_split(VP1, 0);
     dv_viewport_change_split(VP2, 0);
-    for (i = 0; i < CS->nV; i++) {
+    for (i = 0; i < DVG->nV; i++) {
       if (VP1->mV[i]) {
-        dv_view_t * V = &CS->V[i];
+        dv_view_t * V = &DVG->V[i];
         dv_view_remove_viewport(V, VP1);
       }
       if (VP2->mV[i]) {
-        dv_view_t * V = &CS->V[i];
+        dv_view_t * V = &DVG->V[i];
         dv_view_remove_viewport(V, VP2);
       }
     }
@@ -1703,17 +1704,17 @@ dv_viewport_divide_onedag_5(dv_viewport_t * VP, dv_dag_t * D) {
 }
 
 void
-dv_viewport_divide_onedag_6(dv_viewport_t * VP, dv_dag_t * D) {
+dv_viewport_divide_onedag_6(dv_viewport_t * VP, dm_dag_t * D) {
   /* D | B */
   /* View */
   dv_view_t * V1 = NULL;
   dv_view_t * V2 = NULL;
   int i;
-  for (i = 0; i < CS->nV; i++)
-    if (D->mV[i]) {
-      if (!V1) V1 = &CS->V[i];
+  for (i = 0; i < DVG->nV; i++)
+    if (((dv_dag_t*)D->g)->mV[i]) {
+      if (!V1) V1 = &DVG->V[i];
       else if (!V2) {
-        V2 = &CS->V[i];
+        V2 = &DVG->V[i];
         break;
       }
     }
@@ -1731,13 +1732,13 @@ dv_viewport_divide_onedag_6(dv_viewport_t * VP, dv_dag_t * D) {
   dv_viewport_t * VP2 = VP->vp2;
   dv_viewport_change_split(VP1, 0);
   dv_viewport_change_split(VP2, 0);
-  for (i = 0; i < CS->nV; i++) {
+  for (i = 0; i < DVG->nV; i++) {
     if (VP1->mV[i]) {
-      dv_view_t * V = &CS->V[i];
+      dv_view_t * V = &DVG->V[i];
       dv_view_remove_viewport(V, VP1);
     }
     if (VP2->mV[i]) {
-      dv_view_t * V = &CS->V[i];
+      dv_view_t * V = &DVG->V[i];
       dv_view_remove_viewport(V, VP2);
     }
   }
@@ -1748,19 +1749,19 @@ dv_viewport_divide_onedag_6(dv_viewport_t * VP, dv_dag_t * D) {
 }
 
 void
-dv_viewport_divide_onedag_7(dv_viewport_t * VP, dv_dag_t * D) {
+dv_viewport_divide_onedag_7(dv_viewport_t * VP, dm_dag_t * D) {
   /* (D | B) / T */
   /* View */
   dv_view_t * V1 = NULL;
   dv_view_t * V2 = NULL;
   dv_view_t * V3 = NULL;
   int i;
-  for (i = 0; i < CS->nV; i++)
-    if (D->mV[i]) {
-      if (!V1) V1 = &CS->V[i];
-      else if (!V2) V2 = &CS->V[i];
+  for (i = 0; i < DVG->nV; i++)
+    if (((dv_dag_t*)D->g)->mV[i]) {
+      if (!V1) V1 = &DVG->V[i];
+      else if (!V2) V2 = &DVG->V[i];
       else if (!V3) {
-        V3 = &CS->V[i];
+        V3 = &DVG->V[i];
         break;
       }
     }
@@ -1783,13 +1784,13 @@ dv_viewport_divide_onedag_7(dv_viewport_t * VP, dv_dag_t * D) {
     VP1 = VP->vp1;
     VP2 = VP->vp2;
     dv_viewport_change_split(VP2, 0);
-    for (i = 0; i < CS->nV; i++) {
+    for (i = 0; i < DVG->nV; i++) {
       if (VP1->mV[i]) {
-        dv_view_t * V = &CS->V[i];
+        dv_view_t * V = &DVG->V[i];
         dv_view_remove_viewport(V, VP1);
       }
       if (VP2->mV[i]) {
-        dv_view_t * V = &CS->V[i];
+        dv_view_t * V = &DVG->V[i];
         dv_view_remove_viewport(V, VP2);
       }
     }
@@ -1805,13 +1806,13 @@ dv_viewport_divide_onedag_7(dv_viewport_t * VP, dv_dag_t * D) {
     VP2 = VP->vp2;
     dv_viewport_change_split(VP1, 0);
     dv_viewport_change_split(VP2, 0);
-    for (i = 0; i < CS->nV; i++) {
+    for (i = 0; i < DVG->nV; i++) {
       if (VP1->mV[i]) {
-        dv_view_t * V = &CS->V[i];
+        dv_view_t * V = &DVG->V[i];
         dv_view_remove_viewport(V, VP1);
       }
       if (VP2->mV[i]) {
-        dv_view_t * V = &CS->V[i];
+        dv_view_t * V = &DVG->V[i];
         dv_view_remove_viewport(V, VP2);
       }
     }
@@ -1824,7 +1825,7 @@ dv_viewport_divide_onedag_7(dv_viewport_t * VP, dv_dag_t * D) {
 
 /* Divisions for 2 DAGs: D|D , T|T , T/T , (D/T)|(D/T) , (D|T)/(D|T) , (D|B)/T | (D|B)/T */
 void
-dv_viewport_divide_twodags_1(dv_viewport_t * VP, dv_dag_t * D1, dv_dag_t * D2) {
+dv_viewport_divide_twodags_1(dv_viewport_t * VP, dm_dag_t * D1, dm_dag_t * D2) {
   /* D | D */
   /* Viewport */
   dv_viewport_change_split(VP, 1);
@@ -1836,7 +1837,7 @@ dv_viewport_divide_twodags_1(dv_viewport_t * VP, dv_dag_t * D1, dv_dag_t * D2) {
 }
 
 void
-dv_viewport_divide_twodags_2(dv_viewport_t * VP, dv_dag_t * D1, dv_dag_t * D2) {
+dv_viewport_divide_twodags_2(dv_viewport_t * VP, dm_dag_t * D1, dm_dag_t * D2) {
   /* T | T */
   /* Viewport */
   dv_viewport_change_split(VP, 1);
@@ -1848,7 +1849,7 @@ dv_viewport_divide_twodags_2(dv_viewport_t * VP, dv_dag_t * D1, dv_dag_t * D2) {
 }
 
 void
-dv_viewport_divide_twodags_3(dv_viewport_t * VP, dv_dag_t * D1, dv_dag_t * D2) {
+dv_viewport_divide_twodags_3(dv_viewport_t * VP, dm_dag_t * D1, dm_dag_t * D2) {
   /* T / T */
   /* Viewport */
   dv_viewport_change_split(VP, 1);
@@ -1860,7 +1861,7 @@ dv_viewport_divide_twodags_3(dv_viewport_t * VP, dv_dag_t * D1, dv_dag_t * D2) {
 }
 
 void
-dv_viewport_divide_twodags_4(dv_viewport_t * VP, dv_dag_t * D1, dv_dag_t * D2) {
+dv_viewport_divide_twodags_4(dv_viewport_t * VP, dm_dag_t * D1, dm_dag_t * D2) {
   /* (D / T) | (D / T) */
   /* Viewport */
   dv_viewport_change_split(VP, 1);
@@ -1872,7 +1873,7 @@ dv_viewport_divide_twodags_4(dv_viewport_t * VP, dv_dag_t * D1, dv_dag_t * D2) {
 }
 
 void
-dv_viewport_divide_twodags_5(dv_viewport_t * VP, dv_dag_t * D1, dv_dag_t * D2) {
+dv_viewport_divide_twodags_5(dv_viewport_t * VP, dm_dag_t * D1, dm_dag_t * D2) {
   /* (D | T) / (D | T) */
   /* Viewport */
   dv_viewport_change_split(VP, 1);
@@ -1884,7 +1885,7 @@ dv_viewport_divide_twodags_5(dv_viewport_t * VP, dv_dag_t * D1, dv_dag_t * D2) {
 }
 
 void
-dv_viewport_divide_twodags_6(dv_viewport_t * VP, dv_dag_t * D1, dv_dag_t * D2) {
+dv_viewport_divide_twodags_6(dv_viewport_t * VP, dm_dag_t * D1, dm_dag_t * D2) {
   /* (D | B) / T | (D | B) / T */
   /* Viewport */
   dv_viewport_change_split(VP, 1);
@@ -1896,7 +1897,7 @@ dv_viewport_divide_twodags_6(dv_viewport_t * VP, dv_dag_t * D1, dv_dag_t * D2) {
 }
 
 void
-dv_viewport_divide_twodags_7(dv_viewport_t * VP, dv_dag_t * D1, dv_dag_t * D2) {
+dv_viewport_divide_twodags_7(dv_viewport_t * VP, dm_dag_t * D1, dm_dag_t * D2) {
   /* D | T */
   /* Viewport */
   dv_viewport_change_split(VP, 1);
@@ -1909,7 +1910,7 @@ dv_viewport_divide_twodags_7(dv_viewport_t * VP, dv_dag_t * D1, dv_dag_t * D2) {
 
 /* Divisions for 3 DAGs: D | D | D */
 void
-dv_viewport_divide_threedags_1(dv_viewport_t * VP, dv_dag_t * D1, dv_dag_t * D2, dv_dag_t * D3) {
+dv_viewport_divide_threedags_1(dv_viewport_t * VP, dm_dag_t * D1, dm_dag_t * D2, dm_dag_t * D3) {
   /* D | D | D*/
   /* Viewport */
   dv_viewport_change_split(VP, 1);
@@ -1926,9 +1927,9 @@ dv_viewport_divide_threedags_1(dv_viewport_t * VP, dv_dag_t * D1, dv_dag_t * D2,
 void
 dv_open_statistics_dialog() {
   /* Get default DAG */
-  dv_view_t * V = CS->activeV;
+  dv_view_t * V = DVG->activeV;
   if (!V) {
-    V = &CS->V[0];
+    V = &DVG->V[0];
   }
   
   /* Build dialog */
@@ -1951,16 +1952,16 @@ dv_open_statistics_dialog() {
     tab_label = gtk_label_new("Delay Distributions");
     tab_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_box, tab_label);
-    if (CS->SD->ne == 0) {
-      CS->SD->ne = CS->nP;
-      if (CS->SD->ne > DV_MAX_DISTRIBUTION)
-        CS->SD->ne = DV_MAX_DISTRIBUTION;
-      if (CS->SD->ne < 4)
-        CS->SD->ne = 4;
+    if (DVG->SD->ne == 0) {
+      DVG->SD->ne = DMG->nP;
+      if (DVG->SD->ne > DV_MAX_DISTRIBUTION)
+        DVG->SD->ne = DV_MAX_DISTRIBUTION;
+      if (DVG->SD->ne < 4)
+        DVG->SD->ne = 4;
     }
     long i;
-    for (i = 0; i < CS->SD->ne; i++) {
-      dv_stat_distribution_entry_t * e = &CS->SD->e[i];
+    for (i = 0; i < DVG->SD->ne; i++) {
+      dv_stat_distribution_entry_t * e = &DVG->SD->e[i];
       GtkWidget * e_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
       gtk_container_add(GTK_CONTAINER(tab_box), e_box);
 
@@ -1971,7 +1972,7 @@ dv_open_statistics_dialog() {
       gtk_widget_set_tooltip_text(GTK_WIDGET(combobox), "Choose DAG");
       gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "none", "None");
       int j;
-      for (j = 0; j < CS->nD; j++) {
+      for (j = 0; j < DMG->nD; j++) {
         char str[30];
         sprintf(str, "DAG %d", j);
         gtk_combo_box_text_append(GTK_COMBO_BOX_TEXT(combobox), "dag", str);
@@ -2026,7 +2027,7 @@ dv_open_statistics_dialog() {
     gtk_box_pack_start(GTK_BOX(hbox), entry, FALSE, FALSE, 0);
     gtk_entry_set_width_chars(GTK_ENTRY(entry), 10);
     char str[10];
-    sprintf(str, "%ld", CS->SD->xrange_from);
+    sprintf(str, "%ld", DVG->SD->xrange_from);
     gtk_entry_set_text(GTK_ENTRY(entry), str);
     g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_stat_distribution_xrange_from_activate), (void *) NULL);
     label = gtk_label_new(" to ");
@@ -2034,7 +2035,7 @@ dv_open_statistics_dialog() {
     entry = gtk_entry_new();
     gtk_box_pack_start(GTK_BOX(hbox), entry, FALSE, FALSE, 0);
     gtk_entry_set_width_chars(GTK_ENTRY(entry), 10);
-    sprintf(str, "%ld", CS->SD->xrange_to);
+    sprintf(str, "%ld", DVG->SD->xrange_to);
     gtk_entry_set_text(GTK_ENTRY(entry), str);
     g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_stat_distribution_xrange_to_activate), (void *) NULL);
 
@@ -2045,7 +2046,7 @@ dv_open_statistics_dialog() {
     entry = gtk_entry_new();
     gtk_box_pack_start(GTK_BOX(hbox), entry, FALSE, FALSE, 0);
     gtk_entry_set_width_chars(GTK_ENTRY(entry), 10);
-    sprintf(str, "%d", CS->SD->bar_width);
+    sprintf(str, "%d", DVG->SD->bar_width);
     gtk_entry_set_text(GTK_ENTRY(entry), str);
     g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_stat_distribution_granularity_activate), (void *) NULL);
     
@@ -2058,7 +2059,7 @@ dv_open_statistics_dialog() {
     entry = gtk_entry_new();
     gtk_box_pack_start(GTK_BOX(hbox), entry, FALSE, FALSE, 0);
     gtk_entry_set_width_chars(GTK_ENTRY(entry), 15);
-    gtk_entry_set_text(GTK_ENTRY(entry), CS->SD->fn);
+    gtk_entry_set_text(GTK_ENTRY(entry), DVG->SD->fn);
     g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_stat_distribution_output_filename_activate), (void *) NULL);
     button = gtk_button_new_with_mnemonic("_Show");
     gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
@@ -2071,13 +2072,13 @@ dv_open_statistics_dialog() {
     tab_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_box, tab_label);
     long i;
-    for (i = 0; i < CS->nD; i++) {
-      dv_dag_t * D = &CS->D[i];
+    for (i = 0; i < DMG->nD; i++) {
+      dm_dag_t * D = &DMG->D[i];
       GtkWidget * dag_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
       gtk_box_pack_start(GTK_BOX(tab_box), dag_box, FALSE, FALSE, 0);
       GtkWidget * checkbox = gtk_check_button_new_with_label(D->name);
       gtk_box_pack_start(GTK_BOX(dag_box), checkbox, FALSE, FALSE, 0);
-      gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(checkbox), CS->SBG->checked_D[i]);
+      gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(checkbox), DMG->SBG->checked_D[i]);
       gtk_widget_set_tooltip_text(GTK_WIDGET(checkbox), D->P->name);
       g_signal_connect(G_OBJECT(checkbox), "toggled", G_CALLBACK(on_stat_breakdown_dag_checkbox_toggled), (void *) i);
       
@@ -2100,7 +2101,7 @@ dv_open_statistics_dialog() {
     entry = gtk_entry_new();
     gtk_box_pack_start(GTK_BOX(hbox), entry, FALSE, FALSE, 0);
     gtk_entry_set_width_chars(GTK_ENTRY(entry), 15);
-    gtk_entry_set_text(GTK_ENTRY(entry), CS->SBG->fn);
+    gtk_entry_set_text(GTK_ENTRY(entry), DMG->SBG->fn);
     g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_stat_breakdown_output_filename_activate), (void *) NULL);
     button = gtk_button_new_with_mnemonic("_Show");
     gtk_box_pack_end(GTK_BOX(hbox), button, FALSE, FALSE, 0);
@@ -2115,7 +2116,7 @@ dv_open_statistics_dialog() {
     entry = gtk_entry_new();
     gtk_box_pack_start(GTK_BOX(hbox), entry, FALSE, FALSE, 0);
     gtk_entry_set_width_chars(GTK_ENTRY(entry), 15);
-    gtk_entry_set_text(GTK_ENTRY(entry), CS->SBG->fn_2);
+    gtk_entry_set_text(GTK_ENTRY(entry), DMG->SBG->fn_2);
     g_signal_connect(G_OBJECT(entry), "activate", G_CALLBACK(on_stat_breakdown_output_filename2_activate), (void *) NULL);
     
     for (i = 0; i < DV_NUM_CRITICAL_PATHS; i++) {
@@ -2125,7 +2126,7 @@ dv_open_statistics_dialog() {
       sprintf(str, "Critical path %ld", i + 1);
       GtkWidget * checkbox = gtk_check_button_new_with_label(str);
       gtk_box_pack_start(GTK_BOX(cp_box), checkbox, FALSE, FALSE, 0);
-      gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(checkbox), CS->SBG->checked_cp[i]);
+      gtk_toggle_button_set_active(GTK_TOGGLE_BUTTON(checkbox), DMG->SBG->checked_cp[i]);
       g_signal_connect(G_OBJECT(checkbox), "toggled", G_CALLBACK(on_stat_breakdown_cp_checkbox_toggled), (void *) i);
     }
 
@@ -2167,43 +2168,43 @@ dv_open_statistics_dialog() {
 
 static void
 dv_change_focused_view(dv_view_t * V) {
-  if (V == CS->activeV) return;
+  if (V == DVG->activeV) return;
 
-  if (CS->activeV) {
-    CS->activeV->S->focused = 0;
-    CS->activeV = NULL;
+  if (DVG->activeV) {
+    DVG->activeV->S->focused = 0;
+    DVG->activeV = NULL;
   }
-  CS->activeV = V;
-  if (CS->activeV) {
-    CS->activeV->S->focused = 1;
+  DVG->activeV = V;
+  if (DVG->activeV) {
+    DVG->activeV->S->focused = 1;
   }
   dv_statusbar_update_selection_status();
 }
 
 void
 dv_change_focused_viewport(dv_viewport_t * VP) {
-  if (VP == CS->activeVP && CS->activeV) return;
+  if (VP == DVG->activeVP && DVG->activeV) return;
 
-  if (CS->activeVP && VP != CS->activeVP) {
-    dv_viewport_t * old_VP = CS->activeVP;
-    CS->activeVP = NULL;
+  if (DVG->activeVP && VP != DVG->activeVP) {
+    dv_viewport_t * old_VP = DVG->activeVP;
+    DVG->activeVP = NULL;
     dv_change_focused_view(NULL);
     dv_queue_draw_viewport(old_VP);
   }
-  CS->activeVP = VP;
-  if (CS->activeVP) {
+  DVG->activeVP = VP;
+  if (DVG->activeVP) {
     /*
-    if (!CS->activeVP->mV[CS->activeV - CS->V])
+    if (!DVG->activeVP->mV[DVG->activeV - DVG->V])
       dv_change_focused_view(NULL);
     */
     int i;
-    for (i = 0; i < CS->nV; i++)
+    for (i = 0; i < DVG->nV; i++)
       if (VP->mV[i]) {
-        dv_change_focused_view(&CS->V[i]);
+        dv_change_focused_view(&DVG->V[i]);
         break;
       }
-    gtk_widget_grab_focus(CS->activeVP->darea);
-    dv_queue_draw_viewport(CS->activeVP);
+    gtk_widget_grab_focus(DVG->activeVP->darea);
+    dv_queue_draw_viewport(DVG->activeVP);
   }
 }
 
@@ -2241,34 +2242,34 @@ dv_switch_focused_viewport_r(dv_viewport_t * VP, dv_viewport_t * curVP) {
 
 void
 dv_switch_focused_viewport() {
-  dv_viewport_t * old_VP = (CS->activeVP)?( (CS->activeVP->split)?NULL:CS->activeVP ): NULL;
-  dv_viewport_t * VP = dv_switch_focused_viewport_r(CS->VP, old_VP);
+  dv_viewport_t * old_VP = (DVG->activeVP)?( (DVG->activeVP->split)?NULL:DVG->activeVP ): NULL;
+  dv_viewport_t * VP = dv_switch_focused_viewport_r(DVG->VP, old_VP);
   if (VP == old_VP || VP == NULL) {
     dv_change_focused_viewport(NULL);
   } else {
     dv_change_focused_viewport(VP);
   }
-  //printf("VP %ld - V %ld\n", (CS->activeVP)?(CS->activeVP-CS->VP):-1, (CS->activeV)?(CS->activeV-CS->V):-1);
+  //printf("VP %ld - V %ld\n", (DVG->activeVP)?(DVG->activeVP-DVG->VP):-1, (DVG->activeV)?(DVG->activeV-DVG->V):-1);
 }
 
 void
 dv_switch_focused_view() {
   /*
   long i = 0;
-  if (CS->activeV)
-    i = CS->activeV - CS->V + 1;
-  while (i < CS->nV) {
-    dv_view_t * V = &CS->V[i];
+  if (DVG->activeV)
+    i = DVG->activeV - DVG->V + 1;
+  while (i < DVG->nV) {
+    dv_view_t * V = &DVG->V[i];
     int has_viewport = 0;
     int j;
-    for (j = 0; j < CS->nVP; j++)
+    for (j = 0; j < DVG->nVP; j++)
       if (V->mVP[j]) {
         has_viewport = 1;
         break;
       }
     if (has_viewport) {
       dv_change_focused_view(V, 1);
-      CS->activeVP = V->mainVP;
+      DVG->activeVP = V->mainVP;
     }
     i++;
   }
@@ -2278,21 +2279,21 @@ dv_switch_focused_view() {
 
 void
 dv_switch_focused_view_inside_viewport() {
-  dv_viewport_t * VP = CS->activeVP;
+  dv_viewport_t * VP = DVG->activeVP;
   if (!VP) return;
   long i = 0;
-  if (CS->activeV)
-    i = CS->activeV - CS->V + 1;
-  while (i < CS->nV) {
+  if (DVG->activeV)
+    i = DVG->activeV - DVG->V + 1;
+  while (i < DVG->nV) {
     if (VP->mV[i]) {
-      dv_change_focused_view(&CS->V[i]);
-      //printf("VP %ld - V %ld\n", (CS->activeVP)?(CS->activeVP-CS->VP):-1, (CS->activeV)?(CS->activeV-CS->V):-1);
+      dv_change_focused_view(&DVG->V[i]);
+      //printf("VP %ld - V %ld\n", (DVG->activeVP)?(DVG->activeVP-DVG->VP):-1, (DVG->activeV)?(DVG->activeV-DVG->V):-1);
       return;
     }
     i++;
   }
   dv_change_focused_view(NULL);
-  //printf("VP %ld - V %ld\n", (CS->activeVP)?(CS->activeVP-CS->VP):-1, (CS->activeV)?(CS->activeV-CS->V):-1);
+  //printf("VP %ld - V %ld\n", (DVG->activeVP)?(DVG->activeVP-DVG->VP):-1, (DVG->activeV)?(DVG->activeV-DVG->V):-1);
 }
 
 char *
@@ -2311,7 +2312,7 @@ dv_choose_a_new_dag_file() {
 }
 
 void
-dv_open_dr_stat_file(dv_pidag_t * P) {
+dv_open_dr_stat_file(dm_pidag_t * P) {
   int n = strlen(P->fn);
   char * filename = (char *) dv_malloc( sizeof(char) * (n + 2) );
   strcpy(filename, P->fn);
@@ -2340,7 +2341,7 @@ dv_open_dr_stat_file(dv_pidag_t * P) {
 }
 
 void
-dv_open_dr_pp_file(dv_pidag_t * P) {
+dv_open_dr_pp_file(dm_pidag_t * P) {
   int n = strlen(P->fn);
   char * filename = (char *) dv_malloc( sizeof(char) * (n + 1) );
   strcpy(filename, P->fn);
@@ -2368,7 +2369,7 @@ dv_open_dr_pp_file(dv_pidag_t * P) {
 }
 
 dv_view_t *
-dv_create_new_view(dv_dag_t * D) {
+dv_create_new_view(dm_dag_t * D) {
   if (!D) return NULL;
   dv_view_t * V = dv_view_create_new_with_dag(D);
   if (!V) return NULL;
@@ -2378,17 +2379,17 @@ dv_create_new_view(dv_dag_t * D) {
   
   /* button in D's mini_frame */
   GtkWidget * button = gtk_button_new_with_label(V->name);
-  gtk_box_pack_start(GTK_BOX(D->views_box), button, FALSE, FALSE, 0);
+  gtk_box_pack_start(GTK_BOX(((dv_dag_t*)D->g)->views_box), button, FALSE, FALSE, 0);
   g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_management_window_view_clicked), (void *) V);
 
   /* check menu item in VP's menu */
   int i;
-  for (i = 0; i < CS->nVP; i++) {
-    dv_viewport_t * VP = &CS->VP[i];
+  for (i = 0; i < DVG->nVP; i++) {
+    dv_viewport_t * VP = &DVG->VP[i];
     int c = 0;
     int j;
-    for (j = 0; j < CS->nV; j++)
-      if (D->mV[j]) c++;
+    for (j = 0; j < DVG->nV; j++)
+      if (((dv_dag_t*)D->g)->mV[j]) c++;
     if (c <= 1) continue;
     GtkWidget * dag_menu = GTK_WIDGET(VP->dag_menu);
     GList * children = gtk_container_get_children(GTK_CONTAINER(dag_menu));
@@ -2409,9 +2410,9 @@ dv_create_new_view(dv_dag_t * D) {
           gtk_menu_shell_insert(GTK_MENU_SHELL(dag_menu), d_item, pos);
           GtkWidget * submenu = gtk_menu_new();
           gtk_menu_item_set_submenu(GTK_MENU_ITEM(d_item), submenu);
-          for (j = 0; j < CS->nV; j++)
-            if (D->mV[j]) {
-              GtkWidget * item = gtk_check_menu_item_new_with_label(CS->V[j].name);
+          for (j = 0; j < DVG->nV; j++)
+            if (((dv_dag_t*)D->g)->mV[j]) {
+              GtkWidget * item = gtk_check_menu_item_new_with_label(DVG->V[j].name);
               gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);
               if (VP->mV[j])
                 gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), TRUE);
@@ -2423,7 +2424,7 @@ dv_create_new_view(dv_dag_t * D) {
       child = child->next;
       pos++;
     }
-    gtk_widget_show_all(CS->VP[i].dag_menu);    
+    gtk_widget_show_all(DVG->VP[i].dag_menu);    
   }
 
   /* toolbar's settings button's dag menu */
@@ -2438,8 +2439,8 @@ dv_create_new_view(dv_dag_t * D) {
       if (strcmp(str, D->name) == 0) {
         int c = 0;
         int i;
-        for (i = 0; i < CS->nV; i++)
-          if (D->mV[i]) c++;
+        for (i = 0; i < DVG->nV; i++)
+          if (((dv_dag_t*)D->g)->mV[i]) c++;
         if (c > 2) {
           GtkWidget * submenu = gtk_menu_item_get_submenu(GTK_MENU_ITEM(widget));
           GtkWidget * item = gtk_menu_item_new_with_label(V->name);
@@ -2452,11 +2453,11 @@ dv_create_new_view(dv_dag_t * D) {
           GtkWidget * submenu = gtk_menu_new();
           gtk_menu_item_set_submenu(GTK_MENU_ITEM(widget), submenu);
           int j;
-          for (j = 0; j < CS->nV; j++)
-            if (D->mV[j]) {
-              GtkWidget * item = gtk_menu_item_new_with_label(CS->V[j].name);
+          for (j = 0; j < DVG->nV; j++)
+            if (((dv_dag_t*)D->g)->mV[j]) {
+              GtkWidget * item = gtk_menu_item_new_with_label(DVG->V[j].name);
               gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);
-              g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_dag_menu_item_activated), (void *) &CS->V[j]);
+              g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_dag_menu_item_activated), (void *) &DVG->V[j]);
             }
         }
         break;
@@ -2470,22 +2471,24 @@ dv_create_new_view(dv_dag_t * D) {
   return V;
 }
 
-dv_dag_t *
-dv_create_new_dag(dv_pidag_t * P) {
+dm_dag_t *
+dv_create_new_dag(dm_pidag_t * P) {
   if (!P) return NULL;
-  dv_dag_t * D = dv_dag_create_new_with_pidag(P);
+  dm_dag_t * D = dm_dag_create_new_with_pidag(P);
   if (!D) return NULL;
+  D->g = (void *) dv_malloc(sizeof(dv_dag_t));
+  memset(D->g, 0, sizeof(dv_dag_t));
   
   /* Update GUI widgets */
   
   /* DAG management window */
-  GtkWidget * mini_frame = D->mini_frame = gtk_frame_new(D->name);
+  GtkWidget * mini_frame = ((dv_dag_t*)D->g)->mini_frame = gtk_frame_new(D->name);
   g_object_ref(G_OBJECT(mini_frame));
   gtk_container_set_border_width(GTK_CONTAINER(mini_frame), 5);
   if (GUI->management_window) {
     GtkWidget * hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
     gtk_box_pack_start(GTK_BOX(GUI->scrolled_box), hbox, FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(hbox), D->mini_frame, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(hbox), ((dv_dag_t*)D->g)->mini_frame, TRUE, TRUE, 0);
   }
   GtkWidget * mini_frame_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
   g_object_ref(G_OBJECT(mini_frame_box));
@@ -2497,14 +2500,14 @@ dv_create_new_dag(dv_pidag_t * P) {
   gtk_box_pack_start(GTK_BOX(mini_frame_box), box_1, FALSE, FALSE, 0);
   GtkWidget * label;
   char s[DV_STRING_LENGTH];
-  sprintf(s, "DAG file %ld: %s", D->P - CS->P, D->P->fn);
+  sprintf(s, "DAG file %ld: %s", D->P - DMG->P, D->P->fn);
   label = gtk_label_new(s);
   gtk_box_pack_start(GTK_BOX(box_1), label, FALSE, FALSE, 0);
 
   box_1 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
   gtk_box_pack_start(GTK_BOX(mini_frame_box), box_1, FALSE, FALSE, 0);
   dv_dag_update_status_label(D);
-  label = D->status_label;
+  label = ((dv_dag_t*)D->g)->status_label;
   gtk_box_pack_start(GTK_BOX(box_1), label, FALSE, FALSE, 0);
 
   box_1 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
@@ -2512,7 +2515,7 @@ dv_create_new_dag(dv_pidag_t * P) {
   label = gtk_label_new("Associated View(s):");
   gtk_box_pack_start(GTK_BOX(box_1), label, FALSE, FALSE, 0);
   GtkWidget * box_2;
-  box_2 = D->views_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
+  box_2 = ((dv_dag_t*)D->g)->views_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
   gtk_box_pack_start(GTK_BOX(box_1), box_2, FALSE, FALSE, 0);
   
   box_1 = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 3);
@@ -2534,11 +2537,11 @@ dv_create_new_dag(dv_pidag_t * P) {
 
   /* check menu item in VP's menu */
   int i;
-  for (i = 0; i < CS->nVP; i++) {
+  for (i = 0; i < DVG->nVP; i++) {
     GtkWidget * item = gtk_check_menu_item_new_with_label(D->name);
-    gtk_menu_shell_append(GTK_MENU_SHELL(CS->VP[i].dag_menu), item);
-    gtk_widget_show_all(CS->VP[i].dag_menu);
-    g_signal_connect(G_OBJECT(item), "toggled", G_CALLBACK(on_management_window_viewport_dag_menu_item_toggled), (void *) &CS->VP[i]);
+    gtk_menu_shell_append(GTK_MENU_SHELL(DVG->VP[i].dag_menu), item);
+    gtk_widget_show_all(DVG->VP[i].dag_menu);
+    g_signal_connect(G_OBJECT(item), "toggled", G_CALLBACK(on_management_window_viewport_dag_menu_item_toggled), (void *) &DVG->VP[i]);
   }  
 
   /* toolbar's settings button's dag menu */
@@ -2563,25 +2566,27 @@ dv_create_new_dag(dv_pidag_t * P) {
   return D;
 }
 
-dv_pidag_t *
+dm_pidag_t *
 dv_create_new_pidag(char * filename) {
   if (!filename) return NULL;
-  dv_pidag_t * P = dv_pidag_read_new_file(filename);
+  dm_pidag_t * P = dm_pidag_read_new_file(filename);
   if (!P) return NULL;
+  P->g = (void *) dv_malloc(sizeof(dv_pidag_t));
+  memset(P->g, 0, sizeof(dv_pidag_t));
 
   P->name = malloc( sizeof(char) * 20 );
-  sprintf(P->name, "DAG file %ld", P - CS->P);
+  sprintf(P->name, "DAG file %ld", P - DMG->P);
 
   /* Update GUI widgets */
   
   /* DAG management window */
-  GtkWidget * mini_frame = P->mini_frame = gtk_frame_new(P->name);
+  GtkWidget * mini_frame = ((dv_pidag_t *) P->g)->mini_frame = gtk_frame_new(P->name);
   g_object_ref(G_OBJECT(mini_frame));
   gtk_container_set_border_width(GTK_CONTAINER(mini_frame), 5);
   if (GUI->management_window) {
     GtkWidget * hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
     gtk_box_pack_start(GTK_BOX(GUI->dag_file_scrolled_box), hbox, FALSE, FALSE, 0);
-    gtk_box_pack_start(GTK_BOX(hbox), P->mini_frame, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(hbox), ((dv_pidag_t *) P->g)->mini_frame, TRUE, TRUE, 0);
   }
   GtkWidget * mini_frame_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
   g_object_ref(G_OBJECT(mini_frame_box));
@@ -2657,7 +2662,7 @@ dv_gui_init(dv_gui_t * gui) {
   gui->replay.time_step_entry = NULL;
   gui->replay.dag_menu = NULL;
   int i;
-  for (i = 0; i < DV_MAX_DAG; i++)
+  for (i = 0; i < DM_MAX_DAG; i++)
     gui->replay.mD[i] = 0;
 
   gui->nodeinfo.sidebox = NULL;
@@ -2690,7 +2695,7 @@ dv_gui_build_management_window(dv_gui_t * gui) {
     tab_label = gtk_label_new("Viewports");
     tab_box = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 10);
     gtk_notebook_append_page(GTK_NOTEBOOK(notebook), tab_box, tab_label); 
-    gtk_box_pack_start(GTK_BOX(tab_box), CS->VP->mini_frame, TRUE, TRUE, 0);
+    gtk_box_pack_start(GTK_BOX(tab_box), DVG->VP->mini_frame, TRUE, TRUE, 0);
     gtk_box_pack_start(GTK_BOX(tab_box), gtk_separator_new(GTK_ORIENTATION_VERTICAL), FALSE, FALSE, 0);
 
     GtkWidget * right = gtk_scrolled_window_new(NULL, NULL);
@@ -2698,7 +2703,7 @@ dv_gui_build_management_window(dv_gui_t * gui) {
     gtk_widget_set_size_request(GTK_WIDGET(right), 315, 0);
     GtkWidget * right_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 0);
     gtk_container_add(GTK_CONTAINER(right), right_box);
-    gtk_box_pack_start(GTK_BOX(right_box), CS->VP->mini_frame_2, FALSE, FALSE, 0);
+    gtk_box_pack_start(GTK_BOX(right_box), DVG->VP->mini_frame_2, FALSE, FALSE, 0);
   }
 
   /* Build tab "DAGs" */
@@ -2718,11 +2723,11 @@ dv_gui_build_management_window(dv_gui_t * gui) {
     GtkWidget * menu = gui->create_dag_menu = gtk_menu_new();
     gtk_menu_button_set_popup(GTK_MENU_BUTTON(menubutton), menu);
     int i;
-    for (i = 0; i < CS->nP; i++) {
-      sprintf(s, "%s: %s", CS->P[i].name, CS->P[i].fn);
+    for (i = 0; i < DMG->nP; i++) {
+      sprintf(s, "%s: %s", DMG->P[i].name, DMG->P[i].fn);
       GtkWidget * menu_item = gtk_menu_item_new_with_label(s);
       gtk_menu_shell_append(GTK_MENU_SHELL(menu), menu_item);
-      g_signal_connect(G_OBJECT(menu_item), "activate", G_CALLBACK(on_management_window_add_new_dag_activated), (void *) &CS->P[i]);
+      g_signal_connect(G_OBJECT(menu_item), "activate", G_CALLBACK(on_management_window_add_new_dag_activated), (void *) &DMG->P[i]);
     }
     gtk_widget_show_all(menu);
     
@@ -2734,10 +2739,10 @@ dv_gui_build_management_window(dv_gui_t * gui) {
     GtkWidget * scrolled_box = gui->scrolled_box = gtk_box_new(GTK_ORIENTATION_VERTICAL, 5);
     gtk_container_add(GTK_CONTAINER(scrolled), scrolled_box);
 
-    for (i = 0; i < CS->nD; i++) {
+    for (i = 0; i < DMG->nD; i++) {
       hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
       gtk_box_pack_start(GTK_BOX(scrolled_box), hbox, FALSE, FALSE, 0);
-      gtk_box_pack_start(GTK_BOX(hbox), CS->D[i].mini_frame, TRUE, TRUE, 0);
+      gtk_box_pack_start(GTK_BOX(hbox), ((dv_dag_t*)DMG->D[i].g)->mini_frame, TRUE, TRUE, 0);
     }
   }
 
@@ -2766,10 +2771,10 @@ dv_gui_build_management_window(dv_gui_t * gui) {
     gtk_container_add(GTK_CONTAINER(scrolled), scrolled_box);
 
     int i;
-    for (i = 0; i < CS->nP; i++) {
+    for (i = 0; i < DMG->nP; i++) {
       hbox = gtk_box_new(GTK_ORIENTATION_HORIZONTAL, 0);
       gtk_box_pack_start(GTK_BOX(scrolled_box), hbox, FALSE, FALSE, 0);
-      gtk_box_pack_start(GTK_BOX(hbox), CS->P[i].mini_frame, TRUE, TRUE, 0);
+      gtk_box_pack_start(GTK_BOX(hbox), ((dv_pidag_t *) DMG->P[i].g)->mini_frame, TRUE, TRUE, 0);
     }
   }
 
@@ -2910,7 +2915,7 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
       GtkWidget * item;
       GtkWidget * submenu;
       
-      if (1) {//CS->nP >= 1) {
+      if (1) {//DMG->nP >= 1) {
         /* Divisions for 1 DAG: D , T , D|T , D/T , D|B, (D|B)/T */
         item = gtk_menu_item_new_with_mnemonic("Screen divisions for _1 DAG");
         gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
@@ -2946,7 +2951,7 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
         g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_onedag_activated), (void *) 7);
       }
       
-      if (1) {//CS->nP >= 2) {
+      if (1) {//DMG->nP >= 2) {
         /* Divisions for 2 DAGs: D|D , T|T , T/T , (D/T)|(D/T) , (D|T)/(D|T) , (D|B)/T | (D|B)/T , D|T */
         item = gtk_menu_item_new_with_mnemonic("Screen divisions for _2 DAGs");
         gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
@@ -2982,7 +2987,7 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
         g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_division_menu_twodags_activated), (void *) 6);
       }
 
-      if (1) {//CS->nP >= 3) {
+      if (1) {//DMG->nP >= 3) {
         /* Divisions for 3 DAGs: D|D|D */
         item = gtk_menu_item_new_with_mnemonic("Screen divisions for _3 DAGs");
         gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
@@ -3011,11 +3016,11 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
       gtk_menu_tool_button_set_menu(GTK_MENU_TOOL_BUTTON(btn_settings), menu);
     
       int i, j;
-      for (i = 0; i < CS->nD; i++) {
-        dv_dag_t * D = &CS->D[i];
+      for (i = 0; i < DMG->nD; i++) {
+        dm_dag_t * D = &DMG->D[i];
         int c = 0;
-        for (j = 0; j < CS->nV; j++)
-          if (D->mV[j]) c++;
+        for (j = 0; j < DVG->nV; j++)
+          if (((dv_dag_t*)D->g)->mV[j]) c++;
         if (c == 1) {
           GtkWidget * item = gtk_menu_item_new_with_label(D->name);
           gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
@@ -3025,11 +3030,11 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
           gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
           GtkWidget * submenu = gtk_menu_new();
           gtk_menu_item_set_submenu(GTK_MENU_ITEM(item), submenu);
-          for (j = 0; j < CS->nV; j++)
-            if (D->mV[j]) {
-              item = gtk_menu_item_new_with_label(CS->V[j].name);
+          for (j = 0; j < DVG->nV; j++)
+            if (((dv_dag_t*)D->g)->mV[j]) {
+              item = gtk_menu_item_new_with_label(DVG->V[j].name);
               gtk_menu_shell_append(GTK_MENU_SHELL(submenu), item);
-              g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_dag_menu_item_activated), (void *) &CS->V[j]);
+              g_signal_connect(G_OBJECT(item), "activate", G_CALLBACK(on_toolbar_dag_menu_item_activated), (void *) &DVG->V[j]);
             }
         }
       }
@@ -3231,7 +3236,7 @@ dv_gui_get_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
 
   
 void
-dv_dag_set_time_step(dv_dag_t * D, double time_step) {
+dv_dag_set_time_step(dm_dag_t * D, double time_step) {
   D->time_step = time_step;
   char s[DV_STRING_LENGTH];
   sprintf(s, "%0.0lf", time_step);
@@ -3239,7 +3244,7 @@ dv_dag_set_time_step(dv_dag_t * D, double time_step) {
 }
 
 void
-dv_dag_set_current_time(dv_dag_t * D, double current_time) {
+dv_dag_set_current_time(dm_dag_t * D, double current_time) {
   if (current_time < 0
       || current_time > (D->et - D->bt)
       || current_time == D->current_time)
@@ -3253,7 +3258,7 @@ dv_dag_set_current_time(dv_dag_t * D, double current_time) {
 }
 
 void
-dv_dag_set_draw_current_time_active(dv_dag_t * D, int active) {
+dv_dag_set_draw_current_time_active(dm_dag_t * D, int active) {
   if (!active) {
     D->draw_with_current_time = 0;
   } else {
@@ -3267,13 +3272,13 @@ dv_dag_set_draw_current_time_active(dv_dag_t * D, int active) {
 }
 
 void
-dv_gui_replay_sidebox_set_dag(dv_dag_t * D, int set) {
+dv_gui_replay_sidebox_set_dag(dm_dag_t * D, int set) {
   if (!set) {
-    GUI->replay.mD[D - CS->D] = 0;
+    GUI->replay.mD[D - DMG->D] = 0;
     dv_dag_set_draw_current_time_active(D, 0);
     return;
   }
-  GUI->replay.mD[D - CS->D] = 1;
+  GUI->replay.mD[D - DMG->D] = 1;
   gtk_range_set_range(GTK_RANGE(GUI->replay.scale), 0, D->et - D->bt);
   dv_dag_set_current_time(D, D->current_time);
   dv_dag_set_time_step(D, D->time_step);
@@ -3305,8 +3310,8 @@ dv_gui_build_replay_sidebox(dv_gui_t * gui) {
   GtkWidget * menu = gui->replay.dag_menu = gtk_menu_new();
   gtk_menu_button_set_popup(GTK_MENU_BUTTON(menu_button), menu);
   int i;
-  for (i = 0; i < CS->nD; i++) {
-    dv_dag_t * D = &CS->D[i];
+  for (i = 0; i < DMG->nD; i++) {
+    dm_dag_t * D = &DMG->D[i];
     GtkWidget * item = gtk_check_menu_item_new_with_label(D->name);
     gtk_menu_shell_append(GTK_MENU_SHELL(menu), item);
     gtk_check_menu_item_set_active(GTK_CHECK_MENU_ITEM(item), FALSE);
@@ -3356,8 +3361,8 @@ dv_gui_build_replay_sidebox(dv_gui_t * gui) {
   
   /*
   gtk_box_pack_start(GTK_BOX(sidebox_box), gtk_separator_new(GTK_ORIENTATION_HORIZONTAL), FALSE, FALSE, 0);
-  if (CS->activeV) {
-    dv_dag_t * D = CS->activeV->D;
+  if (DVG->activeV) {
+    dm_dag_t * D = DVG->activeV->D;
     GtkWidget * scrolled = gtk_scrolled_window_new(NULL, NULL);
     gtk_scrolled_window_set_policy(GTK_SCROLLED_WINDOW(scrolled), GTK_POLICY_NEVER, GTK_POLICY_AUTOMATIC);
     gtk_box_pack_start(GTK_BOX(sidebox_box), scrolled, TRUE, TRUE, 0);
@@ -3391,8 +3396,8 @@ dv_gui_build_replay_sidebox(dv_gui_t * gui) {
   }
   */
 
-  if (CS->activeV)
-    dv_gui_replay_sidebox_set_dag(CS->activeV->D, 1);
+  if (DVG->activeV)
+    dv_gui_replay_sidebox_set_dag(DVG->activeV->D, 1);
     
   gtk_widget_show_all(sidebox);
 }
@@ -3405,8 +3410,8 @@ dv_gui_get_replay_sidebox(dv_gui_t * gui) {
 }
 
 void
-dv_gui_nodeinfo_set_node(dv_gui_t * gui, dv_dag_node_t * node, dv_dag_t * D) {
-  dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, node);
+dv_gui_nodeinfo_set_node(dv_gui_t * gui, dm_dag_node_t * node, dm_dag_t * D) {
+  dr_pi_dag_node * pi = dm_pidag_get_node_by_dag_node(D->P, node);
   char s[DV_STRING_LENGTH];
 
   sprintf(s, "%s",
@@ -3665,7 +3670,7 @@ dv_open_gui(_unused_ int argc, _unused_ char * argv[], GtkApplication * app) {
   GtkWidget * window = dv_gui_get_main_window(GUI, app);
 
   /* Viewports */
-  dv_viewport_t * VP = CS->VP;
+  dv_viewport_t * VP = DVG->VP;
   gtk_box_pack_end(GTK_BOX(GUI->main_box), VP->frame, TRUE, TRUE, 0);
   dv_viewport_show(VP);
 

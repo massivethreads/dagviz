@@ -2,8 +2,9 @@
 
 /*---------PIDAG Reader's functions---------------*/
 
-dv_pidag_t *
-dv_pidag_read_new_file(char * filename) {
+#if 0
+dm_pidag_t *
+dm_pidag_read_new_file(char * filename) {
   /* Read file size */
   int fd = open(filename, O_RDONLY);
   if (fd < 0) {
@@ -23,15 +24,15 @@ dv_pidag_read_new_file(char * filename) {
     return NULL;
   
   /* Get new PIDAG */
-  if (CS->nP >= DV_MAX_DAG_FILE)
+  if (CS->nP >= DM_MAX_DAG_FILE)
     return NULL;
-  dv_pidag_t * P = &CS->P[CS->nP++];
+  dm_pidag_t * P = &CS->P[CS->nP++];
   P->fn = filename;
   P->filename = (char *) dv_malloc( sizeof(char) * (strlen(filename) + 1) );
   strcpy(P->filename, filename);
   P->filename[strlen(filename)] = '\0';
   P->short_filename = dv_filename_get_short_name(P->filename);
-  dv_llist_init(P->itl);
+  dm_llist_init(P->itl);
 
   P->sz = statbuf->st_size;
   P->n = G->n;
@@ -56,13 +57,13 @@ dv_pidag_read_new_file(char * filename) {
   return P;
 }
 
-dv_pidag_t *
-dv_pidag_read_new_file_bk(char * filename) {
+dm_pidag_t *
+dm_pidag_read_new_file_bk(char * filename) {
   /* Get new PIDAG */
-  dv_check(CS->nP < DV_MAX_DAG_FILE);
-  dv_pidag_t * P = &CS->P[CS->nP++];
+  dv_check(CS->nP < DM_MAX_DAG_FILE);
+  dm_pidag_t * P = &CS->P[CS->nP++];
   P->fn = filename;
-  dv_llist_init(P->itl);
+  dm_llist_init(P->itl);
   
   /* Read file */
   int err;
@@ -128,40 +129,41 @@ dv_pidag_read_new_file_bk(char * filename) {
 }
 
 static long
-dv_pidag_get_node_id(dv_pidag_t * P, dr_pi_dag_node * pi) {
+dm_pidag_get_node_id(dm_pidag_t * P, dr_pi_dag_node * pi) {
   return pi - P->T;
 }
 
 static long
-dv_pidag_get_node_id_with_offset(dv_pidag_t * P, dr_pi_dag_node * pi, long offset) {
+dm_pidag_get_node_id_with_offset(dm_pidag_t * P, dr_pi_dag_node * pi, long offset) {
   return pi - P->T + offset;
 }
   
 dr_pi_dag_node *
-dv_pidag_get_node_by_id(dv_pidag_t * P, long id) {
+dm_pidag_get_node_by_id(dm_pidag_t * P, long id) {
   dv_check(id >=0 && id < P->n);
   dr_pi_dag_node * ret = P->T + id;
   return ret;
 }
 
 dr_pi_dag_node *
-dv_pidag_get_node_by_dag_node(dv_pidag_t * P, dv_dag_node_t * node) {
+dm_pidag_get_node_by_dag_node(dm_pidag_t * P, dv_dag_node_t * node) {
   if (!node) return NULL;
-  return dv_pidag_get_node_by_id(P, node->pii);
+  return dm_pidag_get_node_by_id(P, node->pii);
 }
 
 static dr_pi_dag_node *
-dv_pidag_get_node_by_offset(dv_pidag_t * P, dr_pi_dag_node * pi, long offset) {
+dm_pidag_get_node_by_offset(dm_pidag_t * P, dr_pi_dag_node * pi, long offset) {
   if (!pi) return NULL;
-  long id = dv_pidag_get_node_id_with_offset(P, pi, offset);
-  return dv_pidag_get_node_by_id(P, id);
+  long id = dm_pidag_get_node_id_with_offset(P, pi, offset);
+  return dm_pidag_get_node_by_id(P, id);
 }
-
+#endif
 /*---------end of PIDAG Reader's functions---------------*/
 
 
 /*---------DAG's functions---------------*/
 
+#if 0
 static void
 dv_node_coordinate_init(dv_node_coordinate_t * c) {
   memset(c, 0, sizeof(dv_node_coordinate_t));
@@ -224,8 +226,8 @@ dv_dag_node_init(dv_dag_node_t * node, dv_dag_node_t * parent, long pii) {
 
 int
 dv_dag_node_set(dv_dag_t * D, dv_dag_node_t * node) {
-  dv_pidag_t * P = D->P;
-  dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(P, node);
+  dm_pidag_t * P = D->P;
+  dr_pi_dag_node * pi = dm_pidag_get_node_by_dag_node(P, node);
 
   if (pi->info.kind == dr_dag_node_kind_section
       || pi->info.kind == dr_dag_node_kind_task) {
@@ -249,7 +251,7 @@ dv_dag_node_set(dv_dag_t * D, dv_dag_node_t * node) {
 
 int
 dv_dag_build_node_inner(dv_dag_t * D, dv_dag_node_t * node) {
-  dv_pidag_t * P = D->P;
+  dm_pidag_t * P = D->P;
 
   if (!dv_is_set(node))
     dv_dag_node_set(D, node);
@@ -259,9 +261,9 @@ dv_dag_build_node_inner(dv_dag_t * D, dv_dag_node_t * node) {
     dr_pi_dag_node * pi, * pi_a, * pi_b, * pi_x;
     dv_dag_node_t * node_a, * node_b, * node_x, * node_t;
 
-    pi = dv_pidag_get_node_by_dag_node(P, node);
-    pi_a = dv_pidag_get_node_by_offset(P, pi, pi->subgraphs_begin_offset);
-    pi_b = dv_pidag_get_node_by_offset(P, pi, pi->subgraphs_end_offset - 1);
+    pi = dm_pidag_get_node_by_dag_node(P, node);
+    pi_a = dm_pidag_get_node_by_offset(P, pi, pi->subgraphs_begin_offset);
+    pi_b = dm_pidag_get_node_by_offset(P, pi, pi->subgraphs_end_offset - 1);
 #if 0
     /* tau: I think this condition does not hold when P has 
        exactly one child. the condition should be pi_a <= pi_b;
@@ -293,7 +295,7 @@ dv_dag_build_node_inner(dv_dag_t * D, dv_dag_node_t * node) {
     pi_x = pi_a;
     node_x = node_a;
     while (node_x) {
-      dv_dag_node_init(node_x, node, dv_pidag_get_node_id(P, pi_x));
+      dv_dag_node_init(node_x, node, dm_pidag_get_node_id(P, pi_x));
       dv_dag_node_set(D, node_x);
       if (node_x->d > D->dmax)
         D->dmax = node_x->d;
@@ -310,12 +312,12 @@ dv_dag_build_node_inner(dv_dag_t * D, dv_dag_node_t * node) {
       // next's pre
       node_x->next->pre = node_x;
       // spawn
-      pi_x = dv_pidag_get_node_by_dag_node(P, node_x);
+      pi_x = dm_pidag_get_node_by_dag_node(P, node_x);
       if (pi_x->info.kind == dr_dag_node_kind_create_task) {
         node_t = dv_dag_node_pool_pop(CS->pool);
         if (!node_t)
           return dv_log_set_error(DV_ERROR_OONP);
-        dv_dag_node_init(node_t, node, dv_pidag_get_node_id_with_offset(P, pi_x, pi_x->child_offset));
+        dv_dag_node_init(node_t, node, dm_pidag_get_node_id_with_offset(P, pi_x, pi_x->child_offset));
         dv_dag_node_set(D, node_t);
         node_x->spawn = node_t;
         node_t->pre = node_x;
@@ -377,7 +379,7 @@ dv_dag_clear_shrinked_nodes_r(dv_dag_t * D, dv_dag_node_t * node) {
       // check if node has inner_loaded node
       int has_no_innerloaded_node = 1;
       dv_dag_node_t * x = NULL;
-      while ( (x = dv_dag_node_traverse_children(node, x)) ) {
+      while ( (x = dm_dag_node_traverse_children(node, x)) ) {
         if (dv_is_set(x) && dv_is_union(x) && dv_is_inner_loaded(x)) {
           has_no_innerloaded_node = 0;
           break;
@@ -400,7 +402,7 @@ dv_dag_clear_shrinked_nodes_r(dv_dag_t * D, dv_dag_node_t * node) {
   
   /* Call link-along */
   dv_dag_node_t * x = NULL;
-  while ( (x = dv_dag_node_traverse_nexts(node, x)) ) {
+  while ( (x = dm_dag_node_traverse_nexts(node, x)) ) {
     dv_dag_clear_shrinked_nodes_r(D, x);
   }
 }
@@ -435,7 +437,7 @@ dv_get_component_from_string(char * s, int n) {
   return NULL;
 }
 
-static char *
+_unused_ static char *
 dv_get_distinct_components_name_string(char * name) {
   char str[100] = "";
   int i = 1;
@@ -487,17 +489,20 @@ dv_get_distinct_components_name_string(char * name) {
 }
 
 void
-dv_dag_init(dv_dag_t * D, dv_pidag_t * P) {
+dv_dag_init(dv_dag_t * D, dm_pidag_t * P) {
   char str[10];
   sprintf(str, "DAG %ld", D - CS->D);
   D->name = malloc( sizeof(char) * (strlen(str) + 1) );
   strcpy(D->name, str);
   D->name[strlen(str)] = '\0';
-  //D->name_on_graph = (char *) malloc( sizeof(char) * (strlen(str) + 1) );
-  //strcpy(D->name_on_graph, str);
+
+  /* make a short name for use on plots */
+  D->name_on_graph = (char *) malloc( sizeof(char) * (strlen(str) + 1) );
+  strcpy(D->name_on_graph, str);
   //D->name_on_graph[strlen(str)] = '\0';
-  D->name_on_graph = dv_get_distinct_components_name_string(P->short_filename);
+  //D->name_on_graph = dv_get_distinct_components_name_string(P->short_filename);
   //printf("%s: %s\n", D->name, D->name_on_graph);
+  
   D->P = P;
   D->rt = dv_dag_node_pool_pop(CS->pool);
   dv_dag_node_init(D->rt, 0, 0);
@@ -522,7 +527,7 @@ dv_dag_init(dv_dag_t * D, dv_pidag_t * P) {
   for (i = 0; i < DV_MAX_VIEW; i++)
     D->mV[i] = 0;
   
-  dv_llist_init(D->itl);
+  dm_llist_init(D->itl);
   D->H = NULL;
   for (i=0; i<DV_NUM_LAYOUT_TYPES; i++)
     D->nviews[i] = 0;
@@ -538,14 +543,14 @@ dv_dag_init(dv_dag_t * D, dv_pidag_t * P) {
 }
 
 dv_dag_t *
-dv_dag_create_new_with_pidag(dv_pidag_t * P) {
+dv_dag_create_new_with_pidag(dm_pidag_t * P) {
   /* Get new DAG */
-  dv_check(CS->nD < DV_MAX_DAG);
+  dv_check(CS->nD < DM_MAX_DAG);
   dv_dag_t * D = &CS->D[CS->nD++];
   dv_dag_init(D, P);
 
   /* Set values */
-  dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(P, D->rt);
+  dr_pi_dag_node * pi = dm_pidag_get_node_by_dag_node(P, D->rt);
   //D->bt = pi->info.start.t - 1;
   //D->et = pi->info.end.t + 1;
   D->bt = pi->info.first_ready_t;
@@ -553,57 +558,17 @@ dv_dag_create_new_with_pidag(dv_pidag_t * P) {
   
   // Traverse pidag's nodes
   /*
-  dv_stack_t s[1];
-  dv_stack_init(s);
-  dv_stack_push(s, (void *) G->rt);
+  dm_stack_t s[1];
+  dm_stack_init(s);
+  dm_stack_push(s, (void *) G->rt);
   while (s->top) {
-    dv_dag_node_t * x = (dv_dag_node_t *) dv_stack_pop(s);
-    pi = dv_pidag_get_node_by_dag_node(x);
+    dv_dag_node_t * x = (dv_dag_node_t *) dm_stack_pop(s);
+    pi = dm_pidag_get_node_by_dag_node(x);
     p = dv_traverse_node(pi, x, p, plim, s, G);
   }
   */
 
   return D;
-}
-
-int
-dv_pidag_node_lookup_value(dr_pi_dag_node * pi, int nc) {
-  int v = 0;
-  dv_check(nc < DV_NUM_COLOR_POOLS);
-  switch (nc) {
-  case 0:
-    //v = dv_get_color_pool_index(nc, 0, 0, 0, pi->info.worker);
-    v = pi->info.worker;
-    break;
-  case 1:
-    //v = dv_get_color_pool_index(nc, 0, 0, 0, pi->info.cpu);
-    v = pi->info.cpu;
-    break;
-  case 2:
-    //v = dv_get_color_pool_index(nc, 0, 0, 0, pi->info.kind);
-    v = (int) pi->info.kind;
-    v += 10;
-    break;
-  case 3:
-    v = dv_get_color_pool_index(nc, 0, 0, pi->info.start.pos.file_idx, pi->info.start.pos.line);
-    break;
-  case 4:
-    v = dv_get_color_pool_index(nc, 0, 0, pi->info.end.pos.file_idx, pi->info.end.pos.line);
-    break;
-  case 5:
-    v = dv_get_color_pool_index(nc, pi->info.start.pos.file_idx, pi->info.start.pos.line, pi->info.end.pos.file_idx, pi->info.end.pos.line);
-    break;
-  default:
-    dv_check(0);
-    break;
-  }
-  return v;
-}
-
-int
-dv_dag_node_lookup_value(dv_dag_t * D, dv_dag_node_t * node, int nc) {
-  dr_pi_dag_node * pi = dv_pidag_get_node_by_dag_node(D->P, node);
-  return dv_pidag_node_lookup_value(pi, nc);
 }
 
 dv_dag_node_t *
@@ -711,6 +676,11 @@ dv_dag_node_get_single_last(dv_dag_node_t * node) {
   }
   return node;
 }
+
+#endif
+
+
+
 
 
 /*-----------------end of DAG's functions-----------*/

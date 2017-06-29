@@ -4,7 +4,8 @@ import sys
 import pydagmodel as dm
 import numpy as np
 import matplotlib
-matplotlib.use('WXAgg')
+#matplotlib.use('Qt4Agg')
+#matplotlib.use('WXAgg')
 #matplotlib.use('GTK3Cairo')
 import matplotlib.pyplot as plt
 
@@ -38,7 +39,7 @@ def main():
     ax00.set_xticklabels(name)
     plt.setp(ax00.get_xticklabels(), rotation=-35, horizontalalignment='left')
     ax00.set_ylabel('cumul. clocks')
-    #ax00.legend()
+    #ax00.legend(loc="upper center")
     ax00.set_title('work - delay - no-work')
 
     counter_0 = []
@@ -79,6 +80,7 @@ def main():
     ax12.set_title('ipc')
 
     plt.tight_layout()
+    #print matplotlib.get_backend()
     plt.show()
 
 if __name__ == "__main__":

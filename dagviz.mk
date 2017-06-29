@@ -8,15 +8,19 @@ GTK_CFLAGS = $(shell $(PKGCONFIG) --cflags gtk+-3.0)
 GTK_LDFLAGS = $(shell $(PKGCONFIG) --libs gtk+-3.0)
 GLIB_COMPILE_RESOURCES = $(shell $(PKGCONFIG) --variable=glib_compile_resources gio-2.0)
 
+DM_HDR = dagmodel.h
+DM_SRC = dagmodel.c
+DM_OBJS = $(DM_SRC:.c=.o)
+
 DV_HDR = dagviz.h callback.h 
 DV_AUX_SRC = dagviz.gresource.xml interface.c
-DV_SRC = read.c layout.c draw.c utils.c print.c view_dag.c view_dag_box.c view_timeline.c view_timeline_ver.c view_paraprof.c control.c graphs.c
+DV_SRC = layout.c draw.c view_dag.c view_dag_box.c view_timeline.c view_timeline_ver.c view_paraprof.c control.c graphs.c
 BUILT_SRC = resources.c
 DV_OBJS = $(BUILT_SRC:.c=.o) $(DV_SRC:.c=.o)
 
-DSv1_HDR = dagmodel.h dagstat_v1.h
-DS_HDR = dagmodel.h dagstat.h
-DS_SRC = dagmodel.c
+DSv1_HDR = dagstat_v1.h
+DS_HDR = dagstat.h
+DS_SRC = 
 DS_OBJS = $(DS_SRC:.c=.o)
 
 EXE_SRC = dagviz.c dagprof.c dagstat_v1.c dagstat.c
@@ -45,27 +49,8 @@ exes := $(EXE_SRC:.c=)
 all: $(exes)
 
 
-dagviz: dagviz.o $(DV_OBJS)
-	$(CC) -o $@ dagviz.o $(DV_OBJS) $(GTK_LDFLAGS) $(LDFLAGS)
-
-dagprof: dagprof.o $(DV_OBJS)
-	$(CC) -o $@ dagprof.o $(DV_OBJS) $(GTK_LDFLAGS) $(LDFLAGS)
-
-dagstat_v1: dagstat_v1.o $(DS_OBJS)
-	$(CC) -o $@ dagstat_v1.o $(DS_OBJS) $(LDFLAGS)
-
-dagstat: dagstat.o $(DS_OBJS)
-	$(CC) -o $@ dagstat.o $(DS_OBJS) $(LDFLAGS)
-
-
-dagviz.o: dagviz.c $(DV_HDR) $(DV_AUX_SRC) 
-	$(CC) -c -o $@ $(GTK_CFLAGS) $(CFLAGS) $<
-
-dagprof.o: dagprof.c $(DV_HDR) 
-	$(CC) -c -o $@ $(GTK_CFLAGS) $(CFLAGS) $<
-
-$(DV_OBJS): %.o: %.c $(DV_HDR)
-	$(CC) -c -o $@ $(GTK_CFLAGS) $(CFLAGS) $<
+$(DM_OBJS): %.o: %.c $(DM_HDR)
+	$(CC) -c -o $@ $(CFLAGS) $<
 
 
 dagstat_v1.o: dagstat_v1.c $(DSv1_HDR)
@@ -76,6 +61,29 @@ dagstat.o: dagstat.c $(DS_HDR)
 
 $(DS_OBJS): %.o: %.c $(DS_HDR)
 	$(CC) -c -o $@ $(CFLAGS) $<
+
+
+dagviz: dagviz.o $(DV_OBJS) $(DM_OBJS)
+	$(CC) -o $@ dagviz.o $(DV_OBJS) $(DM_OBJS) $(GTK_LDFLAGS) $(LDFLAGS)
+
+dagprof: dagprof.o $(DV_OBJS) $(DM_OBJS)
+	$(CC) -o $@ dagprof.o $(DV_OBJS) $(DM_OBJS) $(GTK_LDFLAGS) $(LDFLAGS)
+
+dagstat_v1: dagstat_v1.o $(DS_OBJS) $(DM_OBJS)
+	$(CC) -o $@ dagstat_v1.o $(DS_OBJS) $(DM_OBJS) $(LDFLAGS)
+
+dagstat: dagstat.o $(DS_OBJS) $(DM_OBJS)
+	$(CC) -o $@ dagstat.o $(DS_OBJS) $(DM_OBJS) $(LDFLAGS)
+
+
+dagviz.o: dagviz.c $(DV_HDR) $(DV_AUX_SRC) 
+	$(CC) -c -o $@ $(GTK_CFLAGS) $(CFLAGS) $<
+
+dagprof.o: dagprof.c $(DV_HDR) 
+	$(CC) -c -o $@ $(GTK_CFLAGS) $(CFLAGS) $<
+
+$(DV_OBJS): %.o: %.c $(DV_HDR)
+	$(CC) -c -o $@ $(GTK_CFLAGS) $(CFLAGS) $<
 
 
 resources.c: dagviz.gresource.xml $(shell $(GLIB_COMPILE_RESOURCES) --sourcedir=. --generate-dependencies dagviz.gresource.xml)

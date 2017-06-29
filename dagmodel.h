@@ -1,3 +1,11 @@
+/*
+ * dagmodel.h
+ */
+
+#ifndef DAGMODEL_HEADER_
+#define DAGMODEL_HEADER_
+#pragma once
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -16,8 +24,6 @@
 
 #define DAG_RECORDER 2
 #include <dag_recorder_impl.h>
-
-#define GtkWidget void
 
 #define _unused_ __attribute__((unused))
 #define _static_unused_ static __attribute__((unused))
@@ -117,7 +123,7 @@ typedef struct dm_pidag {
 
   /* DAG management window */
   char * name;
-  GtkWidget * mini_frame;
+  void * g; /* pointer to a structure holding GUI-dependent elements, unused inside dagmodel */
 } dm_pidag_t;
 
 typedef struct dm_node_coordinate {
@@ -200,22 +206,18 @@ typedef struct dm_dag {
   double linear_radix;
   int frombt;
   double radius;
-  int mV[DM_MAX_VIEW]; /* mark Vs that are bound to this D */
 
   /* other */
   dm_llist_t itl[1]; /* list of nodes that have info tag */
   dm_histogram_t * H; /* structure for the paraprof view (5th) */
-
-  /* DAG management window */
-  GtkWidget * mini_frame;
-  GtkWidget * views_box;
-  GtkWidget * status_label;
 
   int draw_with_current_time;
   double current_time;
   double time_step;
   int show_critical_paths[DM_NUM_CRITICAL_PATHS];
   int critical_paths_computed;
+
+  void * g; /* pointer to a structure holding GUI-dependent elements, unused inside dagmodel */
 } dm_dag_t;
 
 
@@ -320,7 +322,7 @@ typedef struct dm_global_state {
   int nP;
   int nD;
   dm_llist_cell_t * FL;
-  int err;
+  int error;
   
   /* Memory Pools */
   dm_dag_node_pool_t pool[1];
@@ -552,8 +554,8 @@ dm_is_inward_callable(dm_dag_node_t * node) {
 
 _static_unused_ int
 dm_log_set_error(int err) {
-  DMG->err = err;
-  fprintf(stderr, "DMG->err = %d\n", err);
+  DMG->error = err;
+  fprintf(stderr, "DMG->error = %d\n", err);
   return err;
 }
 
@@ -808,3 +810,5 @@ dr_basic_stat_process_event(chronological_traverser * ct,
 }
 
 /***** Chronological Traverser *****/
+
+#endif /* DAGMODEL_HEADER_ */

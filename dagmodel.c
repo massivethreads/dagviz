@@ -28,6 +28,7 @@ dm_pidag_read_new_file(char * filename) {
   if (DMG->nP >= DM_MAX_DAG_FILE)
     return NULL;
   dm_pidag_t * P = &DMG->P[DMG->nP++];
+  memset(P, 0, sizeof(dm_pidag_t));
   P->fn = filename;
   P->filename = (char *) dm_malloc( sizeof(char) * (strlen(filename) + 1) );
   strcpy(P->filename, filename);
@@ -525,12 +526,15 @@ dm_dag_node_get_single_last(dm_dag_node_t * node) {
 
 void
 dm_dag_node_pool_init(dm_dag_node_pool_t * pool) {
+  memset(pool, 0, sizeof(dm_dag_node_pool_t));
+  /*
   pool->head = NULL;
   pool->tail = NULL;
   pool->pages = NULL;
   pool->sz = 0;
   pool->N = 0;
   pool->n = 0;
+  */
 }
 
 static dm_dag_node_t *
