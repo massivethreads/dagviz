@@ -1,0 +1,131 @@
+#!/usr/bin/python3
+
+import sys, os, random
+
+#from PyQt5.QtGui import QIcon, QFont
+#from PyQt5.QtWidgets import QApplication, QWidget, QToolTip, QPushButton
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
+
+import sip
+sys.path.append(os.getcwd()+"/sip")
+import dagrenderer
+
+class DAGViewport(QWidget):
+    def __init__(self):
+        super(DAGViewport, self).__init__()
+
+    def paintEvent(self, e):
+        qp = QPainter()
+        qp.begin(self)
+
+        qp.setPen(Qt.red)
+        size = self.size()
+        for i in range(1000):
+            x = random.randint(1, size.width()-1)
+            y = random.randint(1, size.height()-1)
+            qp.drawPoint(x, y)
+        qp.setBrush(QColor(255, 80, 0, 160))
+        qp.drawRect(130, 15, 90, 60)
+
+        # delegate drawing to C++
+        r = dagrenderer.DAGRenderer()
+        r.draw(sip.unwrapinstance(qp))
+        
+        qp.end()
+        
+class DAGViz(QMainWindow):
+    def __init__(self):
+        super(DAGViz, self).__init__()
+        self.initUI()
+        
+    def initUI(self):
+        # main window
+        self.setGeometry(300, 300, 600, 400)
+        self.center()
+        self.setWindowTitle('DAGViz')
+        self.setWindowIcon(QIcon('gui/dagviz_icon.svg'))
+
+        # status bar
+        self.statusBar().showMessage('Ready')
+
+        # menu bar
+        menubar = self.menuBar()
+        #menubar.setNativeMenuBar(False)
+        fileMenu = menubar.addMenu('&File')
+        viewMenu = menubar.addMenu('&View')
+        
+        exitAct = QAction(QIcon('gui/exit.svg'), '&Exit', self)
+        exitAct.setShortcut('Ctrl+Q')
+        exitAct.setStatusTip('Exit application')
+        exitAct.triggered.connect(qApp.quit)
+        fileMenu.addAction(exitAct)
+        
+        toolboxAct = QAction('&Toolbox', self)
+        toolboxAct.setShortcut('Ctrl+T')
+        toolboxAct.setStatusTip('Show toolbox')
+        #toolboxAct.triggered.connect(qApp.quit)
+        viewMenu.addAction(toolboxAct)
+        
+        showhideMenu = viewMenu.addMenu('Sh&ow/Hide')
+        replayAct = QAction('&Replay', self, checkable=True)
+        replayAct.setShortcut('Shift+Ctrl+R')
+        replayAct.setChecked(False)
+        #replayAct.triggered.connect(qApp.quit)
+        nodeinfoAct = QAction('&Node information', self, checkable=True)
+        nodeinfoAct.setShortcut('Shift+Ctrl+N')
+        nodeinfoAct.setChecked(False)
+        #nodeinfoAct.triggered.connect(qApp.quit)
+        showhideMenu.addAction(replayAct)
+        showhideMenu.addAction(nodeinfoAct)
+
+        zoomMenu = viewMenu.addMenu('&Zoom')
+        zoomFullAct = zoomMenu.addAction('Zoom fit &full')
+        zoomHorAct = zoomMenu.addAction('Zoom fit &horizontally')
+        zoomVerAct = zoomMenu.addAction('Zoom fit &vertically')
+        zoomFullAct.setShortcut('F')
+        zoomHorAct.setShortcut('H')
+        zoomVerAct.setShortcut('V')
+        #zoomFullAct.triggered.connect(qApp.quit)
+        #zoomHorAct.triggered.connect(qApp.quit)
+        #zoomVerAct.triggered.connect(qApp.quit)
+
+        # toolbar
+        self.toolbar = self.addToolBar('Toolbar')
+        self.toolbar.addAction(exitAct)
+
+        # central widget
+        cwidget = DAGViewport()
+        self.setCentralWidget(cwidget)
+        
+        # show
+        self.show()
+
+    def contextMenuEvent(self, event):
+           cmenu = QMenu(self)
+           openAct = cmenu.addAction("Open")
+           quitAct = cmenu.addAction("Quit")
+           action = cmenu.exec_(self.mapToGlobal(event.pos()))
+           if action == quitAct:
+               qApp.quit()
+               
+    # def closeEvent(self, event):
+    #     print("closeEvent handler.")
+    #     reply = QMessageBox.question(self, 'Message', "Are you sure to quit?",
+    #                                  QMessageBox.Yes | QMessageBox.No, QMessageBox.No)
+    #     if reply == QMessageBox.Yes:
+    #         event.accept()
+    #     else:
+    #         event.ignore()
+
+    def center(self):
+        windowrec = self.frameGeometry()
+        centerpt = QDesktopWidget().availableGeometry().center()
+        windowrec.moveCenter(centerpt)
+        self.move(windowrec.topLeft())
+
+if __name__ == '__main__':
+    app = QApplication(sys.argv)
+    ex = DAGViz()
+    sys.exit(app.exec_())

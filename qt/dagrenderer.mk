@@ -1,0 +1,4 @@
+all:
+	qmake
+	make
+
