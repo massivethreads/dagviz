@@ -398,21 +398,27 @@ on_darea_key_press_event(_unused_ GtkWidget * widget, _unused_ GdkEventConfigure
       
       _unused_ GdkModifierType mod = gtk_accelerator_get_default_mod_mask();
       GdkEventKey * e = (GdkEventKey *) event;
+      double delta = 10;
+      if ((e->state & mod) == GDK_CONTROL_MASK) {
+        delta = 100;
+      } else if ((e->state & mod) == GDK_MOD1_MASK) {
+        delta = 1;
+      }
       switch (e->keyval) {
       case 65361: /* Left */
-        V->S->x += 15;
+        V->S->x += delta;
         dv_queue_draw_view(V);
         return TRUE;
       case 65362: /* Up */
-        V->S->y += 15;
+        V->S->y += delta;
         dv_queue_draw_view(V);
         return TRUE;
       case 65363: /* Right */
-        V->S->x -= 15;
+        V->S->x -= delta;
         dv_queue_draw_view(V);
         return TRUE;
       case 65364: /* Down */
-        V->S->y -= 15;
+        V->S->y -= delta;
         dv_queue_draw_view(V);
         return TRUE;
       default:

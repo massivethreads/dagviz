@@ -901,6 +901,8 @@ dv_viewport_export_to_surface(dv_viewport_t * VP, cairo_surface_t * surface) {
   gdk_rgba_parse(white, "white");
   cairo_set_source_rgba(cr, white->red, white->green, white->blue, white->alpha);
   cairo_paint(cr);
+  /* move to avoid ruler areas */
+  cairo_translate(cr, -DVG->opts.ruler_width, -DVG->opts.ruler_width);
   // Draw viewport
   dv_viewport_draw(VP, cr, 0);
   // Finish
@@ -920,9 +922,12 @@ dv_export_viewport() {
     return;
   }
   cairo_surface_t * surface;
+  /* resize to remove ruler areas */
+  double surface_width = VP->vpw - 2 * DVG->opts.ruler_width;
+  double surface_height = VP->vph - 2 * DVG->opts.ruler_width;
 
   /* PNG */
-  surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, VP->vpw, VP->vph);
+  surface = cairo_image_surface_create(CAIRO_FORMAT_ARGB32, surface_width, surface_height);
   dv_viewport_export_to_surface(VP, surface);
   cairo_surface_write_to_png(surface, "00dv.png");
   fprintf(stdout, "Exported viewport %ld to 00dv.png\n", VP - DVG->VP);
@@ -930,7 +935,7 @@ dv_export_viewport() {
 
   /* EPS */
   /*
-  surface = cairo_ps_surface_create("00dv.eps", VP->vpw, VP->vph);
+  surface = cairo_ps_surface_create("00dv.eps", surface_width, surface_height);
   cairo_ps_surface_set_eps(surface, TRUE);
   dv_viewport_export_to_surface(VP, surface);
   fprintf(stdout, "Exported viewport %ld to 00dv.eps\n", VP - DVG->VP);
@@ -938,13 +943,13 @@ dv_export_viewport() {
   */
 
   /* SVG */
-  surface = cairo_svg_surface_create("00dv.svg", VP->vpw, VP->vph);
+  surface = cairo_svg_surface_create("00dv.svg", surface_width, surface_height);
   dv_viewport_export_to_surface(VP, surface);
   fprintf(stdout, "Exported viewport %ld to 00dv.svg\n", VP - DVG->VP);
   cairo_surface_destroy(surface);
 
   /* PDF */
-  surface = cairo_pdf_surface_create("00dv.pdf", VP->vpw, VP->vph);
+  surface = cairo_pdf_surface_create("00dv.pdf", surface_width, surface_height);
   dv_viewport_export_to_surface(VP, surface);
   fprintf(stdout, "Exported viewport %ld to 00dv.pdf\n", VP - DVG->VP);
   cairo_surface_destroy(surface);
@@ -958,8 +963,8 @@ dv_export_viewports_get_size_r(dv_viewport_t * VP, double * w, double * h) {
     *w = 0.0;
     *h = 0.0;
   } else if (!VP->split) {
-    *w = VP->vpw;
-    *h = VP->vph;
+    *w = VP->vpw;// - 2 * DVG->opts.ruler_width;
+    *h = VP->vph;// - 2 * DVG->opts.ruler_width;
   } else {
     double w1, h1, w2, h2;
     dv_export_viewports_get_size_r(VP->vp1, &w1, &h1);
@@ -979,7 +984,10 @@ dv_export_viewports_to_img_r(dv_viewport_t * VP, cairo_surface_t * surface, doub
   if (!VP) {
     return;
   } else if (!VP->split) {
-    cairo_surface_t * surface_child = cairo_surface_create_for_rectangle(surface, x, y, VP->vpw, VP->vph);
+    /* resize to remove ruler areas */
+    double surface_width = VP->vpw;// - 2 * DVG->opts.ruler_width;
+    double surface_height = VP->vph;// - 2 * DVG->opts.ruler_width;
+    cairo_surface_t * surface_child = cairo_surface_create_for_rectangle(surface, x, y, surface_width, surface_height);
     dv_viewport_export_to_surface(VP, surface_child);
   } else {
     double w1, h1;
@@ -1197,13 +1205,23 @@ dv_do_scrolling(dv_view_t * V, GdkEventScroll * event) {
     /* Turn auto zoomfit off whenever there is zooming-scrolling */
     if (V->S->adjust_auto_zoomfit)
       dv_view_change_azf(V, 0);
-  
+
+    /* ratios considering Ctrl/Alt */
+    double ratio = DVG->opts.zoom_step_ratio;
+    _unused_ GdkModifierType mod = gtk_accelerator_get_default_mod_mask();
+    if ((event->state & mod) == GDK_CONTROL_MASK) {
+      ratio = (ratio - 1.0) * 10.0 + 1.0;
+    } else if ((event->state & mod) == GDK_MOD1_MASK) {
+      ratio = (ratio - 1.0) / 10.0 + 1.0;
+    } else if ((event->state & mod) == GDK_SHIFT_MASK) {
+      ratio = (ratio - 1.0) / 10.0 + 1.0;
+    }
     // Cal factor    
     factor = 1.0;
     if (event->direction == GDK_SCROLL_UP)
-      factor *= DVG->opts.zoom_step_ratio;
+      factor *= ratio;
     else if (event->direction == GDK_SCROLL_DOWN)
-      factor /= DVG->opts.zoom_step_ratio;
+      factor /= ratio;
     // Apply factor    
     double zoomx = V->S->zoom_ratio_x;
     double zoomy = V->S->zoom_ratio_y;

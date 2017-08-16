@@ -1118,7 +1118,7 @@ dv_viewport_init(dv_viewport_t * VP) {
   g_object_ref(G_OBJECT(VP->darea));
   gtk_box_pack_end(GTK_BOX(VP->box), VP->darea, TRUE, TRUE, 0);
   GtkWidget * darea = VP->darea;
-  //gtk_widget_override_background_color(GTK_WIDGET(darea), GTK_STATE_FLAG_NORMAL, white);
+  gtk_widget_override_background_color(GTK_WIDGET(darea), GTK_STATE_FLAG_NORMAL, white);
   gtk_widget_set_can_focus(darea, TRUE);
   gtk_widget_add_events(GTK_WIDGET(darea), GDK_SCROLL_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK | GDK_POINTER_MOTION_MASK);
   g_signal_connect(G_OBJECT(darea), "draw", G_CALLBACK(on_darea_draw_event), (void *) VP);
