@@ -10,5 +10,6 @@ class DAGRenderer {
 
 public:
   DAGRenderer();
+  PyObject * compute_dag_statistics(PyObject *);
   void draw(long);
 };

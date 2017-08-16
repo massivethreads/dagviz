@@ -1,5 +1,5 @@
 #include <Python.h>
-#include "model.h"
+#include "dagmodel.h"
 
 static PyObject *
 get_dag_stat_from_dag_file(PyObject * self, PyObject * args) {

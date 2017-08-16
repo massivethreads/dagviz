@@ -1,14 +1,19 @@
 #ifndef _DAGRENDERER_H_
 #define _DAGRENDERER_H_
 
-#include <QString>
-#include <QByteArray>
+#include <Python.h>
+
+extern "C" {
+#include "../dagmodel.h"
+}
+
 #include <QPainter>
 
 class DAGRenderer {
 public:
   DAGRenderer();
-  void draw(long qp_ptr);
+  PyObject * compute_dag_statistics(PyObject *);
+  void draw(long);
 };
 
 #endif

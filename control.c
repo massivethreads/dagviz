@@ -1002,7 +1002,7 @@ dv_export_viewports_to_img_r(dv_viewport_t * VP, cairo_surface_t * surface, doub
   }
 }
 
-static void
+_static_unused_ void
 dv_export_viewports_to_eps_r(dv_viewport_t * VP, cairo_t * cr, double x, double y) {
   if (!VP) {
     return;

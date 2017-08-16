@@ -33,6 +33,10 @@ class DAGViewport(QWidget):
         r = dagrenderer.DAGRenderer()
         r.draw(sip.unwrapinstance(qp))
         
+        for arg in sys.argv[1:]:
+            d = r.compute_dag_statistics(arg)
+            print(d)
+        
         qp.end()
         
 class DAGViz(QMainWindow):

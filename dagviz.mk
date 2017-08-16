@@ -11,6 +11,7 @@ GLIB_COMPILE_RESOURCES = $(shell $(PKGCONFIG) --variable=glib_compile_resources 
 DM_HDR = dagmodel.h
 DM_SRC = dagmodel.c
 DM_OBJS = $(DM_SRC:.c=.o)
+DM_SHARED_OBJS = $(DM_SRC:.c=.so)
 
 DV_HDR = dagviz.h callback.h 
 DV_AUX_SRC = dagviz.gresource.xml interface.c
@@ -24,7 +25,7 @@ DS_SRC =
 DS_OBJS = $(DS_SRC:.c=.o)
 
 EXE_SRC = dagviz.c dagprof.c dagstat_v1.c dagstat.c
-OBJS = $(DM_OBJS) $(DV_OBJS) $(DS_OBJS) $(EXE_SRC:.c=.o)
+OBJS = $(DM_OBJS) $(DM_SHARED_OBJS) $(DV_OBJS) $(DS_OBJS) $(EXE_SRC:.c=.o)
 
 
 CFLAGS += $(cflags)
@@ -49,8 +50,11 @@ exes := $(EXE_SRC:.c=)
 all: $(exes)
 
 
-$(DM_OBJS): %.o: %.c $(DM_HDR)
+$(DM_OBJS): %.o: %.c $(DM_HDR) $(DM_SHARED_OBJS)
 	$(CC) -c -o $@ $(CFLAGS) $<
+
+$(DM_SHARED_OBJS): %.so: %.c $(DM_HDR)
+	$(CC) -shared -export-dynamic -fPIC -o $@ $(CFLAGS) $<
 
 
 dagstat_v1.o: dagstat_v1.c $(DSv1_HDR)
