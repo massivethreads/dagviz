@@ -6,6 +6,7 @@ resources.c
 dagviz
 dagprof
 dagstat
+dagstat_v1
 
 ## C
 # Prerequisites

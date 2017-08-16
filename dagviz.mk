@@ -24,7 +24,7 @@ DS_SRC =
 DS_OBJS = $(DS_SRC:.c=.o)
 
 EXE_SRC = dagviz.c dagprof.c dagstat_v1.c dagstat.c
-OBJS = $(DV_OBJS) $(DS_OBJS) $(EXE_SRC:.c=.o)
+OBJS = $(DM_OBJS) $(DV_OBJS) $(DS_OBJS) $(EXE_SRC:.c=.o)
 
 
 CFLAGS += $(cflags)
@@ -125,6 +125,10 @@ uninstall:
 #	rm -f /usr/share/icons/hicolor/128x128/apps/dagviz-dag.png
 
 clean:
+	rm -f $(BUILT_SRC)
+	rm -f $(OBJS)
+
+cleanall:
 	rm -f $(BUILT_SRC)
 	rm -f $(OBJS)
 	rm -f $(exes)
