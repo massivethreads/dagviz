@@ -14,16 +14,30 @@ sys.path.append(sysroot + "/sip")
 import dagrenderer
 
 GO = {
-    "zoom_step_ratio" : 0.08, # rate per scrolling time
-    "zoom_step_ratio_weight" : 0.004, # rate per scrolling pixel
+    "zoom_rate_per_time" : 0.08,   # rate per scrolling time
+    "zoom_rate_per_pixel" : 0.004, # rate per scrolling pixel: 0.08 / 20
+    "zoom_default_weight" : 20,    # rate in pixel unit on one default zoom
+    "margin_top"    : 20,
+    "margin_bottom" : 20,
+    "margin_left"   : 20,
+    "margin_right"  : 20,
+    "moving_distance" : 25.0,      # pixels, moving distance when pressing arrow keys
+    "moving_distance_rate" : 20.0, # times, multiplied rate with modifier keys (Ctrl > Alt)
 }
 renderers = []
 
 class DAGViewport(QWidget):
     def __init__(self):
         super(DAGViewport, self).__init__()
+        # background color
+        pal = self.palette()
+        pal.setColor(QPalette.Window, Qt.white)
+        self.setPalette(pal)
+        self.setAutoFillBackground(True)
+        self.base_x = GO["margin_left"]
+        self.base_y = GO["margin_top"]
         self.x = 0.0
-        self.y = 10.0
+        self.y = 0.0
         self.pan_on = False
         self.x_mouse_pressed = 0
         self.y_mouse_pressed = 0
@@ -39,45 +53,59 @@ class DAGViewport(QWidget):
             self.R = R
         self.zoom_ratio_x = 1.0
         self.zoom_ratio_y = 1.0
+        self.width
+        self.R.do_expanding_one()
+        self.R.do_expanding_one()
 
     def resizeEvent(self, e):
-        self.x -= e.oldSize().width() / 2
-        self.x += e.size().width() / 2
+        old_w = e.oldSize().width()
+        margin = GO["margin_left"] + GO["margin_right"]
+        if old_w >= 0:
+            self.base_x -= (old_w - margin) / 2.0
+        self.base_x += (self.width() - margin) / 2.0
 
     def paintEvent(self, e):
         qp = QPainter(self)
-        #qp.translate(qp.device().width() / 2, 10)
+        qp.translate(self.base_x, self.base_y)
         qp.translate(self.x, self.y)
         qp.scale(self.zoom_ratio_x, self.zoom_ratio_y)
         self.R.draw(sip.unwrapinstance(qp))
+
+    def move(self, dx, dy):
+        self.x = self.x + dx
+        self.y = self.y + dy
+        self.update()
+
+    def zoom(self, x, y, weight):
+        if weight != 0:
+            new_zx = self.zoom_ratio_x
+            new_zy = self.zoom_ratio_y
+            factor = 1 + GO["zoom_rate_per_pixel"] * abs(weight)
+            if weight > 0:
+                new_zx *= factor
+                new_zy *= factor
+            elif weight < 0:
+                new_zx /= factor
+                new_zy /= factor
+            rx = x - self.x - self.base_x
+            ry = y - self.y - self.base_y
+            dx = rx / self.zoom_ratio_x * new_zx - rx
+            dy = ry / self.zoom_ratio_y * new_zy - ry
+            self.x -= dx
+            self.y -= dy
+            self.zoom_ratio_x = new_zx
+            self.zoom_ratio_y = new_zy
+            self.update()
         
     def wheelEvent(self, e):
         mod = QApplication.keyboardModifiers()
         if mod == Qt.ControlModifier:
             # moving
-            self.x = self.x + e.pixelDelta().x()
-            self.y = self.y + e.pixelDelta().y()
+            self.move(e.pixelDelta().x(), e.pixelDelta().y())
         else:
             # zooming
-            d = e.pixelDelta().y()
-            if d != 0:
-                new_zoom_ratio_x = self.zoom_ratio_x
-                new_zoom_ratio_y = self.zoom_ratio_y
-                factor = 1 + GO["zoom_step_ratio_weight"] * abs(d)
-                if d > 0:
-                    new_zoom_ratio_x *= factor
-                    new_zoom_ratio_y *= factor
-                elif d < 0:
-                    new_zoom_ratio_x /= factor
-                    new_zoom_ratio_y /= factor
-                rx = e.x() - self.x
-                ry = e.y() - self.y
-                dx = rx / self.zoom_ratio_x * new_zoom_ratio_x - rx
-                dy = ry / self.zoom_ratio_y * new_zoom_ratio_y - ry
-                self.x -= dx
-                self.y -= dy
-                self.zoom_ratio_x = new_zoom_ratio_x
-                self.zoom_ratio_y = new_zoom_ratio_y
+            weight = e.pixelDelta().y()
+            self.zoom(e.x(), e.y(), weight)
         self.repaint()
 
     def mousePressEvent(self, e):
@@ -94,6 +122,104 @@ class DAGViewport(QWidget):
     def mouseReleaseEvent(self, e):
         self.pan_on = False
 
+    def move_up(self):
+        dx = 0.0
+        dy = GO["moving_distance"]
+        rate = 1.0
+        mod = QApplication.keyboardModifiers()
+        if mod == Qt.ControlModifier:
+            rate *= GO["moving_distance_rate"]
+        elif mod == Qt.AltModifier:
+            rate /= GO["moving_distance"] # 1 pixel
+        self.move(dx*rate, dy*rate)
+    def move_down(self):
+        dx = 0.0
+        dy = - GO["moving_distance"]
+        rate = 1.0
+        mod = QApplication.keyboardModifiers()
+        if mod == Qt.ControlModifier:
+            rate *= GO["moving_distance_rate"]
+        elif mod == Qt.AltModifier:
+            rate /= GO["moving_distance"] # 1 pixel
+        self.move(dx*rate, dy*rate)
+    def move_left(self):
+        dx = GO["moving_distance"]
+        dy = 0.0
+        rate = 1.0
+        mod = QApplication.keyboardModifiers()
+        if mod == Qt.ControlModifier:
+            rate *= GO["moving_distance_rate"]
+        elif mod == Qt.AltModifier:
+            rate /= GO["moving_distance"] # 1 pixel
+        self.move(dx*rate, dy*rate)
+    def move_right(self):
+        dx = - GO["moving_distance"]
+        dy = 0.0
+        rate = 1.0
+        mod = QApplication.keyboardModifiers()
+        if mod == Qt.ControlModifier:
+            rate *= GO["moving_distance_rate"]
+        elif mod == Qt.AltModifier:
+            rate /= GO["moving_distance"] # 1 pixel
+        self.move(dx*rate, dy*rate)
+        
+    def do_zoom_in(self):
+        self.zoom(self.width() / 2, self.height() / 2, GO["zoom_default_weight"])
+        
+    def do_zoom_out(self):
+        self.zoom(self.width() / 2, self.height() / 2, - GO["zoom_default_weight"])
+
+    def get_zoom_fit_hor_attributes(self):
+        x = 0.0
+        y = 0.0
+        z = 1.0
+        w1 = self.R.width()
+        w2 = self.width() - GO["margin_left"] - GO["margin_right"]
+        if w1 > w2:
+            z = w2 / w1
+        x -= z * (self.R.right_width() - self.R.left_width()) / 2
+        return x,y,z
+    def do_zoom_fit_hor(self):
+        x,y,z = self.get_zoom_fit_hor_attributes()
+        self.x = x
+        self.y = y
+        self.zoom_ratio_x = z
+        self.zoom_ratio_y = z
+        self.update()
+            
+    def get_zoom_fit_ver_attributes(self):
+        x = 0.0
+        y = 0.0
+        z = 1.0
+        h1 = self.R.height()
+        h2 = self.height() - GO["margin_top"] - GO["margin_bottom"]
+        if h1 > h2:
+            z = h2 / h1
+        x -= z * (self.R.right_width() - self.R.left_width()) / 2
+        return x,y,z
+    def do_zoom_fit_ver(self):
+        x,y,z = self.get_zoom_fit_ver_attributes()
+        self.x = x
+        self.y = y
+        self.zoom_ratio_x = z
+        self.zoom_ratio_y = z
+        self.update()
+        
+    def do_zoom_fit_full(self):
+        x1,y1,z1 = self.get_zoom_fit_hor_attributes()
+        x2,y2,z2 = self.get_zoom_fit_ver_attributes()
+        if z1 < z2:
+            self.x = x1
+            self.y = y1
+            self.zoom_ratio_x = z1
+            self.zoom_ratio_y = z1
+        else:
+            self.x = x2
+            self.y = y2
+            self.zoom_ratio_x = z2
+            self.zoom_ratio_y = z2
+        self.update()
+        
             
 class DAGViz(QMainWindow):
     def __init__(self):
@@ -167,23 +293,49 @@ class DAGViz(QMainWindow):
         showhideMenu.addAction(nodeinfoAct)
 
         zoomMenu = viewMenu.addMenu('&Zoom')
-        zoomFullAct = zoomMenu.addAction('Zoom fit &full')
+        zoomInAct = zoomMenu.addAction('Zoom In')
+        zoomInAct.setShortcut('+')
+        zoomInAct.triggered.connect(self.VP.do_zoom_in)
+        zoomOutAct = zoomMenu.addAction('Zoom Out')
+        zoomOutAct.setShortcut('-')
+        zoomOutAct.triggered.connect(self.VP.do_zoom_out)
+        zoomMenu.addSeparator()
+        zoomFullAct = zoomMenu.addAction('Fit &Full')
         zoomFullAct.setShortcut('F')
-        #zoomFullAct.triggered.connect(qApp.quit)
-        zoomHorAct = zoomMenu.addAction('Zoom fit &horizontally')
+        zoomFullAct.setIcon(QIcon(sysroot + '/gui/fit_button_icon.svg'))
+        zoomFullAct.triggered.connect(self.VP.do_zoom_fit_full)
+        zoomHorAct = zoomMenu.addAction('Fit &Horizontally')
         zoomHorAct.setShortcut('H')
-        #zoomHorAct.triggered.connect(qApp.quit)
-        zoomVerAct = zoomMenu.addAction('Zoom fit &vertically')
+        zoomHorAct.triggered.connect(self.VP.do_zoom_fit_hor)
+        zoomVerAct = zoomMenu.addAction('Fit &Vertically')
         zoomVerAct.setShortcut('V')
-        #zoomVerAct.triggered.connect(qApp.quit)
+        zoomVerAct.triggered.connect(self.VP.do_zoom_fit_ver)
 
         # toolbar
         self.toolbar = self.addToolBar('Toolbar')
-        #self.toolbar.addAction(exitAct)
+        self.toolbar.addAction(zoomFullAct)
         self.toolbar.addAction(expandAct)
         self.toolbar.addAction(collapseAct)
         self.toolbar.addSeparator()
 
+        # hidden actions
+        # moveUpAct = QAction(self)
+        # moveUpAct.setShortcut(Qt.Key_Up)
+        # moveUpAct.triggered.connect(self.VP.move_up)
+        # self.addAction(moveUpAct)
+        # moveDownAct = QAction(self)
+        # moveDownAct.setShortcut(Qt.Key_Down)
+        # moveDownAct.triggered.connect(self.VP.move_down)
+        # self.addAction(moveDownAct)
+        # moveLeftAct = QAction(self)
+        # moveLeftAct.setShortcut(Qt.Key_Left)
+        # moveLeftAct.triggered.connect(self.VP.move_left)
+        # self.addAction(moveLeftAct)
+        # moveRightAct = QAction(self)
+        # moveRightAct.setShortcut(Qt.Key_Right)
+        # moveRightAct.triggered.connect(self.VP.move_right)
+        # self.addAction(moveRightAct)
+        
         # central widget
         self.setCentralWidget(self.VP)
         
@@ -197,6 +349,16 @@ class DAGViz(QMainWindow):
            action = cmenu.exec_(self.mapToGlobal(event.pos()))
            if action == quitAct:
                qApp.quit()
+
+    def keyPressEvent(self, e):
+        if e.key() == Qt.Key_Up:
+            self.VP.move_up()
+        if e.key() == Qt.Key_Down:
+            self.VP.move_down()
+        if e.key() == Qt.Key_Left:
+            self.VP.move_left()
+        elif e.key() == Qt.Key_Right:
+            self.VP.move_right()
                
     # def closeEvent(self, event):
     #     print("closeEvent handler.")

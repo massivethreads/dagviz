@@ -18,9 +18,9 @@ public:
   void setDAG(char * filename);
   void setViewport_(QWidget *);
   void setViewport(void * VP) { setViewport_((QWidget *) VP); };
-  dm_dag_t * getDAG() { return mDAG; };
-  QWidget * getViewport() { return mViewport; };
-  int getDAGId() { return dm_get_dag_id(mDAG); };
+  dm_dag_t * dag() { return mDAG; };
+  QWidget * viewport() { return mViewport; };
+  int dagId() { return dm_get_dag_id(mDAG); };
 
   PyObject * compute_dag_statistics(int D_id);
   void layout() { layout_(mDAG); };
@@ -35,14 +35,17 @@ public:
   };
   void do_expanding_one() { do_expanding_one_(mDAG); };
   void do_collapsing_one() { do_collapsing_one_(mDAG); };
-  
+  double left_width() { int cid = 0; return mDAG->rt->c[cid].lw; };
+  double right_width() { int cid = 0; return mDAG->rt->c[cid].rw; };
+  double width() { return left_width() + right_width(); };
+  double height() { int cid = 0; return mDAG->rt->c[cid].dw; };
+                                                        
 public slots:
   void do_animation_tick();
 
 private:
   dm_dag_t * mDAG = NULL;      /* DAG of this renderer */
   QWidget * mViewport = NULL;  /* Viewport where the DAG of this renderer is drawn on */
-  QPainter * mQPainter = NULL; /* QPainter which draws on the Viewport */
   bool animation_on = false;
   QTimer * animation_timer = NULL;
   
