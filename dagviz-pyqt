@@ -23,7 +23,7 @@ GO = {
     "margin_right"  : 20,
     "moving_distance" : 25.0,      # pixels, moving distance when pressing arrow keys
     "moving_distance_rate" : 20.0, # times, multiplied rate with modifier keys (Ctrl > Alt)
-    "auto_zoom_fit" : True, # automatically zoom to fit full at the beginning
+    "auto_zoom_fit" : 1, # automatically zoom to fit at the beginning: 0->none, 1->full, 2->hor, 3->ver
 }
 renderers = []
 
@@ -45,7 +45,7 @@ class DAGViewport(QWidget):
         self.setMouseTracking(True)
         self.R = None
         #for arg in sys.argv[1:]:
-        if (sys.argv[1]):
+        if (len(sys.argv) > 1):
             arg = sys.argv[1]
             R = dagrenderer.DAGRenderer()
             R.setDAG(arg)
@@ -65,14 +65,22 @@ class DAGViewport(QWidget):
             self.base_x -= (old_w - margin) / 2.0
         self.base_x += (self.width() - margin) / 2.0
 
+    def update(self):
+        super(DAGViewport, self).update()
+        
     def paintEvent(self, e):
-        if GO["auto_zoom_fit"]:
-            self.do_zoom_fit_full()
+        if GO["auto_zoom_fit"] == 1:
+            self.do_zoom_fit_full_auto()
+        elif GO["auto_zoom_fit"] == 2:
+            self.do_zoom_fit_hor_auto()
+        elif GO["auto_zoom_fit"] == 3:
+            self.do_zoom_fit_ver_auto()
         qp = QPainter(self)
         qp.translate(self.base_x, self.base_y)
         qp.translate(self.x, self.y)
         qp.scale(self.zoom_ratio_x, self.zoom_ratio_y)
-        self.R.draw(sip.unwrapinstance(qp))
+        if self.R is not None:
+            self.R.draw(sip.unwrapinstance(qp))
 
     def do_moving(self, dx, dy):
         self.x = self.x + dx
@@ -111,7 +119,7 @@ class DAGViewport(QWidget):
             # zooming
             weight = e.pixelDelta().y()
             self.do_zooming(e.x(), e.y(), weight)
-        self.repaint()
+        self.update()
 
     def mousePressEvent(self, e):
         self.x_mouse_pressed = e.x()
@@ -134,13 +142,14 @@ class DAGViewport(QWidget):
             self.y += e.y() - self.y_mouse_pressed
             self.x_mouse_pressed = e.x()
             self.y_mouse_pressed = e.y()
-            self.repaint()
+            GO["auto_zoom_fit"] = False
+            self.update()
         else:
             x = (e.x() - self.x - self.base_x) / self.zoom_ratio_x
             y = (e.y() - self.y - self.base_y) / self.zoom_ratio_y
             node = self.R.find_node(x,y)
             if node is not None:
-                print(self.R.get_dag_node_info(node))
+                None #print(self.R.get_dag_node_info(node))
 
     def move_up(self):
         dx = 0.0
@@ -193,39 +202,49 @@ class DAGViewport(QWidget):
         x = 0.0
         y = 0.0
         z = 1.0
+        if self.R == None:
+            return x,y,z
         w1 = self.R.width()
         w2 = self.width() - GO["margin_left"] - GO["margin_right"]
         if w1 > w2:
             z = w2 / w1
         x -= z * (self.R.right_width() - self.R.left_width()) / 2
         return x,y,z
-    def do_zoom_fit_hor(self):
+    def do_zoom_fit_hor_auto(self):
         x,y,z = self.get_zoom_fit_hor_attributes()
         self.x = x
         self.y = y
         self.zoom_ratio_x = z
         self.zoom_ratio_y = z
+    def do_zoom_fit_hor(self):
+        self.do_zoom_fit_hor_auto()
+        GO["auto_zoom_fit"] = 2
         self.update()
             
     def get_zoom_fit_ver_attributes(self):
         x = 0.0
         y = 0.0
         z = 1.0
+        if self.R == None:
+            return x,y,z
         h1 = self.R.height()
         h2 = self.height() - GO["margin_top"] - GO["margin_bottom"]
         if h1 > h2:
             z = h2 / h1
         x -= z * (self.R.right_width() - self.R.left_width()) / 2
         return x,y,z
-    def do_zoom_fit_ver(self):
+    def do_zoom_fit_ver_auto(self):
         x,y,z = self.get_zoom_fit_ver_attributes()
         self.x = x
         self.y = y
         self.zoom_ratio_x = z
         self.zoom_ratio_y = z
+    def do_zoom_fit_ver(self):
+        self.do_zoom_fit_ver_auto()
+        GO["auto_zoom_fit"] = 3
         self.update()
         
-    def do_zoom_fit_full(self):
+    def do_zoom_fit_full_auto(self):
         x1,y1,z1 = self.get_zoom_fit_hor_attributes()
         x2,y2,z2 = self.get_zoom_fit_ver_attributes()
         if z1 < z2:
@@ -238,18 +257,24 @@ class DAGViewport(QWidget):
             self.y = y2
             self.zoom_ratio_x = z2
             self.zoom_ratio_y = z2
-        GO["auto_zoom_fit"] = True
+    def do_zoom_fit_full(self):
+        self.do_zoom_fit_full_auto()
+        GO["auto_zoom_fit"] = 1
         self.update()
         
     def do_expanding_one(self):
-        self.R.do_expanding_one()
-        self.R.layout()
-        self.update()
+        if self.R is not None:
+            self.R.do_expanding_one()
+            if self.R.animationOn == 0:
+                self.R.layout()
+                self.update()
     
     def do_collapsing_one(self, e):
-        self.R.do_collapsing_one()
-        self.R.layout()
-        self.update()
+        if self.R is not None:
+            self.R.do_collapsing_one()
+            if self.R.animationOn == 0:
+                self.R.layout()
+                self.update()
 
             
 class DAGViz(QMainWindow):

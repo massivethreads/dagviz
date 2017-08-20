@@ -21,6 +21,7 @@ public:
   dm_dag_t * dag() { return mDAG; };
   QWidget * viewport() { return mViewport; };
   int dagId() { return dm_get_dag_id(mDAG); };
+  int animationOn() { if (animation_on) return 1; else return 0; };
 
   PyObject * compute_dag_statistics(int D_id);
   void layout() { layout_(mDAG); };

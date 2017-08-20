@@ -16,6 +16,7 @@ public:
   void * dag();
   QWidget * viewport();
   int dagId();
+  int animationOn();
 
   PyObject * compute_dag_statistics(int);
   void layout();
