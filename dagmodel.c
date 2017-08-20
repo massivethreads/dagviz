@@ -2389,11 +2389,6 @@ dm_layout_dag(dm_dag_t * D) {
   dm_layout_dag_node_phase2(D, D->rt, cid);
 }
 
-/***** end of Layout DAG *****/
-
-
-/***** Draw DAG *****/
-
 double
 dm_get_alpha_fading_out(dm_dag_t * D, dm_dag_node_t * node) {
   double ratio = (dm_get_time() - node->started) / D->anim->duration;
@@ -2412,4 +2407,37 @@ dm_get_alpha_fading_in(dm_dag_t * D, dm_dag_node_t * node) {
   return ret;
 }
 
-/***** end of Draw DAG *****/
+static dm_dag_node_t *
+dm_dag_find_clicked_node_r(_unused_ dm_dag_t * D, double x, double y, dm_dag_node_t * node) {
+  int cid = 0;
+  dm_dag_node_t * ret = NULL;
+  dm_node_coordinate_t * c = &node->c[cid];
+  /* Call inward */
+  if (dm_is_single(node)) {
+    if (c->x - c->lw < x && x < c->x + c->rw && c->y < y && y < c->y + c->dw) {
+      return node;
+    }
+  } else if (c->x - c->lw < x && x < c->x + c->rw && c->y < y && y < c->y + c->dw) {
+    ret = dm_dag_find_clicked_node_r(D, x, y, node->head);
+    if (ret)
+      return ret;
+  }
+  /* Call link-along */
+  if (c->x - c->link_lw < x && x < c->x + c->link_rw && c->y < y && y < c->y + c->link_dw) {
+    dm_dag_node_t * next = NULL;
+    while ( (next = dm_dag_node_traverse_nexts(node, next)) ) {
+      ret = dm_dag_find_clicked_node_r(D, x, y, next);
+      if (ret)
+        return ret;
+    }
+  }
+  return NULL;
+}
+
+dm_dag_node_t *
+dm_dag_find_clicked_node(dm_dag_t * D, double x, double y) {
+  dm_dag_node_t * ret = dm_dag_find_clicked_node_r(D, x, y, D->rt);
+  return ret;
+}
+
+/***** end of Layout DAG *****/

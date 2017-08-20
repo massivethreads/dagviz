@@ -23,6 +23,7 @@ GO = {
     "margin_right"  : 20,
     "moving_distance" : 25.0,      # pixels, moving distance when pressing arrow keys
     "moving_distance_rate" : 20.0, # times, multiplied rate with modifier keys (Ctrl > Alt)
+    "auto_zoom_fit" : True, # automatically zoom to fit full at the beginning
 }
 renderers = []
 
@@ -54,8 +55,8 @@ class DAGViewport(QWidget):
         self.zoom_ratio_x = 1.0
         self.zoom_ratio_y = 1.0
         self.width
-        self.R.do_expanding_one()
-        self.R.do_expanding_one()
+        self.do_expanding_one()
+        self.do_expanding_one()
 
     def resizeEvent(self, e):
         old_w = e.oldSize().width()
@@ -65,18 +66,21 @@ class DAGViewport(QWidget):
         self.base_x += (self.width() - margin) / 2.0
 
     def paintEvent(self, e):
+        if GO["auto_zoom_fit"]:
+            self.do_zoom_fit_full()
         qp = QPainter(self)
         qp.translate(self.base_x, self.base_y)
         qp.translate(self.x, self.y)
         qp.scale(self.zoom_ratio_x, self.zoom_ratio_y)
         self.R.draw(sip.unwrapinstance(qp))
 
-    def move(self, dx, dy):
+    def do_moving(self, dx, dy):
         self.x = self.x + dx
         self.y = self.y + dy
+        GO["auto_zoom_fit"] = False
         self.update()
 
-    def zoom(self, x, y, weight):
+    def do_zooming(self, x, y, weight):
         if weight != 0:
             new_zx = self.zoom_ratio_x
             new_zy = self.zoom_ratio_y
@@ -95,23 +99,35 @@ class DAGViewport(QWidget):
             self.y -= dy
             self.zoom_ratio_x = new_zx
             self.zoom_ratio_y = new_zy
+            GO["auto_zoom_fit"] = False
             self.update()
         
     def wheelEvent(self, e):
         mod = QApplication.keyboardModifiers()
         if mod == Qt.ControlModifier:
             # moving
-            self.move(e.pixelDelta().x(), e.pixelDelta().y())
+            self.do_moving(e.pixelDelta().x(), e.pixelDelta().y())
         else:
             # zooming
             weight = e.pixelDelta().y()
-            self.zoom(e.x(), e.y(), weight)
+            self.do_zooming(e.x(), e.y(), weight)
         self.repaint()
 
     def mousePressEvent(self, e):
         self.x_mouse_pressed = e.x()
         self.y_mouse_pressed = e.y()
         self.pan_on = True
+    def mouseReleaseEvent(self, e):
+        self.pan_on = False
+
+    def enterEvent(self, e):
+        #print("mouse enters")
+        None
+        
+    def leaveEvent(self, e):
+        #print("mouse leaves")
+        None
+        
     def mouseMoveEvent(self, e):
         if self.pan_on:
             self.x += e.x() - self.x_mouse_pressed
@@ -119,8 +135,12 @@ class DAGViewport(QWidget):
             self.x_mouse_pressed = e.x()
             self.y_mouse_pressed = e.y()
             self.repaint()
-    def mouseReleaseEvent(self, e):
-        self.pan_on = False
+        else:
+            x = (e.x() - self.x - self.base_x) / self.zoom_ratio_x
+            y = (e.y() - self.y - self.base_y) / self.zoom_ratio_y
+            node = self.R.find_node(x,y)
+            if node is not None:
+                print(self.R.get_dag_node_info(node))
 
     def move_up(self):
         dx = 0.0
@@ -131,7 +151,7 @@ class DAGViewport(QWidget):
             rate *= GO["moving_distance_rate"]
         elif mod == Qt.AltModifier:
             rate /= GO["moving_distance"] # 1 pixel
-        self.move(dx*rate, dy*rate)
+        self.do_moving(dx*rate, dy*rate)
     def move_down(self):
         dx = 0.0
         dy = - GO["moving_distance"]
@@ -141,7 +161,7 @@ class DAGViewport(QWidget):
             rate *= GO["moving_distance_rate"]
         elif mod == Qt.AltModifier:
             rate /= GO["moving_distance"] # 1 pixel
-        self.move(dx*rate, dy*rate)
+        self.do_moving(dx*rate, dy*rate)
     def move_left(self):
         dx = GO["moving_distance"]
         dy = 0.0
@@ -151,7 +171,7 @@ class DAGViewport(QWidget):
             rate *= GO["moving_distance_rate"]
         elif mod == Qt.AltModifier:
             rate /= GO["moving_distance"] # 1 pixel
-        self.move(dx*rate, dy*rate)
+        self.do_moving(dx*rate, dy*rate)
     def move_right(self):
         dx = - GO["moving_distance"]
         dy = 0.0
@@ -161,13 +181,13 @@ class DAGViewport(QWidget):
             rate *= GO["moving_distance_rate"]
         elif mod == Qt.AltModifier:
             rate /= GO["moving_distance"] # 1 pixel
-        self.move(dx*rate, dy*rate)
+        self.do_moving(dx*rate, dy*rate)
         
     def do_zoom_in(self):
-        self.zoom(self.width() / 2, self.height() / 2, GO["zoom_default_weight"])
+        self.do_zooming(self.width() / 2, self.height() / 2, GO["zoom_default_weight"])
         
     def do_zoom_out(self):
-        self.zoom(self.width() / 2, self.height() / 2, - GO["zoom_default_weight"])
+        self.do_zooming(self.width() / 2, self.height() / 2, - GO["zoom_default_weight"])
 
     def get_zoom_fit_hor_attributes(self):
         x = 0.0
@@ -218,8 +238,19 @@ class DAGViewport(QWidget):
             self.y = y2
             self.zoom_ratio_x = z2
             self.zoom_ratio_y = z2
+        GO["auto_zoom_fit"] = True
         self.update()
         
+    def do_expanding_one(self):
+        self.R.do_expanding_one()
+        self.R.layout()
+        self.update()
+    
+    def do_collapsing_one(self, e):
+        self.R.do_collapsing_one()
+        self.R.layout()
+        self.update()
+
             
 class DAGViz(QMainWindow):
     def __init__(self):
@@ -227,16 +258,6 @@ class DAGViz(QMainWindow):
         self.VP = DAGViewport()
         self.initUI()
         
-    def do_expanding_one(self):
-        self.VP.R.do_expanding_one()
-        self.VP.R.layout()
-        self.VP.update()
-    
-    def do_collapsing_one(self, e):
-        self.VP.R.do_collapsing_one()
-        self.VP.R.layout()
-        self.VP.update()
-
     def initUI(self):
         # main window
         self.setGeometry(0, 0, 1000, 600)
@@ -265,12 +286,12 @@ class DAGViz(QMainWindow):
         expandAct = QAction(QIcon(sysroot + '/gui/plus_button_icon.svg'), 'E&xpand DAG one depth', self)
         expandAct.setShortcut('X')
         expandAct.setStatusTip('Expand DAG one depth (X)')
-        expandAct.triggered.connect(self.do_expanding_one)
+        expandAct.triggered.connect(self.VP.do_expanding_one)
         editMenu.addAction(expandAct)
         collapseAct = QAction(QIcon(sysroot + '/gui/minus_button_icon.svg'), '&Collapse DAG one depth', self)
         collapseAct.setShortcut('C')
         collapseAct.setStatusTip('Collapse DAG one depth (C)')
-        collapseAct.triggered.connect(self.do_collapsing_one)
+        collapseAct.triggered.connect(self.VP.do_collapsing_one)
         editMenu.addAction(collapseAct)
 
         # view

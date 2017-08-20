@@ -464,7 +464,7 @@ void dm_dag_compute_critical_paths(dm_dag_t *);
 void dm_compute_dag(dm_dag_t *);
 dm_dag_t * dm_compute_dag_file(char *);
 
-/* Layout */
+/* Layout DAG */
 void dm_do_expanding_one(dm_dag_t *);
 void dm_do_collapsing_one(dm_dag_t *);
 double dm_calculate_animation_rate(dm_dag_t *, dm_dag_node_t *);
@@ -476,10 +476,9 @@ void dm_animation_remove_node(dm_animation_t *, dm_dag_node_t *);
 void dm_animation_reverse_node(dm_animation_t *, dm_dag_node_t *);
 void dm_motion_init(dm_motion_t *, dm_dag_t *);
 void dm_layout_dag(dm_dag_t *);
-
-/* Draw */
 double dm_get_alpha_fading_out(dm_dag_t *, dm_dag_node_t *);
 double dm_get_alpha_fading_in(dm_dag_t *, dm_dag_node_t *);
+dm_dag_node_t * dm_dag_find_clicked_node(dm_dag_t *, double, double);
 
 
 /***** Utilities *****/

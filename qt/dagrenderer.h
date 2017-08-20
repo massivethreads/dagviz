@@ -39,7 +39,9 @@ public:
   double right_width() { int cid = 0; return mDAG->rt->c[cid].rw; };
   double width() { return left_width() + right_width(); };
   double height() { int cid = 0; return mDAG->rt->c[cid].dw; };
-                                                        
+  dm_dag_node_t * find_node(double x, double y) { return dm_dag_find_clicked_node(mDAG, x, y); };
+  PyObject * get_dag_node_info(void * node) { return get_dag_node_info_((dm_dag_node_t *) node); };
+                                                              
 public slots:
   void do_animation_tick();
 
@@ -68,6 +70,7 @@ private:
   void do_collapsing_one_(dm_dag_t *);
   void draw_dag_(QPainter *, dm_dag_t *);
   void draw_(QPainter *, dm_dag_t *);
+  PyObject * get_dag_node_info_(dm_dag_node_t *);
     
 };
 

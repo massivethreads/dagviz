@@ -27,4 +27,6 @@ public:
   double right_width();
   double width();
   double height();
+  void * find_node(double, double);
+  PyObject * get_dag_node_info(void *);
 };

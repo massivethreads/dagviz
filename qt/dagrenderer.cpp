@@ -96,7 +96,6 @@ DAGRenderer::do_animation_tick() {
   }  
   layout();
   update();
-  //repaint();
 }
 
 void
@@ -190,13 +189,8 @@ void
 DAGRenderer::do_expanding_one_(dm_dag_t * D) {
   /*
   dm_do_expanding_one(D);
-  mViewport->update();
   */
   do_expanding_one_r(D, D->rt);
-  if (!animation_on) {
-    layout_(D);
-    repaint();
-  }
 }
 
 void
@@ -253,13 +247,8 @@ void
 DAGRenderer::do_collapsing_one_(dm_dag_t * D) {
   /*
   dm_do_collapsing_one(D);
-  repaint();
   */
   do_collapsing_one_depth_r(D, D->rt, D->collapsing_d - 1);
-  if (!animation_on) {
-    layout_(D);
-    repaint();
-  }
 }
 
 static void
@@ -355,7 +344,6 @@ lookup_gradient(_unused_ dr_pi_dag_node * pi, _unused_ double alpha) {
 
 static void
 draw_dag_node_1(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, _unused_ int * on_global_cp) {
-  qp->save();
   /* Get inputs */
   dr_pi_dag_node * pi = dm_pidag_get_node_by_dag_node(D->P, node);
   dr_dag_node_kind_t kind = pi->info.kind;
@@ -487,8 +475,6 @@ draw_dag_node_1(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, _unused_ int 
   if (node->highlight) {
     qp->fillPath(path, QColor(30, 30, 30, 128));
   }
-
-  qp->restore();
 }
 
 static void
@@ -525,7 +511,6 @@ draw_dag_node_r(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, int * parent_
     dm_dag_node_t * x = NULL;
     while ( (x = dm_dag_node_traverse_nexts(node, x)) ) {
       /* Draw edge first */
-      qp->save();
       QPainterPath path;
       if (dm_is_single(node)) {
         if (dm_is_single(x))
@@ -543,7 +528,6 @@ draw_dag_node_r(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, int * parent_
         }      
       }
       qp->strokePath(path, QPen(Qt::black));
-      qp->restore();
       /* Call recursively then */
       draw_dag_node_r(qp, D, x, parent_on_global_cp);
     }
@@ -575,6 +559,29 @@ void
 DAGRenderer::draw_(QPainter * qp, dm_dag_t * D) {
   qp->setRenderHint(QPainter::Antialiasing);
   draw_dag_(qp, D);
+}
+
+PyObject *
+DAGRenderer::get_dag_node_info_(dm_dag_node_t * node) {
+  dr_pi_dag_node * pi = dm_pidag_get_node_by_dag_node(mDAG->P, node);
+  /* build DAG node's info into a Python object */
+  PyObject * ret = NULL;
+  if (pi) {
+    ret = Py_BuildValue("{s:(L,i,i,L,L),s:(L,i,i,L,L),s:L,s:L,s:L,s:L,s:L,s:i,s:i,s:i,s:[L,L,L,L]}",
+                        "start", pi->info.start.t, pi->info.start.worker, pi->info.start.cpu, pi->info.start.pos.file_idx, pi->info.start.pos.line,
+                        "end", pi->info.end.t, pi->info.end.worker, pi->info.end.cpu, pi->info.end.pos.file_idx, pi->info.end.pos.line,
+                        "est", pi->info.est,
+                        "t_1", pi->info.t_1,
+                        "t_inf", pi->info.t_inf,
+                        "first_ready_t", pi->info.first_ready_t,
+                        "last_start_t", pi->info.last_start_t,
+                        "worker", pi->info.worker,
+                        "cpu", pi->info.cpu,
+                        "kind", pi->info.kind,
+                        "counters", pi->info.counters_1[0], pi->info.counters_1[1], pi->info.counters_1[2], pi->info.counters_1[3]                        
+                        );
+  }
+  return ret;
 }
 
 /***** end of Rendering DAG *****/
