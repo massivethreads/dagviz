@@ -32,7 +32,7 @@ makefile = sipconfig.SIPModuleMakefile(config, build_file)
 # Add the library we are wrapping.  The name doesn't include any platform
 # specific prefixes or extensions (e.g. the "lib" prefix on UNIX, or the
 # ".dll" extension on Windows).
-extraFlags = "-std=c++11 -I%s -I%s/QtCore -I%s/QtGui" % (qt_inc_dir, qt_inc_dir, qt_inc_dir)
+extraFlags = "-std=c++11 -I%s -I%s/QtCore -I%s/QtGui -I%s/QtWidgets" % (qt_inc_dir, qt_inc_dir, qt_inc_dir, qt_inc_dir)
 makefile.extra_cflags = [extraFlags]
 makefile.extra_cxxflags = [extraFlags]
 makefile.extra_lflags = ["-Wl,-R" + target_dir]

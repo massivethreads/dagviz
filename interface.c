@@ -75,9 +75,8 @@ dv_get_env() {
 
 void
 dv_global_state_init() {
+  dm_global_state_init();
   memset(DVG, 0, sizeof(dv_global_state_t));
-  DMG->nP = 0;
-  DMG->nD = 0;
   DVG->nV = 0;
   DVG->nVP = 0;
   DVG->activeV = NULL;
@@ -87,8 +86,6 @@ dv_global_state_init() {
   for (i = 0; i < DV_NUM_COLOR_POOLS; i++)
     DVG->CP_sizes[i] = 0;
   dv_btsample_viewer_init(DVG->btviewer);
-  dm_dag_node_pool_init(DMG->pool);
-  dm_histogram_entry_pool_init(DMG->epool);
   DVG->SD->ne = 0;
   for (i = 0; i < DV_MAX_DISTRIBUTION; i++) {
     DVG->SD->e[i].dag_id = -1; /* none */
@@ -103,35 +100,17 @@ dv_global_state_init() {
   DVG->SD->entry_pool_label = NULL;
   DVG->SD->fn = DV_STAT_DISTRIBUTION_OUTPUT_DEFAULT_NAME;
   DVG->SD->bar_width = 20;
-  for (i = 0; i < DM_MAX_DAG; i++) {
-    DMG->SBG->checked_D[i] = 1;
-    DMG->SBG->work[i] = 0.0;
-    DMG->SBG->delay[i] = 0.0;
-    DMG->SBG->nowork[i] = 0.0;
-  }
-  DMG->SBG->fn = DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME;
-  DMG->SBG->fn_2 = DV_STAT_BREAKDOWN_OUTPUT_DEFAULT_NAME_2;
-  int cp;
-  for (cp = 0; cp < DV_NUM_CRITICAL_PATHS; cp++) {
-    DMG->SBG->checked_cp[cp] = 0;
-    if (cp == DV_CRITICAL_PATH_1)
-      DMG->SBG->checked_cp[cp] = 1;
-  }
   
   DVG->context_view = NULL;
   DVG->context_node = NULL;
 
   DVG->verbose_level = DV_VERBOSE_LEVEL_DEFAULT;
 
-  DMG->oncp_flags[DV_CRITICAL_PATH_0] = DV_NODE_FLAG_CRITICAL_PATH_0;
-  DMG->oncp_flags[DV_CRITICAL_PATH_1] = DV_NODE_FLAG_CRITICAL_PATH_1;
-  DMG->oncp_flags[DV_CRITICAL_PATH_2] = DV_NODE_FLAG_CRITICAL_PATH_2;
   DVG->cp_colors[DV_CRITICAL_PATH_0] = DV_CRITICAL_PATH_0_COLOR;
   DVG->cp_colors[DV_CRITICAL_PATH_1] = DV_CRITICAL_PATH_1_COLOR;
   DVG->cp_colors[DV_CRITICAL_PATH_2] = DV_CRITICAL_PATH_2_COLOR;
 
   DVG->opts = dv_options_default_values;
-  dm_global_state_init();
 }
 
 /*-----------------end of Global State-----------------*/

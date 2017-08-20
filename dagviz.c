@@ -94,6 +94,7 @@ main(int argc, char * argv[]) {
     dm_pidag_t * P = &DMG->P[i];
     dm_dag_t * D = dv_create_new_dag(P);
     dv_view_t * V = dv_create_new_view(D);
+    printf("P=%p, D=%p, V=%p\n", P, D, V);
     /* Expand */
     (void) V;
     /*

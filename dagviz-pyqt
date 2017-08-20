@@ -9,47 +9,114 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
 import sip
-sys.path.append(os.getcwd()+"/sip")
+sysroot = os.path.dirname(os.path.realpath(sys.argv[0]))
+sys.path.append(sysroot + "/sip")
 import dagrenderer
+
+GO = {
+    "zoom_step_ratio" : 0.08, # rate per scrolling time
+    "zoom_step_ratio_weight" : 0.004, # rate per scrolling pixel
+}
+renderers = []
 
 class DAGViewport(QWidget):
     def __init__(self):
         super(DAGViewport, self).__init__()
+        self.x = 0.0
+        self.y = 10.0
+        self.pan_on = False
+        self.x_mouse_pressed = 0
+        self.y_mouse_pressed = 0
+        self.setMouseTracking(True)
+        self.R = None
+        #for arg in sys.argv[1:]:
+        if (sys.argv[1]):
+            arg = sys.argv[1]
+            R = dagrenderer.DAGRenderer()
+            R.setDAG(arg)
+            R.setViewport(sip.unwrapinstance(self))
+            renderers.append(R)
+            self.R = R
+        self.zoom_ratio_x = 1.0
+        self.zoom_ratio_y = 1.0
+
+    def resizeEvent(self, e):
+        self.x -= e.oldSize().width() / 2
+        self.x += e.size().width() / 2
 
     def paintEvent(self, e):
-        qp = QPainter()
-        qp.begin(self)
+        qp = QPainter(self)
+        #qp.translate(qp.device().width() / 2, 10)
+        qp.translate(self.x, self.y)
+        qp.scale(self.zoom_ratio_x, self.zoom_ratio_y)
+        self.R.draw(sip.unwrapinstance(qp))
+        
+    def wheelEvent(self, e):
+        mod = QApplication.keyboardModifiers()
+        if mod == Qt.ControlModifier:
+            # moving
+            self.x = self.x + e.pixelDelta().x()
+            self.y = self.y + e.pixelDelta().y()
+        else:
+            # zooming
+            d = e.pixelDelta().y()
+            if d != 0:
+                new_zoom_ratio_x = self.zoom_ratio_x
+                new_zoom_ratio_y = self.zoom_ratio_y
+                factor = 1 + GO["zoom_step_ratio_weight"] * abs(d)
+                if d > 0:
+                    new_zoom_ratio_x *= factor
+                    new_zoom_ratio_y *= factor
+                elif d < 0:
+                    new_zoom_ratio_x /= factor
+                    new_zoom_ratio_y /= factor
+                rx = e.x() - self.x
+                ry = e.y() - self.y
+                dx = rx / self.zoom_ratio_x * new_zoom_ratio_x - rx
+                dy = ry / self.zoom_ratio_y * new_zoom_ratio_y - ry
+                self.x -= dx
+                self.y -= dy
+                self.zoom_ratio_x = new_zoom_ratio_x
+                self.zoom_ratio_y = new_zoom_ratio_y
+        self.repaint()
 
-        qp.setPen(Qt.red)
-        size = self.size()
-        for i in range(1000):
-            x = random.randint(1, size.width()-1)
-            y = random.randint(1, size.height()-1)
-            qp.drawPoint(x, y)
-        qp.setBrush(QColor(255, 80, 0, 160))
-        qp.drawRect(130, 15, 90, 60)
+    def mousePressEvent(self, e):
+        self.x_mouse_pressed = e.x()
+        self.y_mouse_pressed = e.y()
+        self.pan_on = True
+    def mouseMoveEvent(self, e):
+        if self.pan_on:
+            self.x += e.x() - self.x_mouse_pressed
+            self.y += e.y() - self.y_mouse_pressed
+            self.x_mouse_pressed = e.x()
+            self.y_mouse_pressed = e.y()
+            self.repaint()
+    def mouseReleaseEvent(self, e):
+        self.pan_on = False
 
-        # delegate drawing to C++
-        r = dagrenderer.DAGRenderer()
-        r.draw(sip.unwrapinstance(qp))
-        
-        for arg in sys.argv[1:]:
-            d = r.compute_dag_statistics(arg)
-            print(d)
-        
-        qp.end()
-        
+            
 class DAGViz(QMainWindow):
     def __init__(self):
         super(DAGViz, self).__init__()
+        self.VP = DAGViewport()
         self.initUI()
         
+    def do_expanding_one(self):
+        self.VP.R.do_expanding_one()
+        self.VP.R.layout()
+        self.VP.update()
+    
+    def do_collapsing_one(self, e):
+        self.VP.R.do_collapsing_one()
+        self.VP.R.layout()
+        self.VP.update()
+
     def initUI(self):
         # main window
-        self.setGeometry(300, 300, 600, 400)
+        self.setGeometry(0, 0, 1000, 600)
         self.center()
         self.setWindowTitle('DAGViz')
-        self.setWindowIcon(QIcon('gui/dagviz_icon.svg'))
+        self.setWindowIcon(QIcon(sysroot + '/gui/dagviz_icon.svg'))
 
         # status bar
         self.statusBar().showMessage('Ready')
@@ -58,14 +125,29 @@ class DAGViz(QMainWindow):
         menubar = self.menuBar()
         #menubar.setNativeMenuBar(False)
         fileMenu = menubar.addMenu('&File')
+        editMenu = menubar.addMenu('&Edit')
         viewMenu = menubar.addMenu('&View')
-        
-        exitAct = QAction(QIcon('gui/exit.svg'), '&Exit', self)
+
+        # file
+        exitAct = QAction(QIcon(sysroot + '/gui/exit.svg'), '&Exit', self)
         exitAct.setShortcut('Ctrl+Q')
         exitAct.setStatusTip('Exit application')
         exitAct.triggered.connect(qApp.quit)
         fileMenu.addAction(exitAct)
-        
+
+        # edit
+        expandAct = QAction(QIcon(sysroot + '/gui/plus_button_icon.svg'), 'E&xpand DAG one depth', self)
+        expandAct.setShortcut('X')
+        expandAct.setStatusTip('Expand DAG one depth (X)')
+        expandAct.triggered.connect(self.do_expanding_one)
+        editMenu.addAction(expandAct)
+        collapseAct = QAction(QIcon(sysroot + '/gui/minus_button_icon.svg'), '&Collapse DAG one depth', self)
+        collapseAct.setShortcut('C')
+        collapseAct.setStatusTip('Collapse DAG one depth (C)')
+        collapseAct.triggered.connect(self.do_collapsing_one)
+        editMenu.addAction(collapseAct)
+
+        # view
         toolboxAct = QAction('&Toolbox', self)
         toolboxAct.setShortcut('Ctrl+T')
         toolboxAct.setStatusTip('Show toolbox')
@@ -86,22 +168,24 @@ class DAGViz(QMainWindow):
 
         zoomMenu = viewMenu.addMenu('&Zoom')
         zoomFullAct = zoomMenu.addAction('Zoom fit &full')
-        zoomHorAct = zoomMenu.addAction('Zoom fit &horizontally')
-        zoomVerAct = zoomMenu.addAction('Zoom fit &vertically')
         zoomFullAct.setShortcut('F')
-        zoomHorAct.setShortcut('H')
-        zoomVerAct.setShortcut('V')
         #zoomFullAct.triggered.connect(qApp.quit)
+        zoomHorAct = zoomMenu.addAction('Zoom fit &horizontally')
+        zoomHorAct.setShortcut('H')
         #zoomHorAct.triggered.connect(qApp.quit)
+        zoomVerAct = zoomMenu.addAction('Zoom fit &vertically')
+        zoomVerAct.setShortcut('V')
         #zoomVerAct.triggered.connect(qApp.quit)
 
         # toolbar
         self.toolbar = self.addToolBar('Toolbar')
-        self.toolbar.addAction(exitAct)
+        #self.toolbar.addAction(exitAct)
+        self.toolbar.addAction(expandAct)
+        self.toolbar.addAction(collapseAct)
+        self.toolbar.addSeparator()
 
         # central widget
-        cwidget = DAGViewport()
-        self.setCentralWidget(cwidget)
+        self.setCentralWidget(self.VP)
         
         # show
         self.show()
@@ -129,6 +213,7 @@ class DAGViz(QMainWindow):
         windowrec.moveCenter(centerpt)
         self.move(windowrec.topLeft())
 
+        
 if __name__ == '__main__':
     app = QApplication(sys.argv)
     ex = DAGViz()

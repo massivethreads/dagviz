@@ -396,6 +396,9 @@ dm_dag_init(dm_dag_t * D, dm_pidag_t * P) {
   D->H = NULL;
 
   D->time_step = 1000;
+
+  dm_animation_init(D->anim, D);
+  dm_motion_init(D->move, D);
 }
 
 dm_dag_t *
@@ -410,6 +413,52 @@ dm_dag_create_new_with_pidag(dm_pidag_t * P) {
   D->bt = pi->info.first_ready_t;
   D->et = pi->info.end.t;
   
+  return D;
+}
+
+dm_dag_t *
+dm_add_dag(char * filename) {
+  /* check existing D */
+  dm_dag_t * D = NULL;
+  int i;
+  for (i = 0; i < DMG->nD; i++) {
+    if (strcmp(DMG->D[i].P->filename, filename) == 0) {
+      D = &DMG->D[i];
+      break;
+    }
+  }
+  if (!D) {
+    /* read DAG file */
+    dm_pidag_t * P = dm_pidag_read_new_file(filename);
+    if (!P) {
+      dm_perror("could not read DAG from %s.", filename);
+      return NULL;
+    }
+    /* create a new D */
+    D = dm_dag_create_new_with_pidag(P);
+    if (!D) {
+      dm_perror("could not create a new DAG.");
+      return NULL;
+    }
+  }
+  return D;
+}
+
+int
+dm_get_dag_id(dm_dag_t * D) {
+  int dag_id = -1;
+  if (D) {
+    dag_id = D - DMG->D;
+  }
+  return dag_id;
+}
+
+dm_dag_t *
+dm_get_dag(int dag_id) {
+  dm_dag_t * D = NULL;
+  if (dag_id >= 0) {
+    D = &DMG->D[dag_id];
+  }
   return D;
 }
 
@@ -1317,6 +1366,12 @@ dm_global_state_init() {
   DMG->oncp_flags[DM_CRITICAL_PATH_2] = DM_NODE_FLAG_CRITICAL_PATH_2;
 
   DMG->opts = dm_options_default_values;
+  DMG->initialized = 1;
+}
+
+int
+dm_global_state_initialized() {
+  return DMG->initialized;
 }
 
 static void
@@ -1696,30 +1751,36 @@ dm_dag_compute_critical_paths(dm_dag_t * D) {
   }
 }
 
-int
-dm_get_dag_id(char * filename) {
-  /* check existing D */
-  dm_dag_t * D = NULL;
-  int i;
-  for (i = 0; i < DMG->nD; i++) {
-    if (strcmp(DMG->D[i].P->filename, filename) == 0) {
-      D = &DMG->D[i];
-      break;
-    }
-  }
-  if (!D) {
-    /* read DAG file */
-    dm_pidag_t * P = dm_pidag_read_new_file(filename);
-    if (!P) {
-      fprintf(stderr, "Error: cannot read DAG from %s\n", filename);
-      return -1;
-    }
-    /* create a new D */
-    dm_dag_t * D = dm_dag_create_new_with_pidag(P);
-    i = D - DMG->D;
-  }
-  return i;
+void
+dm_compute_dag(dm_dag_t * D) {
+  int i = dm_get_dag_id(D);
+
+  /* calculate */
+  /* t1, delay, no-work */
+  dr_pi_dag * G = D->P->G;
+  dr_basic_stat bs[1];
+  dr_basic_stat_init(bs, G);
+  dr_calc_inner_delay(bs, G);
+  dr_calc_edges(bs, G);
+  dr_pi_dag_chronological_traverse(G, (chronological_traverser *)bs);
+  dr_clock_t work = bs->total_t_1;
+  dr_clock_t delay = bs->cum_delay + (bs->total_elapsed - bs->total_t_1);
+  dr_clock_t no_work = bs->cum_no_work;
+  DMG->SBG->work[i] = work;
+  DMG->SBG->delay[i] = delay;
+  DMG->SBG->nowork[i] = no_work;
+  /* critical path */
+  //dm_dag_compute_critical_paths(D);  
 }
+
+dm_dag_t *
+dm_compute_dag_file(char * filename) {
+  dm_dag_t * D = dm_add_dag(filename);
+  dm_compute_dag(D);
+  return D;
+}
+
+/***** end of Compute *****/
 
 
 /***** Chronological Traverser *****/
@@ -1914,33 +1975,441 @@ dr_basic_stat_process_event(chronological_traverser * ct,
 /***** end of Chronological Traverser *****/
 
 
-dm_dag_t *
-dm_compute_dag_file(char * filename) {
-  int i = dm_get_dag_id(filename);
-  if (i < 0)
-    return NULL;
-  dm_dag_t * D = &DMG->D[i];
+/***** Layout DAG *****/
 
-  /* calculate */
-  /* t1, delay, no-work */
-  dr_pi_dag * G = D->P->G;
-  dr_basic_stat bs[1];
-  dr_basic_stat_init(bs, G);
-  dr_calc_inner_delay(bs, G);
-  dr_calc_edges(bs, G);
-  dr_pi_dag_chronological_traverse(G, (chronological_traverser *)bs);
-  dr_clock_t work = bs->total_t_1;
-  dr_clock_t delay = bs->cum_delay + (bs->total_elapsed - bs->total_t_1);
-  dr_clock_t no_work = bs->cum_no_work;
-  DMG->SBG->work[i] = work;
-  DMG->SBG->delay[i] = delay;
-  DMG->SBG->nowork[i] = no_work;
-  /* critical path */
-  //dm_dag_compute_critical_paths(D);  
-
-  /* output */
-  return D;
+static void
+dm_do_expanding_one_1(dm_dag_t * D, dm_dag_node_t * node) {
+  if (!dm_is_inner_loaded(node))
+    if (dm_dag_build_node_inner(D, node) != DM_OK) return;
+  /* no animation */
+  if (dm_is_shrinking(node)) {
+    dm_node_flag_remove(node->f, DM_NODE_FLAG_SHRINKING);
+  } else if (dm_is_expanding(node)) {
+    dm_node_flag_remove(node->f, DM_NODE_FLAG_EXPANDING);
+  }
+  dm_node_flag_remove(node->f, DM_NODE_FLAG_SHRINKED);
+  /* Histogram */
+  if (D->H && D->H->head_e) {
+    dm_histogram_remove_node(D->H, node, NULL);
+    dm_dag_node_t * x = NULL;
+    while ( (x = dm_dag_node_traverse_children(node, x)) ) {
+      dm_histogram_add_node(D->H, x, NULL);
+    }
+  }
 }
 
-/***** end of Compute *****/
+static void
+dm_do_expanding_one_r(dm_dag_t * D, dm_dag_node_t * node) {
+  if (!dm_is_set(node))
+    dm_dag_node_set(D, node);
+  if (dm_is_union(node)) {
+    if ((!dm_is_inner_loaded(node)
+         || dm_is_shrinked(node)
+         || dm_is_shrinking(node))
+        && !dm_is_expanding(node)) {
+      // expand node
+      dm_do_expanding_one_1(D, node);
+    } else {
+      /* Call inward */
+      dm_check(node->head);
+      dm_do_expanding_one_r(D, node->head);
+    }
+  }
+  
+  /* Call link-along */
+  dm_dag_node_t * x = NULL;
+  while ( (x = dm_dag_node_traverse_nexts(node, x)) ) {
+    dm_do_expanding_one_r(D, x);
+  }
+}
 
+void
+dm_do_expanding_one(dm_dag_t * D) {
+  dm_do_expanding_one_r(D, D->rt);
+  dm_layout_dag(D);
+}
+
+static void
+dm_do_collapsing_one_1(dm_dag_t * D, dm_dag_node_t * node) {
+  /* no animation */
+  if (dm_is_expanding(node)) {
+    dm_node_flag_remove(node->f, DM_NODE_FLAG_EXPANDING);
+  } else if (dm_is_shrinking(node)) {
+    dm_node_flag_remove(node->f, DM_NODE_FLAG_SHRINKING);
+  }
+  dm_node_flag_set(node->f, DM_NODE_FLAG_SHRINKED);
+  /* Histogram */
+  if (D->H && D->H->head_e) {
+    dm_dag_node_t * x = NULL;
+    while ( (x = dm_dag_node_traverse_children(node, x)) ) {
+      dm_histogram_remove_node(D->H, x, NULL);
+    }
+    dm_histogram_add_node(D->H, node, NULL);
+  }
+}
+
+_static_unused_ void
+dm_do_collapsing_one_r(dm_dag_t * D, dm_dag_node_t * node) {
+  if (!dm_is_set(node))
+    return;
+  if (dm_is_union(node) && dm_is_inner_loaded(node)
+      && !dm_is_shrinking(node)
+      && (dm_is_expanded(node) || dm_is_expanding(node))) {
+    // check if node has expanded node, excluding shrinking nodes
+    int has_expanded_node = 0;
+    /* Traverse all children */
+    dm_dag_node_t * x = NULL;
+    while ( (x = dm_dag_node_traverse_children(node, x)) ) {
+      if (dm_is_union(x) && dm_is_inner_loaded(x)
+          && (dm_is_expanded(x) || dm_is_expanding(x))
+          && !dm_is_shrinking(x)) {
+        has_expanded_node = 1;
+        break;
+      }
+    }
+    if (!has_expanded_node) {
+      // collapsing node's parent
+      dm_do_collapsing_one_1(D, node);
+    } else {
+      /* Call inward */
+      dm_do_collapsing_one_r(D, node->head);
+    }
+  }
+  
+  /* Call link-along */
+  dm_dag_node_t * x = NULL;
+  while ( (x = dm_dag_node_traverse_nexts(node, x)) ) {
+    dm_do_collapsing_one_r(D, x);
+  }
+}
+
+static void
+dm_do_collapsing_one_depth_r(dm_dag_t * D, dm_dag_node_t * node, int depth) {
+  if (!dm_is_set(node))
+    return;
+  if (dm_is_union(node) && dm_is_inner_loaded(node)
+      && !dm_is_shrinking(node)
+      && (dm_is_expanded(node) || dm_is_expanding(node))) {
+    // check if node has expanded node, excluding shrinking nodes
+    int has_expanded_node = 0;
+    /* Traverse all children */
+    dm_dag_node_t * x = NULL;
+    while ( (x = dm_dag_node_traverse_children(node, x)) ) {
+      if (dm_is_union(x) && dm_is_inner_loaded(x)
+          && (dm_is_expanded(x) || dm_is_expanding(x))
+          && !dm_is_shrinking(x)) {
+        has_expanded_node = 1;
+        break;
+      }
+    }
+    if (!has_expanded_node && node->d >= depth) {
+      // collapsing node's parent
+      dm_do_collapsing_one_1(D, node);
+    } else {
+      /* Call inward */
+      dm_do_collapsing_one_depth_r(D, node->head, depth);
+    }
+  }
+  
+  /* Call link-along */
+  dm_dag_node_t * x = NULL;
+  while ( (x = dm_dag_node_traverse_nexts(node, x)) ) {
+    dm_do_collapsing_one_depth_r(D, x, depth);
+  }
+}
+
+void
+dm_do_collapsing_one(dm_dag_t * D) {
+  dm_do_collapsing_one_depth_r(D, D->rt, D->collapsing_d - 1);
+  dm_layout_dag(D);
+}
+
+double
+dm_calculate_animation_rate(dm_dag_t * D, dm_dag_node_t * node) {
+  double rate = 1.0;
+  if (!node) return rate;
+  double ratio = (dm_get_time() - node->started) / D->anim->duration;
+  if (ratio > 1.0)
+    ratio = 1.0;
+  if (dm_is_shrinking(node)) {
+    //rate = 1.0 - ratio;
+    rate = (1.0 - ratio) * (1.0 - ratio);
+  } else if (dm_is_expanding(node)) {
+    //rate = ratio;
+    rate = 1.0 - (1.0 - ratio) * (1.0 - ratio);
+  }
+  return rate;
+}
+
+double
+dm_calculate_animation_reverse_rate(dm_dag_t * D, dm_dag_node_t * node) {
+  double ret = 0.0;
+  if (!node) return ret;
+  double rate = dm_calculate_animation_rate(D, node);
+  if (dm_is_shrinking(node)) {
+    ret = 1.0 - sqrt(1.0 - rate);
+  } else if (dm_is_expanding(node)) {
+    ret = 1.0 - sqrt(rate);
+  }
+  return ret;
+}
+
+void
+dm_animation_init(dm_animation_t * a, dm_dag_t * D) {
+  memset(a, 0, sizeof(dm_animation_t));
+  a->on = 0;
+  a->duration = DM_ANIMATION_DURATION;
+  a->step = DM_ANIMATION_STEP;
+  dm_llist_init(a->movings);
+  a->D = D;
+}
+
+void
+dm_animation_tick(dm_animation_t * a) {
+  dm_check(a->on);
+  double cur_t = dm_get_time();
+  dm_dag_node_t * node = NULL;
+  /* iterate moving nodes */
+  dm_llist_cell_t * c = a->movings->top;
+  while (c) {
+    node = (dm_dag_node_t *) c->item;
+    c = c->next;
+    if (cur_t - node->started >= a->duration) {
+      dm_animation_remove_node(a, node);
+      if (dm_is_shrinking(node)) {
+        dm_node_flag_remove(node->f, DM_NODE_FLAG_SHRINKING);
+        dm_node_flag_set(node->f, DM_NODE_FLAG_SHRINKED);
+      } else if (dm_is_expanding(node)) {
+        dm_node_flag_remove(node->f, DM_NODE_FLAG_EXPANDING);
+        dm_node_flag_remove(node->f, DM_NODE_FLAG_SHRINKED);
+      }
+    }
+  }
+  /* stop animation when there is no moving node */
+  if (dm_llist_size(a->movings) == 0) {
+    a->on = 0;
+  }
+}
+
+void
+dm_animation_add_node(dm_animation_t * a, dm_dag_node_t * node) {
+  double cur_t = dm_get_time();
+  node->started = cur_t;
+  dm_llist_add(a->movings, node);
+  a->on = 1;
+}
+
+void
+dm_animation_remove_node(dm_animation_t * a, dm_dag_node_t * node) {
+  dm_llist_remove(a->movings, node);
+}
+
+void
+dm_animation_reverse_node(dm_animation_t * a, dm_dag_node_t * node) {
+  dm_llist_remove(a->movings, node);
+  double cur_t = dm_get_time();
+  //node->started = 2 * cur - a->duration - node->started;
+  node->started = cur_t - a->duration * dm_calculate_animation_reverse_rate(a->D, node);
+  dm_llist_add(a->movings, node);
+}
+
+static void
+dm_motion_reset(dm_motion_t * m) {
+  memset(m, 0, sizeof(dm_motion_t));
+  m->target_pii = -1;
+}
+
+void
+dm_motion_init(dm_motion_t * m, dm_dag_t * D) {
+  dm_motion_reset(m);
+  m->on = 0;
+  m->duration = DM_ANIMATION_DURATION;
+  m->step = DM_ANIMATION_STEP;
+  m->D = D;
+}
+
+static void
+dm_layout_dag_node_phase1(dm_dag_t * D, dm_dag_node_t * node, int cid) {
+  if (dm_is_shrinking(node) && (D->collapsing_d == 0 || node->d < D->collapsing_d))
+    D->collapsing_d = node->d;
+  dm_node_coordinate_t * node_c = &node->c[cid];
+  
+  /* Calculate inward */
+  if (dm_is_inward_callable(node)) {
+    dm_check(node->head);
+    // node's head's outward
+    dm_node_coordinate_t * head_c = &node->head->c[cid];
+    head_c->xpre = 0.0;
+    head_c->y = node_c->y;
+    // Recursive call
+    dm_layout_dag_node_phase1(D, node->head, cid);
+    // node's inward
+    node_c->lw = head_c->link_lw;
+    node_c->rw = head_c->link_rw;
+    node_c->dw = head_c->link_dw;
+  } else {
+    // node's inward
+    node_c->lw = D->radius;
+    node_c->rw = D->radius;
+    node_c->dw = 2 * D->radius;
+  }
+    
+  /* Calculate link-along */
+  dm_dag_node_t * u, * v; // linked nodes
+  dm_node_coordinate_t * u_c, * v_c;
+  double rate, ypre, hgap;
+  switch ( dm_dag_node_count_nexts(node) ) {
+  case 0:
+    // node's link-along
+    node_c->link_lw = node_c->lw;
+    node_c->link_rw = node_c->rw;
+    node_c->link_dw = node_c->dw;
+    break;
+  case 1:
+    u = node->next;
+    u_c = &u->c[cid];
+    // node & u's rate
+    rate = dm_calculate_animation_rate(D, node->parent);
+    // node's linked u's outward
+    u_c->xpre = 0.0;
+    ypre = (node_c->dw - 2 * D->radius + DMG->opts.vnd) * rate;
+    u_c->y = node_c->y + ypre;
+    // Recursive call
+    dm_layout_dag_node_phase1(D, u, cid);
+    // node's link-along
+    node_c->link_lw = dm_max(node_c->lw, u_c->link_lw);
+    node_c->link_rw = dm_max(node_c->rw, u_c->link_rw);
+    node_c->link_dw = ypre + u_c->link_dw;
+    break;
+  case 2:
+    u = node->next;  // cont node
+    v = node->spawn; // task node
+    u_c = &u->c[cid];
+    v_c = &v->c[cid];
+    // node & u,v's rate
+    rate = dm_calculate_animation_rate(D, node->parent);
+    // node's linked u,v's outward
+    ypre = (node_c->dw - 2 * D->radius + DMG->opts.vnd) * rate;
+    u_c->y = node_c->y + ypre;
+    v_c->y = node_c->y + ypre;
+    // Recursive call
+    dm_layout_dag_node_phase1(D, u, cid);
+    dm_layout_dag_node_phase1(D, v, cid);
+    
+    // node's linked u,v's outward
+    hgap = DMG->opts.hnd * rate;
+    // u
+    u_c->xpre = (u_c->link_lw - D->radius) + hgap;
+    if (u->spawn)
+      u_c->xpre = - u->spawn->c[cid].xpre;
+    // v
+    v_c->xpre = (v_c->link_rw - D->radius) + hgap;
+    double left_push = 0.0;
+    if (u->spawn)
+      left_push = (u_c->link_lw - D->radius) - u_c->xpre;
+    if (left_push > 0)
+      v_c->xpre += left_push;
+    v_c->xpre = - v_c->xpre;
+    
+    // node's link-along
+    node_c->link_lw = - v_c->xpre + v_c->link_lw;
+    node_c->link_rw = u_c->xpre + u_c->link_rw;
+    node_c->link_dw = ypre + dm_max(u_c->link_dw, v_c->link_dw);
+    break;
+  default:
+    dm_check(0);
+    break;
+  }  
+}
+
+static void
+dm_layout_dag_node_phase2(dm_dag_t * D, dm_dag_node_t * node, int cid) {
+  dm_node_coordinate_t * node_c = &node->c[cid];
+  /* Calculate inward */
+  if (dm_is_inward_callable(node)) {
+    dm_check(node->head);
+    // node's head's outward
+    dm_node_coordinate_t * head_c = &node->head->c[cid];
+    head_c->xp = 0.0;
+    head_c->x = node_c->x;
+    // Recursive call
+    dm_layout_dag_node_phase2(D, node->head, cid);
+  }
+    
+  /* Calculate link-along */
+  dm_dag_node_t * u, * v; // linked nodes
+  dm_node_coordinate_t * u_c, * v_c;
+  switch ( dm_dag_node_count_nexts(node) ) {
+  case 0:
+    break;
+  case 1:
+    u = node->next;
+    u_c = &u->c[cid];
+    // node's linked u's outward
+    u_c->xp = u_c->xpre + node_c->xp;
+    u_c->x = u_c->xp + u->parent->c[cid].x;
+    // Recursive call
+    dm_layout_dag_node_phase2(D, u, cid);
+    break;
+  case 2:
+    u = node->next;  // cont node
+    v = node->spawn; // task node
+    u_c = &u->c[cid];
+    v_c = &v->c[cid];
+    // node's linked u,v's outward
+    u_c->xp = u_c->xpre + node_c->xp;
+    u_c->x = u_c->xp + u->parent->c[cid].x;
+    v_c->xp = v_c->xpre + node_c->xp;
+    v_c->x = v_c->xp + v->parent->c[cid].x;
+    // Recursive call
+    dm_layout_dag_node_phase2(D, u, cid);
+    dm_layout_dag_node_phase2(D, v, cid);
+    break;
+  default:
+    dm_check(0);
+    break;
+  }
+  
+}
+
+void
+dm_layout_dag(dm_dag_t * D) {
+  int cid = 0;
+  dm_node_coordinate_t * root_c = &D->rt->c[cid];
+
+  /* phase 1: calculate relative coordinates */
+  D->collapsing_d = 0;
+  root_c->xpre = 0.0; /* predecessor-based */
+  root_c->y = 0.0;
+  dm_layout_dag_node_phase1(D, D->rt, cid);
+
+  /* phase 2: calculate absolute coordinates */
+  root_c->xp = 0.0; /* parent-based */
+  root_c->x = 0.0;
+  dm_layout_dag_node_phase2(D, D->rt, cid);
+}
+
+/***** end of Layout DAG *****/
+
+
+/***** Draw DAG *****/
+
+double
+dm_get_alpha_fading_out(dm_dag_t * D, dm_dag_node_t * node) {
+  double ratio = (dm_get_time() - node->started) / D->anim->duration;
+  double ret;
+  //ret = (1.0 - ratio) * 0.75;
+  ret = 1.0 - ratio * ratio;
+  return ret;
+}
+
+double
+dm_get_alpha_fading_in(dm_dag_t * D, dm_dag_node_t * node) {
+  double ratio = (dm_get_time() - node->started) / D->anim->duration;
+  double ret;
+  //ret = ratio * 1.5;
+  ret = ratio * ratio;
+  return ret;
+}
+
+/***** end of Draw DAG *****/

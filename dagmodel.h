@@ -13,6 +13,7 @@
 #include <math.h>
 #include <assert.h>
 #include <errno.h>
+#include <stdarg.h>
 
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -79,6 +80,9 @@
 #define DM_RADIX_LINEAR 100000 //100000
 
 #define DM_PARAPROF_MIN_ENTRY_INTERVAL 2000
+
+#define DM_ANIMATION_DURATION 400 /* milliseconds */
+#define DM_ANIMATION_STEP 80 /* milliseconds */
 
 
 /* Stack & linked list */
@@ -174,7 +178,29 @@ typedef struct dm_dag_node {
   dm_critical_path_stat_t cpss[DM_NUM_CRITICAL_PATHS];
 } dm_dag_node_t;
 
+typedef struct dm_dag dm_dag_t;
 typedef struct dm_histogram dm_histogram_t;
+
+typedef struct dm_animation {
+  int on; /* on/off */
+  double duration; /* milliseconds */
+  double step; /* milliseconds */
+  dm_llist_t movings[1]; /* list of moving nodes */
+  dm_dag_t * D; /* DAG that this animation belongs to */
+} dm_animation_t;
+
+typedef struct dm_motion {
+  int on;
+  double duration;
+  double step;
+  dm_dag_t * D;
+  long target_pii;
+  double xfrom, yfrom;
+  double zrxfrom, zryfrom;
+  double xto, yto;
+  double zrxto, zryto;
+  double start_t;
+} dm_motion_t;
 
 typedef struct dm_dag {
   char * name;
@@ -219,6 +245,8 @@ typedef struct dm_dag {
   int critical_paths_computed;
 
   void * g; /* pointer to a structure holding GUI-dependent elements, unused inside dagmodel */
+  dm_animation_t anim[1]; /* parameters for node animations (expanding, collapsing) */
+  dm_motion_t move[1]; /* parameters for node movings */
 } dm_dag_t;
 
 
@@ -308,12 +336,25 @@ typedef struct dm_stat_breakdown_graph {
 
 /* runtime-adjustable options */
 typedef struct dm_options {
+  /* Layout */
   double radius; /* node radius */
+  double hnd; /* horizontal node distance */
+  double vnd; /* vertical node distance */
+  double nlw; /* node line width */
+  double nlw_collective_node_factor; /* node line width's multiplying factor for collective nodes */
+
+  double union_node_puffing_margin;
 } dm_options_t;
 
 /* default values for runtime-adjustable options */
 _static_unused_ dm_options_t dm_options_default_values = {
   20.0, /* radius */
+  70.0, /* hnd: horizontal node distance */
+  70.0, /* vnd: vertical node distance */
+  1.5,  /* nlw: node line width */
+  2.0,  /* nlw_collective_node_factor */
+
+  6.0,  /* union_node_puffing_margin */
 };
 
 typedef struct dm_global_state {
@@ -332,11 +373,13 @@ typedef struct dm_global_state {
   /* Statistics */
   dm_stat_breakdown_graph_t SBG[1];
 
-  int verbose_level;
-
-  int oncp_flags[DM_NUM_CRITICAL_PATHS];
-
+  /* Options */
   dm_options_t opts;
+
+  /* Flags */
+  int verbose_level;
+  int oncp_flags[DM_NUM_CRITICAL_PATHS];
+  int initialized;
 } dm_global_state_t;
 
 extern dm_global_state_t DMG[]; /* global common state */
@@ -348,22 +391,23 @@ dr_pi_dag_node * dm_pidag_get_node_by_id(dm_pidag_t *, long);
 dr_pi_dag_node * dm_pidag_get_node_by_dag_node(dm_pidag_t *, dm_dag_node_t *);
 
 /* DAG */
-void dm_dag_node_init(dm_dag_node_t *, dm_dag_node_t *, long);
-int dm_dag_node_set(dm_dag_t *, dm_dag_node_t *);
-int dm_dag_build_node_inner(dm_dag_t *, dm_dag_node_t *);
-int dm_dag_collapse_node_inner(dm_dag_t *, dm_dag_node_t *);
-void dm_dag_clear_shrinked_nodes(dm_dag_t *);
-void dm_dag_init(dm_dag_t *, dm_pidag_t *);
+void       dm_dag_node_init(dm_dag_node_t *, dm_dag_node_t *, long);
+int        dm_dag_node_set(dm_dag_t *, dm_dag_node_t *);
+int        dm_dag_build_node_inner(dm_dag_t *, dm_dag_node_t *);
+int        dm_dag_collapse_node_inner(dm_dag_t *, dm_dag_node_t *);
+void       dm_dag_clear_shrinked_nodes(dm_dag_t *);
+void       dm_dag_init(dm_dag_t *, dm_pidag_t *);
 dm_dag_t * dm_dag_create_new_with_pidag(dm_pidag_t *);
-double dm_dag_get_radix(dm_dag_t *);
-void dm_dag_set_radix(dm_dag_t *, double);
+dm_dag_t * dm_add_dag(char *);
+int        dm_get_dag_id(dm_dag_t *);
+dm_dag_t * dm_get_dag(int);
 
 dm_dag_node_t * dm_dag_node_traverse_children(dm_dag_node_t *, dm_dag_node_t *);
 dm_dag_node_t * dm_dag_node_traverse_children_inorder(dm_dag_node_t *, dm_dag_node_t *);
 dm_dag_node_t * dm_dag_node_traverse_tails(dm_dag_node_t *, dm_dag_node_t *);
 dm_dag_node_t * dm_dag_node_traverse_nexts(dm_dag_node_t *, dm_dag_node_t *);
 
-int dm_dag_node_count_nexts(dm_dag_node_t *);
+int             dm_dag_node_count_nexts(dm_dag_node_t *);
 dm_dag_node_t * dm_dag_node_get_next(dm_dag_node_t *);
 dm_dag_node_t * dm_dag_node_get_single_head(dm_dag_node_t *);
 dm_dag_node_t * dm_dag_node_get_single_last(dm_dag_node_t *);
@@ -413,13 +457,29 @@ void dm_histogram_compute_significant_intervals(dm_histogram_t *);
 /* Compute */
 char * dm_filename_get_short_name(char *);
 void dm_global_state_init();
+int dm_global_state_initialized();
 void dm_dag_build_inner_all(dm_dag_t *);
 void dm_dag_compute_critical_paths(dm_dag_t *);
 
-int dm_get_dag_id(char *);
+void dm_compute_dag(dm_dag_t *);
 dm_dag_t * dm_compute_dag_file(char *);
 
+/* Layout */
+void dm_do_expanding_one(dm_dag_t *);
+void dm_do_collapsing_one(dm_dag_t *);
+double dm_calculate_animation_rate(dm_dag_t *, dm_dag_node_t *);
+double dm_calculate_animation_reverse_rate(dm_dag_t *, dm_dag_node_t *);
+void dm_animation_init(dm_animation_t *, dm_dag_t *);
+void dm_animation_tick(dm_animation_t *);
+void dm_animation_add_node(dm_animation_t *, dm_dag_node_t *);
+void dm_animation_remove_node(dm_animation_t *, dm_dag_node_t *);
+void dm_animation_reverse_node(dm_animation_t *, dm_dag_node_t *);
+void dm_motion_init(dm_motion_t *, dm_dag_t *);
+void dm_layout_dag(dm_dag_t *);
 
+/* Draw */
+double dm_get_alpha_fading_out(dm_dag_t *, dm_dag_node_t *);
+double dm_get_alpha_fading_in(dm_dag_t *, dm_dag_node_t *);
 
 
 /***** Utilities *****/
@@ -553,6 +613,40 @@ dm_is_inward_callable(dm_dag_node_t * node) {
   return 0;
 }
 
+_static_unused_ void
+dm_log_print_info(const char * file, int line, const char * format, ...) {
+  char s[1024];
+  va_list args;
+  va_start(args, format);
+  vsprintf(s, format, args);
+  fprintf(stdout, "[Info] (%s:%d): %s\n", file, line, s);
+  va_end(args);
+}
+
+_static_unused_ void
+dm_log_print_warning(const char * file, int line, const char * format, ...) {
+  char s[1024];
+  va_list args;
+  va_start(args, format);
+  vsprintf(s, format, args);
+  fprintf(stdout, "[Warning] (%s:%d): %s\n", file, line, s);
+  va_end(args);
+}
+
+_static_unused_ void
+dm_log_print_error(const char * file, int line, const char * format, ...) {
+  char s[1024];
+  va_list args;
+  va_start(args, format);
+  vsprintf(s, format, args);
+  fprintf(stderr, "[Error] (%s:%d): %s\n", file, line, s);
+  va_end(args);
+}
+
+#define dm_pinfo(s, ...) dm_log_print_info(__FILE__, __LINE__, s, ##__VA_ARGS__)
+#define dm_pwarning(s, ...) dm_log_print_warning(__FILE__, __LINE__, s, ##__VA_ARGS__)
+#define dm_perror(s, ...) dm_log_print_error(__FILE__, __LINE__, s, ##__VA_ARGS__)
+
 _static_unused_ int
 dm_log_set_error(int err) {
   DMG->error = err;
@@ -600,7 +694,11 @@ dm_get_time() {
   return tv.tv_sec * 1.0E3 + ((double)tv.tv_usec) / 1.0E3;
 }
 
+#define dm_max(d1,d2) (((d1)>=(d2))?(d1):(d2))
+#define dm_min(d1,d2) (((d1)<=(d2))?(d1):(d2))
+
 /***** end of Utilities *****/
+
 
 /***** Chronological Traverser *****/
 
