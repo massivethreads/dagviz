@@ -42,6 +42,9 @@ class DAGViewport(QWidget):
         self.pan_on = False
         self.x_mouse_pressed = 0
         self.y_mouse_pressed = 0
+        self.mouseCenteredExpansion = False
+        self.x_mouse = 0
+        self.y_mouse = 0
         self.setMouseTracking(True)
         self.R = None
         #for arg in sys.argv[1:]:
@@ -67,8 +70,27 @@ class DAGViewport(QWidget):
 
     def update(self):
         super(DAGViewport, self).update()
+
+    def convert_x_to_dag_space(self, x):
+        return (x - self.x - self.base_x) / self.zoom_ratio_x
+    def convert_y_to_dag_space(self, y):
+        return (y - self.y - self.base_y) / self.zoom_ratio_y
+    def convert_x_from_dag_space(self, x):
+        return x * self.zoom_ratio_x + self.x + self.base_x
+    def convert_y_from_dag_space(self, y):
+        return y * self.zoom_ratio_y + self.y + self.base_y
+    def convert_dx_from_dag_space(self, dx):
+        return dx * self.zoom_ratio_x
+    def convert_dy_from_dag_space(self, dy):
+        return dy * self.zoom_ratio_y
         
     def paintEvent(self, e):
+        # adjusted deltas from Renderer
+        Rdx = self.convert_dx_from_dag_space(self.R.getDx())
+        Rdy = self.convert_dy_from_dag_space(self.R.getDy())
+        self.x += Rdx
+        self.y += Rdy
+        # auto zoom fit
         if GO["auto_zoom_fit"] == 1:
             self.do_zoom_fit_full_auto()
         elif GO["auto_zoom_fit"] == 2:
@@ -80,7 +102,12 @@ class DAGViewport(QWidget):
         qp.translate(self.x, self.y)
         qp.scale(self.zoom_ratio_x, self.zoom_ratio_y)
         if self.R is not None:
-            self.R.draw(sip.unwrapinstance(qp))
+            if (self.mouseCenteredExpansion):
+                self.R.draw(sip.unwrapinstance(qp),
+                            self.convert_x_to_dag_space(self.x_mouse),
+                            self.convert_y_to_dag_space(self.y_mouse))
+            else:
+                self.R.draw(sip.unwrapinstance(qp))
 
     def do_moving(self, dx, dy):
         self.x = self.x + dx
@@ -99,14 +126,16 @@ class DAGViewport(QWidget):
             elif weight < 0:
                 new_zx /= factor
                 new_zy /= factor
-            rx = x - self.x - self.base_x
-            ry = y - self.y - self.base_y
-            dx = rx / self.zoom_ratio_x * new_zx - rx
-            dy = ry / self.zoom_ratio_y * new_zy - ry
-            self.x -= dx
-            self.y -= dy
+            x_dag = self.convert_x_to_dag_space(x)
+            y_dag = self.convert_y_to_dag_space(y)
             self.zoom_ratio_x = new_zx
             self.zoom_ratio_y = new_zy
+            new_x = self.convert_x_from_dag_space(x_dag)
+            new_y = self.convert_y_from_dag_space(y_dag)
+            dx = new_x - x
+            dy = new_y - y
+            self.x -= dx
+            self.y -= dy
             GO["auto_zoom_fit"] = False
             self.update()
         
@@ -130,13 +159,17 @@ class DAGViewport(QWidget):
 
     def enterEvent(self, e):
         #print("mouse enters")
+        self.mouseCenteredExpansion = True
         None
         
     def leaveEvent(self, e):
         #print("mouse leaves")
+        self.mouseCenteredExpansion = False
         None
         
     def mouseMoveEvent(self, e):
+        self.x_mouse = e.x()
+        self.y_mouse = e.y()
         if self.pan_on:
             self.x += e.x() - self.x_mouse_pressed
             self.y += e.y() - self.y_mouse_pressed
@@ -145,9 +178,9 @@ class DAGViewport(QWidget):
             GO["auto_zoom_fit"] = False
             self.update()
         else:
-            x = (e.x() - self.x - self.base_x) / self.zoom_ratio_x
-            y = (e.y() - self.y - self.base_y) / self.zoom_ratio_y
-            node = self.R.find_node(x,y)
+            x_dag = self.convert_x_to_dag_space(e.x())
+            y_dag = self.convert_y_to_dag_space(e.y())
+            node = self.R.find_node(x_dag, y_dag)
             if node is not None:
                 None #print(self.R.get_dag_node_info(node))
 

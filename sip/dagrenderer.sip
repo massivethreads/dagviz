@@ -17,11 +17,14 @@ public:
   QWidget * viewport();
   int dagId();
   int animationOn();
-
+  double getDx();
+  double getDy();
+  
   PyObject * compute_dag_statistics(int);
   void layout();
   void draw();
   void draw(void *);
+  void draw(void *, double, double);
   void do_expanding_one();
   void do_collapsing_one();
   double left_width();

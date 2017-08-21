@@ -81,7 +81,41 @@ DAGRenderer::layout_dag_(dm_dag_t * D) {
 
 void
 DAGRenderer::layout_(dm_dag_t * D) {
+  double x_proportion = 0.0;
+  double y_proportion = 0.0;
+  if (anchorEnabled) {
+    if (anchor_x_node) {
+      int cid = 0;
+      dm_node_coordinate_t * c = &anchor_x_node->c[cid];
+      double left = c->x - c->lw;
+      double right = c->x + c->rw;
+      x_proportion = (anchor_x - left) / (right - left);
+    }
+    if (anchor_y_node) {
+      int cid = 0;
+      dm_node_coordinate_t * c = &anchor_y_node->c[cid];
+      y_proportion = (anchor_y - c->y) / c->dw;
+    }
+  }
+
   layout_dag_(D);
+  
+  if (anchorEnabled) {
+    if (anchor_x_node) {
+      int cid = 0;
+      dm_node_coordinate_t * c = &anchor_x_node->c[cid];
+      double left = c->x - c->lw;
+      double right = c->x + c->rw;
+      double new_anchor_x = x_proportion * (right - left) + left;
+      mDx += anchor_x - new_anchor_x;
+    }
+    if (anchor_y_node) {
+      int cid = 0;
+      dm_node_coordinate_t * c = &anchor_y_node->c[cid];
+      double new_anchor_y = y_proportion * c->dw + c->y;
+      mDy += anchor_y - new_anchor_y;
+    }
+  }
 }
 
 void
@@ -342,15 +376,15 @@ lookup_gradient(_unused_ dr_pi_dag_node * pi, _unused_ double alpha) {
   return g;
 }
 
-static void
-draw_dag_node_1(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, _unused_ int * on_global_cp) {
+void
+DAGRenderer::draw_dag_node_1(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, _unused_ int * on_global_cp) {
   /* Get inputs */
   dr_pi_dag_node * pi = dm_pidag_get_node_by_dag_node(D->P, node);
   dr_dag_node_kind_t kind = pi->info.kind;
   int cid = 0;
-  dm_node_coordinate_t * nodeco = &node->c[cid];
-  double x = nodeco->x;
-  double y = nodeco->y;
+  dm_node_coordinate_t * node_c = &node->c[cid];
+  double x = node_c->x;
+  double y = node_c->y;
 
   /* Count drawn node */
   if (node->d > D->cur_d) {
@@ -388,18 +422,18 @@ draw_dag_node_1(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, _unused_ int 
           margin *= dm_get_alpha_fading_out(D, node);
         }
         /* Calculate coordinates: large-sized box */
-        xx = x - nodeco->lw - margin;
+        xx = x - node_c->lw - margin;
         yy = y - margin;
-        w = nodeco->lw + nodeco->rw + 2 * margin;
-        h = nodeco->dw + 2 * margin;
+        w = node_c->lw + node_c->rw + 2 * margin;
+        h = node_c->dw + 2 * margin;
       
       } else {
       
         /* Calculate coordinates: normal-sized box */
-        xx = x - nodeco->lw;
+        xx = x - node_c->lw;
         yy = y;
-        w = nodeco->lw + nodeco->rw;
-        h = nodeco->dw;
+        w = node_c->lw + node_c->rw;
+        h = node_c->dw;
       
       }
 
@@ -413,10 +447,10 @@ draw_dag_node_1(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, _unused_ int 
     } else { // is collective but not union
 
       /* Calculate coordinates: normal-sized box */
-      xx = x - nodeco->lw;
+      xx = x - node_c->lw;
       yy = y;
-      w = nodeco->lw + nodeco->rw;
-      h = nodeco->dw;
+      w = node_c->lw + node_c->rw;
+      h = node_c->dw;
 
       /* Draw path */
       if (kind == dr_dag_node_kind_section) {
@@ -430,10 +464,10 @@ draw_dag_node_1(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, _unused_ int 
   } else {
     
     /* Calculate coordinates */
-    xx = x - nodeco->lw;
+    xx = x - node_c->lw;
     yy = y;
-    w = nodeco->lw + nodeco->rw;
-    h = nodeco->dw;
+    w = node_c->lw + node_c->rw;
+    h = node_c->dw;
     
     /* Draw path */
     if (kind == dr_dag_node_kind_create_task)
@@ -477,8 +511,8 @@ draw_dag_node_1(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, _unused_ int 
   }
 }
 
-static void
-draw_dag_node_r(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, int * parent_on_global_cp) {
+void
+DAGRenderer::draw_dag_node_r(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, int * parent_on_global_cp) {
   if (!node || !dm_is_set(node))
     return;
 
@@ -490,6 +524,18 @@ draw_dag_node_r(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, int * parent_
       me_on_global_cp[cp] = 1;
     else
       me_on_global_cp[cp] = 0;
+  }
+
+  /* find closest nodes to be anchors */
+  if (anchorEnabled) {
+    int cid = 0;
+    dm_node_coordinate_t * c = &node->c[cid];
+    if (anchor_x_node == NULL || anchor_y_node == NULL ||
+        (c->x - c->lw < anchor_x && anchor_x < c->x + c->rw &&
+         c->y         < anchor_y && anchor_y < c->y + c->dw)) {
+      anchor_x_node = node;
+      anchor_y_node = node;
+    }
   }
   
   //if (!dm_dag_node_is_invisible(V, node)) {
@@ -558,6 +604,7 @@ DAGRenderer::draw_dag_(QPainter * qp, dm_dag_t * D) {
 void
 DAGRenderer::draw_(QPainter * qp, dm_dag_t * D) {
   qp->setRenderHint(QPainter::Antialiasing);
+  qp->translate(mDx, mDy);
   draw_dag_(qp, D);
 }
 

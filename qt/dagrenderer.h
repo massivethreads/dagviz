@@ -22,15 +22,29 @@ public:
   QWidget * viewport() { return mViewport; };
   int dagId() { return dm_get_dag_id(mDAG); };
   int animationOn() { if (animation_on) return 1; else return 0; };
+  double getDx() { double ret = mDx; mDx = 0.0; return ret; }
+  double getDy() { double ret = mDy; mDy = 0.0; return ret; }
 
   PyObject * compute_dag_statistics(int D_id);
   void layout() { layout_(mDAG); };
   void draw() {
+    this->anchorEnabled = false;
     QPainter * qp = new QPainter(mViewport);
     draw_(qp, mDAG);
     delete qp;
   };
   void draw(void * qp_ptr) {
+    this->anchorEnabled = false;
+    QPainter * qp = (QPainter *) qp_ptr;
+    draw_(qp, mDAG);
+  };
+  void draw(void * qp_ptr, double anchor_x, double anchor_y) {
+    if (!this->anchorEnabled) {
+      this->anchorEnabled = true;
+      this->anchor_x_node = this->anchor_y_node = NULL;
+    }
+    this->anchor_x = anchor_x;
+    this->anchor_y = anchor_y;
     QPainter * qp = (QPainter *) qp_ptr;
     draw_(qp, mDAG);
   };
@@ -42,7 +56,7 @@ public:
   double height() { int cid = 0; return mDAG->rt->c[cid].dw; };
   dm_dag_node_t * find_node(double x, double y) { return dm_dag_find_clicked_node(mDAG, x, y); };
   PyObject * get_dag_node_info(void * node) { return get_dag_node_info_((dm_dag_node_t *) node); };
-                                                              
+
 public slots:
   void do_animation_tick();
 
@@ -51,6 +65,12 @@ private:
   QWidget * mViewport = NULL;  /* Viewport where the DAG of this renderer is drawn on */
   bool animation_on = false;
   QTimer * animation_timer = NULL;
+  bool anchorEnabled = false;
+  double anchor_x, anchor_y;
+  dm_dag_node_t * anchor_x_node = NULL;
+  dm_dag_node_t * anchor_y_node = NULL;
+  double mDx = 0.0;
+  double mDy = 0.0;
   
   char * parse_python_string(PyObject *);
   int parse_python_int(PyObject *);
@@ -69,6 +89,8 @@ private:
   void do_collapsing_one_1(dm_dag_t *, dm_dag_node_t *);
   void do_collapsing_one_depth_r(dm_dag_t *, dm_dag_node_t *, int);
   void do_collapsing_one_(dm_dag_t *);
+  void draw_dag_node_1(QPainter *, dm_dag_t *, dm_dag_node_t *, _unused_ int *);
+  void draw_dag_node_r(QPainter *, dm_dag_t *, dm_dag_node_t *, int *);  
   void draw_dag_(QPainter *, dm_dag_t *);
   void draw_(QPainter *, dm_dag_t *);
   PyObject * get_dag_node_info_(dm_dag_node_t *);
