@@ -151,10 +151,12 @@ class DAGViewport(QWidget):
         self.update()
 
     def mousePressEvent(self, e):
+        print("mouse press event")
         self.x_mouse_pressed = e.x()
         self.y_mouse_pressed = e.y()
         self.pan_on = True
     def mouseReleaseEvent(self, e):
+        print("mouse release event")
         self.pan_on = False
 
     def enterEvent(self, e):
@@ -189,14 +191,14 @@ class DAGViewport(QWidget):
                 QToolTip.showText(e.globalPos(), None, self)
 
     def get_node_info_string(self, d):
-        s = ("worker=%i, cpu= %i, kind=%i\n"
+        s = ("Worker %i, CPU %i, node kind %i\n"
              "  t_1 (work): %i\n"
              "t_inf (span): %i\n"
              "earliest start time: %i\n"
              "    first ready time: %i\n"
              "       last start time: %i\n"
-             "start: t=%i, worker=%i, cpu=%i, file=%i, line=%i\n"
-             "  end: t=%i, worker=%i, cpu=%i, file=%i, line=%i\n"
+             "start: t=%i, worker %i, CPU %i (%s:%i)\n"
+             "  end: t=%i, worker %i, CPU %i (%s:%i)\n"
              "counters=%s") % (
                  d["worker"], d["cpu"], d["kind"],
                  d["t_1"], d["t_inf"],

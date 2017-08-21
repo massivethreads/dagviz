@@ -13,6 +13,13 @@ DM_SRC = dagmodel.c
 DM_OBJS = $(DM_SRC:.c=.o)
 DM_SHARED_OBJS = $(DM_SRC:.c=.so)
 
+DREN_CPP_HDR = qt/dagrenderer.h qt/dagrenderer.pro 
+DREN_CPP_SRC = qt/dagrenderer.cpp
+DREN_CPP_OBJS = $(patsubst qt/%.cpp,qt/lib%.so,$(DREN_CPP_SRC))
+DREN_SIP_HDR = sip/configure.py
+DREN_SIP_SRC = sip/dagrenderer.sip
+DREN_SIP_OBJS = $(patsubst sip/%.sip,sip/%.so,$(DREN_SIP_SRC))
+
 DV_HDR = dagviz.h callback.h 
 DV_AUX_SRC = dagviz.gresource.xml interface.c
 DV_SRC = layout.c draw.c view_dag.c view_dag_box.c view_timeline.c view_timeline_ver.c view_paraprof.c control.c graphs.c
@@ -25,7 +32,7 @@ DS_SRC =
 DS_OBJS = $(DS_SRC:.c=.o)
 
 EXE_SRC = dagviz.c dagprof.c dagstat_v1.c dagstat.c
-OBJS = $(DM_OBJS) $(DM_SHARED_OBJS) $(DV_OBJS) $(DS_OBJS) $(EXE_SRC:.c=.o)
+OBJS = $(DM_OBJS) $(DV_OBJS) $(DS_OBJS) $(EXE_SRC:.c=.o) $(DM_SHARED_OBJS) $(DREN_CPP_OBJS).* $(DREN_SIP_OBJS)
 
 
 CFLAGS += $(cflags)
@@ -47,7 +54,12 @@ LDFLAGS += -ldr -lm -lpthread
 
 exes := $(EXE_SRC:.c=)
 
-all: $(exes)
+all: $(exes) $(DREN_CPP_OBJS) $(DREN_SIP_OBJS)
+
+gtk: $(DM_OBJS) $(DV_OBJS) dagviz 
+	echo "dagviz has been compiled"
+qt: $(DM_SHARED_OBJS) $(DREN_CPP_OBJS) $(DREN_SIP_OBJS)	
+	echo "dagviz-pyqt's requirements $(DM_SHARED_OBJS) $(DREN_CPP_OBJS) $(DREN_SIP_OBJS) have been compiled"
 
 
 $(DM_OBJS): %.o: %.c $(DM_HDR) $(DM_SHARED_OBJS)
@@ -92,6 +104,12 @@ $(DV_OBJS): %.o: %.c $(DV_HDR)
 
 resources.c: dagviz.gresource.xml $(shell $(GLIB_COMPILE_RESOURCES) --sourcedir=. --generate-dependencies dagviz.gresource.xml)
 	$(GLIB_COMPILE_RESOURCES) dagviz.gresource.xml --target=$@ --sourcedir=. --generate-source
+
+$(DREN_CPP_OBJS): $(DREN_CPP_SRC) $(DREN_CPP_HDR)
+	cd qt; qmake; make; cd -
+
+$(DREN_SIP_OBJS): $(DREN_SIP_SRC) $(DREN_SIP_HDR)
+	cd sip; python3 configure.py; make; cd -
 
 
 install:

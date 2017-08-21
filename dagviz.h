@@ -17,6 +17,7 @@
 #include <cairo.h>
 #include <cairo-ps.h>
 #include <cairo-svg.h>
+#include <cairo-pdf.h>
 
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -567,6 +568,7 @@ void dv_view_add_viewport(dv_view_t *, dv_viewport_t *);
 void dv_view_remove_viewport(dv_view_t *, dv_viewport_t *);
 void dv_view_switch_viewport(dv_view_t *, dv_viewport_t *, dv_viewport_t *);
 
+void override_background_color(GtkWidget *, GdkRGBA *);
 void dv_viewport_init(dv_viewport_t *);
 void dv_viewport_miniver2_show(dv_viewport_t *);
 void dv_viewport_miniver_show(dv_viewport_t *);

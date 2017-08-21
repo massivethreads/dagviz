@@ -1068,6 +1068,18 @@ dv_viewport_toolbox_init(dv_viewport_t * VP) {
 }
 
 void
+override_background_color(GtkWidget * widget, GdkRGBA * rgba) {
+  GtkCssProvider * provider = gtk_css_provider_new();
+  gchar * css = g_strdup_printf ("* { background-color: %s; }", gdk_rgba_to_string (rgba));
+  gtk_css_provider_load_from_data(provider, css, -1, NULL);
+  g_free(css);
+  gtk_style_context_add_provider(gtk_widget_get_style_context(widget),
+                                 GTK_STYLE_PROVIDER (provider),
+                                 GTK_STYLE_PROVIDER_PRIORITY_APPLICATION);
+  g_object_unref(provider);
+}
+
+void
 dv_viewport_init(dv_viewport_t * VP) {
   char s[DV_STRING_LENGTH];
   sprintf(s, "Viewport %ld", VP - DVG->VP);
@@ -1097,7 +1109,7 @@ dv_viewport_init(dv_viewport_t * VP) {
   g_object_ref(G_OBJECT(VP->darea));
   gtk_box_pack_end(GTK_BOX(VP->box), VP->darea, TRUE, TRUE, 0);
   GtkWidget * darea = VP->darea;
-  gtk_widget_override_background_color(GTK_WIDGET(darea), GTK_STATE_FLAG_NORMAL, white);
+  override_background_color(GTK_WIDGET(darea), white);
   gtk_widget_set_can_focus(darea, TRUE);
   gtk_widget_add_events(GTK_WIDGET(darea), GDK_SCROLL_MASK | GDK_BUTTON_PRESS_MASK | GDK_BUTTON_RELEASE_MASK | GDK_POINTER_MOTION_MASK);
   g_signal_connect(G_OBJECT(darea), "draw", G_CALLBACK(on_darea_draw_event), (void *) VP);

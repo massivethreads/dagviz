@@ -614,9 +614,11 @@ DAGRenderer::get_dag_node_info_(dm_dag_node_t * node) {
   /* build DAG node's info into a Python object */
   PyObject * ret = NULL;
   if (pi) {
-    ret = Py_BuildValue("{s:(L,i,i,L,L),s:(L,i,i,L,L),s:L,s:L,s:L,s:L,s:L,s:i,s:i,s:i,s:[L,L,L,L]}",
-                        "start", pi->info.start.t, pi->info.start.worker, pi->info.start.cpu, pi->info.start.pos.file_idx, pi->info.start.pos.line,
-                        "end", pi->info.end.t, pi->info.end.worker, pi->info.end.cpu, pi->info.end.pos.file_idx, pi->info.end.pos.line,
+    ret = Py_BuildValue("{s:(L,i,i,s,L),s:(L,i,i,s,L),s:L,s:L,s:L,s:L,s:L,s:i,s:i,s:i,s:[L,L,L,L]}",
+                        "start", pi->info.start.t, pi->info.start.worker, pi->info.start.cpu,
+                        mDAG->P->S->C + mDAG->P->S->I[pi->info.start.pos.file_idx], pi->info.start.pos.line,
+                        "end", pi->info.end.t, pi->info.end.worker, pi->info.end.cpu,
+                        mDAG->P->S->C + mDAG->P->S->I[pi->info.end.pos.file_idx], pi->info.end.pos.line,
                         "est", pi->info.est,
                         "t_1", pi->info.t_1,
                         "t_inf", pi->info.t_inf,
