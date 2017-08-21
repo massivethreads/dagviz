@@ -177,7 +177,7 @@ DAGRenderer::do_animation_reverse_node(dm_dag_node_t * node) {
 }
 
 void
-DAGRenderer::do_expanding_one_1(dm_dag_t * D, dm_dag_node_t * node) {
+DAGRenderer::do_expanding_one_1_(dm_dag_t * D, dm_dag_node_t * node) {
   if (!dm_is_inner_loaded(node)) {
     if (dm_dag_build_node_inner(D, node) != DM_OK) {
       return;
@@ -196,7 +196,7 @@ DAGRenderer::do_expanding_one_1(dm_dag_t * D, dm_dag_node_t * node) {
 }
 
 void
-DAGRenderer::do_expanding_one_r(dm_dag_t * D, dm_dag_node_t * node) {
+DAGRenderer::do_expanding_one_r_(dm_dag_t * D, dm_dag_node_t * node) {
   if (!dm_is_set(node)) {
     dm_dag_node_set(D, node);
   }
@@ -205,17 +205,17 @@ DAGRenderer::do_expanding_one_r(dm_dag_t * D, dm_dag_node_t * node) {
          || dm_is_shrinked(node)
          || dm_is_shrinking(node))
         && !dm_is_expanding(node)) {
-      do_expanding_one_1(D, node);
+      do_expanding_one_1_(D, node);
     } else {
       /* Call inward */
-      do_expanding_one_r(D, node->head);
+      do_expanding_one_r_(D, node->head);
     }
   }
   
   /* Call link-along */
   dm_dag_node_t * x = NULL;
   while ( (x = dm_dag_node_traverse_nexts(node, x)) ) {
-    do_expanding_one_r(D, x);
+    do_expanding_one_r_(D, x);
   }
 }
 
@@ -224,11 +224,11 @@ DAGRenderer::do_expanding_one_(dm_dag_t * D) {
   /*
   dm_do_expanding_one(D);
   */
-  do_expanding_one_r(D, D->rt);
+  do_expanding_one_r_(D, D->rt);
 }
 
 void
-DAGRenderer::do_collapsing_one_1(_unused_ dm_dag_t * D, dm_dag_node_t * node) {
+DAGRenderer::do_collapsing_one_1_(_unused_ dm_dag_t * D, dm_dag_node_t * node) {
   /* add to animation */
   if (dm_is_expanding(node)) {
     dm_node_flag_remove(node->f, DM_NODE_FLAG_EXPANDING);
@@ -242,7 +242,43 @@ DAGRenderer::do_collapsing_one_1(_unused_ dm_dag_t * D, dm_dag_node_t * node) {
 }
 
 void
-DAGRenderer::do_collapsing_one_depth_r(dm_dag_t * D, dm_dag_node_t * node, int depth) {
+DAGRenderer::do_collapsing_one_r_(dm_dag_t * D, dm_dag_node_t * node) {
+  if (!dm_is_set(node)) {
+    return;
+  }
+  if (dm_is_union(node) && dm_is_inner_loaded(node)
+      && !dm_is_shrinking(node)
+      && (dm_is_expanded(node) || dm_is_expanding(node))) {
+    // check if node has expanded node, excluding shrinking nodes
+    int has_expanded_node = 0;
+    /* Traverse all children */
+    dm_dag_node_t * x = NULL;
+    while ( (x = dm_dag_node_traverse_children(node, x)) ) {
+      if (dm_is_union(x) && dm_is_inner_loaded(x)
+          && (dm_is_expanded(x) || dm_is_expanding(x))
+          && !dm_is_shrinking(x)) {
+        has_expanded_node = 1;
+        break;
+      }
+    }
+    if (!has_expanded_node) {
+      // collapsing node
+      do_collapsing_one_1_(D, node);
+    } else {
+      /* Call inward */
+      do_collapsing_one_r_(D, node->head);
+    }
+  }
+  
+  /* Call link-along */
+  dm_dag_node_t * x = NULL;
+  while ( (x = dm_dag_node_traverse_nexts(node, x)) ) {
+    do_collapsing_one_r_(D, x);
+  }
+}
+
+void
+DAGRenderer::do_collapsing_one_depth_r_(dm_dag_t * D, dm_dag_node_t * node, int depth) {
   if (!dm_is_set(node)) {
     return;
   }
@@ -262,18 +298,18 @@ DAGRenderer::do_collapsing_one_depth_r(dm_dag_t * D, dm_dag_node_t * node, int d
       }
     }
     if (!has_expanded_node && node->d >= depth) {
-      // collapsing node's parent
-      do_collapsing_one_1(D, node);
+      // collapsing node
+      do_collapsing_one_1_(D, node);
     } else {
       /* Call inward */
-      do_collapsing_one_depth_r(D, node->head, depth);
+      do_collapsing_one_depth_r_(D, node->head, depth);
     }
   }
   
   /* Call link-along */
   dm_dag_node_t * x = NULL;
   while ( (x = dm_dag_node_traverse_nexts(node, x)) ) {
-    do_collapsing_one_depth_r(D, x, depth);
+    do_collapsing_one_depth_r_(D, x, depth);
   }
 }
 
@@ -282,7 +318,7 @@ DAGRenderer::do_collapsing_one_(dm_dag_t * D) {
   /*
   dm_do_collapsing_one(D);
   */
-  do_collapsing_one_depth_r(D, D->rt, D->collapsing_d - 1);
+  do_collapsing_one_depth_r_(D, D->rt, D->collapsing_d - 1);
 }
 
 static void

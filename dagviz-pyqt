@@ -28,8 +28,9 @@ GO = {
 renderers = []
 
 class DAGViewport(QWidget):
-    def __init__(self):
+    def __init__(self, W):
         super(DAGViewport, self).__init__()
+        self.W = W
         # background color
         pal = self.palette()
         pal.setColor(QPalette.Window, Qt.white)
@@ -47,6 +48,7 @@ class DAGViewport(QWidget):
         self.y_mouse = 0
         self.setMouseTracking(True)
         self.R = None
+        # DAGs
         #for arg in sys.argv[1:]:
         if (len(sys.argv) > 1):
             arg = sys.argv[1]
@@ -58,6 +60,37 @@ class DAGViewport(QWidget):
         self.zoom_ratio_x = 1.0
         self.zoom_ratio_y = 1.0
         self.width
+        # node context menu
+        self.node_cmenu = QMenu(self)
+        self.nodeExpandAct = self.node_cmenu.addAction("E&xpand this node")
+        self.nodeCollapseAct = self.node_cmenu.addAction("&Collapse one depth this node's parent")
+        self.node_cmenu.addSeparator()
+        # default action when clicked
+        clickedActMenu = self.node_cmenu.addMenu("&Default action when clicked")
+        self.nodeClickedActGroup = QActionGroup(clickedActMenu)
+        self.nodeClickedActGroup.setExclusive(True)
+        self.nodeExpandActDef = clickedActMenu.addAction("E&xpand this node")
+        self.nodeExpandActDef.setCheckable(True)
+        self.nodeClickedActGroup.addAction(self.nodeExpandActDef)
+        self.nodeCollapseActDef = clickedActMenu.addAction("&Collapse one depth this node's parent")
+        self.nodeCollapseActDef.setCheckable(True)
+        self.nodeClickedActGroup.addAction(self.nodeCollapseActDef)
+        self.clickedNoneActDef = clickedActMenu.addAction("&None")
+        self.clickedNoneActDef.setCheckable(True)
+        self.nodeClickedActGroup.addAction(self.clickedNoneActDef)
+        self.nodeExpandActDef.setChecked(True)
+        # default action when hovered
+        hoveredActMenu = self.node_cmenu.addMenu("&Default action when hovered")
+        self.nodeHoveredActGroup = QActionGroup(hoveredActMenu)
+        self.nodeHoveredActGroup.setExclusive(True)
+        self.nodeInfoTooltipActDef = hoveredActMenu.addAction("Show node &information as a tooltip")
+        self.nodeInfoTooltipActDef.setCheckable(True)
+        self.nodeHoveredActGroup.addAction(self.nodeInfoTooltipActDef)
+        self.hoveredNoneActDef = hoveredActMenu.addAction("&None")
+        self.hoveredNoneActDef.setCheckable(True)
+        self.nodeHoveredActGroup.addAction(self.hoveredNoneActDef)
+        self.nodeInfoTooltipActDef.setChecked(True)
+        # Initial DAG expansion
         self.do_expanding_one()
         self.do_expanding_one()
 
@@ -151,13 +184,31 @@ class DAGViewport(QWidget):
         self.update()
 
     def mousePressEvent(self, e):
-        print("mouse press event")
-        self.x_mouse_pressed = e.x()
-        self.y_mouse_pressed = e.y()
-        self.pan_on = True
+        # only detect LeftButton (RightButton triggers context menus)
+        if e.button() == Qt.LeftButton:
+            # pan 
+            self.x_mouse_pressed = e.x()
+            self.y_mouse_pressed = e.y()
+            self.pan_on = True
     def mouseReleaseEvent(self, e):
-        print("mouse release event")
-        self.pan_on = False
+        # only detect LeftButton (RightButton triggers context menus)
+        if e.button() == Qt.LeftButton:
+            # pan
+            self.pan_on = False
+            # node clicked
+            checkedAction = self.nodeClickedActGroup.checkedAction()
+            if checkedAction != self.clickedNoneActDef:            
+                x_dag = self.convert_x_to_dag_space(e.x())
+                y_dag = self.convert_y_to_dag_space(e.y())
+                node = self.R.find_node(x_dag, y_dag)
+                if node is not None:
+                    if checkedAction == self.nodeExpandActDef:
+                        self.R.do_expanding_one_r(node)
+                    elif checkedAction == self.nodeCollapseActDef:
+                        self.R.do_collapsing_parent(node)
+                    if self.R.animationOn == 0:
+                        self.R.layout()
+                        self.update()                    
 
     def enterEvent(self, e):
         #print("mouse enters")
@@ -180,15 +231,20 @@ class DAGViewport(QWidget):
             GO["auto_zoom_fit"] = False
             self.update()
         else:
-            x_dag = self.convert_x_to_dag_space(e.x())
-            y_dag = self.convert_y_to_dag_space(e.y())
-            node = self.R.find_node(x_dag, y_dag)
-            if node is not None:
-                info_dict = self.R.get_dag_node_info(node)
-                info_str = self.get_node_info_string(info_dict)
-                QToolTip.showText(e.globalPos(), info_str, self, QRect(), 30000)
-            else:
-                QToolTip.showText(e.globalPos(), None, self)
+            # node hovered
+            checkedAction = self.nodeHoveredActGroup.checkedAction()
+            if checkedAction != self.hoveredNoneActDef:
+                x_dag = self.convert_x_to_dag_space(e.x())
+                y_dag = self.convert_y_to_dag_space(e.y())
+                node = self.R.find_node(x_dag, y_dag)
+                if node is not None:
+                    if checkedAction == self.nodeInfoTooltipActDef:
+                        info_dict = self.R.get_dag_node_info(node)
+                        info_str = self.get_node_info_string(info_dict)
+                        QToolTip.showText(e.globalPos(), info_str, self, QRect(), 30000)
+                else:
+                    if checkedAction == self.nodeInfoTooltipActDef:
+                        QToolTip.showText(e.globalPos(), None, self)
 
     def get_node_info_string(self, d):
         s = ("Worker %i, CPU %i, node kind %i\n"
@@ -333,16 +389,34 @@ class DAGViewport(QWidget):
                 self.R.layout()
                 self.update()
 
+    def contextMenuEvent(self, e):
+        x_dag = self.convert_x_to_dag_space(e.x())
+        y_dag = self.convert_y_to_dag_space(e.y())
+        node = self.R.find_node(x_dag, y_dag)
+        if node is not None:
+            cmenu = self.node_cmenu
+            action = cmenu.exec_(self.mapToGlobal(e.pos()))
+            if action == self.nodeExpandAct:
+                self.R.do_expanding_one_r(node)
+            elif action == self.nodeCollapseAct:
+                self.R.do_collapsing_parent(node)
+            if self.R.animationOn == 0:
+                self.R.layout()
+                self.update()
+        else:
+            cmenu = self.W.cmenu
+            action = cmenu.exec_(self.mapToGlobal(e.pos()))
+
             
 class DAGViz(QMainWindow):
     def __init__(self):
         super(DAGViz, self).__init__()
-        self.VP = DAGViewport()
+        self.VP = DAGViewport(self)
         self.initUI()
         
     def initUI(self):
         # main window
-        self.setGeometry(0, 0, 1000, 600)
+        self.setGeometry(0, 0, 1100, 800)
         self.center()
         self.setWindowTitle('DAGViz')
         self.setWindowIcon(QIcon(sysroot + '/gui/dagviz_icon.svg'))
@@ -407,7 +481,7 @@ class DAGViz(QMainWindow):
         zoomFullAct.setShortcut('F')
         zoomFullAct.setIcon(QIcon(sysroot + '/gui/fit_button_icon.svg'))
         zoomFullAct.triggered.connect(self.VP.do_zoom_fit_full)
-        zoomHorAct = zoomMenu.addAction('Fit &Horizontally')
+        zoomHorAct = self.zoomHorAct = zoomMenu.addAction('Fit &Horizontally')
         zoomHorAct.setShortcut('H')
         zoomHorAct.triggered.connect(self.VP.do_zoom_fit_hor)
         zoomVerAct = zoomMenu.addAction('Fit &Vertically')
@@ -420,6 +494,16 @@ class DAGViz(QMainWindow):
         self.toolbar.addAction(expandAct)
         self.toolbar.addAction(collapseAct)
         self.toolbar.addSeparator()
+
+        # context menu
+        self.cmenu = QMenu(self)
+        self.cmenu.addAction(expandAct)
+        self.cmenu.addAction(collapseAct)
+        self.cmenu.addSeparator()
+        zoomMenu = self.cmenu.addMenu('&Zoom')
+        zoomMenu.addAction(zoomFullAct)
+        zoomMenu.addAction(zoomHorAct)
+        zoomMenu.addAction(zoomVerAct)
 
         # hidden actions
         # moveUpAct = QAction(self)
@@ -444,14 +528,6 @@ class DAGViz(QMainWindow):
         
         # show
         self.show()
-
-    def contextMenuEvent(self, event):
-           cmenu = QMenu(self)
-           openAct = cmenu.addAction("Open")
-           quitAct = cmenu.addAction("Quit")
-           action = cmenu.exec_(self.mapToGlobal(event.pos()))
-           if action == quitAct:
-               qApp.quit()
 
     def keyPressEvent(self, e):
         if e.key() == Qt.Key_Up:

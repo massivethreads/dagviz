@@ -25,8 +25,14 @@ public:
   void draw();
   void draw(void *);
   void draw(void *, double, double);
+  void do_expanding_one_1(void *);
+  void do_expanding_one_r(void *);
   void do_expanding_one();
+  void do_collapsing_one_1(void *);
+  void do_collapsing_one_r(void *);
+  void do_collapsing_one_depth_r(void *, int);
   void do_collapsing_one();
+  void do_collapsing_parent(void *);
   double left_width();
   double right_width();
   double width();

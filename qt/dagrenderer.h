@@ -48,8 +48,17 @@ public:
     QPainter * qp = (QPainter *) qp_ptr;
     draw_(qp, mDAG);
   };
+  void do_expanding_one_1(void * node) { do_expanding_one_1_(mDAG, (dm_dag_node_t *) node); };
+  void do_expanding_one_r(void * node) { do_expanding_one_r_(mDAG, (dm_dag_node_t *) node); };
   void do_expanding_one() { do_expanding_one_(mDAG); };
+
+  void do_collapsing_one_1(void * node) { do_collapsing_one_1_(mDAG, (dm_dag_node_t *) node); };
+  void do_collapsing_one_r(void * node) { do_collapsing_one_r_(mDAG, (dm_dag_node_t *) node); };
+  void do_collapsing_one_depth_r(void * node, int depth) { do_collapsing_one_depth_r_(mDAG, (dm_dag_node_t *) node, depth); };
   void do_collapsing_one() { do_collapsing_one_(mDAG); };
+  void do_collapsing_parent(void * node) { do_collapsing_one_r_(mDAG, ((dm_dag_node_t *) node)->parent); };
+
+
   double left_width() { int cid = 0; return mDAG->rt->c[cid].lw; };
   double right_width() { int cid = 0; return mDAG->rt->c[cid].rw; };
   double width() { return left_width() + right_width(); };
@@ -83,11 +92,12 @@ private:
   void do_animation_add_node(dm_dag_node_t *);
   void do_animation_remove_node(dm_dag_node_t *);
   void do_animation_reverse_node(dm_dag_node_t *);
-  void do_expanding_one_1(dm_dag_t *, dm_dag_node_t *);
-  void do_expanding_one_r(dm_dag_t *, dm_dag_node_t *);
+  void do_expanding_one_1_(dm_dag_t *, dm_dag_node_t *);
+  void do_expanding_one_r_(dm_dag_t *, dm_dag_node_t *);
   void do_expanding_one_(dm_dag_t *);
-  void do_collapsing_one_1(dm_dag_t *, dm_dag_node_t *);
-  void do_collapsing_one_depth_r(dm_dag_t *, dm_dag_node_t *, int);
+  void do_collapsing_one_1_(dm_dag_t *, dm_dag_node_t *);
+  void do_collapsing_one_r_(dm_dag_t *, dm_dag_node_t *);
+  void do_collapsing_one_depth_r_(dm_dag_t *, dm_dag_node_t *, int);
   void do_collapsing_one_(dm_dag_t *);
   void draw_dag_node_1(QPainter *, dm_dag_t *, dm_dag_node_t *, _unused_ int *);
   void draw_dag_node_r(QPainter *, dm_dag_t *, dm_dag_node_t *, int *);  
