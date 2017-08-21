@@ -182,7 +182,29 @@ class DAGViewport(QWidget):
             y_dag = self.convert_y_to_dag_space(e.y())
             node = self.R.find_node(x_dag, y_dag)
             if node is not None:
-                None #print(self.R.get_dag_node_info(node))
+                info_dict = self.R.get_dag_node_info(node)
+                info_str = self.get_node_info_string(info_dict)
+                QToolTip.showText(e.globalPos(), info_str, self, QRect(), 30000)
+            else:
+                QToolTip.showText(e.globalPos(), None, self)
+
+    def get_node_info_string(self, d):
+        s = ("worker=%i, cpu= %i, kind=%i\n"
+             "  t_1 (work): %i\n"
+             "t_inf (span): %i\n"
+             "earliest start time: %i\n"
+             "    first ready time: %i\n"
+             "       last start time: %i\n"
+             "start: t=%i, worker=%i, cpu=%i, file=%i, line=%i\n"
+             "  end: t=%i, worker=%i, cpu=%i, file=%i, line=%i\n"
+             "counters=%s") % (
+                 d["worker"], d["cpu"], d["kind"],
+                 d["t_1"], d["t_inf"],
+                 d["est"], d["first_ready_t"], d["last_start_t"],
+                 d["start"][0], d["start"][1], d["start"][2], d["start"][3], d["start"][4],
+                 d["end"][0], d["end"][1], d["end"][2], d["end"][3], d["end"][4],
+                 d["counters"])
+        return s
 
     def move_up(self):
         dx = 0.0
