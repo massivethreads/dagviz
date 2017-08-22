@@ -77,13 +77,13 @@ DAGRenderer::update() {
 };
 
 void
-DAGRenderer::layout1_(dm_dag_t * D) {
-  dm_dag_layout1(D);
+DAGRenderer::layout1_(dm_dag_t * D, int cid) {
+  dm_dag_layout1(D, cid);
 }
 
 void
-DAGRenderer::layout2_(dm_dag_t * D) {
-  dm_dag_layout2(D);
+DAGRenderer::layout2_(dm_dag_t * D, int cid) {
+  dm_dag_layout2(D, cid);
 }
 
 void
@@ -105,10 +105,12 @@ DAGRenderer::layout__(dm_dag_t * D, int cid) {
 
   switch (cid) {
   case DM_LAYOUT_DAG_COORDINATE:
-    layout1_(D);
+    layout1_(D, cid);
     break;
   case DM_LAYOUT_DAG_BOX_LINEAR_COORDINATE:
-    layout2_(D);
+  case DM_LAYOUT_DAG_BOX_POWER_COORDINATE:
+  case DM_LAYOUT_DAG_BOX_LOG_COORDINATE:
+    layout2_(D, cid);
     break;
   default:
     dm_perror("unknown cid=%d", cid);
@@ -869,6 +871,8 @@ DAGRenderer::draw_(QPainter * qp, dm_dag_t * D) {
     draw1_(qp, D, cid);
     break;
   case DM_LAYOUT_DAG_BOX_LINEAR_COORDINATE:
+  case DM_LAYOUT_DAG_BOX_POWER_COORDINATE:
+  case DM_LAYOUT_DAG_BOX_LOG_COORDINATE:
     draw2_(qp, D, cid);
     break;
   default:

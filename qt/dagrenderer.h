@@ -16,6 +16,9 @@ class DAGRenderer : public QObject {
 public:
   const int LAYOUT_TYPE_1 = DM_LAYOUT_DAG_COORDINATE;
   const int LAYOUT_TYPE_2 = DM_LAYOUT_DAG_BOX_LINEAR_COORDINATE;
+  const int LAYOUT_TYPE_3 = DM_LAYOUT_DAG_BOX_POWER_COORDINATE;
+  const int LAYOUT_TYPE_4 = DM_LAYOUT_DAG_BOX_LOG_COORDINATE;
+  const int LAYOUT_TYPE_5 = DM_LAYOUT_PARAPROF_COORDINATE;
   
   DAGRenderer();
   void setDAG(char * filename);
@@ -36,9 +39,13 @@ public:
   double getLinearRadix() { return mDAG->linear_radix; }
   double getPowerRadix() { return mDAG->power_radix; }
   double getLogRadix() { return mDAG->log_radix; }
+  void setLinearRadix(double r) { mDAG->linear_radix = r; }
+  void setPowerRadix(double r) { mDAG->power_radix = r; }
+  void setLogRadix(double r) { mDAG->log_radix = r; }
 
   PyObject * compute_dag_statistics(int D_id);
   void layout() { layout_(mDAG); };
+  void layout(int cid) { layout__(mDAG, cid); };
   void draw(void * qp_ptr) {
     this->anchorEnabled = false;
     QPainter * qp = (QPainter *) qp_ptr;
@@ -91,8 +98,8 @@ private:
   char * parse_python_string(PyObject *);
   int parse_python_int(PyObject *);
   void update();
-  void layout1_(dm_dag_t *);
-  void layout2_(dm_dag_t *);
+  void layout1_(dm_dag_t *, int);
+  void layout2_(dm_dag_t *, int);
   void layout__(dm_dag_t *, int);
   void layout_(dm_dag_t *);
   void do_animation_start();

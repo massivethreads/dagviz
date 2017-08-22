@@ -39,8 +39,8 @@
 #define DM_LAYOUT_DAG_BOX_LOG_COORDINATE 1
 #define DM_LAYOUT_DAG_BOX_POWER_COORDINATE 2
 #define DM_LAYOUT_DAG_BOX_LINEAR_COORDINATE 3
-#define DM_LAYOUT_TIMELINE_COORDINATE 4
-#define DM_LAYOUT_TIMELINE_VER_COORDINATE 5
+#define DM_LAYOUT_TIMELINES_COORDINATE 4
+#define DM_LAYOUT_TIMELINES_VER_COORDINATE 5
 #define DM_LAYOUT_PARAPROF_COORDINATE 6
 #define DM_LAYOUT_CRITICAL_PATH_COORDINATE 7
 
@@ -477,8 +477,8 @@ double dm_get_alpha_fading_out(dm_dag_t *, dm_dag_node_t *);
 double dm_get_alpha_fading_in(dm_dag_t *, dm_dag_node_t *);
 void dm_motion_init(dm_motion_t *, dm_dag_t *);
 dm_dag_node_t * dm_dag_find_node(dm_dag_t *, double, double, int);
-void dm_dag_layout1(dm_dag_t *);
-void dm_dag_layout2(dm_dag_t *);
+void dm_dag_layout1(dm_dag_t *, int);
+void dm_dag_layout2(dm_dag_t *, int);
 
 
 /***** Utilities *****/

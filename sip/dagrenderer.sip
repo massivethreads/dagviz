@@ -12,6 +12,9 @@ class DAGRenderer : public QObject {
 public:
   const int LAYOUT_TYPE_1;
   const int LAYOUT_TYPE_2;
+  const int LAYOUT_TYPE_3;
+  const int LAYOUT_TYPE_4;
+  const int LAYOUT_TYPE_5;
 
   DAGRenderer();
   void setDAG(char *);
@@ -26,9 +29,13 @@ public:
   double getLinearRadix();
   double getPowerRadix();
   double getLogRadix();
+  void setLinearRadix(double);
+  void setPowerRadix(double);
+  void setLogRadix(double);
   
   PyObject * compute_dag_statistics(int);
   void layout();
+  void layout(int);
   void draw(void *);
   void draw(void *, double, double);
   void do_expanding_one_1(void *);

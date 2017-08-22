@@ -2026,7 +2026,6 @@ dm_do_expanding_one_r(dm_dag_t * D, dm_dag_node_t * node) {
 void
 dm_do_expanding_one(dm_dag_t * D) {
   dm_do_expanding_one_r(D, D->rt);
-  dm_dag_layout1(D);
 }
 
 static void
@@ -2121,7 +2120,6 @@ dm_do_collapsing_one_depth_r(dm_dag_t * D, dm_dag_node_t * node, int depth) {
 void
 dm_do_collapsing_one(dm_dag_t * D) {
   dm_do_collapsing_one_depth_r(D, D->rt, D->collapsing_d - 1);
-  dm_dag_layout1(D);
 }
 
 double
@@ -2422,8 +2420,7 @@ dm_dag_layout1_node_phase2(dm_dag_t * D, dm_dag_node_t * node, int cid) {
 }
 
 void
-dm_dag_layout1(dm_dag_t * D) {
-  int cid = DM_LAYOUT_DAG_COORDINATE;
+dm_dag_layout1(dm_dag_t * D, int cid) {
   dm_node_coordinate_t * rt_c = &D->rt->c[cid];
 
   /* phase 1: calculate relative coordinates */
@@ -2684,8 +2681,7 @@ dm_dag_layout2_node_phase2(dm_dag_t * D, dm_dag_node_t * node, int cid) {
 }
 
 void
-dm_dag_layout2(dm_dag_t * D) {
-  int cid = DM_LAYOUT_DAG_BOX_LINEAR_COORDINATE;
+dm_dag_layout2(dm_dag_t * D, int cid) {
   dm_node_coordinate_t * rt_c = &D->rt->c[cid];
 
   /* phase 1: calculate relative coordinates */
