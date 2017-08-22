@@ -2026,7 +2026,7 @@ dm_do_expanding_one_r(dm_dag_t * D, dm_dag_node_t * node) {
 void
 dm_do_expanding_one(dm_dag_t * D) {
   dm_do_expanding_one_r(D, D->rt);
-  dm_layout_dag(D);
+  dm_dag_layout1(D);
 }
 
 static void
@@ -2121,7 +2121,7 @@ dm_do_collapsing_one_depth_r(dm_dag_t * D, dm_dag_node_t * node, int depth) {
 void
 dm_do_collapsing_one(dm_dag_t * D) {
   dm_do_collapsing_one_depth_r(D, D->rt, D->collapsing_d - 1);
-  dm_layout_dag(D);
+  dm_dag_layout1(D);
 }
 
 double
@@ -2213,6 +2213,24 @@ dm_animation_reverse_node(dm_animation_t * a, dm_dag_node_t * node) {
   dm_llist_add(a->movings, node);
 }
 
+double
+dm_get_alpha_fading_out(dm_dag_t * D, dm_dag_node_t * node) {
+  double ratio = (dm_get_time() - node->started) / D->anim->duration;
+  double ret;
+  //ret = (1.0 - ratio) * 0.75;
+  ret = 1.0 - ratio * ratio;
+  return ret;
+}
+
+double
+dm_get_alpha_fading_in(dm_dag_t * D, dm_dag_node_t * node) {
+  double ratio = (dm_get_time() - node->started) / D->anim->duration;
+  double ret;
+  //ret = ratio * 1.5;
+  ret = ratio * ratio;
+  return ret;
+}
+
 static void
 dm_motion_reset(dm_motion_t * m) {
   memset(m, 0, sizeof(dm_motion_t));
@@ -2228,8 +2246,40 @@ dm_motion_init(dm_motion_t * m, dm_dag_t * D) {
   m->D = D;
 }
 
+static dm_dag_node_t *
+dm_dag_find_node_r(_unused_ dm_dag_t * D, double x, double y, dm_dag_node_t * node, int cid) {
+  dm_dag_node_t * ret = NULL;
+  dm_node_coordinate_t * c = &node->c[cid];
+  /* Call inward */
+  if (dm_is_single(node)) {
+    if (c->x - c->lw < x && x < c->x + c->rw && c->y < y && y < c->y + c->dw) {
+      return node;
+    }
+  } else if (c->x - c->lw < x && x < c->x + c->rw && c->y < y && y < c->y + c->dw) {
+    ret = dm_dag_find_node_r(D, x, y, node->head, cid);
+    if (ret)
+      return ret;
+  }
+  /* Call link-along */
+  if (c->x - c->link_lw < x && x < c->x + c->link_rw && c->y < y && y < c->y + c->link_dw) {
+    dm_dag_node_t * next = NULL;
+    while ( (next = dm_dag_node_traverse_nexts(node, next)) ) {
+      ret = dm_dag_find_node_r(D, x, y, next, cid);
+      if (ret)
+        return ret;
+    }
+  }
+  return NULL;
+}
+
+dm_dag_node_t *
+dm_dag_find_node(dm_dag_t * D, double x, double y, int cid) {
+  dm_dag_node_t * ret = dm_dag_find_node_r(D, x, y, D->rt, cid);
+  return ret;
+}
+
 static void
-dm_layout_dag_node_phase1(dm_dag_t * D, dm_dag_node_t * node, int cid) {
+dm_dag_layout1_node_phase1(dm_dag_t * D, dm_dag_node_t * node, int cid) {
   if (dm_is_shrinking(node) && (D->collapsing_d == 0 || node->d < D->collapsing_d))
     D->collapsing_d = node->d;
   dm_node_coordinate_t * node_c = &node->c[cid];
@@ -2242,7 +2292,7 @@ dm_layout_dag_node_phase1(dm_dag_t * D, dm_dag_node_t * node, int cid) {
     head_c->xpre = 0.0;
     head_c->y = node_c->y;
     // Recursive call
-    dm_layout_dag_node_phase1(D, node->head, cid);
+    dm_dag_layout1_node_phase1(D, node->head, cid);
     // node's inward
     node_c->lw = head_c->link_lw;
     node_c->rw = head_c->link_rw;
@@ -2275,7 +2325,7 @@ dm_layout_dag_node_phase1(dm_dag_t * D, dm_dag_node_t * node, int cid) {
     ypre = (node_c->dw - 2 * D->radius + DMG->opts.vnd) * rate;
     u_c->y = node_c->y + ypre;
     // Recursive call
-    dm_layout_dag_node_phase1(D, u, cid);
+    dm_dag_layout1_node_phase1(D, u, cid);
     // node's link-along
     node_c->link_lw = dm_max(node_c->lw, u_c->link_lw);
     node_c->link_rw = dm_max(node_c->rw, u_c->link_rw);
@@ -2293,8 +2343,8 @@ dm_layout_dag_node_phase1(dm_dag_t * D, dm_dag_node_t * node, int cid) {
     u_c->y = node_c->y + ypre;
     v_c->y = node_c->y + ypre;
     // Recursive call
-    dm_layout_dag_node_phase1(D, u, cid);
-    dm_layout_dag_node_phase1(D, v, cid);
+    dm_dag_layout1_node_phase1(D, u, cid);
+    dm_dag_layout1_node_phase1(D, v, cid);
     
     // node's linked u,v's outward
     hgap = DMG->opts.hnd * rate;
@@ -2323,7 +2373,7 @@ dm_layout_dag_node_phase1(dm_dag_t * D, dm_dag_node_t * node, int cid) {
 }
 
 static void
-dm_layout_dag_node_phase2(dm_dag_t * D, dm_dag_node_t * node, int cid) {
+dm_dag_layout1_node_phase2(dm_dag_t * D, dm_dag_node_t * node, int cid) {
   dm_node_coordinate_t * node_c = &node->c[cid];
   /* Calculate inward */
   if (dm_is_inward_callable(node)) {
@@ -2333,7 +2383,7 @@ dm_layout_dag_node_phase2(dm_dag_t * D, dm_dag_node_t * node, int cid) {
     head_c->xp = 0.0;
     head_c->x = node_c->x;
     // Recursive call
-    dm_layout_dag_node_phase2(D, node->head, cid);
+    dm_dag_layout1_node_phase2(D, node->head, cid);
   }
     
   /* Calculate link-along */
@@ -2349,7 +2399,7 @@ dm_layout_dag_node_phase2(dm_dag_t * D, dm_dag_node_t * node, int cid) {
     u_c->xp = u_c->xpre + node_c->xp;
     u_c->x = u_c->xp + u->parent->c[cid].x;
     // Recursive call
-    dm_layout_dag_node_phase2(D, u, cid);
+    dm_dag_layout1_node_phase2(D, u, cid);
     break;
   case 2:
     u = node->next;  // cont node
@@ -2362,82 +2412,292 @@ dm_layout_dag_node_phase2(dm_dag_t * D, dm_dag_node_t * node, int cid) {
     v_c->xp = v_c->xpre + node_c->xp;
     v_c->x = v_c->xp + v->parent->c[cid].x;
     // Recursive call
-    dm_layout_dag_node_phase2(D, u, cid);
-    dm_layout_dag_node_phase2(D, v, cid);
+    dm_dag_layout1_node_phase2(D, u, cid);
+    dm_dag_layout1_node_phase2(D, v, cid);
     break;
   default:
     dm_check(0);
     break;
   }
-  
 }
 
 void
-dm_layout_dag(dm_dag_t * D) {
-  int cid = 0;
-  dm_node_coordinate_t * root_c = &D->rt->c[cid];
+dm_dag_layout1(dm_dag_t * D) {
+  int cid = DM_LAYOUT_DAG_COORDINATE;
+  dm_node_coordinate_t * rt_c = &D->rt->c[cid];
 
   /* phase 1: calculate relative coordinates */
   D->collapsing_d = 0;
-  root_c->xpre = 0.0; /* predecessor-based */
-  root_c->y = 0.0;
-  dm_layout_dag_node_phase1(D, D->rt, cid);
+  rt_c->xpre = 0.0; /* predecessor-based */
+  rt_c->y = 0.0;
+  dm_dag_layout1_node_phase1(D, D->rt, cid);
 
   /* phase 2: calculate absolute coordinates */
-  root_c->xp = 0.0; /* parent-based */
-  root_c->x = 0.0;
-  dm_layout_dag_node_phase2(D, D->rt, cid);
+  rt_c->xp = 0.0; /* parent-based */
+  rt_c->x = 0.0;
+  dm_dag_layout1_node_phase2(D, D->rt, cid);
 }
 
-double
-dm_get_alpha_fading_out(dm_dag_t * D, dm_dag_node_t * node) {
-  double ratio = (dm_get_time() - node->started) / D->anim->duration;
+static double
+dm_dag_layout_scale_down(dm_dag_t * D, double val, int cid) {
   double ret;
-  //ret = (1.0 - ratio) * 0.75;
-  ret = 1.0 - ratio * ratio;
+  switch (cid) {
+  case DM_LAYOUT_DAG_BOX_LOG_COORDINATE:
+    ret = log(val) / log(D->log_radix);
+    break;
+  case DM_LAYOUT_DAG_BOX_POWER_COORDINATE:
+    ret = pow(val, D->power_radix);
+    break;
+  case DM_LAYOUT_DAG_BOX_LINEAR_COORDINATE:
+    ret = val / D->linear_radix;
+    break;
+  default:
+    dm_perror("undefined cid=%d\n", cid);
+    ret = val;
+    break;
+  }
   return ret;
 }
 
-double
-dm_get_alpha_fading_in(dm_dag_t * D, dm_dag_node_t * node) {
-  double ratio = (dm_get_time() - node->started) / D->anim->duration;
-  double ret;
-  //ret = ratio * 1.5;
-  ret = ratio * ratio;
-  return ret;
+static double
+dm_dag_calculate_vgap(dm_dag_t * D, dm_dag_node_t * parent, dm_dag_node_t * node1, dm_dag_node_t * node2, int cid) {
+  dr_pi_dag_node * pi1 = dm_pidag_get_node_by_dag_node(D->P, node1);
+  dr_pi_dag_node * pi2 = dm_pidag_get_node_by_dag_node(D->P, node2);
+  double rate = dm_calculate_animation_rate(D, parent);
+  double vgap;
+  if (!D->frombt) {
+    // begin - end
+    double time_gap = dm_dag_layout_scale_down(D, pi2->info.start.t - pi1->info.end.t, cid);
+    vgap = rate * time_gap;
+  } else {
+    // from beginning
+    double time1 = dm_dag_layout_scale_down(D, pi1->info.end.t - D->bt, cid);
+    double time2 = dm_dag_layout_scale_down(D, pi2->info.start.t - D->bt, cid);
+    vgap = rate * (time2 - time1);
+  }
+  return vgap;
+}
+
+static double
+dm_dag_calculate_vsize(dm_dag_t * D, dm_dag_node_t * node, int cid) {
+  dr_pi_dag_node * pi = dm_pidag_get_node_by_dag_node(D->P, node);
+  double rate = 1.0;//dv_view_calculate_rate(V, node->parent);
+  double vsize;
+  if (!D->frombt) {
+    // begin - end
+    double time_gap = dm_dag_layout_scale_down(D, pi->info.end.t - pi->info.start.t, cid);
+    vsize = rate * time_gap;
+  } else {
+    // from beginning
+    double time1 = dm_dag_layout_scale_down(D, pi->info.start.t - D->bt, cid);
+    double time2 = dm_dag_layout_scale_down(D, pi->info.end.t - D->bt, cid);
+    vsize = rate * (time2 - time1);
+  }
+  return vsize;
 }
 
 static dm_dag_node_t *
-dm_dag_find_clicked_node_r(_unused_ dm_dag_t * D, double x, double y, dm_dag_node_t * node) {
-  int cid = 0;
-  dm_dag_node_t * ret = NULL;
-  dm_node_coordinate_t * c = &node->c[cid];
-  /* Call inward */
-  if (dm_is_single(node)) {
-    if (c->x - c->lw < x && x < c->x + c->rw && c->y < y && y < c->y + c->dw) {
-      return node;
-    }
-  } else if (c->x - c->lw < x && x < c->x + c->rw && c->y < y && y < c->y + c->dw) {
-    ret = dm_dag_find_clicked_node_r(D, x, y, node->head);
-    if (ret)
-      return ret;
+dm_dag_layout2_get_last_finished_tail(dm_dag_t * D, dm_dag_node_t * node) {
+  dm_dag_node_t * ret = 0;
+  dm_dag_node_t * tail = NULL;
+  while ( (tail = dm_dag_node_traverse_tails(node, tail)) ) {
+    dr_pi_dag_node * ret_pi = dm_pidag_get_node_by_dag_node(D->P, ret);
+    dr_pi_dag_node * tail_pi = dm_pidag_get_node_by_dag_node(D->P, tail);
+    if (!ret || ret_pi->info.end.t < tail_pi->info.end.t)
+      ret = tail;
   }
-  /* Call link-along */
-  if (c->x - c->link_lw < x && x < c->x + c->link_rw && c->y < y && y < c->y + c->link_dw) {
-    dm_dag_node_t * next = NULL;
-    while ( (next = dm_dag_node_traverse_nexts(node, next)) ) {
-      ret = dm_dag_find_clicked_node_r(D, x, y, next);
-      if (ret)
-        return ret;
-    }
-  }
-  return NULL;
+  return ret;
 }
 
-dm_dag_node_t *
-dm_dag_find_clicked_node(dm_dag_t * D, double x, double y) {
-  dm_dag_node_t * ret = dm_dag_find_clicked_node_r(D, x, y, D->rt);
+static double
+dm_dag_layout2_get_xp_by_accumulating_xpre(_unused_ dm_dag_t * D, dm_dag_node_t * node, int cid) {
+  dm_dag_node_t * u = node;
+  double dis = 0.0;
+  while (u) {
+    dis += u->c[cid].xpre;
+    u = u->pre;
+  }
+  return dis;
+}
+
+static double
+dm_dag_layout2_get_last_tail_xp_r(dm_dag_t * D, dm_dag_node_t * node, int cid) {
+  dm_check(node);
+  double ret = 0.0;
+  if (!dm_is_single(node)) {
+    dm_dag_node_t * last = dm_dag_layout2_get_last_finished_tail(D, node);
+    if (last) {
+      ret += dm_dag_layout2_get_xp_by_accumulating_xpre(D, last, cid);
+      ret += dm_dag_layout2_get_last_tail_xp_r(D, last, cid);
+    }
+  }
   return ret;
+}
+
+static void
+dm_dag_layout2_node_phase1(dm_dag_t * D, dm_dag_node_t * node, int cid) {
+  if (dm_is_shrinking(node) && (D->collapsing_d == 0 || node->d < D->collapsing_d))
+    D->collapsing_d = node->d;
+  dm_node_coordinate_t * node_c = &node->c[cid];
+  
+  /* Calculate inward */
+  if (dm_is_inward_callable(node)) {
+    dm_check(node->head);
+    // node's head's outward
+    dm_node_coordinate_t * head_c = &node->head->c[cid];
+    head_c->xpre = 0.0;
+    head_c->y = node_c->y;
+    // Recursive call
+    dm_dag_layout2_node_phase1(D, node->head, cid);
+    // node's inward
+    node_c->lw = head_c->link_lw;
+    node_c->rw = head_c->link_rw;
+    node_c->dw = head_c->link_dw;
+    // for enhancing expand/collapse animation
+    if (node_c->lw < D->radius)
+      node_c->lw = D->radius;
+    if (node_c->rw < D->radius)
+      node_c->rw = D->radius;
+    double vsize = dm_dag_calculate_vsize(D, node, cid);
+    if (node_c->dw < vsize)
+      node_c->dw = vsize;
+  } else {
+    // node's inward
+    node_c->lw = D->radius;
+    node_c->rw = D->radius;
+    node_c->dw = dm_dag_calculate_vsize(D, node, cid);
+  }
+    
+  /* Calculate link-along */
+  dm_dag_node_t * u, * v; // linked nodes
+  dm_node_coordinate_t * u_c, * v_c;
+  double rate, ugap, vgap, hgap;
+  switch ( dm_dag_node_count_nexts(node) ) {
+  case 0:
+    // node's link-along
+    node_c->link_lw = node_c->lw;
+    node_c->link_rw = node_c->rw;
+    node_c->link_dw = node_c->dw;
+    break;
+  case 1:
+    u = node->next;
+    u_c = &u->c[cid];
+    // node & u's rate
+    rate = dm_calculate_animation_rate(D, node->parent);
+    ugap = dm_dag_calculate_vgap(D, node->parent, node, u, cid);
+    // node's linked u's outward    
+    u_c->xpre = dm_dag_layout2_get_last_tail_xp_r(D, node, cid);
+    u_c->y = node_c->y + node_c->dw * rate + ugap;
+    // Recursive call
+    dm_dag_layout2_node_phase1(D, u, cid);
+    // node's link-along
+    node_c->link_lw = dm_max(node_c->lw, u_c->link_lw - u_c->xpre);
+    node_c->link_rw = dm_max(node_c->rw, u_c->link_rw + u_c->xpre);
+    node_c->link_dw = node_c->dw * rate + ugap + u_c->link_dw;
+    break;
+  case 2:
+    u = node->next;  // cont node
+    v = node->spawn; // task node
+    u_c = &u->c[cid];
+    v_c = &v->c[cid];
+    // node & u,v's rate
+    rate = dm_calculate_animation_rate(D, node->parent);
+    ugap = dm_dag_calculate_vgap(D, node->parent, node, u, cid);
+    vgap = dm_dag_calculate_vgap(D, node->parent, node, v, cid);
+    // node's linked u,v's outward
+    u_c->y = node_c->y + node_c->dw * rate + ugap;
+    v_c->y = node_c->y + node_c->dw * rate + vgap;
+    // Recursive call
+    dm_dag_layout2_node_phase1(D, u, cid);
+    dm_dag_layout2_node_phase1(D, v, cid);
+    
+    // node's linked u,v's outward
+    hgap = rate * DMG->opts.hnd;
+    // u
+    u_c->xpre = (u_c->link_lw - D->radius) + hgap;
+    if (u->spawn)
+      u_c->xpre = - u->spawn->c[cid].xpre;
+    // v
+    v_c->xpre = (v_c->link_rw - D->radius) + hgap;
+    if (u->spawn)
+      v_c->xpre += (u_c->link_lw - D->radius) - u_c->xpre;
+    v_c->xpre = - v_c->xpre;
+    
+    // node's link-along
+    node_c->link_lw = - v_c->xpre + v_c->link_lw;
+    node_c->link_rw = u_c->xpre + u_c->link_rw;
+    node_c->link_dw = node_c->dw * rate + dm_max(ugap + u_c->link_dw, vgap + v_c->link_dw);
+    break;
+  default:
+    dm_check(0);
+    break;
+  }
+}
+
+static void
+dm_dag_layout2_node_phase2(dm_dag_t * D, dm_dag_node_t * node, int cid) {
+  dm_node_coordinate_t * node_c = &node->c[cid];
+  /* Calculate inward */
+  if (dm_is_inward_callable(node)) {
+    dm_check(node->head);
+    // node's head's outward
+    dm_node_coordinate_t * head_c = &node->head->c[cid];
+    head_c->xp = 0.0;
+    head_c->x = node_c->x;
+    // Recursive call
+    dm_dag_layout2_node_phase2(D, node->head, cid);
+  }
+    
+  /* Calculate link-along */
+  dm_dag_node_t * u, * v; // linked nodes
+  dm_node_coordinate_t * u_c, * v_c;
+  switch ( dm_dag_node_count_nexts(node) ) {
+  case 0:
+    break;
+  case 1:
+    u = node->next;
+    u_c = &u->c[cid];
+    // node's linked u's outward
+    u_c->xp = u_c->xpre + node_c->xp;
+    u_c->x = u_c->xp + u->parent->c[cid].x;
+    // Recursive call
+    dm_dag_layout2_node_phase2(D, u, cid);
+    break;
+  case 2:
+    u = node->next;  // cont node
+    v = node->spawn; // task node
+    u_c = &u->c[cid];
+    v_c = &v->c[cid];
+    // node's linked u,v's outward
+    u_c->xp = u_c->xpre + node_c->xp;
+    u_c->x = u_c->xp + u->parent->c[cid].x;
+    v_c->xp = v_c->xpre + node_c->xp;
+    v_c->x = v_c->xp + v->parent->c[cid].x;
+    // Recursive call
+    dm_dag_layout2_node_phase2(D, u, cid);
+    dm_dag_layout2_node_phase2(D, v, cid);
+    break;
+  default:
+    dm_check(0);
+    break;
+  }  
+}
+
+void
+dm_dag_layout2(dm_dag_t * D) {
+  int cid = DM_LAYOUT_DAG_BOX_LINEAR_COORDINATE;
+  dm_node_coordinate_t * rt_c = &D->rt->c[cid];
+
+  /* phase 1: calculate relative coordinates */
+  D->collapsing_d = 0;
+  rt_c->xpre = 0.0; /* predecessor-based */
+  rt_c->y = 0.0;
+  dm_dag_layout2_node_phase1(D, D->rt, cid);
+
+  /* phase 2: calculate absolute coordinates */
+  rt_c->xp = 0.0; /* parent-based */
+  rt_c->x = 0.0;
+  dm_dag_layout2_node_phase2(D, D->rt, cid);
 }
 
 /***** end of Layout DAG *****/

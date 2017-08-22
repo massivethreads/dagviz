@@ -14,25 +14,31 @@ class DAGRenderer : public QObject {
   Q_OBJECT
 
 public:
+  const int LAYOUT_TYPE_1 = DM_LAYOUT_DAG_COORDINATE;
+  const int LAYOUT_TYPE_2 = DM_LAYOUT_DAG_BOX_LINEAR_COORDINATE;
+  
   DAGRenderer();
   void setDAG(char * filename);
-  void setViewport_(QWidget *);
-  void setViewport(void * VP) { setViewport_((QWidget *) VP); };
+  void addViewport_(QWidget * VP, int cid) { mViewports[cid].append(VP); };
+  void addViewport(void * VP, int cid = DM_LAYOUT_DAG_COORDINATE) { addViewport_((QWidget *) VP, cid); };
+  void removeViewport_(QWidget * VP, int cid) { mViewports[cid].removeAll(VP); };
+  void removeViewport(void * VP, int cid) { removeViewport_((QWidget *) VP, cid); };
+  void removeViewport(void * VP) {
+    for (int cid = 0; cid < DM_NUM_COORDINATES; cid++) {
+      removeViewport_((QWidget *) VP, cid);
+    }
+  };
   dm_dag_t * dag() { return mDAG; };
-  QWidget * viewport() { return mViewport; };
   int dagId() { return dm_get_dag_id(mDAG); };
   int animationOn() { if (animation_on) return 1; else return 0; };
   double getDx() { double ret = mDx; mDx = 0.0; return ret; }
   double getDy() { double ret = mDy; mDy = 0.0; return ret; }
+  double getLinearRadix() { return mDAG->linear_radix; }
+  double getPowerRadix() { return mDAG->power_radix; }
+  double getLogRadix() { return mDAG->log_radix; }
 
   PyObject * compute_dag_statistics(int D_id);
   void layout() { layout_(mDAG); };
-  void draw() {
-    this->anchorEnabled = false;
-    QPainter * qp = new QPainter(mViewport);
-    draw_(qp, mDAG);
-    delete qp;
-  };
   void draw(void * qp_ptr) {
     this->anchorEnabled = false;
     QPainter * qp = (QPainter *) qp_ptr;
@@ -58,12 +64,11 @@ public:
   void do_collapsing_one() { do_collapsing_one_(mDAG); };
   void do_collapsing_parent(void * node) { do_collapsing_one_r_(mDAG, ((dm_dag_node_t *) node)->parent); };
 
-
   double left_width() { int cid = 0; return mDAG->rt->c[cid].lw; };
   double right_width() { int cid = 0; return mDAG->rt->c[cid].rw; };
   double width() { return left_width() + right_width(); };
   double height() { int cid = 0; return mDAG->rt->c[cid].dw; };
-  dm_dag_node_t * find_node(double x, double y) { return dm_dag_find_clicked_node(mDAG, x, y); };
+  dm_dag_node_t * find_node(double x, double y) { int cid = 0; return dm_dag_find_node(mDAG, x, y, cid); };
   PyObject * get_dag_node_info(void * node) { return get_dag_node_info_((dm_dag_node_t *) node); };
 
 public slots:
@@ -78,14 +83,17 @@ private:
   double anchor_x, anchor_y;
   dm_dag_node_t * anchor_x_node = NULL;
   dm_dag_node_t * anchor_y_node = NULL;
+  dm_dag_node_t * anchor_nodes[DM_NUM_COORDINATES] = { NULL };
   double mDx = 0.0;
   double mDy = 0.0;
+  QVector<QWidget *> mViewports[DM_NUM_COORDINATES];
   
   char * parse_python_string(PyObject *);
   int parse_python_int(PyObject *);
-  void repaint() { draw(); };
-  void update() { mViewport->update(); };
-  void layout_dag_(dm_dag_t *);
+  void update();
+  void layout1_(dm_dag_t *);
+  void layout2_(dm_dag_t *);
+  void layout__(dm_dag_t *, int);
   void layout_(dm_dag_t *);
   void do_animation_start();
   void do_animation_stop();
@@ -99,9 +107,13 @@ private:
   void do_collapsing_one_r_(dm_dag_t *, dm_dag_node_t *);
   void do_collapsing_one_depth_r_(dm_dag_t *, dm_dag_node_t *, int);
   void do_collapsing_one_(dm_dag_t *);
-  void draw_dag_node_1(QPainter *, dm_dag_t *, dm_dag_node_t *, _unused_ int *);
-  void draw_dag_node_r(QPainter *, dm_dag_t *, dm_dag_node_t *, int *);  
-  void draw_dag_(QPainter *, dm_dag_t *);
+  void draw1_node_1(QPainter *, dm_dag_t *, dm_dag_node_t *, _unused_ int *, int);
+  void draw1_node_r(QPainter *, dm_dag_t *, dm_dag_node_t *, int *, int);  
+  void draw1_(QPainter *, dm_dag_t *, int);
+  void draw2_node_1(QPainter *, dm_dag_t *, dm_dag_node_t *, _unused_ int *, int);
+  void draw2_node_r(QPainter *, dm_dag_t *, dm_dag_node_t *, int *, int);  
+  void draw2_(QPainter *, dm_dag_t *, int);
+  int get_cid_from_qpainter(QPainter *);
   void draw_(QPainter *, dm_dag_t *);
   PyObject * get_dag_node_info_(dm_dag_node_t *);
     

@@ -34,16 +34,15 @@
 #define DM_MAX_DAG 1000
 #define DM_MAX_VIEW 1000
 
-#define DM_NUM_LAYOUT_TYPES 8
-#define DM_LAYOUT_TYPE_DAG 0
-#define DM_LAYOUT_TYPE_DAG_BOX_LOG 1
-#define DM_LAYOUT_TYPE_DAG_BOX_POWER 2
-#define DM_LAYOUT_TYPE_DAG_BOX_LINEAR 3
-#define DM_LAYOUT_TYPE_TIMELINE 4
-#define DM_LAYOUT_TYPE_TIMELINE_VER 5
-#define DM_LAYOUT_TYPE_PARAPROF 6
-#define DM_LAYOUT_TYPE_CRITICAL_PATH 7
-#define DM_LAYOUT_TYPE_INIT 0 /* cannot be paraprof because it needs to check existence of H structure */
+#define DM_NUM_COORDINATES 8
+#define DM_LAYOUT_DAG_COORDINATE 0
+#define DM_LAYOUT_DAG_BOX_LOG_COORDINATE 1
+#define DM_LAYOUT_DAG_BOX_POWER_COORDINATE 2
+#define DM_LAYOUT_DAG_BOX_LINEAR_COORDINATE 3
+#define DM_LAYOUT_TIMELINE_COORDINATE 4
+#define DM_LAYOUT_TIMELINE_VER_COORDINATE 5
+#define DM_LAYOUT_PARAPROF_COORDINATE 6
+#define DM_LAYOUT_CRITICAL_PATH_COORDINATE 7
 
 #define DM_NUM_CRITICAL_PATHS 3
 #define DM_CRITICAL_PATH_0 0 /* most work */
@@ -164,7 +163,7 @@ typedef struct dm_dag_node {
   struct dm_dag_node * tail; /* inner tail node */
 
   /* layout */
-  dm_node_coordinate_t c[DM_NUM_LAYOUT_TYPES]; /* 0:dag, 1:dagbox, 2:timeline_ver, 3:timeline, 4:paraprof */
+  dm_node_coordinate_t c[DM_NUM_COORDINATES]; /* 0:dag, 1:dagbox, 2:timeline_ver, 3:timeline, 4:paraprof */
 
   /* animation */
   double started; /* started time of animation */
@@ -351,8 +350,8 @@ _static_unused_ dm_options_t dm_options_default_values = {
   20.0, /* radius */
   70.0, /* hnd: horizontal node distance */
   70.0, /* vnd: vertical node distance */
-  1.5,  /* nlw: node line width */
-  2.0,  /* nlw_collective_node_factor */
+  3.0,  /* nlw: node line width */
+  1.5,  /* nlw_collective_node_factor */
 
   6.0,  /* union_node_puffing_margin */
 };
@@ -474,11 +473,12 @@ void dm_animation_tick(dm_animation_t *);
 void dm_animation_add_node(dm_animation_t *, dm_dag_node_t *);
 void dm_animation_remove_node(dm_animation_t *, dm_dag_node_t *);
 void dm_animation_reverse_node(dm_animation_t *, dm_dag_node_t *);
-void dm_motion_init(dm_motion_t *, dm_dag_t *);
-void dm_layout_dag(dm_dag_t *);
 double dm_get_alpha_fading_out(dm_dag_t *, dm_dag_node_t *);
 double dm_get_alpha_fading_in(dm_dag_t *, dm_dag_node_t *);
-dm_dag_node_t * dm_dag_find_clicked_node(dm_dag_t *, double, double);
+void dm_motion_init(dm_motion_t *, dm_dag_t *);
+dm_dag_node_t * dm_dag_find_node(dm_dag_t *, double, double, int);
+void dm_dag_layout1(dm_dag_t *);
+void dm_dag_layout2(dm_dag_t *);
 
 
 /***** Utilities *****/

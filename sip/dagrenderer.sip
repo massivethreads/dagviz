@@ -10,19 +10,25 @@ class DAGRenderer : public QObject {
 %End
 
 public:
+  const int LAYOUT_TYPE_1;
+  const int LAYOUT_TYPE_2;
+
   DAGRenderer();
   void setDAG(char *);
-  void setViewport(void *);
+  void addViewport(void *, int = DM_LAYOUT_DAG_COORDINATE);
+  void removeViewport(void *, int);
+  void removeViewport(void *);
   void * dag();
-  QWidget * viewport();
   int dagId();
   int animationOn();
   double getDx();
   double getDy();
+  double getLinearRadix();
+  double getPowerRadix();
+  double getLogRadix();
   
   PyObject * compute_dag_statistics(int);
   void layout();
-  void draw();
   void draw(void *);
   void draw(void *, double, double);
   void do_expanding_one_1(void *);

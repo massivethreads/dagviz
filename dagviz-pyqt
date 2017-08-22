@@ -52,11 +52,10 @@ class DAGViewport(QWidget):
         #for arg in sys.argv[1:]:
         if (len(sys.argv) > 1):
             arg = sys.argv[1]
-            R = dagrenderer.DAGRenderer()
-            R.setDAG(arg)
-            R.setViewport(sip.unwrapinstance(self))
-            renderers.append(R)
-            self.R = R
+            self.R = dagrenderer.DAGRenderer()
+            self.R.setDAG(arg)
+            self.R.addViewport(sip.unwrapinstance(self), self.R.LAYOUT_TYPE_1)
+            renderers.append(self.R)
         self.zoom_ratio_x = 1.0
         self.zoom_ratio_y = 1.0
         self.width
@@ -407,6 +406,18 @@ class DAGViewport(QWidget):
             cmenu = self.W.cmenu
             action = cmenu.exec_(self.mapToGlobal(e.pos()))
 
+    def switch_layout_to_dag(self):
+        self.R.removeViewport(sip.unwrapinstance(self))
+        self.R.addViewport(sip.unwrapinstance(self), self.R.LAYOUT_TYPE_1)
+        self.R.layout()
+        self.update()
+    def switch_layout_to_dag_timing(self):
+        self.R.removeViewport(sip.unwrapinstance(self))
+        self.R.addViewport(sip.unwrapinstance(self), self.R.LAYOUT_TYPE_2)
+        self.R.layout()
+        self.update()
+    def switch_layout_to_paraprof(self):
+        None
             
 class DAGViz(QMainWindow):
     def __init__(self):
@@ -451,11 +462,40 @@ class DAGViz(QMainWindow):
         editMenu.addAction(collapseAct)
 
         # view
-        toolboxAct = QAction('&Toolbox', self)
-        toolboxAct.setShortcut('Ctrl+T')
-        toolboxAct.setStatusTip('Show toolbox')
-        #toolboxAct.triggered.connect(qApp.quit)
-        viewMenu.addAction(toolboxAct)
+        viewTypeMenu = viewMenu.addMenu('&View types')
+        dagViewAct = viewTypeMenu.addAction('DAG')
+        dagViewAct.setShortcut(Qt.Key_1)
+        dagViewAct.setIcon(QIcon(sysroot + '/gui/dag_icon.svg'))
+        dagViewAct.setToolTip('Switch to basic DAG')
+        dagViewAct.setStatusTip('Switch to basic DAG view')
+        dagViewAct.triggered.connect(self.VP.switch_layout_to_dag)
+        dagtimingViewAct = viewTypeMenu.addAction('DAG with timing')
+        dagtimingViewAct.setShortcut(Qt.Key_2)
+        dagtimingViewAct.setIcon(QIcon(sysroot + '/gui/dag_boxes_icon.svg'))
+        dagtimingViewAct.setToolTip('Switch to DAG with timing')
+        dagtimingViewAct.setStatusTip('Switch to DAG with timing on y-axis')
+        dagtimingViewAct.triggered.connect(self.VP.switch_layout_to_dag_timing)
+        dagtimingViewActMenu = QMenu(self)
+        linearAct = dagtimingViewActMenu.addAction(u"Linear scale (time\u00F7a)")
+        linearAct.setToolTip(u"scale times (y-axis) down with linear function: time\u00F7a (a=%i)" % self.VP.R.getLinearRadix())
+        linearAct.setStatusTip(u"scale times (y-axis) down with linear function: time\u00F7a (a=%i)" % self.VP.R.getLinearRadix())
+        powerAct = dagtimingViewActMenu.addAction(u"Power scale (time\u1d43)")
+        powerAct.setToolTip(u"scale times (y-axis) down with power function: time\u1d43 (a=%f)" % self.VP.R.getPowerRadix())
+        powerAct.setStatusTip(u"scale times (y-axis) down with powerfunction: time\u1d43 (a=%f)" % self.VP.R.getPowerRadix())
+        logAct = dagtimingViewActMenu.addAction("Logarithmic scale (log\u2090time)")
+        logAct.setToolTip(u"scale times (y-axis) down with logarithmic function: log\u2090time (a=%f)" % self.VP.R.getLogRadix())
+        logAct.setStatusTip(u"scale times (y-axis) down with logarithmic function: log\u2090time (a=%f)" % self.VP.R.getLogRadix())
+        dagtimingViewAct.setMenu(dagtimingViewActMenu)
+        dagtimingViewActMenu.addSeparator()
+        adjustAct = dagtimingViewActMenu.addAction(u"Adjust scaling factor (a) with mouse scrolling")
+        adjustAct.setCheckable(True)
+        dagtimingViewActMenu.addAction(u"Set exact scaling factors")
+        paraprofViewAct = viewTypeMenu.addAction('Timelines with parallelism profile')
+        paraprofViewAct.setShortcut(Qt.Key_3)
+        paraprofViewAct.setIcon(QIcon(sysroot + '/gui/paraprof_icon.svg'))
+        paraprofViewAct.setToolTip('Switch to timelines with parallelism profile')
+        paraprofViewAct.setStatusTip('Switch to timelines view with parallelism profile on top')
+        paraprofViewAct.triggered.connect(self.VP.switch_layout_to_paraprof)
         
         showhideMenu = viewMenu.addMenu('Sh&ow/Hide')
         replayAct = QAction('&Replay', self, checkable=True)
@@ -490,6 +530,10 @@ class DAGViz(QMainWindow):
 
         # toolbar
         self.toolbar = self.addToolBar('Toolbar')
+        self.toolbar.addAction(dagViewAct)
+        self.toolbar.addAction(dagtimingViewAct)
+        self.toolbar.addAction(paraprofViewAct)
+        self.toolbar.addSeparator()
         self.toolbar.addAction(zoomFullAct)
         self.toolbar.addAction(expandAct)
         self.toolbar.addAction(collapseAct)

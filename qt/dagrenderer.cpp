@@ -41,15 +41,6 @@ DAGRenderer::setDAG(char * filename) {
   layout_(D);
 }
 
-void
-DAGRenderer::setViewport_(QWidget * VP) {
-  if (mViewport) {
-    dm_perror("this DAGRenderer has got a Viewport.");
-    return;
-  }
-  mViewport = VP;
-}
-
 PyObject *
 DAGRenderer::compute_dag_statistics(int D_id) {
   /* compute */
@@ -75,34 +66,57 @@ DAGRenderer::compute_dag_statistics(int D_id) {
 }
 
 void
-DAGRenderer::layout_dag_(dm_dag_t * D) {
-  dm_layout_dag(D);
+DAGRenderer::update() {
+  for (int cid = 0; cid < DM_NUM_COORDINATES; cid++) {
+    QVector<QWidget *>::iterator i;
+    for (i = mViewports[cid].begin(); i != mViewports[cid].end(); i++) {
+      QWidget * VP = *i;
+      VP->update();
+    }
+  }
+};
+
+void
+DAGRenderer::layout1_(dm_dag_t * D) {
+  dm_dag_layout1(D);
 }
 
 void
-DAGRenderer::layout_(dm_dag_t * D) {
+DAGRenderer::layout2_(dm_dag_t * D) {
+  dm_dag_layout2(D);
+}
+
+void
+DAGRenderer::layout__(dm_dag_t * D, int cid) {
   double x_proportion = 0.0;
   double y_proportion = 0.0;
   if (anchorEnabled) {
     if (anchor_x_node) {
-      int cid = 0;
       dm_node_coordinate_t * c = &anchor_x_node->c[cid];
       double left = c->x - c->lw;
       double right = c->x + c->rw;
       x_proportion = (anchor_x - left) / (right - left);
     }
     if (anchor_y_node) {
-      int cid = 0;
       dm_node_coordinate_t * c = &anchor_y_node->c[cid];
       y_proportion = (anchor_y - c->y) / c->dw;
     }
   }
 
-  layout_dag_(D);
+  switch (cid) {
+  case DM_LAYOUT_DAG_COORDINATE:
+    layout1_(D);
+    break;
+  case DM_LAYOUT_DAG_BOX_LINEAR_COORDINATE:
+    layout2_(D);
+    break;
+  default:
+    dm_perror("unknown cid=%d", cid);
+    return;
+  }
   
   if (anchorEnabled) {
     if (anchor_x_node) {
-      int cid = 0;
       dm_node_coordinate_t * c = &anchor_x_node->c[cid];
       double left = c->x - c->lw;
       double right = c->x + c->rw;
@@ -110,10 +124,18 @@ DAGRenderer::layout_(dm_dag_t * D) {
       mDx += anchor_x - new_anchor_x;
     }
     if (anchor_y_node) {
-      int cid = 0;
       dm_node_coordinate_t * c = &anchor_y_node->c[cid];
       double new_anchor_y = y_proportion * c->dw + c->y;
       mDy += anchor_y - new_anchor_y;
+    }
+  }
+}
+
+void
+DAGRenderer::layout_(dm_dag_t * D) {
+  for (int cid = 0; cid < DM_NUM_COORDINATES; cid++) {
+    if (mViewports[cid].count() > 0) {
+      layout__(D, cid);
     }
   }
 }
@@ -322,8 +344,7 @@ DAGRenderer::do_collapsing_one_(dm_dag_t * D) {
 }
 
 static void
-draw_edge_1(QPainter * qp, dm_dag_t * D, dm_dag_node_t * u, dm_dag_node_t * v) {
-  int cid = 0;
+draw_edge_1(QPainter * qp, dm_dag_t * D, dm_dag_node_t * u, dm_dag_node_t * v, int cid) {
   /* Get coordinates */
   double x1, y1, x2, y2;
   dm_node_coordinate_t * uc = &u->c[cid];
@@ -413,11 +434,10 @@ lookup_gradient(_unused_ dr_pi_dag_node * pi, _unused_ double alpha) {
 }
 
 void
-DAGRenderer::draw_dag_node_1(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, _unused_ int * on_global_cp) {
+DAGRenderer::draw1_node_1(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, _unused_ int * on_global_cp, int cid) {
   /* Get inputs */
   dr_pi_dag_node * pi = dm_pidag_get_node_by_dag_node(D->P, node);
   dr_dag_node_kind_t kind = pi->info.kind;
-  int cid = 0;
   dm_node_coordinate_t * node_c = &node->c[cid];
   double x = node_c->x;
   double y = node_c->y;
@@ -441,9 +461,12 @@ DAGRenderer::draw_dag_node_1(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, 
   
   /* Draw path */
   QPainterPath path;
+  QPen pen = QPen(Qt::black, DMG->opts.nlw);
   if (kind == dr_dag_node_kind_section || kind == dr_dag_node_kind_task) {
     
     if (dm_is_union(node)) {
+
+      pen.setWidth(DMG->opts.nlw_collective_node_factor * DMG->opts.nlw);
 
       if (dm_is_inner_loaded(node)
           && (dm_is_expanding(node) || dm_is_shrinking(node))) {
@@ -525,9 +548,9 @@ DAGRenderer::draw_dag_node_1(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, 
   if (alpha < 0.0) alpha = 0.0;
 
   /* Color */
-  QColor pen_color = QColor(Qt::black);
+  QColor pen_color = pen.color();
   pen_color.setAlphaF(alpha * pen_color.alphaF());
-  QPen pen = QPen(pen_color, DMG->opts.nlw_collective_node_factor * DMG->opts.nlw);
+  pen.setColor(pen_color);
   QColor brush_color = lookup_color(pi, alpha);
   QBrush brush = QBrush(brush_color);
   if (pi->info.worker == -1) {
@@ -548,7 +571,7 @@ DAGRenderer::draw_dag_node_1(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, 
 }
 
 void
-DAGRenderer::draw_dag_node_r(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, int * parent_on_global_cp) {
+DAGRenderer::draw1_node_r(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, int * parent_on_global_cp, int cid) {
   if (!node || !dm_is_set(node))
     return;
 
@@ -562,9 +585,8 @@ DAGRenderer::draw_dag_node_r(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, 
       me_on_global_cp[cp] = 0;
   }
 
-  /* find closest nodes to be anchors */
+  /* find innermost node that still covers the anchor point */
   if (anchorEnabled) {
-    int cid = 0;
     dm_node_coordinate_t * c = &node->c[cid];
     if (anchor_x_node == NULL || anchor_y_node == NULL ||
         (c->x - c->lw < anchor_x && anchor_x < c->x + c->rw &&
@@ -579,11 +601,11 @@ DAGRenderer::draw_dag_node_r(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, 
     /* Draw node */
     if (!dm_is_union(node) || !dm_is_inner_loaded(node)
         || dm_is_shrinked(node) || dm_is_shrinking(node)) {
-      draw_dag_node_1(qp, D, node, me_on_global_cp);
+      draw1_node_1(qp, D, node, me_on_global_cp, cid);
     }
     /* Call inward */
     if (!dm_is_single(node)) {
-      draw_dag_node_r(qp, D, node->head, me_on_global_cp);
+      draw1_node_r(qp, D, node->head, me_on_global_cp, cid);
     }
   }
   
@@ -596,36 +618,28 @@ DAGRenderer::draw_dag_node_r(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, 
       QPainterPath path;
       if (dm_is_single(node)) {
         if (dm_is_single(x))
-          draw_edge_1(qp, D, node, x);
+          draw_edge_1(qp, D, node, x, cid);
         else
-          draw_edge_1(qp, D, node, dm_dag_node_get_single_head(x->head));      
+          draw_edge_1(qp, D, node, dm_dag_node_get_single_head(x->head), cid);
       } else {
         dm_dag_node_t * tail = NULL;
         while ( (tail = dm_dag_node_traverse_tails(node, tail)) ) {
           dm_dag_node_t * last = dm_dag_node_get_single_last(tail);        
           if (dm_is_single(x))
-            draw_edge_1(qp, D, last, x);
+            draw_edge_1(qp, D, last, x, cid);
           else
-            draw_edge_1(qp, D, last, dm_dag_node_get_single_head(x->head));
+            draw_edge_1(qp, D, last, dm_dag_node_get_single_head(x->head), cid);
         }      
       }
       qp->strokePath(path, QPen(Qt::black));
       /* Call recursively then */
-      draw_dag_node_r(qp, D, x, parent_on_global_cp);
+      draw1_node_r(qp, D, x, parent_on_global_cp, cid);
     }
   }
 }
 
 void
-DAGRenderer::draw_dag_(QPainter * qp, dm_dag_t * D) {
-  // qp->setPen(Qt::blue);
-  // qp->setBrush(Qt::blue);
-  // qp->drawRect(100, 120, 50, 30);
-  // qp->drawText(200, 135, "I'm drawn in C++");
-
-  dm_llist_init(D->itl);
-  D->cur_d = 0;
-  D->cur_d_ex = D->dmax;
+DAGRenderer::draw1_(QPainter * qp, dm_dag_t * D, int cid) {
   int on_global_cp[DM_NUM_CRITICAL_PATHS];
   int i;
   for (i = 0; i < DM_NUM_CRITICAL_PATHS; i++) {
@@ -634,14 +648,233 @@ DAGRenderer::draw_dag_(QPainter * qp, dm_dag_t * D) {
     else
       on_global_cp[i] = 0;
   }
-  draw_dag_node_r(qp, D, D->rt, on_global_cp);
+  draw1_node_r(qp, D, D->rt, on_global_cp, cid);
+}
+
+void
+DAGRenderer::draw2_node_1(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, _unused_ int * on_global_cp, int cid) {
+  /* Get inputs */
+  dr_pi_dag_node * pi = dm_pidag_get_node_by_dag_node(D->P, node);
+  dm_node_coordinate_t * node_c = &node->c[cid];
+  double x = node_c->x;
+  double y = node_c->y;
+
+  /* Count drawn node */
+  if (node->d > D->cur_d) {
+    D->cur_d = node->d;
+  }
+  if (dm_is_union(node) && dm_is_inner_loaded(node)
+      && dm_is_shrinked(node)
+      && node->d < D->cur_d_ex) {
+    D->cur_d_ex = node->d;
+  }
+  
+  /* Alpha, Margin */
+  double alpha = 1.0;
+  double margin = 0.0;
+  
+  /* Coordinates */
+  double xx, yy, w, h;
+
+  /* Draw path */
+  QPainterPath path;
+  QPen pen = QPen(Qt::black, DMG->opts.nlw);
+  if (dm_is_union(node)) {
+
+    pen.setWidth(DMG->opts.nlw_collective_node_factor * DMG->opts.nlw);
+
+    if ( dm_is_inner_loaded(node)
+         && (dm_is_expanding(node) || dm_is_shrinking(node))) {
+
+      /* Calculate alpha, margin */
+      margin = DMG->opts.union_node_puffing_margin;
+      if (dm_is_expanding(node)) {
+        alpha *= dm_get_alpha_fading_out(D, node);
+        margin *= dm_get_alpha_fading_in(D, node);
+      } else {
+        alpha *= dm_get_alpha_fading_in(D, node);
+        margin *= dm_get_alpha_fading_out(D, node);
+      }
+      /* Calculate coordinates: large-sized box */
+      xx = x - node_c->lw - margin;
+      yy = y - margin;
+      w = node_c->lw + node_c->rw + 2 * margin;
+      h = node_c->dw + 2 * margin;
+      
+    } else {
+      
+      /* Calculate coordinates: normal-sized box */
+      xx = x - node_c->lw;
+      yy = y;
+      w = node_c->lw + node_c->rw;
+      h = node_c->dw;
+      
+    }
+
+  } else {
+    
+    /* Calculate coordinates: normal-sized box (leaf node) */
+    xx = x - node_c->lw;
+    yy = y;
+    w = node_c->lw + node_c->rw;
+    h = node_c->dw;
+    
+  }
+  
+  /* Draw path */
+  drend_draw_path_rectangle(&path, xx, yy, w, h);
+
+  /* Calculate alpha (based on parent) */
+  if (dm_is_shrinking(node->parent)) {
+    alpha *= dm_get_alpha_fading_out(D, node->parent);
+  } else if (dm_is_expanding(node->parent)) {
+    alpha *= dm_get_alpha_fading_in(D, node->parent);
+  }
+  if (alpha > 1.0) alpha = 1.0;
+  if (alpha < 0.0) alpha = 0.0;
+
+  /* Color */
+  QColor pen_color = pen.color();
+  pen_color.setAlphaF(alpha * pen_color.alphaF());
+  pen.setColor(pen_color);
+  QColor brush_color = lookup_color(pi, alpha);
+  QBrush brush = QBrush(brush_color);
+  if (pi->info.worker == -1) {
+    QLinearGradient brush_gradient = lookup_gradient(pi, alpha);
+    brush = QBrush(brush_gradient);
+  }
+
+  /* Draw node's filling */
+  qp->fillPath(path, brush);
+
+  /* Draw node's border */
+  qp->strokePath(path, pen);
+  
+  /* Highlight */
+  if ( node->highlight ) {
+    qp->fillPath(path, QColor(30, 30, 30, 128));
+  }
+}
+
+void
+DAGRenderer::draw2_node_r(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, int * parent_on_global_cp, int cid) {
+  if (!node || !dm_is_set(node))
+    return;
+  
+  /* Check if node is still on the global critical paths */
+  int me_on_global_cp[DM_NUM_CRITICAL_PATHS];
+  int i;
+  for (i = 0; i < DM_NUM_CRITICAL_PATHS; i++) {
+    if (parent_on_global_cp[i] && dm_node_flag_check(node->f, DMG->oncp_flags[i]))
+      me_on_global_cp[i] = 1;
+    else
+      me_on_global_cp[i] = 0;
+  }
+  
+  /* find innermost node that still covers the anchor point */
+  if (anchorEnabled) {
+    dm_node_coordinate_t * c = &node->c[cid];
+    if (anchor_x_node == NULL || anchor_y_node == NULL ||
+        (c->x - c->lw < anchor_x && anchor_x < c->x + c->rw &&
+         c->y         < anchor_y && anchor_y < c->y + c->dw)) {
+      anchor_x_node = node;
+      anchor_y_node = node;
+    }
+  }
+  
+  //if (!dm_dag_node_is_invisible(V, node)) {
+  if (1) {
+    /* Draw node */
+    if (!dm_is_union(node) || !dm_is_inner_loaded(node)
+        || dm_is_shrinked(node) || dm_is_shrinking(node)) {
+      draw2_node_1(qp, D, node, me_on_global_cp, cid);
+    }
+    /* Call inward */
+    if (!dm_is_single(node)) {
+      draw2_node_r(qp, D, node->head, me_on_global_cp, cid);
+    }
+  }
+  
+  /* Call link-along */
+  //if (!dm_dag_node_link_is_invisible(V, node)) {
+  if (1) {
+    dm_dag_node_t * x = NULL;
+    while ( (x = dm_dag_node_traverse_nexts(node, x)) ) {
+      /* Draw edge first */
+      QPainterPath path;
+      if (dm_is_single(node)) {      
+        if (dm_is_single(x))
+          draw_edge_1(qp, D, node, x, cid);
+        else
+          draw_edge_1(qp, D, node, dm_dag_node_get_single_head(x->head), cid);
+      } else {
+        dm_dag_node_t * tail = NULL;
+        while ( (tail = dm_dag_node_traverse_tails(node, tail)) ) {
+          dm_dag_node_t * last = dm_dag_node_get_single_last(tail);
+          if (dm_is_single(x))
+            draw_edge_1(qp, D, last, x, cid);
+          else
+            draw_edge_1(qp, D, last, dm_dag_node_get_single_head(x->head), cid);
+        }
+      }
+      qp->strokePath(path, QPen(Qt::black));
+      /* Call recursively then */
+      draw2_node_r(qp, D, x, parent_on_global_cp, cid);
+    }
+  }
+}
+
+void
+DAGRenderer::draw2_(QPainter * qp, dm_dag_t * D, int cid) {
+  int on_global_cp[DM_NUM_CRITICAL_PATHS];
+  int i;
+  for (i = 0; i < DM_NUM_CRITICAL_PATHS; i++) {
+    if (D->show_critical_paths[i])
+      on_global_cp[i] = 1;
+    else
+      on_global_cp[i] = 0;
+  }
+  draw2_node_r(qp, D, D->rt, on_global_cp, cid);
+}
+
+int
+DAGRenderer::get_cid_from_qpainter(QPainter * qp) {
+  for (int cid = 0; cid < DM_NUM_COORDINATES; cid++) {
+    QVector<QWidget *>::iterator i;
+    for (i = mViewports[cid].begin(); i != mViewports[cid].end(); i++) {
+      QWidget * VP = *i;
+      if (VP == qp->device()) return cid;
+    }
+  }
+  return -1;
 }
 
 void
 DAGRenderer::draw_(QPainter * qp, dm_dag_t * D) {
+  int cid = get_cid_from_qpainter(qp);
+  if (cid < 0) {
+    dm_perror("cannot get CID from the QPainter=%p", qp);
+    return;
+  }
+
+  dm_llist_init(D->itl);
+  D->cur_d = 0;
+  D->cur_d_ex = D->dmax;
+
   qp->setRenderHint(QPainter::Antialiasing);
   qp->translate(mDx, mDy);
-  draw_dag_(qp, D);
+  
+  switch (cid) {
+  case DM_LAYOUT_DAG_COORDINATE:
+    draw1_(qp, D, cid);
+    break;
+  case DM_LAYOUT_DAG_BOX_LINEAR_COORDINATE:
+    draw2_(qp, D, cid);
+    break;
+  default:
+    dm_perror("unknown cid=%d", cid);
+    return;
+  }
 }
 
 PyObject *
