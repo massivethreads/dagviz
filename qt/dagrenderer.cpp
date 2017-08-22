@@ -416,12 +416,14 @@ lookup_color(dr_pi_dag_node * pi, double alpha) {
 }
 
 static QLinearGradient
-lookup_gradient(_unused_ dr_pi_dag_node * pi, _unused_ double alpha) {
+lookup_gradient(_unused_ dr_pi_dag_node * pi, _unused_ double alpha, int cid) {
   QVector<QColor> stop_colors = {QColor(255,165,0), Qt::yellow, Qt::cyan};
   int n = stop_colors.size();
-  
-  //QLinearGradient g = QLinearGradient(0.0, 0.5, 1.0, 0.5);
+
   QLinearGradient g = QLinearGradient(0.0, 0.0, 1.0, 1.0);
+  if (cid != DM_LAYOUT_DAG_COORDINATE) {
+    g = QLinearGradient(0.0, 0.5, 1.0, 0.5);
+  }
   g.setCoordinateMode(QGradient::ObjectBoundingMode);
   g.setSpread(QGradient::PadSpread);
   
@@ -556,7 +558,7 @@ DAGRenderer::draw1_node_1(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, _un
   QColor brush_color = lookup_color(pi, alpha);
   QBrush brush = QBrush(brush_color);
   if (pi->info.worker == -1) {
-    QLinearGradient brush_gradient = lookup_gradient(pi, alpha);
+    QLinearGradient brush_gradient = lookup_gradient(pi, alpha, cid);
     brush = QBrush(brush_gradient);
   }
 
@@ -570,6 +572,52 @@ DAGRenderer::draw1_node_1(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, _un
   if (node->highlight) {
     qp->fillPath(path, QColor(30, 30, 30, 128));
   }
+}
+
+bool
+rectangle_is_out_of_view(QPainter * qp, QRectF r) {
+  QTransform t = qp->transform().inverted();
+  QRectF bb = t.mapRect( QRectF(0, 0, qp->device()->width(), qp->device()->height()) );
+  if (bb.intersects(r))
+    return false;
+  else
+    return true;
+}
+
+bool
+dag_node_is_out_of_view(QPainter * qp, dm_dag_node_t * node, int cid) {
+  dm_node_coordinate_t * node_c = &node->c[cid];
+  double x = node_c->x;
+  double y = node_c->y;
+  double margin = 0.0;
+  if (dm_is_set(node) && dm_is_union(node) && dm_is_inner_loaded(node)
+      && (dm_is_expanding(node) || dm_is_shrinking(node))) {
+    margin = DMG->opts.union_node_puffing_margin;
+  }
+  double xx, yy, w, h;
+  xx = x - node_c->lw - margin;
+  yy = y - margin;
+  w = node_c->lw + node_c->rw + 2 * margin;
+  h = node_c->dw + 2 * margin;
+  return rectangle_is_out_of_view(qp, QRectF(xx, yy, w, h));
+}
+
+bool
+dag_node_and_successors_out_of_view(QPainter * qp, dm_dag_node_t * node, int cid) {
+  dm_node_coordinate_t * node_c = &node->c[cid];
+  double x = node_c->x;
+  double y = node_c->y;
+  double margin = 0.0;
+  if (dm_is_set(node) && dm_is_union(node) && dm_is_inner_loaded(node)
+      && (dm_is_expanding(node) || dm_is_shrinking(node))) {
+    margin = DMG->opts.union_node_puffing_margin;
+  }
+  double xx, yy, w, h;
+  xx = x - node_c->link_lw - margin;
+  yy = y - margin;
+  w = node_c->link_lw + node_c->link_rw + 2 * margin;
+  h = node_c->link_dw + 2 * margin;
+  return rectangle_is_out_of_view(qp, QRectF(xx, yy, w, h));
 }
 
 void
@@ -598,8 +646,7 @@ DAGRenderer::draw1_node_r(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, int
     }
   }
   
-  //if (!dm_dag_node_is_invisible(V, node)) {
-  if (1) {
+  if (!dag_node_is_out_of_view(qp, node, cid)) {
     /* Draw node */
     if (!dm_is_union(node) || !dm_is_inner_loaded(node)
         || dm_is_shrinked(node) || dm_is_shrinking(node)) {
@@ -612,8 +659,7 @@ DAGRenderer::draw1_node_r(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, int
   }
   
   /* Call link-along */
-  //if (!dm_dag_node_link_is_invisible(V, node)) {
-  if (1) {
+  if (!dag_node_and_successors_out_of_view(qp, node, cid)) {
     dm_dag_node_t * x = NULL;
     while ( (x = dm_dag_node_traverse_nexts(node, x)) ) {
       /* Draw edge first */
@@ -742,7 +788,7 @@ DAGRenderer::draw2_node_1(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, _un
   QColor brush_color = lookup_color(pi, alpha);
   QBrush brush = QBrush(brush_color);
   if (pi->info.worker == -1) {
-    QLinearGradient brush_gradient = lookup_gradient(pi, alpha);
+    QLinearGradient brush_gradient = lookup_gradient(pi, alpha, cid);
     brush = QBrush(brush_gradient);
   }
 
@@ -753,7 +799,7 @@ DAGRenderer::draw2_node_1(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, _un
   qp->strokePath(path, pen);
   
   /* Highlight */
-  if ( node->highlight ) {
+  if (node->highlight) {
     qp->fillPath(path, QColor(30, 30, 30, 128));
   }
 }
@@ -765,12 +811,12 @@ DAGRenderer::draw2_node_r(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, int
   
   /* Check if node is still on the global critical paths */
   int me_on_global_cp[DM_NUM_CRITICAL_PATHS];
-  int i;
-  for (i = 0; i < DM_NUM_CRITICAL_PATHS; i++) {
-    if (parent_on_global_cp[i] && dm_node_flag_check(node->f, DMG->oncp_flags[i]))
-      me_on_global_cp[i] = 1;
+  int cp;
+  for (cp = 0; cp < DM_NUM_CRITICAL_PATHS; cp++) {
+    if (parent_on_global_cp[cp] && dm_node_flag_check(node->f, DMG->oncp_flags[cp]))
+      me_on_global_cp[cp] = 1;
     else
-      me_on_global_cp[i] = 0;
+      me_on_global_cp[cp] = 0;
   }
   
   /* find innermost node that still covers the anchor point */
@@ -784,8 +830,7 @@ DAGRenderer::draw2_node_r(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, int
     }
   }
   
-  //if (!dm_dag_node_is_invisible(V, node)) {
-  if (1) {
+  if (!dag_node_is_out_of_view(qp, node, cid)) {
     /* Draw node */
     if (!dm_is_union(node) || !dm_is_inner_loaded(node)
         || dm_is_shrinked(node) || dm_is_shrinking(node)) {
@@ -798,8 +843,7 @@ DAGRenderer::draw2_node_r(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, int
   }
   
   /* Call link-along */
-  //if (!dm_dag_node_link_is_invisible(V, node)) {
-  if (1) {
+  if (!dag_node_and_successors_out_of_view(qp, node, cid)) {
     dm_dag_node_t * x = NULL;
     while ( (x = dm_dag_node_traverse_nexts(node, x)) ) {
       /* Draw edge first */

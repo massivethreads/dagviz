@@ -46,10 +46,10 @@ public:
   void do_collapsing_one_depth_r(void *, int);
   void do_collapsing_one();
   void do_collapsing_parent(void *);
-  double left_width();
-  double right_width();
-  double width();
-  double height();
-  void * find_node(double, double);
+  double left_width(int);
+  double right_width(int);
+  double width(int);
+  double height(int);
+  void * find_node(double, double, int);
   PyObject * get_dag_node_info(void *);
 };

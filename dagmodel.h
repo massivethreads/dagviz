@@ -350,7 +350,7 @@ _static_unused_ dm_options_t dm_options_default_values = {
   20.0, /* radius */
   70.0, /* hnd: horizontal node distance */
   70.0, /* vnd: vertical node distance */
-  3.0,  /* nlw: node line width */
+  2.0,  /* nlw: node line width */
   1.5,  /* nlw_collective_node_factor */
 
   6.0,  /* union_node_puffing_margin */

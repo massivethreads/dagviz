@@ -71,11 +71,11 @@ public:
   void do_collapsing_one() { do_collapsing_one_(mDAG); };
   void do_collapsing_parent(void * node) { do_collapsing_one_r_(mDAG, ((dm_dag_node_t *) node)->parent); };
 
-  double left_width() { int cid = 0; return mDAG->rt->c[cid].lw; };
-  double right_width() { int cid = 0; return mDAG->rt->c[cid].rw; };
-  double width() { return left_width() + right_width(); };
-  double height() { int cid = 0; return mDAG->rt->c[cid].dw; };
-  dm_dag_node_t * find_node(double x, double y) { int cid = 0; return dm_dag_find_node(mDAG, x, y, cid); };
+  double left_width(int cid) { return mDAG->rt->c[cid].lw; };
+  double right_width(int cid) { return mDAG->rt->c[cid].rw; };
+  double width(int cid) { return left_width(cid) + right_width(cid); };
+  double height(int cid) { return mDAG->rt->c[cid].dw; };
+  dm_dag_node_t * find_node(double x, double y, int cid) { return dm_dag_find_node(mDAG, x, y, cid); };
   PyObject * get_dag_node_info(void * node) { return get_dag_node_info_((dm_dag_node_t *) node); };
 
 public slots:

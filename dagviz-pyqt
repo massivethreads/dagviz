@@ -63,17 +63,17 @@ class DAGViewport(QWidget):
         self.width
         # node context menu
         self.node_cmenu = QMenu(self)
-        self.nodeExpandAct = self.node_cmenu.addAction("E&xpand this node")
-        self.nodeCollapseAct = self.node_cmenu.addAction("&Collapse one depth this node's parent")
+        self.nodeExpandAct = self.node_cmenu.addAction("E&xpand node")
+        self.nodeCollapseAct = self.node_cmenu.addAction("&Collapse parent node one depth")
         self.node_cmenu.addSeparator()
         # default action when clicked
         clickedActMenu = self.node_cmenu.addMenu("&Default action when clicked")
         self.nodeClickedActGroup = QActionGroup(clickedActMenu)
         self.nodeClickedActGroup.setExclusive(True)
-        self.nodeExpandActDef = clickedActMenu.addAction("E&xpand this node")
+        self.nodeExpandActDef = clickedActMenu.addAction("E&xpand node")
         self.nodeExpandActDef.setCheckable(True)
         self.nodeClickedActGroup.addAction(self.nodeExpandActDef)
-        self.nodeCollapseActDef = clickedActMenu.addAction("&Collapse one depth this node's parent")
+        self.nodeCollapseActDef = clickedActMenu.addAction("&Collapse parent node one depth")
         self.nodeCollapseActDef.setCheckable(True)
         self.nodeClickedActGroup.addAction(self.nodeCollapseActDef)
         self.clickedNoneActDef = clickedActMenu.addAction("&None")
@@ -84,7 +84,7 @@ class DAGViewport(QWidget):
         hoveredActMenu = self.node_cmenu.addMenu("&Default action when hovered")
         self.nodeHoveredActGroup = QActionGroup(hoveredActMenu)
         self.nodeHoveredActGroup.setExclusive(True)
-        self.nodeInfoTooltipActDef = hoveredActMenu.addAction("Show node &information as a tooltip")
+        self.nodeInfoTooltipActDef = hoveredActMenu.addAction("Show node &information tooltip")
         self.nodeInfoTooltipActDef.setCheckable(True)
         self.nodeHoveredActGroup.addAction(self.nodeInfoTooltipActDef)
         self.hoveredNoneActDef = hoveredActMenu.addAction("&None")
@@ -229,7 +229,7 @@ class DAGViewport(QWidget):
             if checkedAction != self.clickedNoneActDef:            
                 x_dag = self.convert_x_to_dag_space(e.x())
                 y_dag = self.convert_y_to_dag_space(e.y())
-                node = self.R.find_node(x_dag, y_dag)
+                node = self.R.find_node(x_dag, y_dag, self.currentLayout)
                 if node is not None:
                     if checkedAction == self.nodeExpandActDef:
                         self.R.do_expanding_one_r(node)
@@ -265,7 +265,7 @@ class DAGViewport(QWidget):
             if checkedAction != self.hoveredNoneActDef:
                 x_dag = self.convert_x_to_dag_space(e.x())
                 y_dag = self.convert_y_to_dag_space(e.y())
-                node = self.R.find_node(x_dag, y_dag)
+                node = self.R.find_node(x_dag, y_dag, self.currentLayout)
                 if node is not None:
                     if checkedAction == self.nodeInfoTooltipActDef:
                         info_dict = self.R.get_dag_node_info(node)
@@ -346,11 +346,11 @@ class DAGViewport(QWidget):
         z = 1.0
         if self.R == None:
             return x,y,z
-        w1 = self.R.width()
+        w1 = self.R.width(self.currentLayout)
         w2 = self.width() - GO["margin_left"] - GO["margin_right"]
         if w1 > w2:
             z = w2 / w1
-        x -= z * (self.R.right_width() - self.R.left_width()) / 2
+        x -= z * (self.R.right_width(self.currentLayout) - self.R.left_width(self.currentLayout)) / 2
         return x,y,z
     def do_zoom_fit_hor_auto(self):
         x,y,z = self.get_zoom_fit_hor_attributes()
@@ -369,11 +369,11 @@ class DAGViewport(QWidget):
         z = 1.0
         if self.R == None:
             return x,y,z
-        h1 = self.R.height()
+        h1 = self.R.height(self.currentLayout)
         h2 = self.height() - GO["margin_top"] - GO["margin_bottom"]
         if h1 > h2:
             z = h2 / h1
-        x -= z * (self.R.right_width() - self.R.left_width()) / 2
+        x -= z * (self.R.right_width(self.currentLayout) - self.R.left_width(self.currentLayout)) / 2
         return x,y,z
     def do_zoom_fit_ver_auto(self):
         x,y,z = self.get_zoom_fit_ver_attributes()
@@ -421,7 +421,7 @@ class DAGViewport(QWidget):
     def contextMenuEvent(self, e):
         x_dag = self.convert_x_to_dag_space(e.x())
         y_dag = self.convert_y_to_dag_space(e.y())
-        node = self.R.find_node(x_dag, y_dag)
+        node = self.R.find_node(x_dag, y_dag, self.currentLayout)
         if node is not None:
             cmenu = self.node_cmenu
             action = cmenu.exec_(self.mapToGlobal(e.pos()))
