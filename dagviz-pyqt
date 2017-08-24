@@ -28,10 +28,116 @@ GO = {
 }
 renderers = []
 
+class ScrollBar(QSlider):
+    def __init__(self, o):
+        super(ScrollBar, self).__init__(o)
+        self.length = 100
+        self.setTracking(True)
+        self.valueChanged.connect(self.doValueChanged)
+        self.setSingleStep(1)
+        self.setPageStep(20)        
+        self.resetStyle()
+        
+    def resetStyle(self):
+        if self.orientation() == Qt.Horizontal:
+            self.setStyleSheet("""
+QSlider::groove:horizontal {
+    border: none;
+    background: white;
+    height: 4px;
+}
+QSlider:horizontal {
+    height: 4px;
+    margin: 0px 4px 0px 0px;
+}
+QSlider::handle:horizontal {
+    background: solid grey;
+    width: %i px;
+}
+        """ % self.length)
+        else:
+            self.setStyleSheet("""
+QSlider::groove:vertical {
+    border: none;
+    background: white;
+    width: 4px;
+}
+QSlider:vertical {
+    width: 4px;
+    margin: 0px 0px 0px 0px;
+}
+QSlider::handle:vertical {
+    background: solid grey;
+    height: %i px;
+}
+        """ % self.length)
+        
+    def setLength(self, l):
+        self.length = l
+        self.resetStyle()
+
+    def doValueChanged(self, v):
+        #print(v)
+        #print(self.value())
+        None
+
+    def adjust(self, w, d1, d2, v1, v2):
+        a = 0 # min value
+        b = w # max value
+        p = 0 # current value
+        l = w # handle's length 
+        if d2 - d1 > v2 - v1:
+            left = d1
+            right = d2 - (v2 - v1)
+            a = 0
+            b = w * (right - left) / (d2 - d1)
+            p = (v1 - left) / (right - left) * (b - a)
+            l = (v2 - v1) / (right - left) * (b - a)
+            if p < a:
+                l -= a - p
+            if p > b:
+                l -= p - b
+        else:
+            if v1 > d1:
+                b = (v1 - d1) / (d2 - d1) * w
+                p = b
+                l = w - b
+            elif v2 < d2:
+                l -= (d2 - v2) / (d2 - d1) * (b - a)
+        if l < 0.003 * w:
+            l = 0.003 * w
+        self.setMinimum(a)
+        self.setMaximum(b)
+        self.setValue(p)
+        self.setLength(l)
+        
+
 class DAGViewport(QWidget):
     def __init__(self, W):
         super(DAGViewport, self).__init__()
         self.W = W
+        # container with scroll bars
+        vbox = QVBoxLayout()
+        vbox.setContentsMargins(0, 0, 0, 0)
+        vbox.setSpacing(0)
+        hbox = QHBoxLayout()
+        hbox.setContentsMargins(0, 0, 0, 0)
+        hbox.setSpacing(0)
+        self.verScrollBar = ScrollBar(Qt.Vertical)
+        self.verScrollBar.setRange(0, 0)
+        self.verScrollBar.setValue(0)
+        self.verScrollBar.setLength(0)
+        self.horScrollBar = ScrollBar(Qt.Horizontal)
+        self.horScrollBar.setRange(0, 0)
+        self.horScrollBar.setValue(0)
+        self.horScrollBar.setLength(0)
+        hbox.addWidget(self, 1)
+        hbox.addWidget(self.verScrollBar, 0)
+        vbox.addLayout(hbox, 1)
+        vbox.addWidget(self.horScrollBar, 0)
+        self.containerWithScrollBars = QWidget()
+        self.containerWithScrollBars.setLayout(vbox)
+        
         # background color
         pal = self.palette()
         pal.setColor(QPalette.Window, Qt.white)
@@ -95,7 +201,22 @@ class DAGViewport(QWidget):
         self.do_expanding_one()
         self.do_expanding_one()
 
+    def adjustScrollBars(self):
+        # DAG: d1->d2, viewport: v1->v2 in DAG space
+        d1 = - self.R.left_width(self.currentLayout)
+        d2 = self.R.right_width(self.currentLayout)
+        v1 = self.convert_x_to_dag_space(0)
+        v2 = self.convert_x_to_dag_space(self.width())
+        self.horScrollBar.adjust(self.width(), d1, d2, v1, v2)
+        # DAG: d1->d2, viewport: v1->v2 in DAG space
+        d1 = - self.R.down_height(self.currentLayout)
+        d2 = self.R.up_height(self.currentLayout)
+        v1 = - self.convert_y_to_dag_space(self.height())
+        v2 = - self.convert_y_to_dag_space(0)
+        self.verScrollBar.adjust(self.height(), d1, d2, v1, v2)
+        
     def resizeEvent(self, e):
+        # adjust base_x
         old_w = e.oldSize().width()
         margin = GO["margin_left"] + GO["margin_right"]
         if old_w >= 0:
@@ -142,6 +263,8 @@ class DAGViewport(QWidget):
                             self.convert_y_to_dag_space(self.y_mouse))
             else:
                 self.R.draw(sip.unwrapinstance(qp))
+        # adjust scrollbars
+        self.adjustScrollBars()
 
     def do_moving(self, dx, dy):
         self.x = self.x + dx
@@ -467,7 +590,7 @@ class DAGViz(QMainWindow):
         self.setWindowIcon(QIcon(sysroot + '/gui/dagviz_icon.svg'))
 
         # status bar
-        self.statusBar().showMessage('Ready')
+        self.statusBar().showMessage('Tips: scroll to zoom, Ctrl and scroll (or double click and drag) to move')
 
         # menu bar
         menubar = self.menuBar()
@@ -610,7 +733,7 @@ class DAGViz(QMainWindow):
         # self.addAction(moveRightAct)
         
         # central widget
-        self.setCentralWidget(self.VP)
+        self.setCentralWidget(self.VP.containerWithScrollBars)
         
         # show
         self.show()

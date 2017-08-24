@@ -74,7 +74,9 @@ public:
   double left_width(int cid) { return mDAG->rt->c[cid].lw; };
   double right_width(int cid) { return mDAG->rt->c[cid].rw; };
   double width(int cid) { return left_width(cid) + right_width(cid); };
-  double height(int cid) { return mDAG->rt->c[cid].dw; };
+  double up_height(_unused_ int cid) { return 0.0; };
+  double down_height(int cid) { return mDAG->rt->c[cid].dw; };
+  double height(int cid) { return up_height(cid) + down_height(cid); };
   dm_dag_node_t * find_node(double x, double y, int cid) { return dm_dag_find_node(mDAG, x, y, cid); };
   PyObject * get_dag_node_info(void * node) { return get_dag_node_info_((dm_dag_node_t *) node); };
 

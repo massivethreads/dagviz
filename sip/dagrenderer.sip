@@ -49,6 +49,8 @@ public:
   double left_width(int);
   double right_width(int);
   double width(int);
+  double down_height(int);
+  double up_height(int);
   double height(int);
   void * find_node(double, double, int);
   PyObject * get_dag_node_info(void *);
