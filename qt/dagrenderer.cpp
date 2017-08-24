@@ -41,6 +41,17 @@ DAGRenderer::setDAG(char * filename) {
   layout_(D);
 }
 
+void
+DAGRenderer::addViewport_(QWidget * VP, int cid) {
+  mViewports[cid].append(VP);
+  if (cid == DM_LAYOUT_PARAPROF_COORDINATE && !mDAG->H) {
+    mDAG->H = (dm_histogram_t *) dm_malloc( sizeof(dm_histogram_t) );
+    dm_histogram_init(mDAG->H);
+    mDAG->H->D = mDAG;
+    dm_histogram_reset(mDAG->H);
+  }
+};
+
 PyObject *
 DAGRenderer::compute_dag_statistics(int D_id) {
   /* compute */
@@ -225,6 +236,14 @@ DAGRenderer::do_expanding_one_1_(dm_dag_t * D, dm_dag_node_t * node) {
     dm_node_flag_set(node->f, DM_NODE_FLAG_EXPANDING);
     do_animation_add_node(node);
   }
+  /* Histogram */
+  if (D->H && D->H->head_e) {
+    dm_histogram_remove_node(D->H, node, NULL);
+    dm_dag_node_t * x = NULL;
+    while ( (x = dm_dag_node_traverse_children(node, x)) ) {
+      dm_histogram_add_node(D->H, x, NULL);
+    }
+  }
 }
 
 void
@@ -270,6 +289,14 @@ DAGRenderer::do_collapsing_one_1_(_unused_ dm_dag_t * D, dm_dag_node_t * node) {
   } else {
     dm_node_flag_set(node->f, DM_NODE_FLAG_SHRINKING);
     do_animation_add_node(node);
+  }
+  /* Histogram */
+  if (D->H && D->H->head_e) {
+    dm_dag_node_t * x = NULL;
+    while ( (x = dm_dag_node_traverse_children(node, x)) ) {
+      dm_histogram_remove_node(D->H, x, NULL);
+    }
+    dm_histogram_add_node(D->H, node, NULL);
   }
 }
 
@@ -1009,6 +1036,89 @@ DAGRenderer::draw3_(QPainter * qp, dm_dag_t * D, int cid) {
   draw3_node_r(qp, D, D->rt, on_global_cp, cid);
 }
 
+_unused_ static int
+paraprof_entry_is_out_of_view(QPainter * qp, dm_dag_t * D, dm_histogram_entry_t * e, int cid) {
+  double x, w;
+  x = dm_dag_layout_scale_down(D, e->t - D->bt, cid);
+  w = 0.0;
+  if (e->next)
+    w = dm_dag_layout_scale_down(D, e->next->t - D->bt, cid) - x;
+  QTransform t = qp->transform().inverted();
+  QRectF bb = t.mapRect( QRectF(0, 0, qp->device()->width(), qp->device()->height()) );
+  double bound_left = bb.x();
+  double bound_right = bb.x() + bb.width();
+  int ret = 0;
+  if (x > bound_right)
+    ret |= DM_DAG_NODE_HIDDEN_RIGHT;
+  if (x + w < bound_left)
+    ret |= DM_DAG_NODE_HIDDEN_LEFT;
+  return ret;  
+}
+
+static double
+dm_histogram_draw_piece(QPainter * qp, _unused_ dm_dag_t * D, double x, double width, double y, double height, int layer) {
+  double xx, yy, w, h;
+  xx = x;
+  yy = y - height;
+  w = width;
+  h = height;
+  if (!rectangle_is_out_of_view(qp, QRectF(xx, yy, w, h))) {
+    //dv_timeline_trim_rectangle(V, &xx, &yy, &w, &h);
+    QVector<QColor> colors = {Qt::red, Qt::green, Qt::blue, Qt::magenta, Qt::cyan, Qt::yellow};
+    QColor color = colors[(layer + 6) % 6];
+    QBrush brush = QBrush(color);
+    qp->fillRect(QRectF(xx, yy, w, h), brush);
+  }
+  return yy;
+}
+
+static void
+draw_paraprof_entry(QPainter * qp, dm_dag_t * D, dm_histogram_entry_t * e, int cid) {
+  if (!e->next) {
+    dm_pwarning("not draw entry at t=%lf due to no next", e->t);
+    return;
+  }
+  double x = dm_dag_layout_scale_down(D, e->t - D->bt, cid);
+  double w = dm_dag_layout_scale_down(D, e->next->t - D->bt, cid) - x;
+  //double y = 0.0;
+  double y = - D->H->unit_thick * D->radius;
+  double h;
+  int i;
+  for (i=0; i<dm_histogram_layer_max; i++) {
+    h = e->h[i] * D->H->unit_thick * D->radius;
+    y = dm_histogram_draw_piece(qp, D, x, w, y, h, i);
+  }
+}
+
+void
+DAGRenderer::draw_paraprof(QPainter * qp, dm_dag_t * D, int cid) {
+  if (!D->H) {
+    dm_perror("there is no H structure.");
+    return;
+  }
+  dm_histogram_t * H = D->H;
+  dm_histogram_entry_t * e = H->head_e;
+  while (e != NULL && e->next) {
+    int hidden = 0;//paraprof_entry_is_out_of_view(qp, D, e, cid);
+    if (!hidden) {
+      draw_paraprof_entry(qp, D, e, cid);
+    } else if (hidden & DM_DAG_NODE_HIDDEN_RIGHT) {
+      break;
+    }
+    e = e->next;
+  }
+  
+  /* draw full-parallelism line */
+  double x = 0;
+  double w = dm_dag_layout_scale_down(D, D->et, cid);
+  double y = - H->unit_thick * D->radius - D->P->num_workers * (H->unit_thick * D->radius);
+  //dv_rectangle_trim(V, &x, &y, &w, NULL);
+  double zx = qp->transform().m11();
+  QPen pen = QPen(QColor(255, 0, 0, 200), DMG->opts.nlw / zx);
+  qp->setPen(pen);
+  qp->drawLine(x, y, x + w, y);
+}
+
 int
 DAGRenderer::get_cid_from_qpainter(QPainter * qp) {
   for (int cid = 0; cid < DM_NUM_COORDINATES; cid++) {
@@ -1047,6 +1157,7 @@ DAGRenderer::draw_(QPainter * qp, dm_dag_t * D) {
     break;
   case DM_LAYOUT_PARAPROF_COORDINATE:
     draw3_(qp, D, cid);
+    draw_paraprof(qp, D, cid);
     break;
   default:
     dm_perror("unknown cid=%d", cid);
@@ -1077,6 +1188,38 @@ DAGRenderer::get_dag_node_info_(dm_dag_node_t * node) {
                         );
   }
   return ret;
+}
+
+double
+DAGRenderer::up_height(int cid) {
+  switch (cid) {
+  case DM_LAYOUT_DAG_COORDINATE:
+  case DM_LAYOUT_DAG_BOX_LINEAR_COORDINATE:
+  case DM_LAYOUT_DAG_BOX_POWER_COORDINATE:
+  case DM_LAYOUT_DAG_BOX_LOG_COORDINATE:
+    return 0.0;
+  case DM_LAYOUT_PARAPROF_COORDINATE:
+    return dm_histogram_get_max_height(mDAG->H);// + mDAG->H->unit_thick * mDAG->radius;
+  default:
+    dm_perror("unknown cid=%d", cid);
+    return 0.0;
+  }
+}
+
+double
+DAGRenderer::down_height(int cid) {
+  switch (cid) {
+  case DM_LAYOUT_DAG_COORDINATE:
+  case DM_LAYOUT_DAG_BOX_LINEAR_COORDINATE:
+  case DM_LAYOUT_DAG_BOX_POWER_COORDINATE:
+  case DM_LAYOUT_DAG_BOX_LOG_COORDINATE:
+    return mDAG->rt->c[cid].dw;
+  case DM_LAYOUT_PARAPROF_COORDINATE:
+    return mDAG->P->num_workers * (2 * mDAG->radius);
+  default:
+    dm_perror("unknown cid=%d", cid);
+    return 0.0;
+  }
 }
 
 /***** end of Rendering DAG *****/

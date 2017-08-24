@@ -22,7 +22,7 @@ public:
   
   DAGRenderer();
   void setDAG(char * filename);
-  void addViewport_(QWidget * VP, int cid) { mViewports[cid].append(VP); };
+  void addViewport_(QWidget *, int);
   void addViewport(void * VP, int cid = DM_LAYOUT_DAG_COORDINATE) { addViewport_((QWidget *) VP, cid); };
   void removeViewport_(QWidget * VP, int cid) { mViewports[cid].removeAll(VP); };
   void removeViewport(void * VP, int cid) { removeViewport_((QWidget *) VP, cid); };
@@ -74,8 +74,8 @@ public:
   double left_width(int cid) { return mDAG->rt->c[cid].lw; };
   double right_width(int cid) { return mDAG->rt->c[cid].rw; };
   double width(int cid) { return left_width(cid) + right_width(cid); };
-  double up_height(_unused_ int cid) { return 0.0; };
-  double down_height(int cid) { return mDAG->rt->c[cid].dw; };
+  double up_height(int);
+  double down_height(int);
   double height(int cid) { return up_height(cid) + down_height(cid); };
   dm_dag_node_t * find_node(double x, double y, int cid) { return dm_dag_find_node(mDAG, x, y, cid); };
   PyObject * get_dag_node_info(void * node) { return get_dag_node_info_((dm_dag_node_t *) node); };
@@ -126,6 +126,7 @@ private:
   void draw3_node_1(QPainter *, dm_dag_t *, dm_dag_node_t *, _unused_ int *, int);
   void draw3_node_r(QPainter *, dm_dag_t *, dm_dag_node_t *, int *, int);  
   void draw3_(QPainter *, dm_dag_t *, int);
+  void draw_paraprof(QPainter *, dm_dag_t *, int);
   int get_cid_from_qpainter(QPainter *);
   void draw_(QPainter *, dm_dag_t *);
   PyObject * get_dag_node_info_(dm_dag_node_t *);

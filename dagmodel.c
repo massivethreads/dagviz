@@ -1004,7 +1004,7 @@ double
 dm_histogram_get_max_height(dm_histogram_t * H) {
   if (!H->tallest_e || H->max_h == 0.0) {
     dm_histogram_compute_tallest_entry(H);
-  }    
+  }
   return H->max_h * (H->unit_thick * H->D->radius);
 }
 
@@ -2270,9 +2270,49 @@ dm_dag_find_node_r(_unused_ dm_dag_t * D, double x, double y, dm_dag_node_t * no
   return NULL;
 }
 
+static dm_dag_node_t *
+dm_dag_find_timelines_node_r(_unused_ dm_dag_t * D, double cx, double cy, dm_dag_node_t * node, int cid) {
+  dm_dag_node_t * ret = NULL;
+  dm_node_coordinate_t * c = &node->c[cid];
+  /* Call inward */
+  double x, y, w, h;
+  x = c->x;
+  y = c->y;
+  w = c->rw;
+  h = c->dw;
+  if (x <= cx && cx <= x + w && y <= cy && cy <= y + h) {
+    if (dm_is_single(node)) {
+      ret = node;
+    } else {
+      ret = dm_dag_find_timelines_node_r(D, cx, cy, node->head, cid);
+    }
+  } else if (cx > x + w) {
+    /* Call link-along */
+    dm_dag_node_t * next = NULL;
+    while ( (next = dm_dag_node_traverse_nexts(node, next)) ) {
+      ret = dm_dag_find_timelines_node_r(D, cx, cy, next, cid);
+      if (ret) break;
+    }
+  }
+  return ret;
+}
+
 dm_dag_node_t *
 dm_dag_find_node(dm_dag_t * D, double x, double y, int cid) {
-  dm_dag_node_t * ret = dm_dag_find_node_r(D, x, y, D->rt, cid);
+  dm_dag_node_t * ret = NULL;
+  switch (cid) {
+  case DM_LAYOUT_DAG_COORDINATE:
+  case DM_LAYOUT_DAG_BOX_LINEAR_COORDINATE:
+  case DM_LAYOUT_DAG_BOX_POWER_COORDINATE:
+  case DM_LAYOUT_DAG_BOX_LOG_COORDINATE:
+    ret = dm_dag_find_node_r(D, x, y, D->rt, cid);
+    break;
+  case DM_LAYOUT_PARAPROF_COORDINATE:
+    ret = dm_dag_find_timelines_node_r(D, x, y, D->rt, cid);
+    break;
+  default:
+    dm_perror("undefined cid=%d\n", cid);
+  }
   return ret;
 }
 
@@ -2435,7 +2475,7 @@ dm_dag_layout1(dm_dag_t * D, int cid) {
   dm_dag_layout1_node_phase2(D, D->rt, cid);
 }
 
-static double
+double
 dm_dag_layout_scale_down(dm_dag_t * D, double val, int cid) {
   double ret;
   switch (cid) {

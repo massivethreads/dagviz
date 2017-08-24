@@ -17,10 +17,10 @@ GO = {
     "zoom_rate_per_time" : 0.08,   # rate per scrolling time
     "zoom_rate_per_pixel" : 0.004, # rate per scrolling pixel: 0.08 / 20
     "zoom_default_weight" : 20,    # rate in pixel unit on one default zoom
-    "margin_top"    : 20,
-    "margin_bottom" : 20,
-    "margin_left"   : 20,
-    "margin_right"  : 20,
+    "margin_top"    : 10,
+    "margin_bottom" : 10,
+    "margin_left"   : 10,
+    "margin_right"  : 10,
     "moving_distance" : 25.0,      # pixels, moving distance when pressing arrow keys
     "moving_distance_rate" : 20.0, # times, multiplied rate with modifier keys (Ctrl > Alt)
     "auto_zoom_fit" : 1, # automatically zoom to fit at the beginning: 0->none, 1->full, 2->hor, 3->ver
@@ -147,8 +147,10 @@ class Viewport(QWidget):
         super(Viewport, self).__init__()
         self.W = W
         self.R = R
+        self.base_x = 0.0
+        self.base_y = 0.0
         self.currentLayout = lt
-        self.switch_layout_to(lt)
+        self.switch_layout_to(self.currentLayout)
         # container with scroll bars
         self.verScrollBar = ScrollBar(Qt.Vertical)
         self.verScrollBar.setRange(0, 0)
@@ -192,8 +194,6 @@ class Viewport(QWidget):
         pal.setColor(QPalette.Window, Qt.white)
         self.setPalette(pal)
         self.setAutoFillBackground(True)
-        self.base_x = GO["margin_left"]
-        self.base_y = GO["margin_top"]
         self.x = 0.0
         self.y = 0.0
         self.pan_on = False
@@ -255,13 +255,19 @@ class Viewport(QWidget):
         v2 = - self.convert_y_to_dag_space(0)
         self.verScrollBar.adjust(self.height(), d1, d2, v1, v2)
         
+    def resetBaseXY(self):
+        if self.currentLayout in {self.R.LAYOUT_TYPE_1, self.R.LAYOUT_TYPE_2, self.R.LAYOUT_TYPE_3, self.R.LAYOUT_TYPE_4}:
+            self.base_x = GO["margin_left"] + (self.width() - GO["margin_left"] - GO["margin_right"]) / 2.0
+            self.base_y = GO["margin_top"]
+        elif self.currentLayout == self.R.LAYOUT_TYPE_5:
+            self.base_x = GO["margin_left"]
+            self.base_y = self.height() - GO["margin_bottom"]
+        else:
+            print("[Error]: unknown current layout")
+
     def resizeEvent(self, e):
-        # adjust base_x
-        old_w = e.oldSize().width()
-        margin = GO["margin_left"] + GO["margin_right"]
-        if old_w >= 0:
-            self.base_x -= (old_w - margin) / 2.0
-        self.base_x += (self.width() - margin) / 2.0
+        # adjust base_x, base_y
+        self.resetBaseXY()
 
     def update(self):
         super(Viewport, self).update()
@@ -338,8 +344,8 @@ class Viewport(QWidget):
         
     def change_dag_scaling_factor(self, weight):
         if weight != 0:
-            if self.currentLayout == self.R.LAYOUT_TYPE_2 or self.currentLayout == self.R.LAYOUT_TYPE_3 or self.currentLayout == self.R.LAYOUT_TYPE_4:
-                if self.currentLayout == self.R.LAYOUT_TYPE_2:
+            if self.currentLayout == self.R.LAYOUT_TYPE_2 or self.R.LAYOUT_TYPE_3 or self.R.LAYOUT_TYPE_4 or self.R.LAYOUT_TYPE_5:
+                if self.currentLayout == self.R.LAYOUT_TYPE_2 or self.R.LAYOUT_TYPE_5:
                     radix = self.R.getLinearRadix();
                 elif self.currentLayout == self.R.LAYOUT_TYPE_3:
                     radix = self.R.getPowerRadix();
@@ -350,7 +356,7 @@ class Viewport(QWidget):
                     radix *= factor
                 else:
                     radix /= factor
-                if self.currentLayout == self.R.LAYOUT_TYPE_2:
+                if self.currentLayout == self.R.LAYOUT_TYPE_2 or self.R.LAYOUT_TYPE_5:
                     self.R.setLinearRadix(radix);
                 elif self.currentLayout == self.R.LAYOUT_TYPE_3:
                     self.R.setPowerRadix(radix);
@@ -376,6 +382,8 @@ class Viewport(QWidget):
         self.update()
 
     def mousePressEvent(self, e):
+        # grab focus
+        self.W.setFocusedViewport(self)
         # only detect LeftButton (RightButton triggers context menus)
         if e.button() == Qt.LeftButton:
             # pan 
@@ -513,7 +521,15 @@ class Viewport(QWidget):
         w2 = self.width() - GO["margin_left"] - GO["margin_right"]
         if w1 > w2:
             z = w2 / w1
-        x -= z * (self.R.right_width(self.currentLayout) - self.R.left_width(self.currentLayout)) / 2
+        if self.currentLayout in {self.R.LAYOUT_TYPE_1, self.R.LAYOUT_TYPE_2, self.R.LAYOUT_TYPE_3, self.R.LAYOUT_TYPE_4}:
+            x -= z * (self.R.right_width(self.currentLayout) - self.R.left_width(self.currentLayout)) / 2
+        elif self.currentLayout == self.R.LAYOUT_TYPE_5:
+            y -= z * self.R.down_height(self.currentLayout)
+            dy = (self.height() - GO["margin_bottom"] - z * self.R.height(self.currentLayout) ) / 2.0;
+            if dy > 0:
+                y -= dy;
+        else:
+            print("[Error]: unknown current layout")
         return x,y,z
     def do_zoom_fit_hor_auto(self):
         x,y,z = self.get_zoom_fit_hor_attributes()
@@ -536,8 +552,17 @@ class Viewport(QWidget):
         h2 = self.height() - GO["margin_top"] - GO["margin_bottom"]
         if h1 > h2:
             z = h2 / h1
-        x -= z * (self.R.right_width(self.currentLayout) - self.R.left_width(self.currentLayout)) / 2
+        if self.currentLayout in {self.R.LAYOUT_TYPE_1, self.R.LAYOUT_TYPE_2, self.R.LAYOUT_TYPE_3, self.R.LAYOUT_TYPE_4}:
+            x -= z * (self.R.right_width(self.currentLayout) - self.R.left_width(self.currentLayout)) / 2
+        elif self.currentLayout == self.R.LAYOUT_TYPE_5:
+            y -= z * self.R.down_height(self.currentLayout)
+            dx = (self.width() - GO["margin_top"] - GO["margin_bottom"] - z * self.R.width(self.currentLayout)) / 2.0;
+            if dx > 0:
+                x += dx;
+        else:
+            print("[Error]: unknown current layout")
         return x,y,z
+        
     def do_zoom_fit_ver_auto(self):
         x,y,z = self.get_zoom_fit_ver_attributes()
         self.x = x
@@ -604,6 +629,7 @@ class Viewport(QWidget):
         self.R.addViewport(sip.unwrapinstance(self), lt)
         self.currentLayout = lt
         self.R.layout(lt)
+        self.resetBaseXY()
         self.update()
                
         
