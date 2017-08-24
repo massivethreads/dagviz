@@ -32,7 +32,9 @@ class ScrollBar(QSlider):
     def __init__(self, o):
         super(ScrollBar, self).__init__(o)
         self.length = 100
-        self.setTracking(True)
+        self.color = "grey"
+        #self.setTracking(True)
+        self.setTracking(False)
         self.valueChanged.connect(self.doValueChanged)
         self.setSingleStep(1)
         self.setPageStep(20)        
@@ -51,10 +53,10 @@ QSlider:horizontal {
     margin: 0px 4px 0px 0px;
 }
 QSlider::handle:horizontal {
-    background: solid grey;
+    background: solid %s;
     width: %i px;
 }
-        """ % self.length)
+        """ % (self.color, self.length))
         else:
             self.setStyleSheet("""
 QSlider::groove:vertical {
@@ -67,10 +69,10 @@ QSlider:vertical {
     margin: 0px 0px 0px 0px;
 }
 QSlider::handle:vertical {
-    background: solid grey;
+    background: solid %s;
     height: %i px;
 }
-        """ % self.length)
+        """ % (self.color, self.length))
         
     def setLength(self, l):
         self.length = l
@@ -87,6 +89,7 @@ QSlider::handle:vertical {
         p = 0 # current value
         l = w # handle's length 
         if d2 - d1 > v2 - v1:
+            self.color = "grey"
             left = d1
             right = d2 - (v2 - v1)
             a = 0
@@ -97,25 +100,40 @@ QSlider::handle:vertical {
                 l -= a - p
             if p > b:
                 l -= p - b
-        else:
-            if v1 > d1:
-                b = (v1 - d1) / (d2 - d1) * w
-                p = b
-                l = w - b
-            elif v2 < d2:
-                l -= (d2 - v2) / (d2 - d1) * (b - a)
-        if l < 0.003 * w:
-            l = 0.003 * w
+        elif v2 - v1 > d2 - d1:
+            self.color = "black"
+            left = v1
+            right = v2 - (d2 - d1)
+            a = 0
+            b = w * (right - left) / (v2 - v1)
+            p = (d1 - left) / (right - left) * (b - a)
+            l = (d2 - d1) / (right - left) * (b - a)
+            if p < a:
+                l -= a - p
+            if p > b:
+                l -= p - b
+        # else:
+        #     if v1 > d1:
+        #         b = (v1 - d1) / (d2 - d1) * w
+        #         p = b
+        #         l = w - b
+        #     elif v2 < d2:
+        #         l -= (d2 - v2) / (d2 - d1) * (b - a)
+        if l < 3:
+            l = 3
         self.setMinimum(a)
         self.setMaximum(b)
         self.setValue(p)
         self.setLength(l)
         
 
-class DAGViewport(QWidget):
-    def __init__(self, W):
-        super(DAGViewport, self).__init__()
+class Viewport(QWidget):
+    def __init__(self, W, R, lt):
+        super(Viewport, self).__init__()
         self.W = W
+        self.R = R
+        self.currentLayout = lt
+        self.switch_layout_to(lt)
         # container with scroll bars
         vbox = QVBoxLayout()
         vbox.setContentsMargins(0, 0, 0, 0)
@@ -154,16 +172,7 @@ class DAGViewport(QWidget):
         self.x_mouse = 0
         self.y_mouse = 0
         self.setMouseTracking(True)
-        self.R = None
-        # DAGs
-        #for arg in sys.argv[1:]:
-        if (len(sys.argv) > 1):
-            arg = sys.argv[1]
-            self.R = dagrenderer.DAGRenderer()
-            self.R.setDAG(arg)
-            self.currentLayout = None
-            self.switch_layout_to_dag()
-            renderers.append(self.R)
+        self.R = R
         self.zoom_ratio_x = 1.0
         self.zoom_ratio_y = 1.0
         self.width
@@ -224,7 +233,7 @@ class DAGViewport(QWidget):
         self.base_x += (self.width() - margin) / 2.0
 
     def update(self):
-        super(DAGViewport, self).update()
+        super(Viewport, self).update()
 
     def convert_x_to_dag_space(self, x):
         return (x - self.x - self.base_x) / self.zoom_ratio_x
@@ -575,11 +584,21 @@ class DAGViewport(QWidget):
         self.switch_layout_to(self.R.LAYOUT_TYPE_4)
     def switch_layout_to_paraprof(self):
         None
-            
+
+        
 class DAGViz(QMainWindow):
     def __init__(self):
         super(DAGViz, self).__init__()
-        self.VP = DAGViewport(self)
+        # DAGs
+        for arg in sys.argv[1:]:
+            R = dagrenderer.DAGRenderer()
+            R.setDAG(arg)
+            renderers.append(R)
+        R = renderers[0]
+        self.currentVP = Viewport(self, R, R.LAYOUT_TYPE_1)
+        # central widget
+        self.centralWidget = self.currentVP.containerWithScrollBars
+        # UI
         self.initUI()
         
     def initUI(self):
@@ -610,12 +629,12 @@ class DAGViz(QMainWindow):
         expandAct = QAction(QIcon(sysroot + '/gui/plus_button_icon.svg'), 'E&xpand DAG one depth (X)', self)
         expandAct.setShortcut('X')
         expandAct.setStatusTip('Expand DAG one depth (X)')
-        expandAct.triggered.connect(self.VP.do_expanding_one)
+        expandAct.triggered.connect(self.currentVP.do_expanding_one)
         editMenu.addAction(expandAct)
         collapseAct = QAction(QIcon(sysroot + '/gui/minus_button_icon.svg'), '&Collapse DAG one depth (C)', self)
         collapseAct.setShortcut('C')
         collapseAct.setStatusTip('Collapse DAG one depth (C)')
-        collapseAct.triggered.connect(self.VP.do_collapsing_one)
+        collapseAct.triggered.connect(self.currentVP.do_collapsing_one)
         editMenu.addAction(collapseAct)
 
         # view
@@ -625,28 +644,28 @@ class DAGViz(QMainWindow):
         dagViewAct.setIcon(QIcon(sysroot + '/gui/dag_icon.svg'))
         dagViewAct.setToolTip('Switch to basic DAG (1)')
         dagViewAct.setStatusTip('Switch to basic DAG view (1)')
-        dagViewAct.triggered.connect(self.VP.switch_layout_to_dag)
+        dagViewAct.triggered.connect(self.currentVP.switch_layout_to_dag)
         dagtimingViewAct = viewTypeMenu.addAction('DAG with timing')
         dagtimingViewAct.setIcon(QIcon(sysroot + '/gui/dag_boxes_icon.svg'))
         dagtimingViewAct.setToolTip('Switch to DAG with timing (2)')
         dagtimingViewAct.setStatusTip('Switch to DAG with timing on y-axis (2)')
-        dagtimingViewAct.triggered.connect(self.VP.switch_layout_to_dag_timing_linear)
+        dagtimingViewAct.triggered.connect(self.currentVP.switch_layout_to_dag_timing_linear)
         dagtimingViewActMenu = QMenu(self)
         linearAct = dagtimingViewActMenu.addAction(u"Linear scale (time\u00F7a)")
         linearAct.setShortcut(Qt.Key_2)
-        linearAct.setToolTip(u"scale times (y-axis) down with linear function: time\u00F7a (a=%i) (2)" % self.VP.R.getLinearRadix())
-        linearAct.setStatusTip(u"scale times (y-axis) down with linear function: time\u00F7a (a=%i) (2)" % self.VP.R.getLinearRadix())
-        linearAct.triggered.connect(self.VP.switch_layout_to_dag_timing_linear)
+        linearAct.setToolTip(u"scale times (y-axis) down with linear function: time\u00F7a (a=%i) (2)" % self.currentVP.R.getLinearRadix())
+        linearAct.setStatusTip(u"scale times (y-axis) down with linear function: time\u00F7a (a=%i) (2)" % self.currentVP.R.getLinearRadix())
+        linearAct.triggered.connect(self.currentVP.switch_layout_to_dag_timing_linear)
         powerAct = dagtimingViewActMenu.addAction(u"Power scale (time\u1d43)")
         powerAct.setShortcut(Qt.Key_3)
-        powerAct.setToolTip(u"scale times (y-axis) down with power function: time\u1d43 (a=%f) (3)" % self.VP.R.getPowerRadix())
-        powerAct.setStatusTip(u"scale times (y-axis) down with powerfunction: time\u1d43 (a=%f) (3)" % self.VP.R.getPowerRadix())
-        powerAct.triggered.connect(self.VP.switch_layout_to_dag_timing_power)
+        powerAct.setToolTip(u"scale times (y-axis) down with power function: time\u1d43 (a=%f) (3)" % self.currentVP.R.getPowerRadix())
+        powerAct.setStatusTip(u"scale times (y-axis) down with powerfunction: time\u1d43 (a=%f) (3)" % self.currentVP.R.getPowerRadix())
+        powerAct.triggered.connect(self.currentVP.switch_layout_to_dag_timing_power)
         logAct = dagtimingViewActMenu.addAction("Logarithmic scale (log\u2090time)")
         logAct.setShortcut(Qt.Key_4)
-        logAct.setToolTip(u"scale times (y-axis) down with logarithmic function: log\u2090time (a=%f) (4)" % self.VP.R.getLogRadix())
-        logAct.setStatusTip(u"scale times (y-axis) down with logarithmic function: log\u2090time (a=%f) (4)" % self.VP.R.getLogRadix())
-        logAct.triggered.connect(self.VP.switch_layout_to_dag_timing_log)
+        logAct.setToolTip(u"scale times (y-axis) down with logarithmic function: log\u2090time (a=%f) (4)" % self.currentVP.R.getLogRadix())
+        logAct.setStatusTip(u"scale times (y-axis) down with logarithmic function: log\u2090time (a=%f) (4)" % self.currentVP.R.getLogRadix())
+        logAct.triggered.connect(self.currentVP.switch_layout_to_dag_timing_log)
         dagtimingViewAct.setMenu(dagtimingViewActMenu)
         dagtimingViewActMenu.addSeparator()
         adjustAct = dagtimingViewActMenu.addAction(u"Adjust scaling factor (a) with SHIFT + mouse scrolling")
@@ -659,7 +678,7 @@ class DAGViz(QMainWindow):
         paraprofViewAct.setIcon(QIcon(sysroot + '/gui/paraprof_icon.svg'))
         paraprofViewAct.setToolTip('Switch to timelines with parallelism profile (5)')
         paraprofViewAct.setStatusTip('Switch to timelines view with parallelism profile on top (5)')
-        paraprofViewAct.triggered.connect(self.VP.switch_layout_to_paraprof)
+        paraprofViewAct.triggered.connect(self.currentVP.switch_layout_to_paraprof)
         
         showhideMenu = viewMenu.addMenu('Sh&ow/Hide')
         replayAct = QAction('&Replay', self, checkable=True)
@@ -676,22 +695,22 @@ class DAGViz(QMainWindow):
         zoomMenu = viewMenu.addMenu('&Zoom')
         zoomInAct = zoomMenu.addAction('Zoom In')
         zoomInAct.setShortcut('+')
-        zoomInAct.triggered.connect(self.VP.do_zoom_in)
+        zoomInAct.triggered.connect(self.currentVP.do_zoom_in)
         zoomOutAct = zoomMenu.addAction('Zoom Out')
         zoomOutAct.setShortcut('-')
-        zoomOutAct.triggered.connect(self.VP.do_zoom_out)
+        zoomOutAct.triggered.connect(self.currentVP.do_zoom_out)
         zoomMenu.addSeparator()
         zoomFullAct = zoomMenu.addAction('Fit &Full (F)')
         zoomFullAct.setShortcut('F')
         zoomFullAct.setIcon(QIcon(sysroot + '/gui/fit_button_icon.svg'))
         zoomFullAct.setStatusTip('Fit Full (F)')
-        zoomFullAct.triggered.connect(self.VP.do_zoom_fit_full)
+        zoomFullAct.triggered.connect(self.currentVP.do_zoom_fit_full)
         zoomHorAct = self.zoomHorAct = zoomMenu.addAction('Fit &Horizontally')
         zoomHorAct.setShortcut('H')
-        zoomHorAct.triggered.connect(self.VP.do_zoom_fit_hor)
+        zoomHorAct.triggered.connect(self.currentVP.do_zoom_fit_hor)
         zoomVerAct = zoomMenu.addAction('Fit &Vertically')
         zoomVerAct.setShortcut('V')
-        zoomVerAct.triggered.connect(self.VP.do_zoom_fit_ver)
+        zoomVerAct.triggered.connect(self.currentVP.do_zoom_fit_ver)
 
         # toolbar
         self.toolbar = self.addToolBar('Toolbar')
@@ -717,36 +736,36 @@ class DAGViz(QMainWindow):
         # hidden actions
         # moveUpAct = QAction(self)
         # moveUpAct.setShortcut(Qt.Key_Up)
-        # moveUpAct.triggered.connect(self.VP.move_up)
+        # moveUpAct.triggered.connect(self.currentVP.move_up)
         # self.addAction(moveUpAct)
         # moveDownAct = QAction(self)
         # moveDownAct.setShortcut(Qt.Key_Down)
-        # moveDownAct.triggered.connect(self.VP.move_down)
+        # moveDownAct.triggered.connect(self.currentVP.move_down)
         # self.addAction(moveDownAct)
         # moveLeftAct = QAction(self)
         # moveLeftAct.setShortcut(Qt.Key_Left)
-        # moveLeftAct.triggered.connect(self.VP.move_left)
+        # moveLeftAct.triggered.connect(self.currentVP.move_left)
         # self.addAction(moveLeftAct)
         # moveRightAct = QAction(self)
         # moveRightAct.setShortcut(Qt.Key_Right)
-        # moveRightAct.triggered.connect(self.VP.move_right)
+        # moveRightAct.triggered.connect(self.currentVP.move_right)
         # self.addAction(moveRightAct)
         
         # central widget
-        self.setCentralWidget(self.VP.containerWithScrollBars)
+        self.setCentralWidget(self.centralWidget)
         
         # show
         self.show()
 
     def keyPressEvent(self, e):
         if e.key() == Qt.Key_Up:
-            self.VP.move_up()
+            self.currentVP.move_up()
         if e.key() == Qt.Key_Down:
-            self.VP.move_down()
+            self.currentVP.move_down()
         if e.key() == Qt.Key_Left:
-            self.VP.move_left()
+            self.currentVP.move_left()
         elif e.key() == Qt.Key_Right:
-            self.VP.move_right()
+            self.currentVP.move_right()
                
     # def closeEvent(self, event):
     #     print("closeEvent handler.")
