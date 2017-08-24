@@ -87,10 +87,15 @@ DAGRenderer::layout2_(dm_dag_t * D, int cid) {
 }
 
 void
+DAGRenderer::layout3_(dm_dag_t * D, int cid) {
+  dm_dag_layout3(D, cid);
+}
+
+void
 DAGRenderer::layout__(dm_dag_t * D, int cid) {
   double x_proportion = 0.0;
   double y_proportion = 0.0;
-  if (anchorEnabled) {
+  if (anchorEnabled && cid != DM_LAYOUT_PARAPROF_COORDINATE) {
     if (anchor_x_node) {
       dm_node_coordinate_t * c = &anchor_x_node->c[cid];
       double left = c->x - c->lw;
@@ -112,12 +117,15 @@ DAGRenderer::layout__(dm_dag_t * D, int cid) {
   case DM_LAYOUT_DAG_BOX_LOG_COORDINATE:
     layout2_(D, cid);
     break;
+  case DM_LAYOUT_PARAPROF_COORDINATE:
+    layout3_(D, cid);
+    break;
   default:
     dm_perror("unknown cid=%d", cid);
     return;
   }
   
-  if (anchorEnabled) {
+  if (anchorEnabled && cid != DM_LAYOUT_PARAPROF_COORDINATE) {
     if (anchor_x_node) {
       dm_node_coordinate_t * c = &anchor_x_node->c[cid];
       double left = c->x - c->lw;
@@ -403,8 +411,10 @@ drend_draw_path_circle(QPainterPath * path, double x, double y, double w) {
 }
 
 static QColor
-lookup_color(dr_pi_dag_node * pi, double alpha) {
+lookup_color(dr_pi_dag_node * pi, double alpha = 1.0, int type = 0) {
   int v = pi->info.worker;
+  if (type == 1)
+    v = pi->info.kind + 5;
   
   QStringList colors = QColor::colorNames();
   int n_colors = colors.size();
@@ -574,17 +584,29 @@ DAGRenderer::draw1_node_1(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, _un
   }
 }
 
-bool
+int
 rectangle_is_out_of_view(QPainter * qp, QRectF r) {
   QTransform t = qp->transform().inverted();
   QRectF bb = t.mapRect( QRectF(0, 0, qp->device()->width(), qp->device()->height()) );
   if (bb.intersects(r))
-    return false;
-  else
-    return true;
+    return 0;
+  int ret = 0;
+  /* above */
+  if (r.y() + r.height() < bb.y())
+    ret |= DM_DAG_NODE_HIDDEN_ABOVE;
+  /* right */
+  if (r.x() > bb.x() + bb.width())
+    ret |= DM_DAG_NODE_HIDDEN_RIGHT;
+  /* below */
+  if (r.y() > bb.y() + bb.height())
+    ret |= DM_DAG_NODE_HIDDEN_BELOW;
+  /* left */
+  if (r.x() + r.width() < bb.x())
+    ret |= DM_DAG_NODE_HIDDEN_LEFT;
+  return ret;
 }
 
-bool
+int
 dag_node_is_out_of_view(QPainter * qp, dm_dag_node_t * node, int cid) {
   dm_node_coordinate_t * node_c = &node->c[cid];
   double x = node_c->x;
@@ -602,7 +624,7 @@ dag_node_is_out_of_view(QPainter * qp, dm_dag_node_t * node, int cid) {
   return rectangle_is_out_of_view(qp, QRectF(xx, yy, w, h));
 }
 
-bool
+int
 dag_node_and_successors_out_of_view(QPainter * qp, dm_dag_node_t * node, int cid) {
   dm_node_coordinate_t * node_c = &node->c[cid];
   double x = node_c->x;
@@ -883,6 +905,110 @@ DAGRenderer::draw2_(QPainter * qp, dm_dag_t * D, int cid) {
   draw2_node_r(qp, D, D->rt, on_global_cp, cid);
 }
 
+void
+DAGRenderer::draw3_node_1(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, _unused_ int * on_global_cp, int cid) {
+  /* Get inputs */
+  dr_pi_dag_node * pi = dm_pidag_get_node_by_dag_node(D->P, node);
+  dm_node_coordinate_t * node_c = &node->c[cid];
+  double x = node_c->x;
+  double y = node_c->y;
+
+  /* Count drawn node */
+  if (node->d > D->cur_d) {
+    D->cur_d = node->d;
+  }
+  if (dm_is_union(node) && dm_is_inner_loaded(node)
+      && dm_is_shrinked(node)
+      && node->d < D->cur_d_ex) {
+    D->cur_d_ex = node->d;
+  }
+  
+  /* Coordinates */
+  double xx, yy, w, h;
+  xx = x;
+  yy = y;
+  w = node_c->rw;
+  h = node_c->dw;
+  
+  /* Pen with adaptive line width */
+  double zx = qp->transform().m11();
+  double zy = qp->transform().m22();
+  double line_width = dm_min(DMG->opts.nlw, DMG->opts.nlw / dm_min(zx, zy));
+  QPen pen = QPen(Qt::black, line_width);
+  
+  /* Draw path */
+  QPainterPath path;
+  if (!dag_node_is_out_of_view(qp, node, cid)) {
+    
+    drend_draw_path_rectangle(&path, xx, yy, w, h);
+    
+    /* Draw node */
+    if (dm_is_union(node)) {
+
+      QBrush brush = QBrush(QColor(40, 40, 40, 60));
+      qp->fillPath(path, brush);
+      
+    } else {
+      
+      QColor brush_color = lookup_color(pi, 1.0, 1);
+      QBrush brush = QBrush(brush_color);
+      qp->fillPath(path, brush);
+      /* Highlight */
+      if (node->highlight) {
+        qp->fillPath(path, QColor(30, 30, 30, 128));
+      }
+    }
+  }   
+}
+
+void
+DAGRenderer::draw3_node_r(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, int * parent_on_global_cp, int cid) {
+  if (!node || !dm_is_set(node))
+    return;
+  
+  /* Check if node is still on the global critical paths */
+  int me_on_global_cp[DM_NUM_CRITICAL_PATHS];
+  int cp;
+  for (cp = 0; cp < DM_NUM_CRITICAL_PATHS; cp++) {
+    if (parent_on_global_cp[cp] && dm_node_flag_check(node->f, DMG->oncp_flags[cp]))
+      me_on_global_cp[cp] = 1;
+    else
+      me_on_global_cp[cp] = 0;
+  }
+  
+  /* Call inward */
+  int hidden = dag_node_is_out_of_view(qp, node, cid);
+  if (!hidden) {
+    if (dm_is_union(node) && dm_is_inner_loaded(node) && dm_is_expanded(node)) {
+      draw3_node_r(qp, D, node->head, me_on_global_cp, cid);
+    } else {
+      /* Draw node */
+      draw3_node_1(qp, D, node, me_on_global_cp, cid);
+    }
+  }
+  
+  /* Call link-along */
+  if (!(hidden & DM_DAG_NODE_HIDDEN_RIGHT)) {
+    dm_dag_node_t * next = NULL;
+    while ( (next = dm_dag_node_traverse_nexts(node, next)) ) {
+      draw3_node_r(qp, D, next, parent_on_global_cp, cid);
+    }
+  }
+}
+
+void
+DAGRenderer::draw3_(QPainter * qp, dm_dag_t * D, int cid) {
+  int on_global_cp[DM_NUM_CRITICAL_PATHS];
+  int i;
+  for (i = 0; i < DM_NUM_CRITICAL_PATHS; i++) {
+    if (D->show_critical_paths[i])
+      on_global_cp[i] = 1;
+    else
+      on_global_cp[i] = 0;
+  }
+  draw3_node_r(qp, D, D->rt, on_global_cp, cid);
+}
+
 int
 DAGRenderer::get_cid_from_qpainter(QPainter * qp) {
   for (int cid = 0; cid < DM_NUM_COORDINATES; cid++) {
@@ -918,6 +1044,9 @@ DAGRenderer::draw_(QPainter * qp, dm_dag_t * D) {
   case DM_LAYOUT_DAG_BOX_POWER_COORDINATE:
   case DM_LAYOUT_DAG_BOX_LOG_COORDINATE:
     draw2_(qp, D, cid);
+    break;
+  case DM_LAYOUT_PARAPROF_COORDINATE:
+    draw3_(qp, D, cid);
     break;
   default:
     dm_perror("unknown cid=%d", cid);

@@ -83,6 +83,11 @@
 #define DM_ANIMATION_DURATION 400 /* milliseconds */
 #define DM_ANIMATION_STEP 80 /* milliseconds */
 
+#define DM_DAG_NODE_HIDDEN_ABOVE 0b0001
+#define DM_DAG_NODE_HIDDEN_RIGHT 0b0010
+#define DM_DAG_NODE_HIDDEN_BELOW 0b0100
+#define DM_DAG_NODE_HIDDEN_LEFT  0b1000
+
 
 /* Stack & linked list */
 
@@ -477,8 +482,9 @@ double dm_get_alpha_fading_out(dm_dag_t *, dm_dag_node_t *);
 double dm_get_alpha_fading_in(dm_dag_t *, dm_dag_node_t *);
 void dm_motion_init(dm_motion_t *, dm_dag_t *);
 dm_dag_node_t * dm_dag_find_node(dm_dag_t *, double, double, int);
-void dm_dag_layout1(dm_dag_t *, int);
-void dm_dag_layout2(dm_dag_t *, int);
+void dm_dag_layout1(dm_dag_t *, int); /* basic DAG */
+void dm_dag_layout2(dm_dag_t *, int); /* timing DAG */
+void dm_dag_layout3(dm_dag_t *, int); /* timelines */
 
 
 /***** Utilities *****/

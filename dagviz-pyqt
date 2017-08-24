@@ -621,7 +621,7 @@ class DAGViz(QMainWindow):
         self.viewports.append(V)
         V = Viewport(self, R, R.LAYOUT_TYPE_2)
         self.viewports.append(V)
-        V = Viewport(self, R, R.LAYOUT_TYPE_3)
+        V = Viewport(self, R, R.LAYOUT_TYPE_5)
         self.viewports.append(V)
         self.V = None
         # central widget
@@ -629,14 +629,14 @@ class DAGViz(QMainWindow):
         hbox.setContentsMargins(0, 0, 0, 0)
         hbox.setSpacing(5)
         hbox.addWidget(self.viewports[0].containerWithScrollBars)
+        hbox.addWidget(self.viewports[1].containerWithScrollBars)
         vbox = QVBoxLayout()
         vbox.setContentsMargins(0, 0, 0, 0)
         vbox.setSpacing(5)
-        vbox.addWidget(self.viewports[1].containerWithScrollBars)
+        vbox.addLayout(hbox)
         vbox.addWidget(self.viewports[2].containerWithScrollBars)
-        hbox.addLayout(vbox)
         self.centralWidget = QWidget()
-        self.centralWidget.setLayout(hbox)
+        self.centralWidget.setLayout(vbox)
         # UI
         self.setFocusedViewport(self.viewports[0])
         self.initUI()

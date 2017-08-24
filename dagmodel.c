@@ -2439,14 +2439,15 @@ static double
 dm_dag_layout_scale_down(dm_dag_t * D, double val, int cid) {
   double ret;
   switch (cid) {
-  case DM_LAYOUT_DAG_BOX_LOG_COORDINATE:
-    ret = log(val) / log(D->log_radix);
+  case DM_LAYOUT_DAG_BOX_LINEAR_COORDINATE:
+  case DM_LAYOUT_PARAPROF_COORDINATE:
+    ret = val / D->linear_radix;
     break;
   case DM_LAYOUT_DAG_BOX_POWER_COORDINATE:
     ret = pow(val, D->power_radix);
     break;
-  case DM_LAYOUT_DAG_BOX_LINEAR_COORDINATE:
-    ret = val / D->linear_radix;
+  case DM_LAYOUT_DAG_BOX_LOG_COORDINATE:
+    ret = log(val) / log(D->log_radix);
     break;
   default:
     dm_perror("undefined cid=%d\n", cid);
@@ -2694,6 +2695,56 @@ dm_dag_layout2(dm_dag_t * D, int cid) {
   rt_c->xp = 0.0; /* parent-based */
   rt_c->x = 0.0;
   dm_dag_layout2_node_phase2(D, D->rt, cid);
+}
+
+static void
+dm_dag_layout3_node(dm_dag_t * D, dm_dag_node_t * node, int cid) {
+  if (node->d > D->collapsing_d)
+    D->collapsing_d = node->d;  
+  dm_node_coordinate_t * node_c = &node->c[cid];
+  dr_pi_dag_node * pi = dm_pidag_get_node_by_dag_node(D->P, node);
+  
+  /* Calculate inward */
+  node_c->x = dm_dag_layout_scale_down(D, pi->info.start.t - D->bt, cid);
+  node_c->lw = 0.0;
+  node_c->rw = dm_dag_layout_scale_down(D, pi->info.end.t - D->bt, cid) - dm_dag_layout_scale_down(D, pi->info.start.t - D->bt, cid);
+  int worker = pi->info.worker;
+  node_c->y = worker * (2 * D->radius);
+  node_c->dw = D->radius * 2;      
+  if (dm_is_union(node)) {
+    if (worker < 0) {
+      node_c->y = 0.0;
+      node_c->dw = D->P->num_workers * (2 * D->radius);
+    }
+    if (dm_is_inner_loaded(node) && dm_is_expanded(node))
+      dm_dag_layout3_node(D, node->head, cid);
+  }
+    
+  /* Calculate link-along */
+  dm_dag_node_t * u, * v;
+  switch ( dm_dag_node_count_nexts(node) ) {
+  case 0:
+    break;
+  case 1:
+    u = node->next;
+    dm_dag_layout3_node(D, u, cid);
+    break;
+  case 2:
+    u = node->next;  // cont node
+    v = node->spawn; // task node
+    dm_dag_layout3_node(D, u, cid);
+    dm_dag_layout3_node(D, v, cid);
+    break;
+  default:
+    dm_check(0);
+    break;
+  }
+}
+
+void
+dm_dag_layout3(dm_dag_t * D, int cid) {
+  D->collapsing_d = 0;
+  dm_dag_layout3_node(D, D->rt, cid);
 }
 
 /***** end of Layout DAG *****/

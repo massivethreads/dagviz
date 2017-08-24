@@ -102,6 +102,7 @@ private:
   void update();
   void layout1_(dm_dag_t *, int);
   void layout2_(dm_dag_t *, int);
+  void layout3_(dm_dag_t *, int);
   void layout__(dm_dag_t *, int);
   void layout_(dm_dag_t *);
   void do_animation_start();
@@ -122,6 +123,9 @@ private:
   void draw2_node_1(QPainter *, dm_dag_t *, dm_dag_node_t *, _unused_ int *, int);
   void draw2_node_r(QPainter *, dm_dag_t *, dm_dag_node_t *, int *, int);  
   void draw2_(QPainter *, dm_dag_t *, int);
+  void draw3_node_1(QPainter *, dm_dag_t *, dm_dag_node_t *, _unused_ int *, int);
+  void draw3_node_r(QPainter *, dm_dag_t *, dm_dag_node_t *, int *, int);  
+  void draw3_(QPainter *, dm_dag_t *, int);
   int get_cid_from_qpainter(QPainter *);
   void draw_(QPainter *, dm_dag_t *);
   PyObject * get_dag_node_info_(dm_dag_node_t *);
