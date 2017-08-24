@@ -10,11 +10,11 @@ class DAGRenderer : public QObject {
 %End
 
 public:
-  const int LAYOUT_TYPE_1;
-  const int LAYOUT_TYPE_2;
-  const int LAYOUT_TYPE_3;
-  const int LAYOUT_TYPE_4;
-  const int LAYOUT_TYPE_5;
+  static const int LAYOUT_TYPE_1;
+  static const int LAYOUT_TYPE_2;
+  static const int LAYOUT_TYPE_3;
+  static const int LAYOUT_TYPE_4;
+  static const int LAYOUT_TYPE_5;
 
   DAGRenderer();
   void setDAG(char *);

@@ -574,7 +574,7 @@ class Viewport(QWidget):
                 self.R.layout()
                 self.update()
     
-    def do_collapsing_one(self, e):
+    def do_collapsing_one(self):
         if self.R is not None:
             self.R.do_collapsing_one()
             if self.R.animationOn == 0:
@@ -605,26 +605,6 @@ class Viewport(QWidget):
         self.currentLayout = lt
         self.R.layout(lt)
         self.update()
-    def switch_layout_to_dag(self):
-        self.switch_layout_to(self.R.LAYOUT_TYPE_1)
-    def switch_layout_to_dag_timing_linear(self):
-        self.switch_layout_to(self.R.LAYOUT_TYPE_2)
-    def switch_layout_to_dag_timing_power(self):
-        self.switch_layout_to(self.R.LAYOUT_TYPE_3)
-    def switch_layout_to_dag_timing_log(self):
-        self.switch_layout_to(self.R.LAYOUT_TYPE_4)
-    def switch_layout_to_paraprof(self):
-        None
-
-    def keyPressEvent(self, e):
-        if e.key() == Qt.Key_Up:
-            self.move_up()
-        if e.key() == Qt.Key_Down:
-            self.move_down()
-        if e.key() == Qt.Key_Left:
-            self.move_left()
-        elif e.key() == Qt.Key_Right:
-            self.move_right()
                
         
 class DAGViz(QMainWindow):
@@ -647,11 +627,11 @@ class DAGViz(QMainWindow):
         # central widget
         hbox = QHBoxLayout()
         hbox.setContentsMargins(0, 0, 0, 0)
-        hbox.setSpacing(0)
+        hbox.setSpacing(5)
         hbox.addWidget(self.viewports[0].containerWithScrollBars)
         vbox = QVBoxLayout()
         vbox.setContentsMargins(0, 0, 0, 0)
-        vbox.setSpacing(0)
+        vbox.setSpacing(5)
         vbox.addWidget(self.viewports[1].containerWithScrollBars)
         vbox.addWidget(self.viewports[2].containerWithScrollBars)
         hbox.addLayout(vbox)
@@ -689,12 +669,12 @@ class DAGViz(QMainWindow):
         expandAct = QAction(QIcon(sysroot + '/gui/plus_button_icon.svg'), 'E&xpand DAG one depth (X)', self)
         expandAct.setShortcut('X')
         expandAct.setStatusTip('Expand DAG one depth (X)')
-        expandAct.triggered.connect(self.V.do_expanding_one)
+        expandAct.triggered.connect(self.onExpandAct)
         editMenu.addAction(expandAct)
         collapseAct = QAction(QIcon(sysroot + '/gui/minus_button_icon.svg'), '&Collapse DAG one depth (C)', self)
         collapseAct.setShortcut('C')
         collapseAct.setStatusTip('Collapse DAG one depth (C)')
-        collapseAct.triggered.connect(self.V.do_collapsing_one)
+        collapseAct.triggered.connect(self.onCollapseAct)
         editMenu.addAction(collapseAct)
 
         # view
@@ -704,28 +684,28 @@ class DAGViz(QMainWindow):
         dagViewAct.setIcon(QIcon(sysroot + '/gui/dag_icon.svg'))
         dagViewAct.setToolTip('Switch to basic DAG (1)')
         dagViewAct.setStatusTip('Switch to basic DAG view (1)')
-        dagViewAct.triggered.connect(self.V.switch_layout_to_dag)
+        dagViewAct.triggered.connect(self.onDagViewAct)
         dagtimingViewAct = viewTypeMenu.addAction('DAG with timing')
         dagtimingViewAct.setIcon(QIcon(sysroot + '/gui/dag_boxes_icon.svg'))
         dagtimingViewAct.setToolTip('Switch to DAG with timing (2)')
         dagtimingViewAct.setStatusTip('Switch to DAG with timing on y-axis (2)')
-        dagtimingViewAct.triggered.connect(self.V.switch_layout_to_dag_timing_linear)
+        dagtimingViewAct.triggered.connect(self.onDagLinearViewAct)
         dagtimingViewActMenu = QMenu(self)
         linearAct = dagtimingViewActMenu.addAction(u"Linear scale (time\u00F7a)")
         linearAct.setShortcut(Qt.Key_2)
-        linearAct.setToolTip(u"scale times (y-axis) down with linear function: time\u00F7a (a=%i) (2)" % self.V.R.getLinearRadix())
-        linearAct.setStatusTip(u"scale times (y-axis) down with linear function: time\u00F7a (a=%i) (2)" % self.V.R.getLinearRadix())
-        linearAct.triggered.connect(self.V.switch_layout_to_dag_timing_linear)
+        linearAct.setToolTip(u"scale times (y-axis) down with linear function: time\u00F7a (2)")
+        linearAct.setStatusTip(u"scale times (y-axis) down with linear function: time\u00F7a (2)")
+        linearAct.triggered.connect(self.onDagLinearViewAct)
         powerAct = dagtimingViewActMenu.addAction(u"Power scale (time\u1d43)")
         powerAct.setShortcut(Qt.Key_3)
-        powerAct.setToolTip(u"scale times (y-axis) down with power function: time\u1d43 (a=%f) (3)" % self.V.R.getPowerRadix())
-        powerAct.setStatusTip(u"scale times (y-axis) down with powerfunction: time\u1d43 (a=%f) (3)" % self.V.R.getPowerRadix())
-        powerAct.triggered.connect(self.V.switch_layout_to_dag_timing_power)
+        powerAct.setToolTip(u"scale times (y-axis) down with power function: time\u1d43 (3)")
+        powerAct.setStatusTip(u"scale times (y-axis) down with powerfunction: time\u1d43 (3)")
+        powerAct.triggered.connect(self.onDagPowerViewAct)
         logAct = dagtimingViewActMenu.addAction("Logarithmic scale (log\u2090time)")
         logAct.setShortcut(Qt.Key_4)
-        logAct.setToolTip(u"scale times (y-axis) down with logarithmic function: log\u2090time (a=%f) (4)" % self.V.R.getLogRadix())
-        logAct.setStatusTip(u"scale times (y-axis) down with logarithmic function: log\u2090time (a=%f) (4)" % self.V.R.getLogRadix())
-        logAct.triggered.connect(self.V.switch_layout_to_dag_timing_log)
+        logAct.setToolTip(u"scale times (y-axis) down with logarithmic function: log\u2090time (4)")
+        logAct.setStatusTip(u"scale times (y-axis) down with logarithmic function: log\u2090time (4)")
+        logAct.triggered.connect(self.onDagLogViewAct)
         dagtimingViewAct.setMenu(dagtimingViewActMenu)
         dagtimingViewActMenu.addSeparator()
         adjustAct = dagtimingViewActMenu.addAction(u"Adjust scaling factor (a) with SHIFT + mouse scrolling")
@@ -738,7 +718,7 @@ class DAGViz(QMainWindow):
         paraprofViewAct.setIcon(QIcon(sysroot + '/gui/paraprof_icon.svg'))
         paraprofViewAct.setToolTip('Switch to timelines with parallelism profile (5)')
         paraprofViewAct.setStatusTip('Switch to timelines view with parallelism profile on top (5)')
-        paraprofViewAct.triggered.connect(self.V.switch_layout_to_paraprof)
+        paraprofViewAct.triggered.connect(self.onDagParaprofViewAct)
         
         # showhideMenu = viewMenu.addMenu('Sh&ow/Hide')
         # replayAct = QAction('&Replay', self, checkable=True)
@@ -755,22 +735,22 @@ class DAGViz(QMainWindow):
         zoomMenu = viewMenu.addMenu('&Zoom')
         zoomInAct = zoomMenu.addAction('Zoom In')
         zoomInAct.setShortcut('+')
-        zoomInAct.triggered.connect(self.V.do_zoom_in)
+        zoomInAct.triggered.connect(self.onZoomInAct)
         zoomOutAct = zoomMenu.addAction('Zoom Out')
         zoomOutAct.setShortcut('-')
-        zoomOutAct.triggered.connect(self.V.do_zoom_out)
+        zoomOutAct.triggered.connect(self.onZoomOutAct)
         zoomMenu.addSeparator()
         zoomFullAct = zoomMenu.addAction('Fit &Full (F)')
         zoomFullAct.setShortcut('F')
         zoomFullAct.setIcon(QIcon(sysroot + '/gui/fit_button_icon.svg'))
         zoomFullAct.setStatusTip('Fit Full (F)')
-        zoomFullAct.triggered.connect(self.V.do_zoom_fit_full)
+        zoomFullAct.triggered.connect(self.onZoomFullAct)
         zoomHorAct = self.zoomHorAct = zoomMenu.addAction('Fit &Horizontally')
         zoomHorAct.setShortcut('H')
-        zoomHorAct.triggered.connect(self.V.do_zoom_fit_hor)
+        zoomHorAct.triggered.connect(self.onZoomHorAct)
         zoomVerAct = zoomMenu.addAction('Fit &Vertically')
         zoomVerAct.setShortcut('V')
-        zoomVerAct.triggered.connect(self.V.do_zoom_fit_ver)
+        zoomVerAct.triggered.connect(self.onZoomVerAct)
 
         viewMenu.addSeparator()
         switchViewportAct = viewMenu.addAction("Switch focused viewport")
@@ -799,22 +779,22 @@ class DAGViz(QMainWindow):
         zoomMenu.addAction(zoomVerAct)
 
         # hidden actions
-        # moveUpAct = QAction(self)
-        # moveUpAct.setShortcut(Qt.Key_Up)
-        # moveUpAct.triggered.connect(self.V.move_up)
-        # self.addAction(moveUpAct)
-        # moveDownAct = QAction(self)
-        # moveDownAct.setShortcut(Qt.Key_Down)
-        # moveDownAct.triggered.connect(self.V.move_down)
-        # self.addAction(moveDownAct)
-        # moveLeftAct = QAction(self)
-        # moveLeftAct.setShortcut(Qt.Key_Left)
-        # moveLeftAct.triggered.connect(self.V.move_left)
-        # self.addAction(moveLeftAct)
-        # moveRightAct = QAction(self)
-        # moveRightAct.setShortcut(Qt.Key_Right)
-        # moveRightAct.triggered.connect(self.V.move_right)
-        # self.addAction(moveRightAct)
+        moveUpAct = QAction(self)
+        moveUpAct.setShortcut(Qt.Key_Up)
+        moveUpAct.triggered.connect(self.onMoveUpAct)
+        self.addAction(moveUpAct)
+        moveDownAct = QAction(self)
+        moveDownAct.setShortcut(Qt.Key_Down)
+        moveDownAct.triggered.connect(self.onMoveDownAct)
+        self.addAction(moveDownAct)
+        moveLeftAct = QAction(self)
+        moveLeftAct.setShortcut(Qt.Key_Left)
+        moveLeftAct.triggered.connect(self.onMoveLeftAct)
+        self.addAction(moveLeftAct)
+        moveRightAct = QAction(self)
+        moveRightAct.setShortcut(Qt.Key_Right)
+        moveRightAct.triggered.connect(self.onMoveRightAct)
+        self.addAction(moveRightAct)
         
         # central widget
         self.setCentralWidget(self.centralWidget)
@@ -849,6 +829,42 @@ class DAGViz(QMainWindow):
             self.V.move_left()
         elif e.key() == Qt.Key_Right:
             self.V.move_right()
+
+    def onExpandAct(self, e):
+        self.V.do_expanding_one()
+    def onCollapseAct(self, e):
+        self.V.do_collapsing_one()
+        
+    def onDagViewAct(self):
+        self.V.switch_layout_to(dagrenderer.DAGRenderer.LAYOUT_TYPE_1)
+    def onDagLinearViewAct(self):
+        self.V.switch_layout_to(dagrenderer.DAGRenderer.LAYOUT_TYPE_2)
+    def onDagPowerViewAct(self):
+        self.V.switch_layout_to(dagrenderer.DAGRenderer.LAYOUT_TYPE_3)
+    def onDagLogViewAct(self):
+        self.V.switch_layout_to(dagrenderer.DAGRenderer.LAYOUT_TYPE_4)
+    def onDagParaprofViewAct(self):
+        self.V.switch_layout_to(dagrenderer.DAGRenderer.LAYOUT_TYPE_5)
+        
+    def onZoomInAct(self):
+        self.V.do_zoom_in()
+    def onZoomOutAct(self):
+        self.V.do_zoom_out()
+    def onZoomFullAct(self):
+        self.V.do_zoom_fit_full()
+    def onZoomHorAct(self):
+        self.V.do_zoom_fit_hor()
+    def onZoomVerAct(self):
+        self.V.do_zoom_fit_ver()
+
+    def onMoveUpAct(self):
+        self.V.move_up()
+    def onMoveDownAct(self):
+        self.V.move_down()
+    def onMoveLeftAct(self):
+        self.V.move_left()
+    def onMoveRightAct(self):
+        self.V.move_right()
 
     # def closeEvent(self, event):
     #     print("closeEvent handler.")
