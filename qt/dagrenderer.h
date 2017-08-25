@@ -82,6 +82,7 @@ public:
   double down_height(int);
   double height(int cid) { return up_height(cid) + down_height(cid); };
   dm_dag_node_t * find_node(double x, double y, int cid) { return dm_dag_find_node(mDAG, x, y, cid); };
+  dm_dag_node_t * find_node_with_node_index(int node_id) { return dm_dag_find_node_with_pi_index(mDAG, node_id); };
   PyObject * get_dag_node_info(void * node) { return get_dag_node_info_((dm_dag_node_t *) node); };
   void highlight_node(void * node) { ((dm_dag_node_t *) node)->highlight = 1; };
   void unhighlight_node(void * node) { ((dm_dag_node_t *) node)->highlight = 0; };

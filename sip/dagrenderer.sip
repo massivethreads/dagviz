@@ -57,6 +57,7 @@ public:
   double up_height(int);
   double height(int);
   void * find_node(double, double, int);
+  void * find_node_with_node_index(int);
   PyObject * get_dag_node_info(void *);
   void highlight_node(void *);
   void unhighlight_node(void *);

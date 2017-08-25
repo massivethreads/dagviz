@@ -2316,6 +2316,34 @@ dm_dag_find_node(dm_dag_t * D, double x, double y, int cid) {
   return ret;
 }
 
+static dm_dag_node_t *
+dm_dag_find_node_with_pi_index_r(dm_dag_t * D, long pii, dm_dag_node_t * node) {
+  if (node->pii == pii)
+    return node;
+  dm_dag_node_t * ret = NULL;
+  /* Call inward */
+  if (dm_is_union(node) && dm_is_inner_loaded(node)
+      && !dm_is_shrinking(node)
+      && (dm_is_expanded(node) || dm_is_expanding(node))) {
+    ret = dm_dag_find_node_with_pi_index_r(D, pii, node->head);
+    if (ret)
+      return ret;
+  }
+  /* Call link-along */
+  dm_dag_node_t * x = NULL;
+  while ( (x = dm_dag_node_traverse_nexts(node, x)) ) {
+    ret = dm_dag_find_node_with_pi_index_r(D, pii, x);
+    if (ret)
+      return ret;
+  }
+  return NULL;
+}
+
+dm_dag_node_t *
+dm_dag_find_node_with_pi_index(dm_dag_t * D, long pii) {
+  return dm_dag_find_node_with_pi_index_r(D, pii, D->rt);
+}
+
 static void
 dm_dag_layout1_node_phase1(dm_dag_t * D, dm_dag_node_t * node, int cid) {
   if (dm_is_shrinking(node) && (D->collapsing_d == 0 || node->d < D->collapsing_d))

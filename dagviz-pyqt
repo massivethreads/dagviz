@@ -890,6 +890,10 @@ class DAGViz(QMainWindow):
         self.toolbar.addAction(expandAct)
         self.toolbar.addAction(collapseAct)
         self.toolbar.addSeparator()
+        searchAct = self.toolbar.addAction('Search node (S)')
+        searchAct.setShortcut('S')
+        searchAct.setIcon(QIcon(sysroot + '/gui/search_icon.svg'))
+        searchAct.triggered.connect(self.onSearchAct)
 
         # context menu
         self.cmenu = QMenu(self)
@@ -918,6 +922,14 @@ class DAGViz(QMainWindow):
         moveRightAct.setShortcut(Qt.Key_Right)
         moveRightAct.triggered.connect(self.onMoveRightAct)
         self.addAction(moveRightAct)
+
+    def onSearchAct(self):
+        (node_id,ok) = QInputDialog.getInt(self, "Search node", "Node ID:", QLineEdit.Normal)
+        if ok:
+            node = self.V.R.find_node_with_node_index(node_id)
+            if node is not None:
+                self.V.R.switch_node_highlight(node)
+                self.V.R.update()
 
     def viewport_division_for_one_dag_type_0(self, R):
         V = Viewport(self, R, R.LAYOUT_TYPE_1)

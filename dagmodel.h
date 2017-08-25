@@ -483,6 +483,7 @@ double dm_get_alpha_fading_out(dm_dag_t *, dm_dag_node_t *);
 double dm_get_alpha_fading_in(dm_dag_t *, dm_dag_node_t *);
 void dm_motion_init(dm_motion_t *, dm_dag_t *);
 dm_dag_node_t * dm_dag_find_node(dm_dag_t *, double, double, int);
+dm_dag_node_t * dm_dag_find_node_with_pi_index(dm_dag_t * D, long pii);
 void dm_dag_layout1(dm_dag_t *, int); /* basic DAG */
 double dm_dag_layout_scale_down(dm_dag_t *, double, int);
 void dm_dag_layout2(dm_dag_t *, int); /* timing DAG */
