@@ -400,6 +400,7 @@ int        dm_dag_node_set(dm_dag_t *, dm_dag_node_t *);
 int        dm_dag_build_node_inner(dm_dag_t *, dm_dag_node_t *);
 int        dm_dag_collapse_node_inner(dm_dag_t *, dm_dag_node_t *);
 void       dm_dag_clear_shrinked_nodes(dm_dag_t *);
+char *     dm_get_distinct_components_name_string(char *);
 void       dm_dag_init(dm_dag_t *, dm_pidag_t *);
 dm_dag_t * dm_dag_create_new_with_pidag(dm_pidag_t *);
 dm_dag_t * dm_add_dag(char *);

@@ -15,6 +15,9 @@ public:
   static const int LAYOUT_TYPE_3;
   static const int LAYOUT_TYPE_4;
   static const int LAYOUT_TYPE_5;
+  char * fileName;
+  char * shortFileName;
+  char * shortName;
 
   DAGRenderer();
   void setDAG(char *);

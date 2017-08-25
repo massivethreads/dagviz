@@ -39,6 +39,10 @@ DAGRenderer::setDAG(char * filename) {
   }
   mDAG = D;
   layout_(D);
+  fileName = (char *) dm_malloc((strlen(filename) + 1) * sizeof(char));
+  strcpy(fileName, filename);
+  shortFileName = D->P->short_filename;
+  shortName = dm_get_distinct_components_name_string(D->P->short_filename);
 }
 
 void

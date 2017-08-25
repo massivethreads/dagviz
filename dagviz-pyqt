@@ -237,9 +237,6 @@ class Viewport(QWidget):
         self.hoveredNoneActDef.setCheckable(True)
         self.nodeHoveredActGroup.addAction(self.hoveredNoneActDef)
         self.nodeInfoTooltipActDef.setChecked(True)
-        # Initial DAG expansion
-        self.do_expanding_one()
-        self.do_expanding_one()
 
     def adjustScrollBars(self):
         # DAG: d1->d2, viewport: v1->v2 in DAG space
@@ -643,31 +640,28 @@ class DAGViz(QMainWindow):
             R = dagrenderer.DAGRenderer()
             R.setDAG(arg)
             renderers.append(R)
-        R = renderers[0]
-        self.viewports = []
-        V = Viewport(self, R, R.LAYOUT_TYPE_1)
-        self.viewports.append(V)
-        V = Viewport(self, R, R.LAYOUT_TYPE_2)
-        self.viewports.append(V)
-        V = Viewport(self, R, R.LAYOUT_TYPE_5)
-        self.viewports.append(V)
-        self.V = None
-        # central widget
-        hbox = QHBoxLayout()
-        hbox.setContentsMargins(0, 0, 0, 0)
-        hbox.setSpacing(5)
-        hbox.addWidget(self.viewports[0].containerWithScrollBars)
-        hbox.addWidget(self.viewports[1].containerWithScrollBars)
-        vbox = QVBoxLayout()
-        vbox.setContentsMargins(0, 0, 0, 0)
-        vbox.setSpacing(5)
-        vbox.addLayout(hbox)
-        vbox.addWidget(self.viewports[2].containerWithScrollBars)
-        self.centralWidget = QWidget()
-        self.centralWidget.setLayout(vbox)
         # UI
-        self.setFocusedViewport(self.viewports[0])
         self.initUI()
+        # central widget (viewport division)
+        self.V = None
+        self.viewports = []
+        self.currentDivision = -1
+        self.centralWidget = None
+        if len(renderers) == 1:
+            self.dagDivisionsActGroup.actions()[4].setChecked(True)
+        elif len(renderers) == 2:
+            self.dagDivisionsActGroup.actions()[5].setChecked(True)
+        elif len(renderers) == 3:
+            self.dagDivisionsActGroup.actions()[8].setChecked(True)
+        else:
+            self.dagDivisionsActGroup.actions()[0].setChecked(True)
+        self.reset_dags_and_viewports()
+        # show
+        self.show()
+        # initial DAG expansion
+        for R in renderers:
+            R.do_expanding_one()
+            R.do_expanding_one()
         
     def initUI(self):
         # main window
@@ -707,29 +701,85 @@ class DAGViz(QMainWindow):
 
         # view
         viewportDivisions = viewMenu.addMenu('Viewport &divisions')
+        self.dagDivisionsActGroup = QActionGroup(viewportDivisions)
+        self.dagDivisionsActGroup.setExclusive(True)
         oneDagDivisions = viewportDivisions.addMenu('Viewport divisions for &one DAG')
-        oneDivAct1 = oneDagDivisions.addAction('basic DAG | timing DAG')
-        oneDivAct1.triggered.connect(self.viewport_division_for_one_dag_type_1)
-        oneDivAct2 = oneDagDivisions.addAction('basic DAG | Timelines')
-        oneDivAct2.triggered.connect(self.viewport_division_for_one_dag_type_2)
-        oneDivAct3 = oneDagDivisions.addAction('timing DAG | Timelines')
-        oneDivAct3.triggered.connect(self.viewport_division_for_one_dag_type_3)
-        oneDivAct4 = oneDagDivisions.addAction('basic DAG | timing DAG / Timelines')
-        oneDivAct4.triggered.connect(self.viewport_division_for_one_dag_type_4)
+        oneDivAct0 = oneDagDivisions.addAction('Basic DAG')
+        oneDivAct0.setCheckable(True)
+        oneDivAct0.triggered.connect(self.reset_dags_and_viewports)
+        self.dagDivisionsActGroup.addAction(oneDivAct0)
+        oneDivAct1 = oneDagDivisions.addAction('Basic DAG | Timing DAG')
+        oneDivAct1.setCheckable(True)
+        oneDivAct1.triggered.connect(self.reset_dags_and_viewports)
+        self.dagDivisionsActGroup.addAction(oneDivAct1)
+        oneDivAct2 = oneDagDivisions.addAction('Basic DAG | Timelines')
+        oneDivAct2.setCheckable(True)
+        oneDivAct2.triggered.connect(self.reset_dags_and_viewports)
+        self.dagDivisionsActGroup.addAction(oneDivAct2)
+        oneDivAct3 = oneDagDivisions.addAction('Timing DAG | Timelines')
+        oneDivAct3.setCheckable(True)
+        oneDivAct3.triggered.connect(self.reset_dags_and_viewports)
+        self.dagDivisionsActGroup.addAction(oneDivAct3)
+        oneDivAct4 = oneDagDivisions.addAction('Basic DAG | Timing DAG / Timelines')
+        oneDivAct4.setCheckable(True)
+        oneDivAct4.triggered.connect(self.reset_dags_and_viewports)
+        self.dagDivisionsActGroup.addAction(oneDivAct4)
+        oneDagDivisions.addSeparator()
+        self.chooseOneDagMenu = oneDagDivisions.addMenu('Choose one DAG')
+        self.chooseOneDagActGroup = QActionGroup(self.chooseOneDagMenu)
+        self.chooseOneDagActGroup.setExclusive(True)
+        for R in renderers:
+            chooseOneDagAct = self.chooseOneDagMenu.addAction('DAG %i: %s' % (renderers.index(R), R.shortName))
+            chooseOneDagAct.setCheckable(True)
+            chooseOneDagAct.setStatusTip(R.fileName)
+            chooseOneDagAct.triggered.connect(self.reset_dags_and_viewports)
+            self.chooseOneDagActGroup.addAction(chooseOneDagAct)
         twoDagDivisions = viewportDivisions.addMenu('Viewport divisions for &two DAG')
-        twoDivAct1 = twoDagDivisions.addAction('basic DAG | basic DAG')
-        twoDivAct1.triggered.connect(self.viewport_division_for_two_dag_type_1)
-        twoDivAct2 = twoDagDivisions.addAction('timing DAG | timing DAG')
-        twoDivAct2.triggered.connect(self.viewport_division_for_two_dag_type_2)
-        twoDivAct3 = twoDagDivisions.addAction('Timelines | Timelines')
-        twoDivAct3.triggered.connect(self.viewport_division_for_two_dag_type_3)
+        twoDivAct1 = twoDagDivisions.addAction('Basic DAG | Basic DAG')
+        twoDivAct1.setCheckable(True)
+        twoDivAct1.triggered.connect(self.reset_dags_and_viewports)
+        self.dagDivisionsActGroup.addAction(twoDivAct1)
+        twoDivAct2 = twoDagDivisions.addAction('(Timing DAG | Timelines) / (Timing DAG | Timelines)')
+        twoDivAct2.setCheckable(True)
+        twoDivAct2.triggered.connect(self.reset_dags_and_viewports)
+        self.dagDivisionsActGroup.addAction(twoDivAct2)
+        twoDivAct3 = twoDagDivisions.addAction('(Basic|Timing/Timelines) | (Basic|Timing/Timelines)')
+        twoDivAct3.setCheckable(True)
+        twoDivAct3.triggered.connect(self.reset_dags_and_viewports)
+        self.dagDivisionsActGroup.addAction(twoDivAct3)
+        twoDagDivisions.addSeparator()
+        self.chooseTwoDagMenu = twoDagDivisions.addMenu('Choose two DAGs')
+        self.chooseTwoDagActGroup = QActionGroup(self.chooseTwoDagMenu)
+        self.chooseTwoDagActGroup.setExclusive(False)
+        for R in renderers:
+            chooseTwoDagAct = self.chooseTwoDagMenu.addAction('DAG %i: %s' % (renderers.index(R), R.shortName))
+            chooseTwoDagAct.setCheckable(True)
+            chooseTwoDagAct.setStatusTip(R.fileName)
+            chooseTwoDagAct.triggered.connect(self.reset_dags_and_viewports)
+            self.chooseTwoDagActGroup.addAction(chooseTwoDagAct)
         threeDagDivisions = viewportDivisions.addMenu('Viewport divisions for th&ree DAG')
-        threeDivAct1 = threeDagDivisions.addAction('basic DAG | basic DAG | basic DAG')
-        threeDivAct1.triggered.connect(self.viewport_division_for_three_dag_type_1)
-        threeDivAct2 = threeDagDivisions.addAction('timing DAG | timing DAG | timing DAG')
-        threeDivAct2.triggered.connect(self.viewport_division_for_three_dag_type_2)
+        threeDivAct1 = threeDagDivisions.addAction('Basic DAG | Basic DAG | Basic DAG')
+        threeDivAct1.setCheckable(True)
+        threeDivAct1.triggered.connect(self.reset_dags_and_viewports)
+        self.dagDivisionsActGroup.addAction(threeDivAct1)
+        threeDivAct2 = threeDagDivisions.addAction('Timing DAG | Timing DAG | Timing DAG')
+        threeDivAct2.setCheckable(True)
+        threeDivAct2.triggered.connect(self.reset_dags_and_viewports)
+        self.dagDivisionsActGroup.addAction(threeDivAct2)
         threeDivAct3 = threeDagDivisions.addAction('Timelines | Timelines | Timelines')
-        threeDivAct3.triggered.connect(self.viewport_division_for_three_dag_type_3)
+        threeDivAct3.setCheckable(True)
+        threeDivAct3.triggered.connect(self.reset_dags_and_viewports)
+        self.dagDivisionsActGroup.addAction(threeDivAct3)
+        threeDagDivisions.addSeparator()
+        self.chooseThreeDagMenu = threeDagDivisions.addMenu('Choose three DAGs')
+        self.chooseThreeDagActGroup = QActionGroup(self.chooseThreeDagMenu)
+        self.chooseThreeDagActGroup.setExclusive(False)
+        for R in renderers:
+            chooseThreeDagAct = self.chooseThreeDagMenu.addAction('DAG %i: %s' % (renderers.index(R), R.shortName))
+            chooseThreeDagAct.setCheckable(True)
+            chooseThreeDagAct.setStatusTip(R.fileName)
+            chooseThreeDagAct.triggered.connect(self.reset_dags_and_viewports)
+            self.chooseThreeDagActGroup.addAction(chooseThreeDagAct)
         viewMenu.addSeparator()
         viewTypeMenu = viewMenu.addMenu('&View types')
         dagViewAct = viewTypeMenu.addAction('DAG')
@@ -853,35 +903,273 @@ class DAGViz(QMainWindow):
         moveRightAct.setShortcut(Qt.Key_Right)
         moveRightAct.triggered.connect(self.onMoveRightAct)
         self.addAction(moveRightAct)
+
+    def viewport_division_for_one_dag_type_0(self, R):
+        V = Viewport(self, R, R.LAYOUT_TYPE_1)
+        self.viewports.append(V)
+        return V.containerWithScrollBars
+    def viewport_division_for_one_dag_type_1(self, R):
+        V1 = Viewport(self, R, R.LAYOUT_TYPE_1)
+        self.viewports.append(V1)
+        V2 = Viewport(self, R, R.LAYOUT_TYPE_2)
+        self.viewports.append(V2)
+        splitter = QSplitter(Qt.Horizontal)
+        splitter.setContentsMargins(0, 0, 0, 0)
+        splitter.addWidget(V1.containerWithScrollBars)
+        splitter.addWidget(V2.containerWithScrollBars)
+        return splitter
+    def viewport_division_for_one_dag_type_2(self, R):
+        V1 = Viewport(self, R, R.LAYOUT_TYPE_1)
+        self.viewports.append(V1)
+        V2 = Viewport(self, R, R.LAYOUT_TYPE_5)
+        self.viewports.append(V2)
+        splitter = QSplitter(Qt.Horizontal)
+        splitter.setContentsMargins(0, 0, 0, 0)
+        splitter.addWidget(V1.containerWithScrollBars)
+        splitter.addWidget(V2.containerWithScrollBars)
+        return splitter
+    def viewport_division_for_one_dag_type_3(self, R):
+        V1 = Viewport(self, R, R.LAYOUT_TYPE_2)
+        self.viewports.append(V1)
+        V2 = Viewport(self, R, R.LAYOUT_TYPE_5)
+        self.viewports.append(V2)
+        splitter = QSplitter(Qt.Horizontal)
+        splitter.setContentsMargins(0, 0, 0, 0)
+        splitter.addWidget(V1.containerWithScrollBars)
+        splitter.addWidget(V2.containerWithScrollBars)
+        return splitter
+    def viewport_division_for_one_dag_type_4(self, R):
+        V1 = Viewport(self, R, R.LAYOUT_TYPE_1)
+        self.viewports.append(V1)
+        V2 = Viewport(self, R, R.LAYOUT_TYPE_2)
+        self.viewports.append(V2)
+        V3 = Viewport(self, R, R.LAYOUT_TYPE_5)
+        self.viewports.append(V3)
+        splitter = QSplitter(Qt.Horizontal)
+        splitter.setContentsMargins(0, 0, 0, 0)
+        splitter.addWidget(V1.containerWithScrollBars)
+        splitter.addWidget(V2.containerWithScrollBars)
+        splitter2 = QSplitter(Qt.Vertical)
+        splitter2.setContentsMargins(0, 0, 0, 0)
+        splitter2.addWidget(splitter)
+        splitter2.addWidget(V3.containerWithScrollBars)
+        return splitter2
+
+    def viewport_division_for_two_dag_type_0(self, R1, R2):
+        V1 = Viewport(self, R1, R1.LAYOUT_TYPE_1)
+        self.viewports.append(V1)
+        V2 = Viewport(self, R2, R2.LAYOUT_TYPE_1)
+        self.viewports.append(V2)
+        splitter = QSplitter(Qt.Horizontal)
+        splitter.setContentsMargins(0, 0, 0, 0)
+        splitter.addWidget(V1.containerWithScrollBars)
+        splitter.addWidget(V2.containerWithScrollBars)
+        return splitter
+    def viewport_division_for_two_dag_type_1(self, R1, R2):
+        V1 = Viewport(self, R1, R1.LAYOUT_TYPE_2)
+        self.viewports.append(V1)
+        V2 = Viewport(self, R1, R1.LAYOUT_TYPE_5)
+        self.viewports.append(V2)
+        s1 = QSplitter(Qt.Vertical)
+        s1.setContentsMargins(0, 0, 0, 0)
+        s1.addWidget(V1.containerWithScrollBars)
+        s1.addWidget(V2.containerWithScrollBars)
+        V3 = Viewport(self, R2, R2.LAYOUT_TYPE_2)
+        self.viewports.append(V3)
+        V4 = Viewport(self, R2, R2.LAYOUT_TYPE_5)
+        self.viewports.append(V4)
+        s2 = QSplitter(Qt.Vertical)
+        s2.setContentsMargins(0, 0, 0, 0)
+        s2.addWidget(V3.containerWithScrollBars)
+        s2.addWidget(V4.containerWithScrollBars)
+        splitter = QSplitter(Qt.Horizontal)
+        splitter.setContentsMargins(0, 0, 0, 0)
+        splitter.addWidget(s1)
+        splitter.addWidget(s2)
+        return splitter
+    def viewport_division_for_two_dag_type_2(self, R1, R2):
+        s1 = self.viewport_division_for_one_dag_type_4(R1)
+        s2 = self.viewport_division_for_one_dag_type_4(R2)
+        splitter = QSplitter(Qt.Horizontal)
+        splitter.setContentsMargins(0, 0, 0, 0)
+        splitter.addWidget(s1)
+        splitter.addWidget(s2)
+        return splitter
         
-        # central widget
+    def viewport_division_for_three_dag_type_0(self, R1, R2, R3):
+        V1 = Viewport(self, R1, R1.LAYOUT_TYPE_1)
+        self.viewports.append(V1)
+        V2 = Viewport(self, R2, R2.LAYOUT_TYPE_1)
+        self.viewports.append(V2)
+        V3 = Viewport(self, R3, R3.LAYOUT_TYPE_1)
+        self.viewports.append(V3)
+        splitter = QSplitter(Qt.Horizontal)
+        splitter.setContentsMargins(0, 0, 0, 0)
+        splitter.addWidget(V1.containerWithScrollBars)
+        splitter.addWidget(V2.containerWithScrollBars)
+        splitter.addWidget(V3.containerWithScrollBars)
+        return splitter
+    def viewport_division_for_three_dag_type_1(self, R1, R2, R3):
+        V1 = Viewport(self, R1, R1.LAYOUT_TYPE_2)
+        self.viewports.append(V1)
+        V2 = Viewport(self, R2, R2.LAYOUT_TYPE_2)
+        self.viewports.append(V2)
+        V3 = Viewport(self, R3, R3.LAYOUT_TYPE_2)
+        self.viewports.append(V3)
+        splitter = QSplitter(Qt.Horizontal)
+        splitter.setContentsMargins(0, 0, 0, 0)
+        splitter.addWidget(V1.containerWithScrollBars)
+        splitter.addWidget(V2.containerWithScrollBars)
+        splitter.addWidget(V3.containerWithScrollBars)
+        return splitter
+    def viewport_division_for_three_dag_type_2(self, R1, R2, R3):
+        V1 = Viewport(self, R1, R1.LAYOUT_TYPE_5)
+        self.viewports.append(V1)
+        V2 = Viewport(self, R2, R2.LAYOUT_TYPE_5)
+        self.viewports.append(V2)
+        V3 = Viewport(self, R3, R3.LAYOUT_TYPE_5)
+        self.viewports.append(V3)
+        splitter = QSplitter(Qt.Horizontal)
+        splitter.setContentsMargins(0, 0, 0, 0)
+        splitter.addWidget(V1.containerWithScrollBars)
+        splitter.addWidget(V2.containerWithScrollBars)
+        splitter.addWidget(V3.containerWithScrollBars)
+        return splitter
+
+    def reset_dags_and_viewports_one_dag(self, division, R):
+        if division == 0:
+            return self.viewport_division_for_one_dag_type_0(R)
+        elif division == 1:
+            return self.viewport_division_for_one_dag_type_1(R)
+        elif division == 2:
+            return self.viewport_division_for_one_dag_type_2(R)
+        elif division == 3:
+            return self.viewport_division_for_one_dag_type_3(R)
+        elif division == 4:
+            return self.viewport_division_for_one_dag_type_4(R)
+        else:
+            print('[Error] division=%i is not for one DAG.' % division)
+            return None
+    def reset_dags_and_viewports_two_dags(self, division, R1, R2):
+        if division == 5:
+            return self.viewport_division_for_two_dag_type_0(R1, R2)
+        elif division == 6:
+            return self.viewport_division_for_two_dag_type_1(R1, R2)
+        elif division == 7:
+            return self.viewport_division_for_two_dag_type_2(R1, R2)
+        else:
+            print('[Error] division=%i is not for two DAGs.' % division)
+            return None
+    def reset_dags_and_viewports_three_dags(self, division, R1, R2, R3):
+        if division == 8:
+            return self.viewport_division_for_three_dag_type_0(R1, R2, R3)
+        elif division == 9:
+            return self.viewport_division_for_three_dag_type_1(R1, R2, R3)
+        elif division == 10:
+            return self.viewport_division_for_three_dag_type_2(R1, R2, R3)
+        else:
+            print('[Error] division=%i is not for three DAGs.' % division)
+        
+    def reset_dags_and_viewports_(self, division, Rs):
+        for V in self.viewports:
+            V.R.removeViewport(sip.unwrapinstance(V))
+            del V
+        self.viewports = []
+        
+        if division in [0,1,2,3,4]:
+            (R) = Rs
+            self.centralWidget = self.reset_dags_and_viewports_one_dag(division, R)
+        elif division in [5,6,7]:
+            (R1,R2) = Rs
+            self.centralWidget = self.reset_dags_and_viewports_two_dags(division, R1, R2)
+        elif division in [8,9,10]:
+            (R1,R2,R3) = Rs
+            self.centralWidget = self.reset_dags_and_viewports_three_dags(division, R1, R2, R3)
+        else:
+            print('[Error] unknown division=%i.' % division)
+            
+        if len(self.viewports) > 0 and (self.V == None or self.V not in self.viewports):
+            self.setFocusedViewport(self.viewports[0])
         self.setCentralWidget(self.centralWidget)
         
-        # show
-        self.show()
-
-    def viewport_division_for_one_dag_type_1(self):
-        None
-    def viewport_division_for_one_dag_type_2(self):
-        None
-    def viewport_division_for_one_dag_type_3(self):
-        None
-    def viewport_division_for_one_dag_type_4(self):
-        None
-
-    def viewport_division_for_two_dag_type_1(self):
-        None
-    def viewport_division_for_two_dag_type_2(self):
-        None
-    def viewport_division_for_two_dag_type_3(self):
-        None
-        
-    def viewport_division_for_three_dag_type_1(self):
-        None
-    def viewport_division_for_three_dag_type_2(self):
-        None
-    def viewport_division_for_three_dag_type_3(self):
-        None
+    def reset_dags_and_viewports(self):
+        checkedAction = self.dagDivisionsActGroup.checkedAction()
+        if checkedAction is None:
+            return
+        # Get selected division and DAG(s)
+        selectedDivision = self.dagDivisionsActGroup.actions().index(checkedAction)
+        if selectedDivision != self.currentDivision:
+            if selectedDivision in [0,1,2,3,4]:
+                # one-dag divisions
+                if len(renderers) < 1:
+                    print('[Warning] there is no DAG.')
+                    return
+                if self.chooseOneDagActGroup.checkedAction() is None:
+                    self.chooseOneDagActGroup.actions()[0].setChecked(True)
+                selectedR = (renderers[self.chooseOneDagActGroup.actions().index(self.chooseOneDagActGroup.checkedAction())])
+                self.reset_dags_and_viewports_(selectedDivision, selectedR)
+            elif selectedDivision in [5,6,7]:
+                # two-dag divisions
+                if len(renderers) < 2:
+                    self.dagDivisionsActGroup.actions()[self.currentDivision].setChecked(True)
+                    print('[Warning] there are not enough two DAGs.')
+                    return
+                selectedR1 = None
+                selectedR2 = None
+                actions = self.chooseTwoDagActGroup.actions()
+                for act in actions:
+                    if act.isChecked():
+                        if selectedR1 is None:
+                            selectedR1 = renderers[actions.index(act)]
+                        elif selectedR2 is None:
+                            selectedR2 = renderers[actions.index(act)]
+                if selectedR1 is None or selectedR2 is None:
+                    for act in actions:
+                        if not act.isChecked():
+                            if selectedR1 is None:
+                                selectedR1 = renderers[actions.index(act)]
+                                act.setChecked(True)
+                            elif selectedR2 is None:
+                                selectedR2 = renderers[actions.index(act)]
+                                act.setChecked(True)
+                selectedR = (selectedR1,selectedR2)
+                self.reset_dags_and_viewports_(selectedDivision, selectedR)
+            elif selectedDivision in [8,9,10]:
+                # three-dag divisions
+                if len(renderers) < 3:
+                    self.dagDivisionsActGroup.actions()[self.currentDivision].setChecked(True)
+                    print('[Warning] there are not enough three DAGs.')
+                    return
+                selectedR1 = None
+                selectedR2 = None
+                selectedR3 = None
+                actions = self.chooseThreeDagActGroup.actions()
+                for act in actions:
+                    if act.isChecked():
+                        if selectedR1 is None:
+                            selectedR1 = renderers[actions.index(act)]
+                        elif selectedR2 is None:
+                            selectedR2 = renderers[actions.index(act)]
+                        elif selectedR3 is None:
+                            selectedR3 = renderers[actions.index(act)]
+                if selectedR1 is None or selectedR2 is None or selectedR3 is None:
+                    for act in actions:
+                        if not act.isChecked():
+                            if selectedR1 is None:
+                                selectedR1 = renderers[actions.index(act)]
+                                act.setChecked(True)
+                            elif selectedR2 is None:
+                                selectedR2 = renderers[actions.index(act)]
+                                act.setChecked(True)                    
+                            elif selectedR3 is None:
+                                selectedR3 = renderers[actions.index(act)]
+                                act.setChecked(True)
+                selectedR = (selectedR1,selectedR2,selectedR3)
+                self.reset_dags_and_viewports_(selectedDivision, selectedR)
+            else:
+                print('[Error] unknown division selected.')
+                return
+            self.currentDivision = selectedDivision
         
     def setFocusedViewport(self, V):
         if V in self.viewports:

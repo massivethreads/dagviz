@@ -19,6 +19,9 @@ public:
   static const int LAYOUT_TYPE_3 = DM_LAYOUT_DAG_BOX_POWER_COORDINATE;
   static const int LAYOUT_TYPE_4 = DM_LAYOUT_DAG_BOX_LOG_COORDINATE;
   static const int LAYOUT_TYPE_5 = DM_LAYOUT_PARAPROF_COORDINATE;
+  char * fileName;
+  char * shortFileName;
+  char * shortName;
   
   DAGRenderer();
   void setDAG(char * filename);

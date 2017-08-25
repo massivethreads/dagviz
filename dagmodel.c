@@ -315,7 +315,7 @@ dm_get_component_from_string(char * s, int n) {
   return NULL;
 }
 
-static char *
+char *
 dm_get_distinct_components_name_string(char * name) {
   char str[100] = "";
   int i = 1;
