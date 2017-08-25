@@ -35,6 +35,7 @@ public:
   void setLinearRadix(double);
   void setPowerRadix(double);
   void setLogRadix(double);
+  void update();
   
   PyObject * compute_dag_statistics(int);
   void layout();
@@ -57,4 +58,8 @@ public:
   double height(int);
   void * find_node(double, double, int);
   PyObject * get_dag_node_info(void *);
+  void highlight_node(void *);
+  void unhighlight_node(void *);
+  void switch_node_highlight(void *);
+  int node_is_highlighted(void *);
 };

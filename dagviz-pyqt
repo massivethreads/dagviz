@@ -209,14 +209,15 @@ class Viewport(QWidget):
         self.width
         # node context menu
         self.node_cmenu = QMenu(self)
-        self.nodeExpandAct = self.node_cmenu.addAction("E&xpand node")
+        self.nodeExpandAct = self.node_cmenu.addAction("E&xpand node one depth")
         self.nodeCollapseAct = self.node_cmenu.addAction("&Collapse parent node one depth")
+        self.nodeHighlightAct = self.node_cmenu.addAction("Switch node &highlight")
         self.node_cmenu.addSeparator()
         # default action when clicked
         clickedActMenu = self.node_cmenu.addMenu("&Default action when clicked")
         self.nodeClickedActGroup = QActionGroup(clickedActMenu)
         self.nodeClickedActGroup.setExclusive(True)
-        self.nodeExpandActDef = clickedActMenu.addAction("E&xpand node")
+        self.nodeExpandActDef = clickedActMenu.addAction("E&xpand node one depth")
         self.nodeExpandActDef.setCheckable(True)
         self.nodeClickedActGroup.addAction(self.nodeExpandActDef)
         self.nodeCollapseActDef = clickedActMenu.addAction("&Collapse parent node one depth")
@@ -229,14 +230,16 @@ class Viewport(QWidget):
         # default action when hovered
         hoveredActMenu = self.node_cmenu.addMenu("&Default action when hovered")
         self.nodeHoveredActGroup = QActionGroup(hoveredActMenu)
-        self.nodeHoveredActGroup.setExclusive(True)
+        self.nodeHoveredActGroup.setExclusive(False)
         self.nodeInfoTooltipActDef = hoveredActMenu.addAction("Show node &information tooltip")
         self.nodeInfoTooltipActDef.setCheckable(True)
         self.nodeHoveredActGroup.addAction(self.nodeInfoTooltipActDef)
-        self.hoveredNoneActDef = hoveredActMenu.addAction("&None")
-        self.hoveredNoneActDef.setCheckable(True)
-        self.nodeHoveredActGroup.addAction(self.hoveredNoneActDef)
+        self.nodeHighlightActDef = hoveredActMenu.addAction("&Highlight node")
+        self.nodeHighlightActDef.setCheckable(True)
+        self.nodeHighlightActDef.setChecked(True)
+        self.nodeHoveredActGroup.addAction(self.nodeHighlightActDef)
         self.nodeInfoTooltipActDef.setChecked(True)
+        self.highlightedHoveredNode = None
 
     def adjustScrollBars(self):
         # DAG: d1->d2, viewport: v1->v2 in DAG space
@@ -408,12 +411,10 @@ class Viewport(QWidget):
                         self.update()                    
 
     def enterEvent(self, e):
-        #print("mouse enters")
         self.mouseCenteredExpansion = True
         None
         
     def leaveEvent(self, e):
-        #print("mouse leaves")
         self.mouseCenteredExpansion = False
         None
         
@@ -430,18 +431,28 @@ class Viewport(QWidget):
         else:
             # node hovered
             checkedAction = self.nodeHoveredActGroup.checkedAction()
-            if checkedAction != self.hoveredNoneActDef:
+            if checkedAction is not None:
                 x_dag = self.convert_x_to_dag_space(e.x())
                 y_dag = self.convert_y_to_dag_space(e.y())
                 node = self.R.find_node(x_dag, y_dag, self.currentLayout)
                 if node is not None:
-                    if checkedAction == self.nodeInfoTooltipActDef:
+                    if self.nodeInfoTooltipActDef.isChecked():
                         info_dict = self.R.get_dag_node_info(node)
                         info_str = self.get_node_info_string(info_dict)
                         QToolTip.showText(e.globalPos(), info_str, self, QRect(), 30000)
+                    if self.nodeHighlightActDef.isChecked():
+                        if self.R.node_is_highlighted(node) == 0:
+                            self.highlightedHoveredNode = node
+                            self.R.highlight_node(node)
+                            self.R.update()
                 else:
-                    if checkedAction == self.nodeInfoTooltipActDef:
+                    if self.nodeInfoTooltipActDef.isChecked:
                         QToolTip.showText(e.globalPos(), None, self)
+                    if self.nodeHighlightActDef.isChecked():
+                        if self.highlightedHoveredNode is not None:
+                            self.R.unhighlight_node(self.highlightedHoveredNode)
+                            self.highlightedHoveredNode = None
+                            self.R.update()
 
     def get_node_info_string(self, d):
         s = ("[Node %i]\n"
@@ -612,13 +623,17 @@ class Viewport(QWidget):
         if node is not None:
             cmenu = self.node_cmenu
             action = cmenu.exec_(self.mapToGlobal(e.pos()))
-            if action == self.nodeExpandAct:
-                self.R.do_expanding_one_r(node)
-            elif action == self.nodeCollapseAct:
-                self.R.do_collapsing_parent(node)
-            if self.R.animationOn == 0:
-                self.R.layout()
-                self.update()
+            if action == self.nodeExpandAct or action == self.nodeCollapseAct:
+                if action == self.nodeExpandAct:
+                    self.R.do_expanding_one_r(node)
+                elif action == self.nodeCollapseAct:
+                    self.R.do_collapsing_parent(node)
+                if self.R.animationOn == 0:
+                    self.R.layout()
+                    self.update()
+            elif action == self.nodeHighlightAct:
+                self.R.switch_node_highlight(node)
+                self.R.update()
         else:
             cmenu = self.W.cmenu
             action = cmenu.exec_(self.mapToGlobal(e.pos()))

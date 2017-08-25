@@ -45,6 +45,7 @@ public:
   void setLinearRadix(double r) { mDAG->linear_radix = r; }
   void setPowerRadix(double r) { mDAG->power_radix = r; }
   void setLogRadix(double r) { mDAG->log_radix = r; }
+  void update();
 
   PyObject * compute_dag_statistics(int D_id);
   void layout() { layout_(mDAG); };
@@ -82,6 +83,10 @@ public:
   double height(int cid) { return up_height(cid) + down_height(cid); };
   dm_dag_node_t * find_node(double x, double y, int cid) { return dm_dag_find_node(mDAG, x, y, cid); };
   PyObject * get_dag_node_info(void * node) { return get_dag_node_info_((dm_dag_node_t *) node); };
+  void highlight_node(void * node) { ((dm_dag_node_t *) node)->highlight = 1; };
+  void unhighlight_node(void * node) { ((dm_dag_node_t *) node)->highlight = 0; };
+  void switch_node_highlight(void * node) { ((dm_dag_node_t *) node)->highlight = 1 - ((dm_dag_node_t *) node)->highlight; };
+  int node_is_highlighted(void * node) { return ((dm_dag_node_t *) node)->highlight; };
 
 public slots:
   void do_animation_tick();
@@ -102,7 +107,6 @@ private:
   
   char * parse_python_string(PyObject *);
   int parse_python_int(PyObject *);
-  void update();
   void layout1_(dm_dag_t *, int);
   void layout2_(dm_dag_t *, int);
   void layout3_(dm_dag_t *, int);
