@@ -447,7 +447,8 @@ class Viewport(QWidget):
                         QToolTip.showText(e.globalPos(), None, self)
 
     def get_node_info_string(self, d):
-        s = ("Worker %i, CPU %i, node kind %i\n"
+        s = ("[Node %i]\n"
+             "worker %i, CPU %i, node kind %i\n"
              "  t_1 (work): %i\n"
              "t_inf (span): %i\n"
              "earliest start time: %i\n"
@@ -456,6 +457,7 @@ class Viewport(QWidget):
              "start: t=%i, worker %i, CPU %i (%s:%i)\n"
              "  end: t=%i, worker %i, CPU %i (%s:%i)\n"
              "counters=%s") % (
+                 d["node_id"],
                  d["worker"], d["cpu"], d["kind"],
                  d["t_1"], d["t_inf"],
                  d["est"], d["first_ready_t"], d["last_start_t"],
@@ -704,6 +706,31 @@ class DAGViz(QMainWindow):
         editMenu.addAction(collapseAct)
 
         # view
+        viewportDivisions = viewMenu.addMenu('Viewport &divisions')
+        oneDagDivisions = viewportDivisions.addMenu('Viewport divisions for &one DAG')
+        oneDivAct1 = oneDagDivisions.addAction('basic DAG | timing DAG')
+        oneDivAct1.triggered.connect(self.viewport_division_for_one_dag_type_1)
+        oneDivAct2 = oneDagDivisions.addAction('basic DAG | Timelines')
+        oneDivAct2.triggered.connect(self.viewport_division_for_one_dag_type_2)
+        oneDivAct3 = oneDagDivisions.addAction('timing DAG | Timelines')
+        oneDivAct3.triggered.connect(self.viewport_division_for_one_dag_type_3)
+        oneDivAct4 = oneDagDivisions.addAction('basic DAG | timing DAG / Timelines')
+        oneDivAct4.triggered.connect(self.viewport_division_for_one_dag_type_4)
+        twoDagDivisions = viewportDivisions.addMenu('Viewport divisions for &two DAG')
+        twoDivAct1 = twoDagDivisions.addAction('basic DAG | basic DAG')
+        twoDivAct1.triggered.connect(self.viewport_division_for_two_dag_type_1)
+        twoDivAct2 = twoDagDivisions.addAction('timing DAG | timing DAG')
+        twoDivAct2.triggered.connect(self.viewport_division_for_two_dag_type_2)
+        twoDivAct3 = twoDagDivisions.addAction('Timelines | Timelines')
+        twoDivAct3.triggered.connect(self.viewport_division_for_two_dag_type_3)
+        threeDagDivisions = viewportDivisions.addMenu('Viewport divisions for th&ree DAG')
+        threeDivAct1 = threeDagDivisions.addAction('basic DAG | basic DAG | basic DAG')
+        threeDivAct1.triggered.connect(self.viewport_division_for_three_dag_type_1)
+        threeDivAct2 = threeDagDivisions.addAction('timing DAG | timing DAG | timing DAG')
+        threeDivAct2.triggered.connect(self.viewport_division_for_three_dag_type_2)
+        threeDivAct3 = threeDagDivisions.addAction('Timelines | Timelines | Timelines')
+        threeDivAct3.triggered.connect(self.viewport_division_for_three_dag_type_3)
+        viewMenu.addSeparator()
         viewTypeMenu = viewMenu.addMenu('&View types')
         dagViewAct = viewTypeMenu.addAction('DAG')
         dagViewAct.setShortcut(Qt.Key_1)
@@ -738,7 +765,6 @@ class DAGViz(QMainWindow):
         adjustAct.setCheckable(True)
         adjustAct.setChecked(True)
         self.adjustScalingFactorEnabled = True
-        dagtimingViewActMenu.addAction(u"Set exact scaling factors")
         paraprofViewAct = viewTypeMenu.addAction('Timelines with parallelism profile')
         paraprofViewAct.setShortcut(Qt.Key_5)
         paraprofViewAct.setIcon(QIcon(sysroot + '/gui/paraprof_icon.svg'))
@@ -779,12 +805,18 @@ class DAGViz(QMainWindow):
         zoomVerAct.triggered.connect(self.onZoomVerAct)
 
         viewMenu.addSeparator()
-        switchViewportAct = viewMenu.addAction("Switch focused viewport")
+        switchViewportAct = viewMenu.addAction("&Switch focused viewport")
         switchViewportAct.setShortcut('Ctrl+Tab')
         switchViewportAct.triggered.connect(self.switchFocusedViewport)
 
         # toolbar
         self.toolbar = self.addToolBar('Toolbar')
+        viewportDivisionsBut = QToolButton()
+        viewportDivisionsBut.setIcon(QIcon(sysroot + '/gui/viewport_division_icon.svg'))
+        viewportDivisionsBut.setMenu(viewportDivisions)
+        viewportDivisionsBut.setPopupMode(QToolButton.InstantPopup)
+        self.toolbar.addWidget(viewportDivisionsBut)
+        self.toolbar.addSeparator()
         self.toolbar.addAction(dagViewAct)
         self.toolbar.addAction(dagtimingViewAct)
         self.toolbar.addAction(paraprofViewAct)
@@ -828,6 +860,29 @@ class DAGViz(QMainWindow):
         # show
         self.show()
 
+    def viewport_division_for_one_dag_type_1(self):
+        None
+    def viewport_division_for_one_dag_type_2(self):
+        None
+    def viewport_division_for_one_dag_type_3(self):
+        None
+    def viewport_division_for_one_dag_type_4(self):
+        None
+
+    def viewport_division_for_two_dag_type_1(self):
+        None
+    def viewport_division_for_two_dag_type_2(self):
+        None
+    def viewport_division_for_two_dag_type_3(self):
+        None
+        
+    def viewport_division_for_three_dag_type_1(self):
+        None
+    def viewport_division_for_three_dag_type_2(self):
+        None
+    def viewport_division_for_three_dag_type_3(self):
+        None
+        
     def setFocusedViewport(self, V):
         if V in self.viewports:
             if self.V is not None:
