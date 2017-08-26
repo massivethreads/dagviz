@@ -211,7 +211,8 @@ class Viewport(QWidget):
         self.node_cmenu = QMenu(self)
         self.nodeExpandAct = self.node_cmenu.addAction("E&xpand node one depth")
         self.nodeCollapseAct = self.node_cmenu.addAction("&Collapse parent node one depth")
-        self.nodeHighlightAct = self.node_cmenu.addAction("Switch node &highlight")
+        self.nodeHighlightAct = self.node_cmenu.addAction("&Highlight")
+        self.nodeUnhighlightAct = self.node_cmenu.addAction("&Unhighlight")
         self.node_cmenu.addSeparator()
         # default action when clicked
         clickedActMenu = self.node_cmenu.addMenu("&Default action when clicked")
@@ -442,6 +443,8 @@ class Viewport(QWidget):
                         QToolTip.showText(e.globalPos(), info_str, self, QRect(), 30000)
                     if self.nodeHighlightActDef.isChecked():
                         if self.R.node_is_highlighted(node) == 0:
+                            if self.highlightedHoveredNode is not None:
+                                self.R.unhighlight_node(self.highlightedHoveredNode)
                             self.highlightedHoveredNode = node
                             self.R.highlight_node(node)
                             self.R.update()
@@ -632,7 +635,13 @@ class Viewport(QWidget):
                     self.R.layout()
                     self.update()
             elif action == self.nodeHighlightAct:
-                self.R.switch_node_highlight(node)
+                if self.highlightedHoveredNode is not None:
+                    self.R.unhighlight_node(self.highlightedHoveredNode)
+                    self.highlightedHoveredNode = None
+                self.R.highlight_node(node)
+                self.R.update()
+            elif action == self.nodeUnhighlightAct:
+                self.R.unhighlight_node(node)
                 self.R.update()
         else:
             cmenu = self.W.cmenu

@@ -478,6 +478,20 @@ lookup_gradient(_unused_ dr_pi_dag_node * pi, _unused_ double alpha, int cid) {
   return g;
 }
 
+static void
+draw_highlight_node(QPainter * qp, QPainterPath & path, _unused_ dm_dag_node_t * node) {
+  QLinearGradient g = QLinearGradient(0.0, 0.5, 1.0, 0.5);
+  g.setCoordinateMode(QGradient::ObjectBoundingMode);
+  g.setSpread(QGradient::PadSpread);
+  g.setColorAt(0.0, QColor(255, 255, 255, 10));
+  g.setColorAt(1.0, QColor(255, 255, 255, 120));
+  //QBrush brush = QBrush(QColor(255, 255, 255, 100));
+  QBrush brush = QBrush(g);
+  qp->fillPath(path, brush);
+  QPen pen = QPen(Qt::red, DMG->opts.nlw * 3);
+  qp->strokePath(path, pen);
+}
+
 void
 DAGRenderer::draw1_node_1(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, _unused_ int * on_global_cp, int cid) {
   /* Get inputs */
@@ -611,7 +625,7 @@ DAGRenderer::draw1_node_1(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, _un
 
   /* Highlight */
   if (node->highlight) {
-    qp->fillPath(path, QColor(30, 30, 30, 128));
+    draw_highlight_node(qp, path, node);
   }
 }
 
@@ -853,7 +867,7 @@ DAGRenderer::draw2_node_1(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, _un
   
   /* Highlight */
   if (node->highlight) {
-    qp->fillPath(path, QColor(30, 30, 30, 128));
+    draw_highlight_node(qp, path, node);
   }
 }
 
@@ -976,7 +990,7 @@ DAGRenderer::draw3_node_1(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, _un
     /* Draw node */
     if (dm_is_union(node)) {
 
-      QBrush brush = QBrush(QColor(40, 40, 40, 60));
+      QBrush brush = QBrush(QColor(200, 200, 200, 40));
       qp->fillPath(path, brush);
       
     } else {
@@ -986,7 +1000,7 @@ DAGRenderer::draw3_node_1(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, _un
       qp->fillPath(path, brush);
       /* Highlight */
       if (node->highlight) {
-        qp->fillPath(path, QColor(30, 30, 30, 128));
+        draw_highlight_node(qp, path, node);
       }
     }
   }   
