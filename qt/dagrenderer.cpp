@@ -89,7 +89,12 @@ DAGRenderer::update() {
       VP->update();
     }
   }
-};
+}
+
+void
+DAGRenderer::update(QWidget * VP) {
+  VP->update();
+}
 
 void
 DAGRenderer::layout1_(dm_dag_t * D, int cid) {
@@ -224,14 +229,61 @@ DAGRenderer::do_animation_reverse_node(dm_dag_node_t * node) {
 }
 
 void
-DAGRenderer::do_motion_start(double x, double y, double z) {
-  motion.on = 1;
-  motion.x0 = mDx;
-  motion.y0 = mDy;
-  motion.z0 = 1.0;
-  (void) x;
-  (void) y;
-  (void) z;
+DAGRenderer::do_motion_tick() {
+  if (!motion.on) {
+    dm_perror("do_motion_tick() is called while there is no on-going animation.");
+    return;
+  }
+  double t = dm_get_time();
+  if (t - motion.start_t < motion.duration) {
+    double ratio = (t - motion.start_t) / motion.duration;
+    double dx = ratio * (motion.x1 - motion.x0);
+    double dy = ratio * (motion.y1 - motion.y0);
+    mDx -= dx;
+    mDy -= dy;
+    motion.x0 += dx;
+    motion.y0 += dy;
+    motion.duration -= t - motion.start_t;
+    motion.start_t = t;
+  } else {
+    double dx = motion.x1 - motion.x0;
+    double dy = motion.y1 - motion.y0;
+    mDx -= dx;
+    mDy -= dy;
+    do_motion_stop();
+  }
+  update(motion.VP);
+}
+
+void
+DAGRenderer::do_motion_start_(double x0, double y0, dm_dag_node_t * node, int cid, QWidget * VP) {
+  motion.on = true;
+  motion.duration = DM_ANIMATION_DURATION;
+  motion.VP = VP;
+  motion.x0 = x0;
+  motion.y0 = y0;
+  dm_node_coordinate_t * node_c = &node->c[cid];
+  motion.x1 = node_c->x + (node_c->rw - node_c->lw) / 2.0;
+  motion.y1 = node_c->y + node_c->dw / 2.0;
+  if (!motion.timer) {
+    motion.timer = new QTimer();
+    QObject::connect(motion.timer, &QTimer::timeout, this, &DAGRenderer::do_motion_tick);
+  }
+  motion.start_t = dm_get_time();
+  if (!motion.timer->isActive()) {
+    motion.timer->start(motion.step);
+  }
+}
+
+void
+DAGRenderer::do_motion_start(double x0, double y0, void * node, int cid, void * VP) {
+  do_motion_start_(x0, y0, (dm_dag_node_t *) node, cid, (QWidget *) VP);
+}
+
+void
+DAGRenderer::do_motion_stop() {
+  motion.on = false;
+  motion.timer->stop();
 }
 
 void

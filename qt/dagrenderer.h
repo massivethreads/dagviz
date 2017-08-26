@@ -46,6 +46,7 @@ public:
   void setPowerRadix(double r) { mDAG->power_radix = r; }
   void setLogRadix(double r) { mDAG->log_radix = r; }
   void update();
+  void update(QWidget *);
 
   PyObject * compute_dag_statistics(int D_id);
   void layout() { layout_(mDAG); };
@@ -88,9 +89,13 @@ public:
   void unhighlight_node(void * node) { ((dm_dag_node_t *) node)->highlight = 0; };
   void switch_node_highlight(void * node) { ((dm_dag_node_t *) node)->highlight = 1 - ((dm_dag_node_t *) node)->highlight; };
   int node_is_highlighted(void * node) { return ((dm_dag_node_t *) node)->highlight; };
+  void do_motion_start_(double, double, dm_dag_node_t *, int, QWidget *);
+  void do_motion_start(double, double, void *, int, void *);
+  void do_motion_stop();
 
 public slots:
   void do_animation_tick();
+  void do_motion_tick();
 
 private:
   dm_dag_t * mDAG = NULL;      /* DAG of this renderer */
@@ -106,11 +111,14 @@ private:
   double mDy = 0.0;
   QVector<QWidget *> mViewports[DM_NUM_COORDINATES];
   struct {
+    double duration = DM_ANIMATION_DURATION;
+    double step = DM_ANIMATION_STEP;
     bool on;
-    QWidget * viewport;
-    double x0, y0, z0;
-    double x1, y1, z1;
+    QWidget * VP;
+    double x0, y0;
+    double x1, y1;
     double start_t;
+    QTimer * timer = NULL;
   } motion;
   
   char * parse_python_string(PyObject *);
@@ -125,7 +133,6 @@ private:
   void do_animation_add_node(dm_dag_node_t *);
   void do_animation_remove_node(dm_dag_node_t *);
   void do_animation_reverse_node(dm_dag_node_t *);
-  void do_motion_start(double, double, double);
   void do_expanding_one_1_(dm_dag_t *, dm_dag_node_t *);
   void do_expanding_one_r_(dm_dag_t *, dm_dag_node_t *);
   void do_expanding_one_(dm_dag_t *);

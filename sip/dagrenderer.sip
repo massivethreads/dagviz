@@ -63,4 +63,6 @@ public:
   void unhighlight_node(void *);
   void switch_node_highlight(void *);
   int node_is_highlighted(void *);
+  void do_motion_start(double, double, void *, int, void *);
+  void do_motion_stop();
 };

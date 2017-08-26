@@ -969,8 +969,10 @@ class DAGViz(QMainWindow):
         if ok:
             node = self.V.R.find_node_with_node_index(node_id)
             if node is not None:
-                self.V.R.switch_node_highlight(node)
+                self.V.R.highlight_node(node)
                 self.V.R.update()
+                self.V.auto_zoom_fit = 0;
+                self.V.R.do_motion_start(self.V.convert_x_to_dag_space(self.V.width()/2), self.V.convert_y_to_dag_space(self.V.height()/2), node, self.V.currentLayout, sip.unwrapinstance(self.V))
 
     def viewport_division_for_one_dag_type_1(self, R):
         V = Viewport(self, R, R.LAYOUT_TYPE_1)
