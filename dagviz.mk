@@ -20,8 +20,8 @@ DREN_SIP_HDR = sip/configure.py
 DREN_SIP_SRC = sip/dagrenderer.sip
 DREN_SIP_OBJS = $(patsubst sip/%.sip,sip/%.so,$(DREN_SIP_SRC))
 
-DV_HDR = dagviz.h callback.h 
-DV_AUX_SRC = dagviz.gresource.xml interface.c
+DV_HDR = dagviz-gtk.h callback.h 
+DV_AUX_SRC = dagviz-gtk.gresource.xml interface.c
 DV_SRC = layout.c draw.c view_dag.c view_dag_box.c view_timeline.c view_timeline_ver.c view_paraprof.c control.c graphs.c
 BUILT_SRC = resources.c
 DV_OBJS = $(BUILT_SRC:.c=.o) $(DV_SRC:.c=.o)
@@ -31,7 +31,7 @@ DS_HDR = dagstat.h
 DS_SRC = 
 DS_OBJS = $(DS_SRC:.c=.o)
 
-EXE_SRC = dagviz.c dagprof.c dagstat_v1.c dagstat.c
+EXE_SRC = dagviz-gtk.c dagprof.c dagstat_v1.c dagstat.c
 OBJS = $(DM_OBJS) $(DV_OBJS) $(DS_OBJS) $(EXE_SRC:.c=.o) $(DM_SHARED_OBJS) $(DREN_CPP_OBJS).* $(DREN_SIP_OBJS)
 
 
@@ -52,12 +52,12 @@ LDFLAGS += -Wl,--export-dynamic
 LDFLAGS += -L$(prefix)/lib -Wl,-R$(prefix)/lib
 LDFLAGS += -ldr -lm -lpthread
 
-exes := $(EXE_SRC:.c=)
+exes := $(EXE_SRC:.c=) dagviz
 
 all: $(exes) $(DREN_CPP_OBJS) $(DREN_SIP_OBJS)
 
-gtk: $(DM_OBJS) $(DV_OBJS) dagviz 
-	echo "dagviz has been compiled"
+gtk: $(DM_OBJS) $(DV_OBJS) dagviz-gtk
+	echo "dagviz-gtk has been compiled"
 qt: $(DM_SHARED_OBJS) $(DREN_CPP_OBJS) $(DREN_SIP_OBJS)	
 	echo "dagviz-pyqt's requirements $(DM_SHARED_OBJS) $(DREN_CPP_OBJS) $(DREN_SIP_OBJS) have been compiled"
 
@@ -79,8 +79,11 @@ $(DS_OBJS): %.o: %.c $(DS_HDR)
 	$(CC) -c -o $@ $(CFLAGS) $<
 
 
-dagviz: dagviz.o $(DV_OBJS) $(DM_OBJS)
-	$(CC) -o $@ dagviz.o $(DV_OBJS) $(DM_OBJS) $(GTK_LDFLAGS) $(LDFLAGS)
+dagviz: $(DM_SHARED_OBJS) $(DREN_CPP_OBJS) $(DREN_SIP_OBJS)
+	ln -s dagviz-pyqt dagviz
+
+dagviz-gtk: dagviz-gtk.o $(DV_OBJS) $(DM_OBJS)
+	$(CC) -o $@ dagviz-gtk.o $(DV_OBJS) $(DM_OBJS) $(GTK_LDFLAGS) $(LDFLAGS)
 
 dagprof: dagprof.o $(DV_OBJS) $(DM_OBJS)
 	$(CC) -o $@ dagprof.o $(DV_OBJS) $(DM_OBJS) $(GTK_LDFLAGS) $(LDFLAGS)
@@ -92,7 +95,7 @@ dagstat: dagstat.o $(DS_OBJS) $(DM_OBJS)
 	$(CC) -o $@ dagstat.o $(DS_OBJS) $(DM_OBJS) $(LDFLAGS)
 
 
-dagviz.o: dagviz.c $(DV_HDR) $(DV_AUX_SRC) 
+dagviz-gtk.o: dagviz-gtk.c $(DV_HDR) $(DV_AUX_SRC) 
 	$(CC) -c -o $@ $(GTK_CFLAGS) $(CFLAGS) $<
 
 dagprof.o: dagprof.c $(DV_HDR) 
@@ -102,8 +105,8 @@ $(DV_OBJS): %.o: %.c $(DV_HDR)
 	$(CC) -c -o $@ $(GTK_CFLAGS) $(CFLAGS) $<
 
 
-resources.c: dagviz.gresource.xml $(shell $(GLIB_COMPILE_RESOURCES) --sourcedir=. --generate-dependencies dagviz.gresource.xml)
-	$(GLIB_COMPILE_RESOURCES) dagviz.gresource.xml --target=$@ --sourcedir=. --generate-source
+resources.c: dagviz-gtk.gresource.xml $(shell $(GLIB_COMPILE_RESOURCES) --sourcedir=. --generate-dependencies dagviz-gtk.gresource.xml)
+	$(GLIB_COMPILE_RESOURCES) dagviz-gtk.gresource.xml --target=$@ --sourcedir=. --generate-source
 
 $(DREN_CPP_OBJS): $(DREN_CPP_SRC) $(DREN_CPP_HDR)
 	cd qt; qmake; make; cd -

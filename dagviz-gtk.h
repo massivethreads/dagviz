@@ -1,5 +1,5 @@
 /*
- * dagviz.h
+ * dagviz-gtk.h
  */
 
 #ifndef DAGVIZ_HEADER_
@@ -532,7 +532,7 @@ extern const int DV_RADIAL_PATTERN_STOPS_NUM;
 /*-----------------Headers-----------------*/
 
 
-/* dagviz.c */
+/* dagviz-gtk.c */
 /* interface.c */
 void dv_global_state_init();
 

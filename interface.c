@@ -1,4 +1,4 @@
-#include "dagviz.h"
+#include "dagviz-gtk.h"
 #include "callback.h"
 
 dv_global_state_t  DVG[1];

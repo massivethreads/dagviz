@@ -1,4 +1,4 @@
-#include "dagviz.h"
+#include "dagviz-gtk.h"
 
 /*-----------------Common Drawing functions-----------*/
 

@@ -365,8 +365,16 @@ class Viewport(QWidget):
                     self.R.setLogRadix(radix);
                 self.R.layout(self.currentLayout)
                 self.update()
+                if self.currentLayout == self.R.LAYOUT_TYPE_2:
+                    self.R.layout(self.R.LAYOUT_TYPE_5)
+                    self.R.update()
+                elif self.currentLayout == self.R.LAYOUT_TYPE_5:
+                    self.R.layout(self.R.LAYOUT_TYPE_2)
+                    self.R.update()
         
     def wheelEvent(self, e):
+        # grab focus
+        self.W.setFocusedViewport(self)
         mod = QApplication.keyboardModifiers()
         if mod == Qt.ControlModifier:
             # moving
