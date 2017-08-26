@@ -79,7 +79,8 @@ $(DS_OBJS): %.o: %.c $(DS_HDR)
 	$(CC) -c -o $@ $(CFLAGS) $<
 
 
-dagviz: $(DM_SHARED_OBJS) $(DREN_CPP_OBJS) $(DREN_SIP_OBJS)
+dagviz:
+	make qt
 	ln -s dagviz-pyqt dagviz
 
 dagviz-gtk: dagviz-gtk.o $(DV_OBJS) $(DM_OBJS)

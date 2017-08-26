@@ -81,6 +81,7 @@ $ cd dagviz
 $ make qt
 $ ./dagviz-pyqt
 or
+$ make dagviz
 $ ./dagviz
 ```
 
@@ -106,102 +107,102 @@ $ ./dagviz
 
 - sometimes Python.h is not found, try adding its path to appropriate environment variables:
 
-```bash
-export C_INCLUDE_PATH=/usr/include/python3.5:$C_INCLUDE_PATH
-export CPLUS_INCLUDE_PATH=/usr/include/python3.5:$CPLUS_INCLUDE_PATH
-```
+  ```bash
+  $ export C_INCLUDE_PATH=/usr/include/python3.5:$C_INCLUDE_PATH
+  $ export CPLUS_INCLUDE_PATH=/usr/include/python3.5:$CPLUS_INCLUDE_PATH
+  ```
 
-### More detailed notes of installing dependencies from sources
+### More detailed notes of installing DAGViz-PyQt's dependencies from sources
 ------
 
-1. MassiveThreads installation:
+##### MassiveThreads installation:
 
 - given that MassiveThreads is installed as following
 
-```bash
-$ git clone git@github.com:massivethreads/massivethreads.git
-$ cd massivethreads
-$ ./configure --prefix=/home/zanton/local CFLAGS="-Wall -O3"
-$ make
-$ make install
-```
+  ```bash
+  $ git clone git@github.com:massivethreads/massivethreads.git
+  $ cd massivethreads
+  $ ./configure --prefix=/home/zanton/local CFLAGS="-Wall -O3"
+  $ make
+  $ make install
+  ```
 
 - add its paths to environment variables:
 
-```bash
-export PATH=/home/zanton/local/bin:$PATH:
-export C_INCLUDE_PATH=/home/zanton/local/include:$C_INCLUDE_PATH
-export CPLUS_INCLUDE_PATH=/home/zanton/local/include$CPLUS_INCLUDE_PATH
-export LIBRARY_PATH=/home/zanton/local/lib:$LIBRARY_PATH
-export LD_LIBRARY_PATH=/home/zanton/local/lib:$LD_LIBRARY_PATH
-```
+  ```bash
+  $ export PATH=/home/zanton/local/bin:$PATH:
+  $ export C_INCLUDE_PATH=/home/zanton/local/include:$C_INCLUDE_PATH
+  $ export CPLUS_INCLUDE_PATH=/home/zanton/local/include$CPLUS_INCLUDE_PATH
+  $ export LIBRARY_PATH=/home/zanton/local/lib:$LIBRARY_PATH
+  $ export LD_LIBRARY_PATH=/home/zanton/local/lib:$LD_LIBRARY_PATH
+  ```
 
-2. Qt5 installation:
+##### Qt5 installation:
 
 - given that Qt5's installation directory is following
 
-```bash
-/home/zanton/local/Qt5.9.1
-```
+  ```bash
+  /home/zanton/local/Qt5.9.1
+  ```
 
 - add Qt5's directory and *qmake*'s path to environment variables
 
-```bash
-QTDIR=/home/zanton/local/Qt5.9.1/5.9.1/gcc_64
-PATH=$QTDIR/bin:$PATH
-```
+  ```bash
+  QTDIR=/home/zanton/local/Qt5.9.1/5.9.1/gcc_64
+  PATH=$QTDIR/bin:$PATH
+  ```
 
 - add Qt5's include directory to project file of DAGViz's Qt5 module (qt/dagrenderer.pro)
 
-```python
-INCLUDEPATH += /home/zanton/local/Qt5.9.1/5.9.1/gcc_64/include
-```
+  ```python
+  INCLUDEPATH += /home/zanton/local/Qt5.9.1/5.9.1/gcc_64/include
+  ```
 
 or ensure it is included in the C++ include path environment variable
 
-```bash
-export CPLUS_INCLUDE_PATH=/home/zanton/local/Qt5.9.1/5.9.1/gcc_64/include:$CPLUS_INCLUDE_PATH
-```
+  ```bash
+  $ export CPLUS_INCLUDE_PATH=/home/zanton/local/Qt5.9.1/5.9.1/gcc_64/include:$CPLUS_INCLUDE_PATH
+  ```
 
-3. SIP installation:
+##### SIP installation:
 
 - given that SIP was installed with following procedure
 
-```bash
-$ cd sip-4.19.3
-$ python3 configure.py --sysroot=/home/zanton/local --configuration myconfig.txt
-$ make
-$ make install
-```
+  ```bash
+  $ cd sip-4.19.3
+  $ python3 configure.py --sysroot=/home/zanton/local --configuration myconfig.txt
+  $ make
+  $ make install
+  ```
 
 - and the configuration file myconfig.txt has following contents
 
-```python
-# The target Python installation.
-py_platform = linux
-py_inc_dir = /usr/include/python%(py_major).%(py_minor)
+  ```python
+  # The target Python installation.
+  py_platform = linux
+  py_inc_dir = /usr/include/python%(py_major).%(py_minor)
 
-# Where SIP will be installed.
-sip_bin_dir = %(sysroot)/bin
-sip_inc_dir = %(sysroot)/include
-sip_module_dir = %(sysroot)/lib/python%(py_major)/dist-packages
-sip_sip_dir = %(sysroot)/share/sip
-```
+  # Where SIP will be installed.
+  sip_bin_dir = %(sysroot)/bin
+  sip_inc_dir = %(sysroot)/include
+  sip_module_dir = %(sysroot)/lib/python%(py_major)/dist-packages
+  sip_sip_dir = %(sysroot)/share/sip
+  ```
 
-4. PyQt5 installation:
+##### PyQt5 installation:
 
 - given that PyQt5 was installed with following procedure
 
-```bash
-$ cd PyQt5_gpl-5.9
-$ python3 configure.py --sysroot=/home/zanton/local
-$ make
-$ make install
-```
+  ```bash
+  $ cd PyQt5_gpl-5.9
+  $ python3 configure.py --sysroot=/home/zanton/local
+  $ make
+  $ make install
+  ```
 
 - ensure SIP module PyQt5 modules are included in system's Python path, e.g.,
 
-```bash
-$ export PYTHONPATH=/home/zanton/local/lib/python3/dist-packages:$PYTHONPATH
-```
+  ```bash
+  $ export PYTHONPATH=/home/zanton/local/lib/python3/dist-packages:$PYTHONPATH
+  ```
 
