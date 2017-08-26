@@ -398,7 +398,6 @@ dm_dag_init(dm_dag_t * D, dm_pidag_t * P) {
   D->time_step = 1000;
 
   dm_animation_init(D->anim, D);
-  dm_motion_init(D->move, D);
 }
 
 dm_dag_t *
@@ -418,28 +417,28 @@ dm_dag_create_new_with_pidag(dm_pidag_t * P) {
 
 dm_dag_t *
 dm_add_dag(char * filename) {
-  /* check existing D */
-  dm_dag_t * D = NULL;
+  /* check existing P */
+  dm_pidag_t * P = NULL;
   int i;
-  for (i = 0; i < DMG->nD; i++) {
-    if (strcmp(DMG->D[i].P->filename, filename) == 0) {
-      D = &DMG->D[i];
+  for (i = 0; i < DMG->nP; i++) {
+    if (strcmp(DMG->P[i].filename, filename) == 0) {
+      P = &DMG->P[i];
       break;
     }
   }
-  if (!D) {
+  if (!P) {
     /* read DAG file */
-    dm_pidag_t * P = dm_pidag_read_new_file(filename);
+    P = dm_pidag_read_new_file(filename);
     if (!P) {
       dm_perror("could not read DAG from %s.", filename);
       return NULL;
     }
-    /* create a new D */
-    D = dm_dag_create_new_with_pidag(P);
-    if (!D) {
-      dm_perror("could not create a new DAG.");
-      return NULL;
-    }
+  }
+  /* create a new D */
+  dm_dag_t * D = dm_dag_create_new_with_pidag(P);
+  if (!D) {
+    dm_perror("could not create a new DAG.");
+    return NULL;
   }
   return D;
 }
@@ -2227,21 +2226,6 @@ dm_get_alpha_fading_in(dm_dag_t * D, dm_dag_node_t * node) {
   //ret = ratio * 1.5;
   ret = ratio * ratio;
   return ret;
-}
-
-static void
-dm_motion_reset(dm_motion_t * m) {
-  memset(m, 0, sizeof(dm_motion_t));
-  m->target_pii = -1;
-}
-
-void
-dm_motion_init(dm_motion_t * m, dm_dag_t * D) {
-  dm_motion_reset(m);
-  m->on = 0;
-  m->duration = DM_ANIMATION_DURATION;
-  m->step = DM_ANIMATION_STEP;
-  m->D = D;
 }
 
 static dm_dag_node_t *

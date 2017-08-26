@@ -81,7 +81,7 @@ $(DS_OBJS): %.o: %.c $(DS_HDR)
 
 dagviz:
 	make qt
-	ln -s dagviz-pyqt dagviz
+	ln -fs dagviz-pyqt dagviz
 
 dagviz-gtk: dagviz-gtk.o $(DV_OBJS) $(DM_OBJS)
 	$(CC) -o $@ dagviz-gtk.o $(DV_OBJS) $(DM_OBJS) $(GTK_LDFLAGS) $(LDFLAGS)

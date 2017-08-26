@@ -105,6 +105,13 @@ private:
   double mDx = 0.0;
   double mDy = 0.0;
   QVector<QWidget *> mViewports[DM_NUM_COORDINATES];
+  struct {
+    bool on;
+    QWidget * viewport;
+    double x0, y0, z0;
+    double x1, y1, z1;
+    double start_t;
+  } motion;
   
   char * parse_python_string(PyObject *);
   int parse_python_int(PyObject *);
@@ -118,6 +125,7 @@ private:
   void do_animation_add_node(dm_dag_node_t *);
   void do_animation_remove_node(dm_dag_node_t *);
   void do_animation_reverse_node(dm_dag_node_t *);
+  void do_motion_start(double, double, double);
   void do_expanding_one_1_(dm_dag_t *, dm_dag_node_t *);
   void do_expanding_one_r_(dm_dag_t *, dm_dag_node_t *);
   void do_expanding_one_(dm_dag_t *);

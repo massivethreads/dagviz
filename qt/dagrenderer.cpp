@@ -224,6 +224,17 @@ DAGRenderer::do_animation_reverse_node(dm_dag_node_t * node) {
 }
 
 void
+DAGRenderer::do_motion_start(double x, double y, double z) {
+  motion.on = 1;
+  motion.x0 = mDx;
+  motion.y0 = mDy;
+  motion.z0 = 1.0;
+  (void) x;
+  (void) y;
+  (void) z;
+}
+
+void
 DAGRenderer::do_expanding_one_1_(dm_dag_t * D, dm_dag_node_t * node) {
   if (!dm_is_inner_loaded(node)) {
     if (dm_dag_build_node_inner(D, node) != DM_OK) {

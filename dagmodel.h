@@ -193,19 +193,6 @@ typedef struct dm_animation {
   dm_dag_t * D; /* DAG that this animation belongs to */
 } dm_animation_t;
 
-typedef struct dm_motion {
-  int on;
-  double duration;
-  double step;
-  dm_dag_t * D;
-  long target_pii;
-  double xfrom, yfrom;
-  double zrxfrom, zryfrom;
-  double xto, yto;
-  double zrxto, zryto;
-  double start_t;
-} dm_motion_t;
-
 typedef struct dm_dag {
   char * name;
   char * name_on_graph;
@@ -250,7 +237,6 @@ typedef struct dm_dag {
 
   void * g; /* pointer to a structure holding GUI-dependent elements, unused inside dagmodel */
   dm_animation_t anim[1]; /* parameters for node animations (expanding, collapsing) */
-  dm_motion_t move[1]; /* parameters for node movings */
 } dm_dag_t;
 
 
@@ -481,7 +467,6 @@ void dm_animation_remove_node(dm_animation_t *, dm_dag_node_t *);
 void dm_animation_reverse_node(dm_animation_t *, dm_dag_node_t *);
 double dm_get_alpha_fading_out(dm_dag_t *, dm_dag_node_t *);
 double dm_get_alpha_fading_in(dm_dag_t *, dm_dag_node_t *);
-void dm_motion_init(dm_motion_t *, dm_dag_t *);
 dm_dag_node_t * dm_dag_find_node(dm_dag_t *, double, double, int);
 dm_dag_node_t * dm_dag_find_node_with_pi_index(dm_dag_t * D, long pii);
 void dm_dag_layout1(dm_dag_t *, int); /* basic DAG */
