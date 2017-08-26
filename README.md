@@ -12,7 +12,7 @@ Qt-based version is easier to be installed and used on other platforms
 (e.g., macOS, Windows) rather than the Ubuntu Linux on which it is
 originally developed.
 
-![DAGViz GUI](gui/dagviz_gui.png)
+![DAGViz GUI](gui/dagviz_gui.png =400x)
 
 Besides the dependencies on the GUI toolkits, DAGViz also depends on MassiveThreads
 for reading the format of the DAG trace files which are recorded by DAG Recorder -
