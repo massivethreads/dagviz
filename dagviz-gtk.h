@@ -44,6 +44,7 @@
 #endif
 
 #include <glob.h>
+#include <libgen.h>
 
 #include "dagmodel.h"
 
@@ -515,6 +516,9 @@ typedef struct dv_global_state {
   char * cp_colors[DV_NUM_CRITICAL_PATHS];
 
   dv_options_t opts;
+
+  /* Path */
+  char exe_path[DV_STRING_LENGTH];
 } dv_global_state_t;
 
 extern const char * const DV_COLORS[];

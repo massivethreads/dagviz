@@ -116,7 +116,7 @@ $(DREN_SIP_OBJS): $(DREN_SIP_SRC) $(DREN_SIP_HDR)
 	cd sip; python3 configure.py; make; cd -
 
 
-install:
+install-obsolete:
 	cp gui/128x128/dagviz_icon.png /usr/share/icons/hicolor/128x128/apps/dagviz.png
 	cp gui/dag_icon.svg /usr/share/icons/hicolor/scalable/apps/dagviz-dag.svg
 	cp gui/viewport_division_icon.svg /usr/share/icons/hicolor/scalable/apps/dagviz-viewport-division.svg
@@ -133,7 +133,7 @@ install:
 	cp gui/dagviz.desktop /usr/share/applications/
 #	cp gui/128x128/dag_icon.png /usr/share/icons/hicolor/128x128/apps/dagviz-dag.png
 
-uninstall:
+uninstall-obsolete:
 	rm -f /usr/share/icons/hicolor/128x128/apps/dagviz.png
 	rm -f /usr/share/icons/hicolor/scalable/apps/dagviz-dag.svg
 	rm -f /usr/share/icons/hicolor/scalable/apps/dagviz-viewport-division.svg

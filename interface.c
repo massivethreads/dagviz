@@ -2793,18 +2793,22 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
   g_signal_connect(G_OBJECT(window), "destroy", G_CALLBACK(gtk_main_quit), NULL);
   g_signal_connect(G_OBJECT(GUI->window), "key-press-event", G_CALLBACK(on_window_key_event), NULL);
 
-  /* Icon */
+  /* Icons */
   /*
-  char * icon_filename = "gui/dagviz_icon.svg";
-  GError * error = 0; 
-  GdkPixbuf *pixbuf = gdk_pixbuf_new_from_file(icon_filename, &error);
+  gtk_window_set_icon_name(GTK_WINDOW(window), "dagviz");
+  */
+  char icon_filename[DV_STRING_LENGTH];
+  GError * error = 0;
+  GdkPixbuf * pixbuf;
+  sprintf(icon_filename, "%s/%s", DVG->exe_path, "gui/dagviz_icon.svg");
+  pixbuf = gdk_pixbuf_new_from_file(icon_filename, &error);
   if (!pixbuf) {
-    fprintf(stderr, "Cannot set icon %s: %s\n", icon_filename, error->message);
+    dm_perror("cannot set icon %s: %s", icon_filename, error->message);
   } else {
     gtk_window_set_icon(GTK_WINDOW(window), pixbuf);
   }
-  */
-  gtk_window_set_icon_name(GTK_WINDOW(window), "dagviz");
+  sprintf(icon_filename, "%s/%s", DVG->exe_path, "gui/viewport_division_icon.svg");
+  GtkWidget * viewport_division_icon = gtk_image_new_from_file(icon_filename);
   
   /* Accelerator group */
   GtkAccelGroup * accel_group = gui->accel_group = gtk_accel_group_new();
@@ -2893,9 +2897,8 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
       gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_divisions, -1);
       gtk_toolbar_insert(GTK_TOOLBAR(toolbar), gtk_separator_tool_item_new(), -1);
       //gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_divisions), "video-display");
-      //GtkWidget * icon = gtk_image_new_from_file("gui/viewport_division_icon.svg");
-      //gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(btn_divisions), icon);
-      gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_divisions), "dagviz-viewport-division");
+      //gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_divisions), "dagviz-viewport-division");
+      gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(btn_divisions), viewport_division_icon);
       gtk_widget_set_tooltip_text(GTK_WIDGET(btn_divisions), "Manual screen division (Shift+Ctrl+V)");
       g_signal_connect(G_OBJECT(btn_divisions), "clicked", G_CALLBACK(on_menubar_manage_viewports_activated), NULL);
       gtk_menu_tool_button_set_arrow_tooltip_text(GTK_MENU_TOOL_BUTTON(btn_divisions), "Ready-made screen divisions");
@@ -2997,8 +3000,12 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
     {
       GtkToolItem * btn_settings = gtk_menu_tool_button_new(NULL, NULL);
       gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_settings, -1);
+      char icon_filename[DV_STRING_LENGTH];
+      sprintf(icon_filename, "%s/%s", DVG->exe_path, "gui/view_settings_icon.svg");
+      GtkWidget * icon = gtk_image_new_from_file(icon_filename);
+      gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(btn_settings), icon);
       //gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_settings), "preferences-system-symbolic");
-      gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_settings), "dagviz-view-settings");
+      //gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_settings), "dagviz-view-settings");
       gtk_widget_set_tooltip_text(GTK_WIDGET(btn_settings), "Open toolbox for focused DAG (Ctrl+T)");
       g_signal_connect(G_OBJECT(btn_settings), "clicked", G_CALLBACK(on_toolbar_settings_button_clicked), NULL);
       gtk_menu_tool_button_set_arrow_tooltip_text(GTK_MENU_TOOL_BUTTON(btn_settings), "Open toolbox for");
@@ -3037,21 +3044,23 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
     {
       gtk_toolbar_insert(GTK_TOOLBAR(toolbar), gtk_separator_tool_item_new(), -1);
       GtkToolItem * button;
-      //GtkWidget * icon;
+      GtkWidget * icon;
       
       button = gtk_tool_button_new(NULL, NULL);
       gtk_toolbar_insert(GTK_TOOLBAR(toolbar), button, -1);
-      //icon = gtk_image_new_from_file("gui/dag_icon.svg");
-      //gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(button), icon);
-      gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(button), "dagviz-dag");
+      sprintf(icon_filename, "%s/%s", DVG->exe_path, "gui/dag_icon.svg");
+      icon = gtk_image_new_from_file(icon_filename);
+      gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(button), icon);
+      //gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(button), "dagviz-dag");
       gtk_widget_set_tooltip_text(GTK_WIDGET(button), "DAG layout (Ctrl+1)");
       g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_toolbar_dag_layout_buttons_clicked), (void *) DV_LAYOUT_TYPE_DAG);
       
       button = gtk_menu_tool_button_new(NULL, NULL);
       gtk_toolbar_insert(GTK_TOOLBAR(toolbar), button, -1);
-      //icon = gtk_image_new_from_file("gui/dag_boxes_icon.svg");
-      //gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(button), icon);
-      gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(button), "dagviz-dag-boxes");
+      sprintf(icon_filename, "%s/%s", DVG->exe_path, "gui/dag_boxes_icon.svg");
+      icon = gtk_image_new_from_file(icon_filename);
+      gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(button), icon);
+      //gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(button), "dagviz-dag-boxes");
       gtk_widget_set_tooltip_text(GTK_WIDGET(button), "DAG-with-boxes layout (Ctrl+2)");
       g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_toolbar_dag_layout_buttons_clicked), (void *) DV_LAYOUT_TYPE_DAG_BOX_LOG);
       gtk_menu_tool_button_set_arrow_tooltip_text(GTK_MENU_TOOL_BUTTON(button), "Select scale type");
@@ -3072,15 +3081,19 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
 
       button = gtk_tool_button_new(NULL, NULL);
       gtk_toolbar_insert(GTK_TOOLBAR(toolbar), button, -1);
-      //icon = gtk_image_new_from_file("gui/paraprof_icon.svg");
-      //gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(button), icon);
-      gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(button), "dagviz-paraprof");
+      sprintf(icon_filename, "%s/%s", DVG->exe_path, "gui/paraprof_icon.svg");
+      icon = gtk_image_new_from_file(icon_filename);
+      gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(button), icon);
+      //gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(button), "dagviz-paraprof");
       gtk_widget_set_tooltip_text(GTK_WIDGET(button), "Parallelism profile layout (Ctrl+5)");
       g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_toolbar_dag_layout_buttons_clicked), (void *) DV_LAYOUT_TYPE_PARAPROF);
 
       button = gtk_tool_button_new(NULL, NULL);
       gtk_toolbar_insert(GTK_TOOLBAR(toolbar), button, -1);
-      gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(button), "dagviz-critical-path");
+      sprintf(icon_filename, "%s/%s", DVG->exe_path, "gui/critical_path_icon.svg");
+      icon = gtk_image_new_from_file(icon_filename);
+      gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(button), icon);
+      //gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(button), "dagviz-critical-path");
       gtk_widget_set_tooltip_text(GTK_WIDGET(button), "Critical-path layout (Ctrl+6)");
       g_signal_connect(G_OBJECT(button), "clicked", G_CALLBACK(on_toolbar_dag_layout_buttons_clicked), (void *) DV_LAYOUT_TYPE_CRITICAL_PATH);
     }
@@ -3088,10 +3101,15 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
     /* zoomfit */
     {      
       gtk_toolbar_insert(GTK_TOOLBAR(toolbar), gtk_separator_tool_item_new(), -1);
+      GtkWidget * icon;
+      
       GtkToolItem * btn_zoomfit = gtk_menu_tool_button_new(NULL, NULL);
       gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_zoomfit, -1);
+      sprintf(icon_filename, "%s/%s", DVG->exe_path, "gui/fit_button_icon.svg");
+      icon = gtk_image_new_from_file(icon_filename);
+      gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(btn_zoomfit), icon);
       //gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_zoomfit), "zoom-fit-best");
-      gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_zoomfit), "dagviz-fit-button");
+      //gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_zoomfit), "dagviz-fit-button");
       gtk_widget_set_tooltip_text(GTK_WIDGET(btn_zoomfit), "Fit fully (F)");
       g_signal_connect(G_OBJECT(btn_zoomfit), "clicked", G_CALLBACK(on_toolbar_zoomfit_button_clicked), (void *) 0);
 
@@ -3113,12 +3131,19 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
     /* shrink, expand */
     GtkToolItem * btn_shrink = gtk_tool_button_new(NULL, NULL);
     GtkToolItem * btn_expand = gtk_tool_button_new(NULL, NULL);
+    GtkWidget * icon;
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_shrink, -1);
     gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_expand, -1);
     //gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_shrink), "zoom-out");
     //gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_expand), "zoom-in");
-    gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_shrink), "dagviz-minus-button");
-    gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_expand), "dagviz-plus-button");
+    sprintf(icon_filename, "%s/%s", DVG->exe_path, "gui/minus_button_icon.svg");
+    icon = gtk_image_new_from_file(icon_filename);
+    gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(btn_shrink), icon);
+    //gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_shrink), "dagviz-minus-button");
+    sprintf(icon_filename, "%s/%s", DVG->exe_path, "gui/plus_button_icon.svg");
+    icon = gtk_image_new_from_file(icon_filename);
+    gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(btn_expand), icon);
+    //gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_expand), "dagviz-plus-button");
     gtk_widget_set_tooltip_text(GTK_WIDGET(btn_shrink), "Collapse one depth (C)"); 
     gtk_widget_set_tooltip_text(GTK_WIDGET(btn_expand), "Expand one depth (X)");
     g_signal_connect(G_OBJECT(btn_shrink), "clicked", G_CALLBACK(on_toolbar_shrink_button_clicked), NULL);  
@@ -3130,7 +3155,10 @@ dv_gui_build_main_window(dv_gui_t * gui, _unused_ GtkApplication * app) {
       //GtkToolItem * btn_cp_compute = gtk_tool_button_new(gtk_label_new("Compute critical paths"), NULL);
       GtkToolItem * btn_cp_compute = gtk_menu_tool_button_new(NULL, NULL);
       gtk_toolbar_insert(GTK_TOOLBAR(toolbar), btn_cp_compute, -1);
-      gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_cp_compute), "dagviz-critical-path-compute");
+      sprintf(icon_filename, "%s/%s", DVG->exe_path, "gui/compute_critical_path_icon.svg");
+      GtkWidget * icon = gtk_image_new_from_file(icon_filename);
+      gtk_tool_button_set_icon_widget(GTK_TOOL_BUTTON(btn_cp_compute), icon);
+      //gtk_tool_button_set_icon_name(GTK_TOOL_BUTTON(btn_cp_compute), "dagviz-critical-path-compute");
       gtk_widget_set_tooltip_text(GTK_WIDGET(btn_cp_compute), "Compute all critical paths so that they can be shown"); 
       g_signal_connect(G_OBJECT(btn_cp_compute), "clicked", G_CALLBACK(on_toolbar_critical_path_compute_button_clicked), NULL);
 

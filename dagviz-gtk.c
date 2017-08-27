@@ -74,6 +74,16 @@ main(int argc, char * argv[]) {
   dv_global_state_init();
   dv_gui_init(GUI);
 
+  /* Get executable path */
+  char * sys_path = "/proc/self/exe";
+  memset(DVG->exe_path, 0, DV_STRING_LENGTH * sizeof(char));
+  int ret = readlink(sys_path, DVG->exe_path, DV_STRING_LENGTH);
+  if (ret == -1) {
+    perror("cannot get path of executable through readlink().");
+  } else {
+    strcpy(DVG->exe_path, dirname(DVG->exe_path));
+  }
+
   /* Environment variables */
   //dv_get_env();
   //dv_alarm_init();
