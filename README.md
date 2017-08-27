@@ -87,29 +87,34 @@ $ ./dagviz
 
 ### Quick troubleshootings
 
-- Ensure PyQt5 modules are included in system's Python path, e.g.,
-  ```bash
-  $ export PYTHONPATH=/opt/local/lib/python3.5/dist-packages:$PYTHONPATH
-  ```
-
-- qt/dagrenderer.pro: ensure Qt5's include directory is included in system's include path,
-  otherwise add it to INCLUDEPATH variable in qt/dagrenderer.pro, e.g.,
-  ```bash
-  INCLUDEPATH += /opt/Qt5.9.1/5.9.1/gcc_64/include
-  ```
-
-- sip/configure.py: ensure PyQt5's SIP include directory and Qt5's include directory are included in system's include path,
-  otherwise change to correct paths in sip/configure.py, e.g.,
-  ```bash
-  sip_inc_dir = "/opt/local/share/sip/PyQt5"
-  qt_inc_dir = "/opt/Qt5.9.1/5.9.1/gcc_64/include"
-  ```
-
 - sometimes Python.h is not found, try adding its path to appropriate environment variables:
 
   ```bash
   $ export C_INCLUDE_PATH=/usr/include/python3.5:$C_INCLUDE_PATH
   $ export CPLUS_INCLUDE_PATH=/usr/include/python3.5:$CPLUS_INCLUDE_PATH
+  ```
+
+- ensure Qt5's *qmake* is included in system's path
+  ```bash
+  QTDIR=$HOME/local/Qt5.9.1/5.9.1/gcc_64
+  PATH=$QTDIR/bin:$PATH
+  ```
+
+- sip/configure.py: ensure PyQt5's SIP include directory and Qt5's include directory are included in system's include path,
+  otherwise change to correct paths in sip/configure.py, e.g.,
+  ```bash
+  sip_inc_dir = "$HOME/local/share/sip/PyQt5"
+  qt_inc_dir = "$HOME/local/Qt5.9.1/5.9.1/gcc_64/include"
+  ```
+
+- ensure PyQt5 modules are included in system's Python path, e.g.,
+  ```bash
+  $ export PYTHONPATH=$HOME/local/lib/python3.5/dist-packages:$PYTHONPATH
+  ```
+
+- On Ubuntu 16.04, some necessary Python and OpenGL packages are:
+  ```bash
+  $ sudo apt-get install libpython3.5-dev mesa-common-dev libglu1-mesa-dev freeglut3-dev
   ```
 
 ### More detailed notes of installing DAGViz-PyQt's dependencies from sources
@@ -122,7 +127,7 @@ $ ./dagviz
   ```bash
   $ git clone git@github.com:massivethreads/massivethreads.git
   $ cd massivethreads
-  $ ./configure --prefix=/home/zanton/local CFLAGS="-Wall -O3"
+  $ ./configure --prefix=$HOME/local CFLAGS="-Wall -O3"
   $ make
   $ make install
   ```
@@ -130,11 +135,11 @@ $ ./dagviz
 - add its paths to environment variables:
 
   ```bash
-  $ export PATH=/home/zanton/local/bin:$PATH:
-  $ export C_INCLUDE_PATH=/home/zanton/local/include:$C_INCLUDE_PATH
-  $ export CPLUS_INCLUDE_PATH=/home/zanton/local/include$CPLUS_INCLUDE_PATH
-  $ export LIBRARY_PATH=/home/zanton/local/lib:$LIBRARY_PATH
-  $ export LD_LIBRARY_PATH=/home/zanton/local/lib:$LD_LIBRARY_PATH
+  $ export PATH=$HOME/local/bin:$PATH:
+  $ export C_INCLUDE_PATH=$HOME/local/include:$C_INCLUDE_PATH
+  $ export CPLUS_INCLUDE_PATH=$HOME/local/include$CPLUS_INCLUDE_PATH
+  $ export LIBRARY_PATH=$HOME/local/lib:$LIBRARY_PATH
+  $ export LD_LIBRARY_PATH=$HOME/local/lib:$LD_LIBRARY_PATH
   ```
 
 ##### Qt5 installation:
@@ -142,35 +147,25 @@ $ ./dagviz
 - given that Qt5's installation directory is following
 
   ```bash
-  /home/zanton/local/Qt5.9.1
+  $HOME/local/Qt5.9.1
   ```
 
 - add Qt5's directory and *qmake*'s path to environment variables
 
   ```bash
-  QTDIR=/home/zanton/local/Qt5.9.1/5.9.1/gcc_64
+  QTDIR=$HOME/local/Qt5.9.1/5.9.1/gcc_64
   PATH=$QTDIR/bin:$PATH
-  ```
-
-- add Qt5's include directory to project file of DAGViz's Qt5 module (qt/dagrenderer.pro)
-
-  ```python
-  INCLUDEPATH += /home/zanton/local/Qt5.9.1/5.9.1/gcc_64/include
-  ```
-
-or ensure it is included in the C++ include path environment variable
-
-  ```bash
-  $ export CPLUS_INCLUDE_PATH=/home/zanton/local/Qt5.9.1/5.9.1/gcc_64/include:$CPLUS_INCLUDE_PATH
   ```
 
 ##### SIP installation:
 
-- given that SIP was installed with following procedure
+- SIP can be installed with following procedure
 
   ```bash
+  $ wget https://sourceforge.net/projects/pyqt/files/sip/sip-4.19.3/sip-4.19.3.tar.gz
+  $ tar xf sip-4.19.3.tar.gz
   $ cd sip-4.19.3
-  $ python3 configure.py --sysroot=/home/zanton/local --configuration myconfig.txt
+  $ python3 configure.py --sysroot=$HOME/local --configuration myconfig.txt
   $ make
   $ make install
   ```
@@ -189,20 +184,56 @@ or ensure it is included in the C++ include path environment variable
   sip_sip_dir = %(sysroot)/share/sip
   ```
 
-##### PyQt5 installation:
-
-- given that PyQt5 was installed with following procedure
+- ensure SIP module is included in system's Python path, e.g.,
 
   ```bash
+  $ export PYTHONPATH=$HOME/local/lib/python3/dist-packages:$PYTHONPATH
+  ```
+
+
+##### Python 3:
+
+- sometimes Python.h is not found, try adding its path to appropriate environment variables:
+
+  ```bash
+  $ export C_INCLUDE_PATH=/usr/include/python3.5:$C_INCLUDE_PATH
+  $ export CPLUS_INCLUDE_PATH=/usr/include/python3.5:$CPLUS_INCLUDE_PATH
+  ```
+
+##### PyQt5 installation:
+
+- PyQt5 can be installed with following procedure
+
+  ```bash
+  $ wget https://sourceforge.net/projects/pyqt/files/PyQt5/PyQt-5.9/PyQt5_gpl-5.9.tar.gz
+  $ tar xf PyQt5_gpl-5.9.tar.gz
   $ cd PyQt5_gpl-5.9
-  $ python3 configure.py --sysroot=/home/zanton/local
-  $ make
+  $ python3 configure.py --sysroot=$HOME/local
+  $ make -j
   $ make install
   ```
 
-- ensure SIP module PyQt5 modules are included in system's Python path, e.g.,
+- sometimes Python.h cannot be found despite *C_INCLUDE_PATH* and *CPLUS_INCLUDE_PATH*
+set above, use a configuration file to indicate the path to Python.h
 
   ```bash
-  $ export PYTHONPATH=/home/zanton/local/lib/python3/dist-packages:$PYTHONPATH
+  $ wget https://sourceforge.net/projects/pyqt/files/PyQt5/PyQt-5.9/PyQt5_gpl-5.9.tar.gz
+  $ tar xf PyQt5_gpl-5.9.tar.gz
+  $ cd PyQt5_gpl-5.9
+  $ python3 configure.py --sysroot=$HOME/local --qmake $HOME/local/Qt5.9.1/5.9.1/gcc_64/bin/qmake --sip $HOME/local/bin/sip --sip-incdir $HOME/local/include --sipdir $HOME/local/share/sip/PyQt5 --bindir $HOME/local/bin --destdir $HOME/local/lib/python3/dist-packages --stubsdir $HOME/local/lib/python3/dist-packages/PyQt5 --configuration myconfig.txt
+  $ make -j
+  $ make install
   ```
 
+- and the configuration file myconfig.txt has following contents
+
+  ```python
+  # The target Python installation.
+  py_platform = linux
+  py_inc_dir = /usr/include/python%(py_major).%(py_minor)
+  qt_shared = True
+
+  [Qt 5.9.1]
+  ```
+
+- PyQt5 modules have been installed in *$HOME/local/lib/python3/dist-packages*
