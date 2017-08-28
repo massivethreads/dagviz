@@ -36,10 +36,14 @@ renderers = []
 class Marker(QWidget):
     def __init__(self):
         super(Marker, self).__init__()
+        self.enabled = False
+        self.color = "white"
     def enable(self):
+        self.enabled = True
         self.color = "red"
         self.update()
     def disable(self):
+        self.enabled = False
         self.color = "white"
         self.update()
     def paintEvent(self, e):
@@ -246,6 +250,7 @@ class Viewport(QWidget):
         self.nodeInfoTooltipActDef.setChecked(True)
         self.highlightedHoveredNode = None
         self.auto_zoom_fit = GO["auto_zoom_fit_at_start"]
+        self.searched_node_id = 0
 
     def adjustScrollBars(self):
         # DAG: d1->d2, viewport: v1->v2 in DAG space
@@ -293,8 +298,8 @@ class Viewport(QWidget):
         
     def paintEvent(self, e):
         # adjusted deltas from Renderer
-        Rdx = self.convert_dx_from_dag_space(self.R.getDx())
-        Rdy = self.convert_dy_from_dag_space(self.R.getDy())
+        Rdx = self.convert_dx_from_dag_space(self.R.getDx(self.currentLayout))
+        Rdy = self.convert_dy_from_dag_space(self.R.getDy(self.currentLayout))
         self.x += Rdx
         self.y += Rdy
         # auto zoom fit
@@ -309,12 +314,12 @@ class Viewport(QWidget):
         qp.translate(self.x, self.y)
         qp.scale(self.zoom_ratio_x, self.zoom_ratio_y)
         if self.R is not None:
-            if (self.mouseCenteredExpansion):
-                self.R.draw(sip.unwrapinstance(qp),
+            if (self.mouseCenteredExpansion and self.isFocused()):
+                self.R.draw(sip.unwrapinstance(qp), self.currentLayout,
                             self.convert_x_to_dag_space(self.x_mouse),
                             self.convert_y_to_dag_space(self.y_mouse))
             else:
-                self.R.draw(sip.unwrapinstance(qp))
+                self.R.draw(sip.unwrapinstance(qp), self.currentLayout)
         # adjust scrollbars
         self.adjustScrollBars()
 
@@ -667,6 +672,15 @@ class Viewport(QWidget):
         self.R.layout(lt)
         self.resetBaseXY()
         self.update()
+
+    def setFocused(self, b):
+        if b:
+            self.marker.enable()
+        else:
+            self.marker.disable()
+
+    def isFocused(self):
+        return self.marker.enabled
                
         
 class DAGViz(QMainWindow):
@@ -914,6 +928,9 @@ class DAGViz(QMainWindow):
         switchViewportAct = viewMenu.addAction("&Switch focused viewport")
         switchViewportAct.setShortcut('Ctrl+Tab')
         switchViewportAct.triggered.connect(self.switchFocusedViewport)
+        switchBackwardViewportAct = viewMenu.addAction("&Switch focused viewport backward")
+        switchBackwardViewportAct.setShortcut('Ctrl+Shift+Tab')
+        switchBackwardViewportAct.triggered.connect(self.switchFocusedViewportBackward)
 
         # toolbar
         self.toolbar = self.addToolBar('Toolbar')
@@ -965,14 +982,18 @@ class DAGViz(QMainWindow):
         self.addAction(moveRightAct)
 
     def onSearchAct(self):
-        (node_id,ok) = QInputDialog.getInt(self, "Search node", "Node ID:", QLineEdit.Normal)
+        (node_id,ok) = QInputDialog.getInt(self, "Search node", "Node ID:", self.V.searched_node_id, QLineEdit.Normal)
         if ok:
             node = self.V.R.find_node_with_node_index(node_id)
+            self.V.searched_node_id = node_id
             if node is not None:
                 self.V.R.highlight_node(node)
                 self.V.R.update()
                 self.V.auto_zoom_fit = 0;
                 self.V.R.do_motion_start(self.V.convert_x_to_dag_space(self.V.width()/2), self.V.convert_y_to_dag_space(self.V.height()/2), node, self.V.currentLayout, sip.unwrapinstance(self.V))
+                self.statusBar().showMessage('Node %i found.' % node_id)
+            else:
+                self.statusBar().showMessage('Node %i not found!' % node_id)
 
     def viewport_division_for_one_dag_type_1(self, R):
         V = Viewport(self, R, R.LAYOUT_TYPE_1)
@@ -1234,10 +1255,10 @@ class DAGViz(QMainWindow):
     def setFocusedViewport(self, V):
         if V in self.viewports:
             if self.V is not None:
-                self.V.marker.disable()
+                self.V.setFocused(False)
             if V is not None:
                 self.V = V
-                self.V.marker.enable()
+                self.V.setFocused(True)
 
     def switchFocusedViewport(self):
         V = self.V
@@ -1246,6 +1267,16 @@ class DAGViz(QMainWindow):
         else:
             i = self.viewports.index(V)
             i = (i + 1) % len(self.viewports)
+            V = self.viewports[i]
+        self.setFocusedViewport(V)
+        
+    def switchFocusedViewportBackward(self):
+        V = self.V
+        if V is None:
+            V = self.viewports[len(self.viewports) - 1]
+        else:
+            i = self.viewports.index(V)
+            i = (i + len(self.viewports) - 1) % len(self.viewports)
             V = self.viewports[i]
         self.setFocusedViewport(V)
         

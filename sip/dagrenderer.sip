@@ -27,8 +27,8 @@ public:
   void * dag();
   int dagId();
   int animationOn();
-  double getDx();
-  double getDy();
+  double getDx(int);
+  double getDy(int);
   double getLinearRadix();
   double getPowerRadix();
   double getLogRadix();
@@ -40,8 +40,8 @@ public:
   PyObject * compute_dag_statistics(int);
   void layout();
   void layout(int);
-  void draw(void *);
-  void draw(void *, double, double);
+  void draw(void *, int);
+  void draw(void *, int, double, double);
   void do_expanding_one_1(void *);
   void do_expanding_one_r(void *);
   void do_expanding_one();

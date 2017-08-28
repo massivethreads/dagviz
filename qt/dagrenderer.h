@@ -37,8 +37,8 @@ public:
   dm_dag_t * dag() { return mDAG; };
   int dagId() { return dm_get_dag_id(mDAG); };
   int animationOn() { if (animation_on) return 1; else return 0; };
-  double getDx() { double ret = mDx; mDx = 0.0; return ret; }
-  double getDy() { double ret = mDy; mDy = 0.0; return ret; }
+  double getDx(int cid) { double ret = mDx[cid]; mDx[cid] = 0.0; return ret; }
+  double getDy(int cid) { double ret = mDy[cid]; mDy[cid] = 0.0; return ret; }
   double getLinearRadix() { return mDAG->linear_radix; }
   double getPowerRadix() { return mDAG->power_radix; }
   double getLogRadix() { return mDAG->log_radix; }
@@ -51,20 +51,20 @@ public:
   PyObject * compute_dag_statistics(int D_id);
   void layout() { layout_(mDAG); };
   void layout(int cid) { layout__(mDAG, cid); };
-  void draw(void * qp_ptr) {
-    this->anchorEnabled = false;
+  void draw(void * qp_ptr, int cid) {
+    anchor[cid].enabled = false;
     QPainter * qp = (QPainter *) qp_ptr;
-    draw_(qp, mDAG);
+    draw_(qp, mDAG, cid);
   };
-  void draw(void * qp_ptr, double anchor_x, double anchor_y) {
-    if (!this->anchorEnabled) {
-      this->anchorEnabled = true;
-      this->anchor_x_node = this->anchor_y_node = NULL;
+  void draw(void * qp_ptr, int cid, double anchor_x, double anchor_y) {
+    if (!anchor[cid].enabled) {
+      anchor[cid].enabled = true;
+      anchor[cid].node = NULL;
     }
-    this->anchor_x = anchor_x;
-    this->anchor_y = anchor_y;
+    anchor[cid].x = anchor_x;
+    anchor[cid].y = anchor_y;
     QPainter * qp = (QPainter *) qp_ptr;
-    draw_(qp, mDAG);
+    draw_(qp, mDAG, cid);
   };
   void do_expanding_one_1(void * node) { do_expanding_one_1_(mDAG, (dm_dag_node_t *) node); };
   void do_expanding_one_r(void * node) { do_expanding_one_r_(mDAG, (dm_dag_node_t *) node); };
@@ -102,18 +102,19 @@ private:
   QWidget * mViewport = NULL;  /* Viewport where the DAG of this renderer is drawn on */
   bool animation_on = false;
   QTimer * animation_timer = NULL;
-  bool anchorEnabled = false;
-  double anchor_x, anchor_y;
-  dm_dag_node_t * anchor_x_node = NULL;
-  dm_dag_node_t * anchor_y_node = NULL;
-  dm_dag_node_t * anchor_nodes[DM_NUM_COORDINATES] = { NULL };
-  double mDx = 0.0;
-  double mDy = 0.0;
+  struct {
+    bool enabled = false;
+    double x, y;
+    dm_dag_node_t * node = NULL;
+  } anchor[DM_NUM_COORDINATES];
+  double mDx[DM_NUM_COORDINATES] = { 0 };
+  double mDy[DM_NUM_COORDINATES] = { 0 };
   QVector<QWidget *> mViewports[DM_NUM_COORDINATES];
   struct {
     double duration = DM_ANIMATION_DURATION;
     double step = DM_ANIMATION_STEP;
     bool on;
+    int cid;
     QWidget * VP;
     double x0, y0;
     double x1, y1;
@@ -150,8 +151,7 @@ private:
   void draw3_node_r(QPainter *, dm_dag_t *, dm_dag_node_t *, int *, int);  
   void draw3_(QPainter *, dm_dag_t *, int);
   void draw_paraprof(QPainter *, dm_dag_t *, int);
-  int get_cid_from_qpainter(QPainter *);
-  void draw_(QPainter *, dm_dag_t *);
+  void draw_(QPainter *, dm_dag_t *, int);
   PyObject * get_dag_node_info_(dm_dag_node_t *);
     
 };

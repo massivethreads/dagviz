@@ -115,16 +115,13 @@ void
 DAGRenderer::layout__(dm_dag_t * D, int cid) {
   double x_proportion = 0.0;
   double y_proportion = 0.0;
-  if (anchorEnabled && cid != DM_LAYOUT_PARAPROF_COORDINATE) {
-    if (anchor_x_node) {
-      dm_node_coordinate_t * c = &anchor_x_node->c[cid];
+  if (anchor[cid].enabled && cid != DM_LAYOUT_PARAPROF_COORDINATE) {
+    if (anchor[cid].node) {
+      dm_node_coordinate_t * c = &anchor[cid].node->c[cid];
       double left = c->x - c->lw;
       double right = c->x + c->rw;
-      x_proportion = (anchor_x - left) / (right - left);
-    }
-    if (anchor_y_node) {
-      dm_node_coordinate_t * c = &anchor_y_node->c[cid];
-      y_proportion = (anchor_y - c->y) / c->dw;
+      x_proportion = (anchor[cid].x - left) / (right - left);
+      y_proportion = (anchor[cid].y - c->y) / c->dw;
     }
   }
 
@@ -145,18 +142,15 @@ DAGRenderer::layout__(dm_dag_t * D, int cid) {
     return;
   }
   
-  if (anchorEnabled && cid != DM_LAYOUT_PARAPROF_COORDINATE) {
-    if (anchor_x_node) {
-      dm_node_coordinate_t * c = &anchor_x_node->c[cid];
+  if (anchor[cid].enabled && cid != DM_LAYOUT_PARAPROF_COORDINATE) {
+    if (anchor[cid].node) {
+      dm_node_coordinate_t * c = &anchor[cid].node->c[cid];
       double left = c->x - c->lw;
       double right = c->x + c->rw;
       double new_anchor_x = x_proportion * (right - left) + left;
-      mDx += anchor_x - new_anchor_x;
-    }
-    if (anchor_y_node) {
-      dm_node_coordinate_t * c = &anchor_y_node->c[cid];
+      mDx[cid] += anchor[cid].x - new_anchor_x;
       double new_anchor_y = y_proportion * c->dw + c->y;
-      mDy += anchor_y - new_anchor_y;
+      mDy[cid] += anchor[cid].y - new_anchor_y;
     }
   }
 }
@@ -239,8 +233,8 @@ DAGRenderer::do_motion_tick() {
     double ratio = (t - motion.start_t) / motion.duration;
     double dx = ratio * (motion.x1 - motion.x0);
     double dy = ratio * (motion.y1 - motion.y0);
-    mDx -= dx;
-    mDy -= dy;
+    mDx[motion.cid] -= dx;
+    mDy[motion.cid] -= dy;
     motion.x0 += dx;
     motion.y0 += dy;
     motion.duration -= t - motion.start_t;
@@ -248,8 +242,8 @@ DAGRenderer::do_motion_tick() {
   } else {
     double dx = motion.x1 - motion.x0;
     double dy = motion.y1 - motion.y0;
-    mDx -= dx;
-    mDy -= dy;
+    mDx[motion.cid] -= dx;
+    mDy[motion.cid] -= dy;
     do_motion_stop();
   }
   update(motion.VP);
@@ -258,6 +252,7 @@ DAGRenderer::do_motion_tick() {
 void
 DAGRenderer::do_motion_start_(double x0, double y0, dm_dag_node_t * node, int cid, QWidget * VP) {
   motion.on = true;
+  motion.cid = cid;
   motion.duration = DM_ANIMATION_DURATION;
   motion.VP = VP;
   motion.x0 = x0;
@@ -766,13 +761,12 @@ DAGRenderer::draw1_node_r(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, int
   }
 
   /* find innermost node that still covers the anchor point */
-  if (anchorEnabled) {
+  if (anchor[cid].enabled) {
     dm_node_coordinate_t * c = &node->c[cid];
-    if (anchor_x_node == NULL || anchor_y_node == NULL ||
-        (c->x - c->lw < anchor_x && anchor_x < c->x + c->rw &&
-         c->y         < anchor_y && anchor_y < c->y + c->dw)) {
-      anchor_x_node = node;
-      anchor_y_node = node;
+    if (anchor[cid].node == NULL ||
+        (c->x - c->lw < anchor[cid].x && anchor[cid].x < c->x + c->rw &&
+         c->y         < anchor[cid].y && anchor[cid].y < c->y + c->dw)) {
+      anchor[cid].node = node;
     }
   }
   
@@ -950,13 +944,12 @@ DAGRenderer::draw2_node_r(QPainter * qp, dm_dag_t * D, dm_dag_node_t * node, int
   }
   
   /* find innermost node that still covers the anchor point */
-  if (anchorEnabled) {
+  if (anchor[cid].enabled) {
     dm_node_coordinate_t * c = &node->c[cid];
-    if (anchor_x_node == NULL || anchor_y_node == NULL ||
-        (c->x - c->lw < anchor_x && anchor_x < c->x + c->rw &&
-         c->y         < anchor_y && anchor_y < c->y + c->dw)) {
-      anchor_x_node = node;
-      anchor_y_node = node;
+    if (anchor[cid].node == NULL ||
+        (c->x - c->lw < anchor[cid].x && anchor[cid].x < c->x + c->rw &&
+         c->y         < anchor[cid].y && anchor[cid].y < c->y + c->dw)) {
+      anchor[cid].node = node;
     }
   }
   
@@ -1200,21 +1193,20 @@ DAGRenderer::draw_paraprof(QPainter * qp, dm_dag_t * D, int cid) {
   qp->drawLine(x, y, x + w, y);
 }
 
-int
-DAGRenderer::get_cid_from_qpainter(QPainter * qp) {
-  for (int cid = 0; cid < DM_NUM_COORDINATES; cid++) {
-    QVector<QWidget *>::iterator i;
-    for (i = mViewports[cid].begin(); i != mViewports[cid].end(); i++) {
-      QWidget * VP = *i;
-      if (VP == qp->device()) return cid;
-    }
-  }
-  return -1;
-}
+// int
+// DAGRenderer::get_cid_from_qpainter(QPainter * qp) {
+//   for (int cid = 0; cid < DM_NUM_COORDINATES; cid++) {
+//     QVector<QWidget *>::iterator i;
+//     for (i = mViewports[cid].begin(); i != mViewports[cid].end(); i++) {
+//       QWidget * VP = *i;
+//       if (VP == qp->device()) return cid;
+//     }
+//   }
+//   return -1;
+// }
 
 void
-DAGRenderer::draw_(QPainter * qp, dm_dag_t * D) {
-  int cid = get_cid_from_qpainter(qp);
+DAGRenderer::draw_(QPainter * qp, dm_dag_t * D, int cid) {
   if (cid < 0) {
     dm_perror("cannot get CID from the QPainter=%p", qp);
     return;
@@ -1225,7 +1217,7 @@ DAGRenderer::draw_(QPainter * qp, dm_dag_t * D) {
   D->cur_d_ex = D->dmax;
 
   qp->setRenderHint(QPainter::Antialiasing);
-  qp->translate(mDx, mDy);
+  qp->translate(mDx[cid], mDy[cid]);
   
   switch (cid) {
   case DM_LAYOUT_DAG_COORDINATE:
