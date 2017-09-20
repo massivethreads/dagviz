@@ -722,7 +722,7 @@ class DAGViz(QMainWindow):
         self.setWindowIcon(QIcon(sysroot + '/gui/dagviz_icon.svg'))
 
         # status bar
-        self.statusBar().showMessage('Tips: scroll to zoom, Ctrl and scroll (or double click and drag) to move')
+        self.statusBar().showMessage('Tips: scroll to zoom, drag to move')
 
         # menu bar
         menubar = self.menuBar()
