@@ -30,7 +30,7 @@ DAGViz-GTK is written totally in C language with the GTK+ toolkit.
 
 ### Dependencies
 
-1. MassiveThreads: https://github.com/massivethreads/massivethreads
+1. MassiveThreads: https://github.com/massivethreads/massivethreads (Instructions on install [here](https://github.com/massivethreads/dagviz/#massivethreads-installation))
 2. GTK+ 3: https://www.gtk.org/download (libgtk-3-dev package on Ubuntu)
 
 
@@ -38,18 +38,18 @@ There are other optional packages for reading sampling-based traces
 if necessary:
 
 - libunwind: for getting call chains
-  Ubuntu 14.04: libunwind8-dev package
+  Ubuntu 14.04/20.04.1 LTS: libunwind8-dev package
 
 - libbfd: for dagviz to read binary file.
-  Ubuntu 14.04: binutils-dev package
+  Ubuntu 14.04/20.04.1LTS: binutils-dev package
 
 ### Quick start
 
 ```bash
-$ git clone git@github.com:zanton/dagviz.git
+$ git clone git@github.com:massivethreads/dagviz.git
 $ cd dagviz
 $ make gtk
-$ ./dagviz-gtk
+$ ./dagviz-gtk <*.dag>
 ```
 
 
@@ -76,7 +76,7 @@ same company of PyQt5.
 ### Quick start
 
 ```bash
-$ git clone git@github.com:zanton/dagviz.git
+$ git clone git@github.com:massivethreads/dagviz.git
 $ cd dagviz
 $ make qt
 $ ./dagviz-pyqt
@@ -125,7 +125,7 @@ $ ./dagviz
 - given that MassiveThreads is installed as following
 
   ```bash
-  $ git clone git@github.com:massivethreads/massivethreads.git
+  $ git clone https://github.com/massivethreads/massivethreads.git
   $ cd massivethreads
   $ ./configure --prefix=$HOME/local CFLAGS="-Wall -O3"
   $ make
